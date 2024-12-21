@@ -2,7 +2,6 @@
 
 import { FaFileInvoiceDollar, FaSackDollar, FaUsers } from 'react-icons/fa6';
 import { formatPrice } from '../../../../utils/formatPrice';
-import { Order, User } from '@prisma/client';
 import Status from '@/app/components/Status';
 import { MdAccessTimeFilled, MdDone } from 'react-icons/md';
 import 'moment/locale/vi';
@@ -59,14 +58,14 @@ type Review = {
 };
 
 interface AdminDashBoardFormProps {
-	orders: (Order & { products: any[] })[];
-	users: User[];
+	orders: (any & { products: any[] })[];
+	users: any[];
 	totalRevenue: number;
 	columnData: any[];
 	currentUser: SafeUser | null | undefined;
 	reviews: Review[];
 	conversations: ChatRoomType[];
-	userInSession: User[];
+	userInSession: any[];
 }
 
 const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
@@ -153,7 +152,7 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 	};
 	// Tránh các đơn hàng bị trùng
 	const uniqueProducts = orders?.reduce((acc: any[], order) => {
-		return acc.concat(order.products?.filter((product) => !acc.some((p) => p.id === product.id)));
+		return acc.concat(order.products?.filter((product: any) => !acc.some((p) => p.id === product.id)));
 	}, []);
 
 	const filteredClient = users?.filter((user) => user.role === 'USER');
