@@ -299,67 +299,67 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 			bgColor: 'bg-red-100',
 		},
 	];
-	const [images, setImages] = useState<ImageType[]>([]);
-	const [isProductCreated, setIsProductCreated] = useState(false);
-	useEffect(() => {
-		if (isProductCreated) {
-			reset();
-			setImages([]);
-			setText('');
-			setIsProductCreated(false);
-		}
-	}, [isProductCreated, reset, toggleOpen]);
+	// const [images, setImages] = useState<ImageType[]>([]);
+	// const [isProductCreated, setIsProductCreated] = useState(false);
+	// useEffect(() => {
+	// 	if (isProductCreated) {
+	// 		reset();
+	// 		setImages([]);
+	// 		setText('');
+	// 		setIsProductCreated(false);
+	// 	}
+	// }, [isProductCreated, reset, toggleOpen]);
 
 
-	useEffect(() => {
-		setCustomValue('images', images);
-	}, [images, setCustomValue]);
+	// useEffect(() => {
+	// 	setCustomValue('images', images);
+	// }, [images, setCustomValue]);
 
-	const addImageToState = useCallback((value: ImageType) => {
-		setImages((prev) => {
-			if (!prev) return [value];
+	// const addImageToState = useCallback((value: ImageType) => {
+	// 	setImages((prev) => {
+	// 		if (!prev) return [value];
 
-			// Kiểm tra xem màu sắc đã tồn tại trong mảng chưa
-			const existingImageIndex = prev.findIndex((item) => item.color === value.color);
-			if (existingImageIndex !== -1) {
-				// Cập nhật hình ảnh cho màu sắc đã tồn tại
-				const updatedImages = [...prev];
-				updatedImages[existingImageIndex] = {
-					...updatedImages[existingImageIndex],
-					image: [...(updatedImages[existingImageIndex].image || []), ...(value.image || [])],
-				};
-				return updatedImages;
-			} else {
-				// Thêm phần tử mới nếu màu sắc chưa tồn tại
-				return [...prev, value];
-			}
-		});
-	}, []);
+	// 		// Kiểm tra xem màu sắc đã tồn tại trong mảng chưa
+	// 		const existingImageIndex = prev.findIndex((item) => item.color === value.color);
+	// 		if (existingImageIndex !== -1) {
+	// 			// Cập nhật hình ảnh cho màu sắc đã tồn tại
+	// 			const updatedImages = [...prev];
+	// 			updatedImages[existingImageIndex] = {
+	// 				...updatedImages[existingImageIndex],
+	// 				image: [...(updatedImages[existingImageIndex].image || []), ...(value.image || [])],
+	// 			};
+	// 			return updatedImages;
+	// 		} else {
+	// 			// Thêm phần tử mới nếu màu sắc chưa tồn tại
+	// 			return [...prev, value];
+	// 		}
+	// 	});
+	// }, []);
 
-	const removeImageToState = useCallback((value: ImageType) => {
-		setImages((prev) => {
-			if (!prev) return [];
+	// const removeImageToState = useCallback((value: ImageType) => {
+	// 	setImages((prev) => {
+	// 		if (!prev) return [];
 
-			const existingImageIndex = prev.findIndex((item) => item.color === value.color);
-			if (existingImageIndex !== -1) {
-				const updatedImages = [...prev];
-				const remainingImages =
-					updatedImages[existingImageIndex].image?.filter((image) => !value.image?.includes(image)) || [];
+	// 		const existingImageIndex = prev.findIndex((item) => item.color === value.color);
+	// 		if (existingImageIndex !== -1) {
+	// 			const updatedImages = [...prev];
+	// 			const remainingImages =
+	// 				updatedImages[existingImageIndex].image?.filter((image) => !value.image?.includes(image)) || [];
 
-				// Nếu không còn hình ảnh nào cho màu sắc đó, xóa phần tử
-				if (remainingImages.length === 0) {
-					return updatedImages.filter((_, i) => i !== existingImageIndex);
-				} else {
-					updatedImages[existingImageIndex] = {
-						...updatedImages[existingImageIndex],
-						image: remainingImages,
-					};
-					return updatedImages;
-				}
-			}
-			return prev;
-		});
-	}, []);
+	// 			// Nếu không còn hình ảnh nào cho màu sắc đó, xóa phần tử
+	// 			if (remainingImages.length === 0) {
+	// 				return updatedImages.filter((_, i) => i !== existingImageIndex);
+	// 			} else {
+	// 				updatedImages[existingImageIndex] = {
+	// 					...updatedImages[existingImageIndex],
+	// 					image: remainingImages,
+	// 				};
+	// 				return updatedImages;
+	// 			}
+	// 		}
+	// 		return prev;
+	// 	});
+	// }, []);
 	return (
 		<>
 			<div className="w-[78.5vw] m-auto text-xl mt-6">
@@ -498,7 +498,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 								})}
 							</div>
 						</div>
-						<div className="w-full flex flex-col flex-wrap gap-4">
+						{/* <div className="w-full flex flex-col flex-wrap gap-4">
 							<div>
 								<div className="font-bold">Chọn màu và hình ảnh của sản phẩm</div>
 								<div className="text-sm">
@@ -518,7 +518,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 									);
 								})}
 							</div>
-						</div>
+						</div> */}
 						<Button label="Lưu sản phẩm" onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
 					</FormWarp>
 				</AdminModal>
