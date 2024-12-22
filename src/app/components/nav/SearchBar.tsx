@@ -19,78 +19,69 @@ const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
 	const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 	const [searchTerm, setSearchTerm] = useState('');
 	const router = useRouter();
-	const { register, handleSubmit, reset, setValue } = useForm<FieldValues>();
 
-	const onSubmit: SubmitHandler<FieldValues> = data => {
-		if (!data.searchTerm) return router.push('/');
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!searchTerm.trim()) {
+			router.push('/');
+			return;
+		}
+
 		const url = queryString.stringifyUrl(
 			{
 				url: '/',
-				query: {
-					searchTerm: data.searchTerm
-				}
+				query: { searchTerm: searchTerm.trim() }
 			},
 			{ skipNull: true }
 		);
+
 		router.push(url);
 		setSearchTerm('');
 		setFilteredProducts([]);
-		setValue('searchTerm', '');
-	};
-
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === 'Enter' && !e.shiftKey) {
-			e.preventDefault(); // Ngăn hành vi mặc định
-			handleSubmit(onSubmit)();
-		}
 	};
 
 	// Khi người dùng gõ ký tự vào ô tìm kiếm
 	const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-		setTimeout(() => {
-			const searchValue = e.target.value;
-			setSearchTerm(searchValue);
+		const seachValue = e.target.value;
+		setSearchTerm(seachValue);
 
-			if (searchValue.trim() === '') {
-				setFilteredProducts([]);
-				return;
-			}
+		if (seachValue.trim() === '') {
+			setFilteredProducts([]);
+			return;
+		}
 
-			const filtered = products.filter(product => product.name.toLowerCase().includes(searchValue.toLowerCase()));
-			setFilteredProducts(filtered);
-		}, 150);
+		const filtered = products.filter(product => product.name.toLowerCase().includes(seachValue.toLowerCase()));
+		setFilteredProducts(filtered);
 	};
 
 	return (
 		<div className="select-none relative w-[150px] sm:w-[220px] md:w-[270px] lg:w-[415px] float-end">
-			<input
-				type="text"
-				autoComplete="off"
-				{...register('searchTerm', { required: true })}
-				placeholder="Bạn cần tìm gì?"
-				className="pl-4 pr-10 py-[6px] lg:py-3 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 w-full"
-				onKeyDown={handleKeyDown}
-				onChange={handleSearch}
-			/>
-			<button
-				className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600"
-				onClick={() => handleSubmit(onSubmit)()}
-			>
-				<svg
-					className="w-5 h-5"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<path
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="2"
-						d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 10-13 0 6.5 6.5 0 0013 0z"
-					/>
-				</svg>
-			</button>
+			<form onSubmit={handleSubmit}>
+				<input
+					type="text"
+					value={searchTerm}
+					autoComplete="off"
+					placeholder="Bạn cần tìm gì?"
+					className="pl-4 pr-10 py-[6px] lg:py-3 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 w-full"
+					onChange={handleSearch}
+				/>
+				<button type="submit" className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600">
+					<svg
+						className="w-5 h-5"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						xmlns="http://www.w3.org/2000/svg"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth="2"
+							d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 10-13 0 6.5 6.5 0 0013 0z"
+						/>
+					</svg>
+				</button>
+			</form>
 			<div
 				className={`absolute mt-1 text-sm z-20 bg-white w-full shadow-md rounded-md max-h-60 overflow-y-auto px-4 transition-all duration-500 ease-in-out ${
 					filteredProducts.length > 0

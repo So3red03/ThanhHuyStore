@@ -11,7 +11,7 @@ interface NavbarProps {
 
 const NavbarClient: React.FC<NavbarProps> = ({ products, articles }) => {
 	const pathname = usePathname();
-	const isNewsOrArticles = pathname?.startsWith('/news') || pathname?.startsWith('/articles');
+	const isNewsOrArticles = pathname?.startsWith('/news') || pathname?.startsWith('/article');
 
 	return (
 			isNewsOrArticles ? <SearchBarNews articles={articles} /> : <SearchBar products={products} />
