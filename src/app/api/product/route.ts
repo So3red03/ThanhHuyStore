@@ -18,7 +18,6 @@ export async function POST(request: Request) {
 		data: {
 			name,
 			description,
-			brand: 'Apple',
 			categoryId,
 			inStock: parseInt(inStock),
 			images,
