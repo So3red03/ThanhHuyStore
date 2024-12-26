@@ -5,17 +5,17 @@ export async function getReviews() {
 		const reviews = await prisma.review.findMany({
 			include: {
 				user: true,
-				product: true,
+				product: true
 			},
 			orderBy: {
-				createdDate: 'desc',
-			},
+				createdDate: 'desc'
+			}
 		});
 		if (!reviews) {
 			return [];
 		}
 		return reviews;
-	} catch (error: any) {
-		throw new Error(error);
+	} catch (error) {
+		console.log(error);
 	}
 }

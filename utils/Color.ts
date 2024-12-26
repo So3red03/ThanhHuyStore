@@ -2,66 +2,71 @@ export const colors = [
 	{
 		color: 'White',
 		colorCode: '#FFFFFF',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Black',
 		colorCode: '#3f4042',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Deep Purple',
 		colorCode: '#514955',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Natural Titanium',
 		colorCode: '#bbb6aa',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Blue Titanium',
 		colorCode: '#3d4655',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Black Titanium',
 		colorCode: '#3f4042',
-		image: [],
+		image: []
 	},
 	{
 		color: 'White Titanium',
 		colorCode: '#f2f1ea',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Silver',
 		colorCode: '#e2e3e4',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Gray',
 		colorCode: '#808080',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Red',
 		colorCode: '#FF0000',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Gold',
 		colorCode: '#dfccb7',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Blue',
 		colorCode: '#0000FF',
-		image: [],
+		image: []
 	},
 	{
 		color: 'Graphite',
 		colorCode: '#383838',
-		image: [],
+		image: []
 	},
+	{
+		color: 'Orange',
+		colorCode: '#f06a20',
+		image: []
+	}
 ];

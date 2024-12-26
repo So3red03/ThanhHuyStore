@@ -9,8 +9,8 @@ import OrderItem from '@/app/components/admin/OrderItem';
 import AdminModal from '@/app/components/admin/AdminModal';
 import { MdAccessTimeFilled, MdDeliveryDining, MdDone, MdRemoveRedEye } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Order } from '@prisma/client';
+import { useEffect, useState } from 'react';
+import { DeliveryStatus, Order, OrderStatus } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { formatPrice } from '../../../../../utils/formatPrice';
 import 'moment/locale/vi';
@@ -68,21 +68,23 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders, current
 		{
 			field: 'paymentStatus',
 			headerName: 'Thanh toán',
-			width: 110,
+			width: 150,
 			renderCell: (params) => {
 				return (
-					<div className="flex justify-center items-center h-full">
-						{params.row.paymentStatus === 'pending' ? (
-							<Status
-								text="Đang chờ"
-								icon={MdAccessTimeFilled}
-								bg="bg-slate-200"
-								color="text-slate-700"
-							/>
-						) : (
-							<Status text="Thành công" icon={MdDone} bg="bg-green-200" color="text-green-700" />
-						)}
-					</div>
+				<div className="flex justify-center items-center h-full">
+					<select
+					value={params.row.paymentStatus}
+					onChange={(event) =>
+						handleUpdateOrderStatus(params.row.id, event.target.value)
+					}
+					className="border rounded-md px-2 py-1 text-sm bg-white shadow-sm"
+					>
+						<option value={OrderStatus.pending}>Chờ thanh toán</option>
+						<option value={OrderStatus.confirmed}>Đã thanh toán</option>
+						<option value={OrderStatus.completed}>Hoàn thành</option>
+						<option value={OrderStatus.canceled}>Đã hủy</option>
+					</select>
+				</div>
 				);
 			},
 		},
@@ -93,21 +95,21 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders, current
 			renderCell: (params) => {
 				return (
 					<div className="flex justify-center items-center h-full">
-						{params.row.deliveryStatus === 'pending' ? (
+						{params.row.deliveryStatus === DeliveryStatus.not_shipped ? (
 							<Status
 								text="Đang chờ"
 								icon={MdAccessTimeFilled}
 								bg="bg-slate-200"
 								color="text-slate-700"
 							/>
-						) : params.row.deliveryStatus === 'dispatched' ? (
+						) : params.row.deliveryStatus === DeliveryStatus.in_transit ? (
 							<Status
 								text="Đang giao hàng"
 								icon={MdDeliveryDining}
 								bg="bg-purple-200"
 								color="text-purple-700"
 							/>
-						) : params.row.deliveryStatus === 'delivered' ? (
+						) : params.row.deliveryStatus === DeliveryStatus.delivered ? (
 							<Status text="Giao thành công" icon={MdDone} bg="bg-green-200" color="text-green-700" />
 						) : (
 							<></>
@@ -149,11 +151,23 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders, current
 		},
 	];
 
+	const handleUpdateOrderStatus = (id: string, newStatus: any) => {
+		axios
+			.put(`/api/order/${id}`, { status: newStatus })
+			.then(() => {
+				toast.success('Cập nhật đơn hàng thành công');
+				router.refresh(); // Làm mới dữ liệu trong bảng
+			})
+			.catch((error) => {
+				toast.error('Có lỗi xảy ra khi cập nhật đơn hàng');
+				console.error(error);
+			});
+	};
 	const handleDispatch = (id: string) => {
 		axios
 			.put('/api/order', {
 				id,
-				deliveryStatus: 'dispatched',
+				deliveryStatus: DeliveryStatus.in_transit,
 			})
 			.then((res) => {
 				toast.success('Đơn hàng đã được gửi đi');
@@ -165,32 +179,26 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders, current
 			});
 	};
 
-	const handleDeliver = (id: string) => {
-		axios
-			.put('/api/order', {
-				id,
-				deliveryStatus: 'delivered',
-			})
-			.then((res) => {
-				toast.success('Giao hàng thành công');
-				router.refresh();
-			})
-			.catch((error) => {
-				toast.error('Có lỗi xảy ra khi gửi đơn hàng');
-				console.error(error);
-			});
+	const handleDeliver = async (id: string) => {
+		try {
+			await Promise.all([
+			axios.put(`/api/order/${id}`, { status: OrderStatus.completed}),
+			axios.put('/api/order', { id, deliveryStatus: DeliveryStatus.delivered }),
+			]);
+
+			toast.success('Cập nhật và giao hàng thành công');
+			router.refresh(); // Làm mới dữ liệu trong bảng
+		} catch (error) {
+			toast.error('Có lỗi xảy ra khi cập nhật đơn hàng hoặc giao hàng');
+			console.error(error);
+		}
 	};
 
-	if (!currentUser || currentUser.role !== 'ADMIN') {
-		return (
-			<>
-				<NullData title="Từ chối đăng nhập" />
-				{router.push('/login')}
-			</>
-		);
-	}
-	const successOrders = orders?.filter((order) => order.status === 'completed').length;
-	const pendingOrders = orders?.filter((order) => order.status !== 'completed').length;
+
+	const successOrders = orders?.filter((order) => order.deliveryStatus === DeliveryStatus.delivered && order.status === OrderStatus.completed).length;
+	const pendingOrders = orders?.filter((order) => order.status === OrderStatus.pending).length;
+	const canceledOrders = orders?.filter((order) => order.status === OrderStatus.canceled).length;
+	const confirmedOrders = orders?.filter((order) => order.status === OrderStatus.confirmed).length;
 	const stats = [
 		{
 			count: `${pendingOrders}`,
@@ -198,21 +206,31 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders, current
 			icon: <FaRegCalendarAlt className="text-2xl text-gray-600" />,
 		},
 		{
+			count: `${confirmedOrders}`,
+			description: 'Đã xác nhận',
+			icon: <FaCheckDouble className="text-2xl text-gray-600" />,
+		},
+		{
 			count: `${successOrders}`,
 			description: 'Hoàn thành',
 			icon: <FaCheckDouble className="text-2xl text-gray-600" />,
 		},
 		{
-			count: '0',
-			description: 'Hoàn trả',
-			icon: <FaRegFaceAngry className="text-2xl text-gray-600" />,
-		},
-		{
-			count: '0',
+			count: `${canceledOrders}`,
 			description: 'Thất bại',
 			icon: <FaRegFaceFrown className="text-2xl text-gray-600" />,
 		},
 	];
+
+	useEffect(() => {
+		if (!currentUser || currentUser.role !== 'ADMIN') {
+			router.push('/login');
+		}
+	}, [currentUser, router]);
+
+	if (!currentUser || currentUser.role !== 'ADMIN') {
+		return <NullData title="Từ chối đăng nhập" />;
+	}
 	return (
 		<>
 			<div className="w-[78.5vw] m-auto text-xl mt-6">

@@ -29,7 +29,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
 
 		const url = queryString.stringifyUrl(
 			{
-				url: '/',
+				url: '/search',
 				query: { searchTerm: searchTerm.trim() }
 			},
 			{ skipNull: true }
@@ -83,7 +83,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
 				</button>
 			</form>
 			<div
-				className={`absolute mt-1 text-sm z-20 bg-white w-full shadow-md rounded-md max-h-60 overflow-y-auto px-4 transition-all duration-500 ease-in-out ${
+				className={`absolute mt-1 text-sm z-20 bg-white w-full shadow-md rounded-md max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent px-4 transition-all duration-500 ease-in-out ${
 					filteredProducts.length > 0
 						? 'opacity-100 translate-y-0'
 						: 'opacity-0 translate-y-[-8px] pointer-events-none'

@@ -22,7 +22,7 @@ const OrderItem: React.FC<OrderItemProps> = ({ item }) => {
 						<p className="text-gray-500 text-sm mb-0">{item.selectedImg.color}</p>
 					</div>
 					<div className="w-1/6 flex items-center justify-center">
-						<p className="text-gray-500 text-sm mb-0">{item.category}</p>
+						<p className="text-gray-500 text-sm mb-0" />
 					</div>
 					<div className="w-1/6 flex items-center justify-center">
 						<p className="text-gray-500 text-sm mb-0">{item.quantity}</p>

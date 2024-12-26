@@ -1,6 +1,7 @@
 'use client';
 
 import { CartProductType, selectedImgType } from '@/app/(home)/product/[productId]/ProductDetails';
+import { usePathname } from 'next/navigation';
 
 interface SetColorProps {
 	cartProduct: CartProductType;
@@ -10,8 +11,13 @@ interface SetColorProps {
 }
 
 const SetColor: React.FC<SetColorProps> = ({ product, cartProduct, handleColorSelect, performance }) => {
+	const pathname = usePathname();
+	const isProductDetail = pathname?.includes('/product/'); 
 	return (
-		<div className="flex items-center gap-4 select-none">
+		<div className={`flex items-center gap-4 select-none ${
+				isProductDetail ? '' : 'justify-center'
+			}`}
+		>
 			<span className={`font-semibold ${performance ? 'hidden' : ' block'}`}>Màu sắc: </span>
 			<div className="flex gap-1">
 				{product.images.map((image: selectedImgType) => {

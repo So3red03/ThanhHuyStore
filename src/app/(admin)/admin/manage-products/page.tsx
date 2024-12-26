@@ -3,16 +3,24 @@ import ManageProductsClient from './ManageProductsClient';
 import { getProducts } from '@/app/actions/getProducts';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import { Suspense } from 'react';
+import { getProductCategories, getSubCategories } from '@/app/actions/getProductCategories';
 
 export const dynamic = 'force-dynamic';
 
 const ManageProducts = async () => {
 	const products = await getProducts({ category: null });
 	const currentUser = await getCurrentUser();
+	const parentCategories = await getProductCategories();
+	const subCategories = await getSubCategories();
 	return (
 		<Suspense fallback={<div>Loading...</div>}>
 			<Container custom="!p-0">
-				<ManageProductsClient products={products} currentUser={currentUser} />
+				<ManageProductsClient
+					products={products}
+					currentUser={currentUser}
+					subCategories={subCategories}
+					parentCategories={parentCategories}
+				/>
 			</Container>
 		</Suspense>
 	);

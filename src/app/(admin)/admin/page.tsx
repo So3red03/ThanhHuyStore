@@ -5,8 +5,8 @@ import { getSessionUsers, getUsers } from '@/app/actions/getUsers';
 import { getTotalRevenue } from '@/app/actions/getTotalRevenue';
 import getColumnChartData from '@/app/actions/getColumnChartData';
 import { Suspense } from 'react';
-import { getReviews } from '@/app/actions/getReviews';
 import { getConversations } from '@/app/actions/getConversations';
+import { getReviews } from '@/app/actions/getReviews';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,9 +19,6 @@ const AdminDashboard = async () => {
 	const columnChartData = await getColumnChartData();
 	const userInSession = await getSessionUsers();
 	const conversations = await getConversations();
-	if (!reviews) {
-		throw new Error('Không có bình luận');
-	}
 	return (
 		<Suspense fallback={<div>Loading...</div>}>
 			<AdminDashBoardForm

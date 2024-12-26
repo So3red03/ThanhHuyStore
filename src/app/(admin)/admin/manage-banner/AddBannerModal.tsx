@@ -233,13 +233,7 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
 							Ảnh banner
 						</label>
 						<div className="flex items-center">
-							<label
-								htmlFor="image"
-								className=" cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition"
-							>
-								{bannerImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
-							</label>
-							<span className="ml-3 text-sm text-gray-500">
+							<span className="mr-3 text-sm text-gray-500">
 								{bannerImage ? (
 									<div className="mt-2">
 										<img
@@ -253,30 +247,30 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
 									'Chưa có file nào được chọn'
 								)}
 							</span>
+							<label
+								htmlFor="image"
+								className=" cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition"
+							>
+								{bannerImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
+							</label>
+
+							<input
+								id="image"
+								type="file"
+								autoComplete="off"
+								disabled={isLoading}
+								{...register('image')}
+								onChange={(e: any) => setBannerImage(e.target.files?.[0] || null)}
+								className="hidden"
+							/>
 						</div>
-						<input
-							id="image"
-							type="file"
-							autoComplete="off"
-							// accept=".png, .jpeg, .jpg"
-							disabled={isLoading}
-							{...register('image')}
-							onChange={(e: any) => setBannerImage(e.target.files?.[0] || null)}
-							className="hidden"
-						/>
 					</div>
 					<div className="relative w-full p-3 pt-7 outline-none bg-white font-light border-2 rounded-md transition border-slate-300 focus:border-slate-500">
 						<label className="absolute top-[-0.02rem] text-[16.5px] scale-75 text-slate-400">
-							Ảnh banner Res
+							Ảnh banner thu nhỏ
 						</label>
 						<div className="flex items-center">
-							<label
-								htmlFor="imageResponsive"
-								className=" cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition"
-							>
-								{bannerResImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
-							</label>
-							<span className="ml-3 text-sm text-gray-500">
+							<span className="mr-3 text-sm text-gray-500">
 								{bannerResImage ? (
 									<div className="mt-2">
 										<img
@@ -290,19 +284,24 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
 									'Chưa có file nào được chọn'
 								)}
 							</span>
-						</div>
-						<input
-							id="imageResponsive"
-							type="file"
-							autoComplete="off"
-							// accept=".png, .jpeg, .jpg"
-							disabled={isLoading}
-							{...register('imageResponsive')}
-							onChange={(e: any) => setBannerResImage(e.target.files?.[0] || null)}
-							className="hidden"
-						/>
-					</div>
+							<label
+								htmlFor="imageResponsive"
+								className=" cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition"
+							>
+								{bannerResImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
+							</label>
 
+							<input
+								id="imageResponsive"
+								type="file"
+								autoComplete="off"
+								disabled={isLoading}
+								{...register('imageResponsive')}
+								onChange={(e: any) => setBannerResImage(e.target.files?.[0] || null)}
+								className="hidden"
+							/>
+						</div>
+					</div>
 					<Button label="Tạo banner" isLoading={isLoading} onClick={handleSubmit(onSubmit)} />
 				</FormWarp>
 			</AdminModal>

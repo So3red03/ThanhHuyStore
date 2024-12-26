@@ -37,9 +37,9 @@ const ProductImage: React.FC<ProductImageProps> = ({ cartProduct }) => {
 	};
 
 	return (
-		<div className="grid grid-cols-6 gap-2 h-full max-h-[300px] min-h-[300px] sm:min-h-[400px]">
+		<div className="grid grid-cols-6 gap-2 max-h-[350px] min-h-[350px] sm:min-h-[400px]">
 			{/* Hiển thị các ảnh nhỏ tương ứng với màu được chọn */}
-			<div className="flex items-center justify-center flex-col gap-4 cursor-pointer border h-fit max-h-[500px] min-h-[300px] sm:min-h-[400px]">
+			<div className="flex items-center justify-center flex-col gap-4 cursor-pointer border h-fit max-h-[400px] min-h-[300px] sm:min-h-[400px] overflow-y-auto no-scrollbar">
 				{cartProduct.selectedImg.images.map((currentImg: string) => {
 					return (
 						<div
@@ -81,7 +81,7 @@ const ProductImage: React.FC<ProductImageProps> = ({ cartProduct }) => {
 							position: 'absolute',
 							left: `${cursorPosition.x - 75}px`,
 							top: `${cursorPosition.y - 75}px`,
-							pointerEvents: 'none',
+							pointerEvents: 'none'
 						}}
 					>
 						<div
@@ -89,7 +89,7 @@ const ProductImage: React.FC<ProductImageProps> = ({ cartProduct }) => {
 							style={{
 								backgroundImage: `url(${largeImage})`,
 								backgroundPosition: `${position.x}% ${position.y}%`,
-								backgroundSize: '450%',
+								backgroundSize: '450%'
 							}}
 						/>
 					</div>

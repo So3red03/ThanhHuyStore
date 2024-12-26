@@ -1,6 +1,6 @@
 'use client';
 
-import { CartProductType, Order } from '@prisma/client';
+import { CartProductType, DeliveryStatus, Order, OrderStatus } from '@prisma/client';
 import Status from '@/app/components/Status';
 import { MdAccessTimeFilled, MdDeliveryDining, MdDone } from 'react-icons/md';
 import { format } from 'date-fns';
@@ -33,16 +33,12 @@ interface OrdersClientProps {
 
 const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
 	const [isOpen, setIsOpen] = useState(false);
-	// Giá trị hiển thị để chuyển đổi các tab
-	const [value, setValue] = useState(0);
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const router = useRouter();
 	const toggleOpen = () => {
 		setIsOpen(!isOpen);
 	};
-	const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-		setValue(newValue);
-	};
+	
 
 	const AntTabs = styled(Tabs)({
 		'& .MuiTabs-indicator': {
@@ -51,7 +47,7 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
 	});
 
 	const tabStyles = {
-		border: '1px solid',
+		borderBottom: '1px solid',
 		borderRadius: '8px',
 		paddingTop: '0px',
 		paddingBottom: '0px',
@@ -67,26 +63,56 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
 		color: 'text.primary',
 		borderColor: '#D2D2D7',
 	};
+	// Giá trị hiển thị để chuyển đổi các tab
+	const [filteredOrders, setFilteredOrders] = useState(orders); 
+	const [value, setValue] = useState(0);
+	const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+		setValue(newValue);
+		filterOrders(newValue);
+	};
+	// Hàm lọc đơn hàng
+	const filterOrders = (tabIndex: number) => {
+	switch (tabIndex) {
+		case 0: // Tất cả
+			setFilteredOrders(orders);
+			break;
+		case 1: // Chờ xác nhận
+			setFilteredOrders(orders.filter(order => order.status === OrderStatus.pending || order.deliveryStatus === DeliveryStatus.not_shipped));
+			break;
+		case 2: // Đang vận chuyển
+			setFilteredOrders(orders.filter(order => order.deliveryStatus === DeliveryStatus.in_transit));
+			break;
+		case 3: // Hoàn thành
+			setFilteredOrders(orders.filter(order => order.deliveryStatus === DeliveryStatus.delivered && order.status === OrderStatus.completed));
+			break;
+		case 4: // Đã hủy
+			setFilteredOrders(orders.filter(order => order.status === OrderStatus.canceled));
+			break;
+		default:
+			setFilteredOrders(orders);
+	}
+	};
 	return (
 		<>
-			<div className="max-w-4xl mx-auto p-6 py-0">
+			<div className="max-w-4xl p-6 py-0">
 				{orders.length > 0 ? (
 					<>
 						<div className={`flex justify-between items-center mb-4`}>
 							<h1 className="text-2xl font-bold">ĐƠN HÀNG CỦA TÔI</h1>
-							<span className="text-sm text-gray-600">({orders.length} đơn hàng)</span>
+							<span className="text-sm text-gray-600">({filteredOrders.length} đơn hàng)</span>
 						</div>
 						<div className="w-100 overflow-auto">
-				<Box sx={{ overflowX: 'auto' }}>
-					<AntTabs value={value} onChange={handleChange} centered>
-						<Tab label="Mô tả sản phẩm" sx={tabStyles} />
-						<Tab label="Thông số kĩ thuật" sx={tabStyles} />
-						<Tab label="Hỏi đáp" sx={tabStyles} />
-					</AntTabs>
-				</Box>
-			</div>
-
-						{orders.map((order) => (
+							<Box sx={{ overflowX: 'auto' }}>
+								<AntTabs value={value} onChange={handleChange} centered>
+									<Tab label="Tất cả" sx={tabStyles} />
+									<Tab label="Chờ xác nhận" sx={tabStyles} />
+									<Tab label="Đang vận chuyển" sx={tabStyles} />
+									<Tab label="Hoàn thành" sx={tabStyles} />
+									<Tab label="Đã hủy" sx={tabStyles} />
+								</AntTabs>
+							</Box>
+						</div>
+						{filteredOrders.map((order) => (
 							<div key={order.id} className="my-4 border border-gray-300 rounded-lg">
 								<div className="p-4 bg-gray-50">
 									<div className="flex justify-between items-center mb-2">
@@ -97,14 +123,14 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
 									<div className="text-sm text-gray-600 flex items-center gap-2">
 										Tình trạng đặt hàng:{' '}
 										<span className="font-medium">
-											{order.deliveryStatus === 'pending' ? (
+											{order.deliveryStatus === 'not_shipped' ? (
 												<Status
 													text="Đang chờ"
 													icon={MdAccessTimeFilled}
 													bg="bg-slate-200"
 													color="text-slate-700 !py-0 !px-1"
 												/>
-											) : order.deliveryStatus === 'dispatched' ? (
+											) : order.deliveryStatus === 'in_transit' ? (
 												<Status
 													text="Đang giao hàng"
 													icon={MdDeliveryDining}
@@ -181,9 +207,15 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
 						<h1 className="text-2xl font-semibold mb-4">Chi tiết đơn hàng</h1>
 						<p className="text-gray-700 mb-6">Xin chào, {currentUser?.name}</p>
 						<p className="text-gray-700 mb-8">
-							{selectedOrder?.status === 'pending'
-								? 'Đơn hàng chưa được thanh toán'
-								: 'Đơn hàng thanh toán thành công'}
+							{selectedOrder?.status === 'pending' ? (
+								'Đơn hàng chưa được thanh toán'
+							) : selectedOrder?.status === 'confirmed' ? (
+								'Đơn hàng đã được xác nhận'
+							) : selectedOrder?.status === 'canceled' ? (
+								'Đơn hàng đã bị hủy'
+							) : (
+								'Đơn hàng hoàn thành'
+							)}
 						</p>
 
 						{/* Order Info */}
@@ -194,11 +226,29 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
 							</div>
 							<div className="border-r border-gray-300">
 								<h2 className="font-semibold">Tình trạng đặt hàng</h2>
-								<p>{selectedOrder?.deliveryStatus}</p>
+								<p>{selectedOrder?.deliveryStatus === 'not_shipped' ? (
+									'Đang chờ'
+									) : selectedOrder?.deliveryStatus === 'in_transit' ? (
+										'Đang vận chuyển'
+									) : selectedOrder?.deliveryStatus === 'delivered' ? (
+										'Đã giao'
+									) : (
+										'Đã hoàn trả'
+									)}
+								</p>
 							</div>
 							<div className="border-r border-gray-300">
 								<h2 className="font-semibold">Trạng thái thanh toán</h2>
-								<p>{selectedOrder?.status}</p>
+								<p>{selectedOrder?.status === 'pending' ? (
+									'Chưa thanh toán'
+									) : selectedOrder?.status === 'confirmed' ? (
+										'Đã thanh toán'
+									) : selectedOrder?.status === 'canceled' ? (
+										'Đã hủy'
+									) : (
+										'Đã thanh toán'
+									)}
+								</p>
 							</div>
 							<div>
 								<h2 className="font-semibold">Phương thức thanh toán</h2>

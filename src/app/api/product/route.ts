@@ -11,19 +11,19 @@ export async function POST(request: Request) {
 
 	// Invoking data JSON from request
 	const body = await request.json();
-	const { name, description, price, brand, category, inStock, images } = body;
+	const { name, description, price, categoryId, inStock, images } = body;
 
 	// create new user in db by Prisma
 	const product = await prisma.product.create({
 		data: {
 			name,
 			description,
-			brand,
-			category,
+			brand: 'Apple',
+			categoryId,
 			inStock: parseInt(inStock),
 			images,
-			price: parseFloat(price),
-		},
+			price: parseFloat(price)
+		}
 	});
 	return NextResponse.json(product);
 }

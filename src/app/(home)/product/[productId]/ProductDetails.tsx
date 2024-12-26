@@ -22,7 +22,6 @@ export type CartProductType = {
 	name: string;
 	description: string;
 	category: string;
-	brand: string;
 	selectedImg: selectedImgType;
 	quantity: number;
 	price: number;
@@ -36,7 +35,7 @@ export type selectedImgType = {
 };
 
 const Horizontal = () => {
-	return <hr className="w-[60%] my-2"></hr>;
+	return <hr className="w-[60%] my-2" />;
 };
 
 const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
@@ -47,18 +46,17 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
 		id: product.id,
 		name: product.name,
 		description: product.description,
-		category: product.category,
-		brand: product.brand,
+		category: product.categoryId,
 		selectedImg: { ...product.images[0] },
 		quantity: 1,
 		price: product.price,
-		inStock: product.inStock,
+		inStock: product.inStock
 	});
 
 	// Check xem đã nhấn button chưa
 	useEffect(() => {
 		if (cartProducts) {
-			const existsProduct = cartProducts.findIndex((cartProduct) => cartProduct.id === product.id);
+			const existsProduct = cartProducts.findIndex(cartProduct => cartProduct.id === product.id);
 			if (existsProduct > -1) setIsProductInCart(true);
 		}
 	}, [cartProducts, product.id]);
@@ -69,9 +67,9 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
 
 	// Check color hiện tại và img thay đổi theo color đc select
 	const handleColorSelect = useCallback((value: selectedImgType) => {
-		setCartProduct((prev) => ({
+		setCartProduct(prev => ({
 			...prev,
-			selectedImg: value,
+			selectedImg: value
 		}));
 	}, []);
 

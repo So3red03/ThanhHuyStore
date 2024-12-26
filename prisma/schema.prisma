@@ -62,8 +62,8 @@ model Order {
   userId          String            @db.ObjectId
   amount          Float
   currency        String
-  status          String
-  deliveryStatus  String?
+  status          OrderStatus       @default(pending) 
+  deliveryStatus  DeliveryStatus?   
   createDate      DateTime          @default(now())
   paymentIntentId String            @unique
   phoneNumber     String?
@@ -80,7 +80,6 @@ type CartProductType {
   name        String
   description String
   category    String
-  brand       String
   selectedImg Image
   quantity    Int
   price       Float
@@ -109,37 +108,43 @@ model Product {
   promotionalPrice Float?
   promotionStart   DateTime?
   promotionEnd     DateTime?
-  brand            String
-  // categoryId      String? @db.ObjectId
-  // category        Category? @relation(fields: [categoryId], references: [id])
-  category         String
+  categoryId       String    @db.ObjectId
+  category         Category  @relation(fields: [categoryId], references: [id], onDelete: NoAction)
   inStock          Int
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   images           Image[]
   reviews          Review[]
   notifications    Notification[]
 }
 
+model Category {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  slug        String
+  image       String?
+  icon        String?
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  parentId    String?     @db.ObjectId
+  parent      Category?   @relation("Subcategories", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subcategories Category[] @relation("Subcategories")
+  products    Product[]
+}
+
 model Review {
-  id          String            @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String            @db.ObjectId
-  productId   String            @db.ObjectId
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  productId   String    @db.ObjectId
   rating      Int
   comment     String
   reply       String?
-  createdDate DateTime          @default(now())
-  updatedAt   DateTime?         @updatedAt
+  createdDate DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
 
-  product     Product           @relation(fields: [productId], references: [id])
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-// Mới thêm vào chưa push
-model Category {
-  id          String            @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  icon        String
-  description String?
-  // products        Product[]
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Article {
@@ -250,4 +255,18 @@ enum Role {
     USER
     ADMIN
 }
- 
+
+enum OrderStatus {
+  pending
+  confirmed
+  canceled
+  completed
+}
+
+enum DeliveryStatus {
+  not_shipped
+  in_transit
+  delivered
+  returning
+  returned
+}

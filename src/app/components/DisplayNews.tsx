@@ -1,11 +1,11 @@
 'use client';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
 import Link from 'next/link';
 import { slugConvert } from '../../../utils/Slug';
 import { format } from 'date-fns';
-import 'swiper/css';
-import 'swiper/css/navigation';
 import { useSearchParams } from 'next/navigation';
 
 interface DisplayNewsProsp {

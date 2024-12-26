@@ -7,6 +7,7 @@ import { getProductsNoCondition } from '@/app/actions/getProductsNoCondition';
 import MobileNavbar from './MobileNavbar';
 import { getArticles } from '@/app/actions/getArticlesData';
 import SearchBarClient from './SearchBarClient';
+import { getAllProductCategories } from '@/app/actions/getProductCategories';
 
 const redressed = Redressed({ subsets: ['latin'], weight: ['400'] });
 
@@ -14,6 +15,7 @@ const Navbar = async () => {
 	const currentUser = await getCurrentUser();
 	const products = await getProductsNoCondition();
 	const articles = await getArticles();
+	const categories = await getAllProductCategories();
 	return (
 		<div className="sticky top-0 w-full bg-slate-200 z-30 shadow-sm">
 			<div className="p-4 lg:px-0 border-b-[1px]">
@@ -34,7 +36,7 @@ const Navbar = async () => {
 					</div>
 				</Container>
 			</div>
-			<Categories />
+			<Categories categories={categories} />
 		</div>
 	);
 };

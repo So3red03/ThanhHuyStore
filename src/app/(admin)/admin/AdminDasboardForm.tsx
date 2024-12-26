@@ -63,7 +63,7 @@ interface AdminDashBoardFormProps {
 	totalRevenue: number;
 	columnData: any[];
 	currentUser: SafeUser | null | undefined;
-	reviews: Review[];
+	reviews: any;
 	conversations: ChatRoomType[];
 	userInSession: any[];
 }
@@ -118,6 +118,7 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 			})
 			.then(() => {
 				toast.success('Phản hồi thành công');
+				router.refresh();
 				setValue('reply', '');
 			})
 			.catch((error) => {
@@ -260,7 +261,7 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 
 	return (
 		<>
-			<div className="p-5 lg:p-2 flex flex-col lg:flex-row justify-around gap-6 lg:mt-6 mt-16">
+			<div className="flex flex-col lg:flex-row justify-around gap-3 mt-6">
 				<div className="w-full lg:w-2/3">
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-6 gap-x-4 gap-y-4 lg:gap-y-0">
 						<div className="bg-white p-6 rounded-lg border border-gray-200">
@@ -428,15 +429,11 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 							/>
 						</div>
 					</div>
-					<div className="mb-4 rounded-lg border border-gray-200 w-full py-6 flex-1">
-						<h2 className="mb-3 text-gray-500 px-6 font-semibold text-lg">Tin nhắn</h2>
-						<ChatList conversations={conversations} userInSession={userInSession} dashboard={true} />
-					</div>
 					{/* Đánh giá sản phẩm */}
-					<div className="rounded-lg border border-gray-200 w-full p-6 pr-0 pb-2 flex-1">
+					<div className="mb-4 rounded-lg border border-gray-200 w-full p-6 pr-0 pb-2 flex-1">
 						<h2 className="text-gray-500 mb-4 font-semibold text-lg">Đánh giá sản phẩm gần đây</h2>
 						<div className="h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent">
-							{reviews?.map((review) => (
+							{reviews?.map((review: any) => (
 								<div
 									key={review.id}
 									className="flex flex-col items-start my-6 mr-3"
@@ -469,9 +466,9 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 										<div className="flex items-center justify-between">
 											<p className="text-sm mt-1">{review.comment}</p>
 											{review.reply ? (
-												<p className="text-xs text-gray-500">(Đã đánh giá)</p>
+												<p className="text-xs text-gray-500">(Đã phản hồi)</p>
 											) : (
-												<p className="text-xs text-gray-500">(Chưa đánh giá)</p>
+												<p className="text-xs text-gray-500">(Chưa phản hồi)</p>
 											)}
 										</div>
 										{/* Tính năng khi hover*/}
@@ -596,6 +593,10 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 								</div>
 							))}
 						</div>
+					</div>
+					<div className="rounded-lg border border-gray-200 w-full py-6 flex-1">
+						<h2 className="mb-3 text-gray-500 px-6 font-semibold text-lg">Tin nhắn</h2>
+						<ChatList conversations={conversations} userInSession={userInSession} dashboard={true} />
 					</div>
 				</div>
 			</div>

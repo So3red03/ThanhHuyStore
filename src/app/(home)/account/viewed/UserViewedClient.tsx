@@ -9,7 +9,7 @@ import { Product } from '@prisma/client';
 import NotFound from '@/app/components/NotFound';
 
 interface UserViewedClientProps {
-	productsViewed: Product[];
+	productsViewed: any;
 }
 
 const UserViewedClient: React.FC<UserViewedClientProps> = ({ productsViewed }) => {

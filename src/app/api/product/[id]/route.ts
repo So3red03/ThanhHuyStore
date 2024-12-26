@@ -10,7 +10,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 	}
 
 	const product = await prisma.product.delete({
-		where: { id: params.id },
+		where: { id: params.id }
 	});
 	return NextResponse.json(product);
 }
@@ -23,11 +23,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 	}
 
 	const body = await request.json();
-	const { name, description, price, inStock } = body;
+	const { name, description, price, inStock, categoryId } = body;
 
 	const product = await prisma.product.update({
 		where: { id: params.id },
-		data: { name: name, description: description, price: price, inStock: inStock },
+		data: { name, description, price, inStock, categoryId }
 	});
 	return NextResponse.json(product);
 }

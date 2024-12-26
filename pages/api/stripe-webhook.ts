@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { buffer } from 'micro';
+import { OrderStatus } from '@prisma/client';
 
 // Tránh parse dữ liệu vì bắt buộc dữ liệu là raw để xác minh chữ kí của stripe
 export const config = {
@@ -40,8 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			if (typeof charge.payment_intent === 'string') {
 				await prisma?.order.update({
 					where: { paymentIntentId: charge.payment_intent },
-					data: { status: 'complete' },
-					// data: { status: 'complete', address: charge.shipping?.address },
+					data: { status: OrderStatus.completed },
 				});
 			}
 			break;

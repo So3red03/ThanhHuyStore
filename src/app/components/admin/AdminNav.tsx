@@ -17,7 +17,11 @@ import MenuItem from '../nav/MenuItem';
 import { CiChat1, CiLogout, CiSettings, CiUser } from 'react-icons/ci';
 import { signOut } from 'next-auth/react';
 import AddArticleCateModal from '@/app/(admin)/admin/manage-articlesCategory/AddArticleCateModal';
-import { ArticleCategory } from '@prisma/client';
+import { ArticleCategory, Category } from '@prisma/client';
+import AddProductCateModal from '@/app/(admin)/admin/manage-categories/AddProductCateModal';
+import AddProductChildCate from '@/app/(admin)/admin/manage-childCategories/AddProductChildCateModal';
+import AddProductChildCateModal from '@/app/(admin)/admin/manage-childCategories/AddProductChildCateModal';
+import { getSubCategories } from '@/app/actions/getProductCategories';
 
 const pathTitle: { [key: string]: string } = {
 	'/admin': 'Tổng quan',
@@ -25,19 +29,22 @@ const pathTitle: { [key: string]: string } = {
 	'/admin/manage-products': 'Quản lý sản phẩm',
 	'/admin/manage-orders': 'Quản lý đơn hàng',
 	'/admin/manage-users': 'Quản lý người dùng',
-	'/admin/manage-categories': 'Quản lý danh mục',
+	'/admin/manage-categories': 'Quản lý danh mục cha',
+	'/admin/manage-childCategories': 'Quản lý danh mục con',
 	'/admin/manage-banner': 'Quản lý slider',
 	'/admin/manage-articles': 'Quản lý bài viết',
 	'/admin/manage-articlesCategory': 'Quản lý danh mục',
 };
 
 interface AdminNavProps {
-	notifications: any[];
+	// notifications: any[];
 	currentUser: SafeUser | null | undefined;
 	articleCategory: ArticleCategory[];
+	parentCategory: any;
+	subCategories: any;
 }
 
-const AdminNav: React.FC<AdminNavProps> = ({ notifications, currentUser, articleCategory }) => {
+const AdminNav: React.FC<AdminNavProps> = ({currentUser, articleCategory, parentCategory, subCategories }) => {
 	const pathName = usePathname();
 	const title = pathName?.startsWith('/admin/chat') ? 'Tin nhắn' : pathTitle[pathName as string];
 	const [isOpen, setIsOpen] = useState(false);
@@ -45,11 +52,12 @@ const AdminNav: React.FC<AdminNavProps> = ({ notifications, currentUser, article
 	const [isOpenBannerModal, setIsOpenBannerModal] = useState(false);
 	const [isOpenArticleModal, setIsOpenArticleModal] = useState(false);
 	const [isOpenArticleCateModal, setIsOpenArticleCateModal] = useState(false);
+	const [isOpenProductCateModal, setIsOpenProductCateModal] = useState(false);
+	const [isOpenProductChildCateModal, setIsOpenProductChildCateModal] = useState(false);
 	const [isProfileOpen, setIsProfileOpen] = useState(false);
 	const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 	const [isMessagesOpen, setIsMessagesOpen] = useState(false);
 	const [unreadCount, setUnreadCount] = useState<number>(0);
-
 	// Thêm sản phẩm
 	const toggleOpen = () => {
 		setIsOpen(!isOpen);
@@ -73,24 +81,24 @@ const AdminNav: React.FC<AdminNavProps> = ({ notifications, currentUser, article
 	};
 
 	// Mở thông báo và cập nhật isRead cho thông báo vào csdl
-	const toggleNotifications = async () => {
-		setIsMessagesOpen(false);
-		setIsNotificationsOpen(!isNotificationsOpen);
-		if (isNotificationsOpen) {
-			// Lọc thông báo chưa đọc
-			const unreadNotifications = notifications.filter((notification) => notification.isRead === false);
+	// const toggleNotifications = async () => {
+	// 	setIsMessagesOpen(false);
+	// 	setIsNotificationsOpen(!isNotificationsOpen);
+	// 	if (isNotificationsOpen) {
+	// 		// Lọc thông báo chưa đọc
+	// 		const unreadNotifications = notifications.filter((notification) => notification.isRead === false);
 
-			if (unreadNotifications.length > 0) {
-				// Tạo một mảng Promise để thực hiện nhiều yêu cầu đồng thời
-				const updateNotifications = unreadNotifications.map((notification) => {
-					return axios.put(`/api/notifications/${notification.id}`, { isRead: true });
-				});
+	// 		if (unreadNotifications.length > 0) {
+	// 			// Tạo một mảng Promise để thực hiện nhiều yêu cầu đồng thời
+	// 			const updateNotifications = unreadNotifications.map((notification) => {
+	// 				return axios.put(`/api/notifications/${notification.id}`, { isRead: true });
+	// 			});
 
-				await Promise.all(updateNotifications);
-				setUnreadCount(0);
-			}
-		}
-	};
+	// 			await Promise.all(updateNotifications);
+	// 			setUnreadCount(0);
+	// 		}
+	// 	}
+	// };
 	// Mở thông báo tin nhắn
 	const toggleMesssages = () => {
 		setIsNotificationsOpen(false);
@@ -113,6 +121,22 @@ const AdminNav: React.FC<AdminNavProps> = ({ notifications, currentUser, article
 
 	const handleOpenArticleCateModal = () => {
 		toggleOpenArticleCateModal();
+	};
+	// Thêm danh mục cha sản phẩm
+	const toggleOpenProductCateModal = () => {
+		setIsOpenProductCateModal(!isOpenProductCateModal);
+	};
+
+	const handleOpenProductCateModal = () => {
+		toggleOpenProductCateModal();
+	};
+	// Thêm danh mục con sản phẩm
+	const toggleOpenProductChildCateModal = () => {
+		setIsOpenProductChildCateModal(!isOpenProductChildCateModal);
+	};
+
+	const handleOpenProductChildCateModal = () => {
+		toggleOpenProductChildCateModal();
 	};
 	return (
 		<>
@@ -147,9 +171,9 @@ const AdminNav: React.FC<AdminNavProps> = ({ notifications, currentUser, article
 								handleOpenModal();
 							}}
 						/>
-					) : title === 'Quản lý banner' ? (
+					) : title === 'Quản lý slider' ? (
 						<Button
-							label="Thêm Banner"
+							label="Thêm slider"
 							small
 							custom="!bg-slate-200 !text-slate-700 !gap-1 !w-auto !text-xs lg:!text-base"
 							icon={MdAdd}
@@ -177,7 +201,27 @@ const AdminNav: React.FC<AdminNavProps> = ({ notifications, currentUser, article
 								handleOpenArticleCateModal();
 							}}
 						/>
-					) : null}
+					) : pathName === '/admin/manage-categories' ? (
+						<Button
+							label="Thêm danh mục"
+							small
+							custom="!bg-slate-200 !text-slate-700 !gap-1 !w-auto !text-xs lg:!text-base"
+							icon={MdAdd}
+							onClick={() => {
+								handleOpenProductCateModal();
+							}}
+							/>
+						) : pathName === '/admin/manage-childCategories' ? (
+						<Button
+							label="Thêm danh mục"
+							small
+							custom="!bg-slate-200 !text-slate-700 !gap-1 !w-auto !text-xs lg:!text-base"
+							icon={MdAdd}
+							onClick={() => {
+								handleOpenProductChildCateModal();
+							}}
+							/>
+						): null}
 				</div>
 				<div className="flex items-center gap-2 lg:gap-5">
 					<div className="relative flex items-center gap-2 lg:gap-x-2">
@@ -278,7 +322,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ notifications, currentUser, article
 						</div> */}
 						<div
 							className="relative cursor-pointer hover:bg-gray-300 focus:bg-gray-300 rounded-full p-[6px]"
-							onClick={toggleNotifications}
+							// onClick={toggleNotifications}
 						>
 							<MdNotificationsNone className="text-xl lg:text-2xl cursor-pointer" />
 							{unreadCount > 0 && ( // Chỉ hiển thị span nếu có thông báo chưa đọc
@@ -465,14 +509,20 @@ const AdminNav: React.FC<AdminNavProps> = ({ notifications, currentUser, article
 					</div>
 				</div>
 			</div>
-			<AddProductModal isOpen={isOpen} toggleOpen={toggleOpen} />
+			<AddProductModal isOpen={isOpen} toggleOpen={toggleOpen} parentCategories={parentCategory} subCategories={subCategories}/>
 			<AddBannerModal isOpen={isOpenBannerModal} toggleOpen={toggleOpenBannerModal} />
 			<AddArticleModal
 				isOpen={isOpenArticleModal}
 				toggleOpen={toggleOpenArticleModal}
 				articleCategory={articleCategory}
 			/>
+			<AddProductChildCateModal
+				isOpen={isOpenProductChildCateModal}
+				toggleOpen={toggleOpenProductChildCateModal}
+				parentCategory={parentCategory}
+			/>
 			<AddArticleCateModal isOpen={isOpenArticleCateModal} toggleOpen={toggleOpenArticleCateModal} />
+			<AddProductCateModal isOpen={isOpenProductCateModal} toggleOpen={toggleOpenProductCateModal}/>
 		</>
 	);
 };

@@ -3,12 +3,13 @@ import prisma from '../../libs/prismadb';
 import { CartProductType } from '@/app/(home)/product/[productId]/ProductDetails';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
+import { OrderStatus, DeliveryStatus } from '@prisma/client';
 import crypto from 'crypto';
 import https from 'https';
 const nodemailer = require('nodemailer');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-	apiVersion: '2024-04-10',
+	apiVersion: '2024-04-10'
 });
 
 const calculateOrderAmount = (items: CartProductType[]) => {
@@ -35,14 +36,14 @@ export async function POST(request: Request): Promise<Response> {
 		user: { connect: { id: currentUser.id } },
 		amount: totalVND,
 		currency: 'vnd',
-		status: 'pending',
-		deliveryStatus: 'pending',
+		status: OrderStatus.pending,
+		deliveryStatus: DeliveryStatus.not_shipped,
 		paymentIntentId: payment_intent_id,
 		products: products,
 		phoneNumber: phoneNumber,
 		address: address,
 		shippingFee: shippingFee,
-		paymentMethod: paymentMethod,
+		paymentMethod: paymentMethod
 	};
 
 	try {
@@ -54,7 +55,7 @@ export async function POST(request: Request): Promise<Response> {
 					const updated_intent = await stripe.paymentIntents.update(payment_intent_id, { amount: totalVND });
 					// Update order
 					const existing_order = await prisma.order.findFirst({
-						where: { paymentIntentId: payment_intent_id },
+						where: { paymentIntentId: payment_intent_id }
 					});
 					if (!existing_order) {
 						return NextResponse.json({ error: 'Lỗi không tìm thấy đơn hàng trong db' }, { status: 404 });
@@ -63,8 +64,8 @@ export async function POST(request: Request): Promise<Response> {
 						where: { paymentIntentId: payment_intent_id },
 						data: {
 							amount: totalVND,
-							products: products,
-						},
+							products: products
+						}
 					});
 					return NextResponse.json({ paymentIntent: updated_intent });
 				}
@@ -73,7 +74,7 @@ export async function POST(request: Request): Promise<Response> {
 				const paymentIntent = await stripe.paymentIntents.create({
 					amount: totalVND,
 					currency: 'vnd',
-					automatic_payment_methods: { enabled: true },
+					automatic_payment_methods: { enabled: true }
 				});
 
 				if (!paymentIntent || !paymentIntent.id) {
@@ -83,11 +84,11 @@ export async function POST(request: Request): Promise<Response> {
 				orderData.paymentIntentId = paymentIntent.id;
 				// Tạo đơn hàng trong db
 				const createdOrder = await prisma.order.create({
-					data: orderData,
+					data: orderData
 				});
 
 				if (!createdOrder) {
-					return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng trong db.' }, { status: 500 });
+					return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
 				}
 
 				// Gửi email xác nhận đơn hàng
@@ -100,17 +101,18 @@ export async function POST(request: Request): Promise<Response> {
 				orderData.paymentIntentId = `${Date.now()}`;
 
 				const createdOrder = await prisma.order.create({
-					data: orderData,
+					data: orderData
 				});
 
 				if (!createdOrder) {
-					return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng trong db.' }, { status: 500 });
+					return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
 				}
 
 				await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dỗi đơn hàng: ');
 
 				return NextResponse.json({ createdOrder });
 			} catch (error) {
+				console.log(error);
 				return NextResponse.json(
 					{ error: 'Đã xảy ra lỗi khi xử lý đơn hàng hoặc gửi email.' },
 					{ status: 500 }
@@ -119,7 +121,7 @@ export async function POST(request: Request): Promise<Response> {
 		} else if (paymentMethod === 'momo') {
 			orderData.paymentIntentId = `${Date.now()}`;
 			const createdOrder = await prisma.order.create({
-				data: orderData,
+				data: orderData
 			});
 
 			if (!createdOrder) {
@@ -151,7 +153,10 @@ export async function POST(request: Request): Promise<Response> {
 			const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
 
 			// Tạo signature sử dụng HMAC SHA256
-			const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+			const signature = crypto
+				.createHmac('sha256', secretKey)
+				.update(rawSignature)
+				.digest('hex');
 
 			// JSON object gửi đến MoMo endpoint
 			const requestBody = JSON.stringify({
@@ -169,7 +174,7 @@ export async function POST(request: Request): Promise<Response> {
 				autoCapture: autoCapture,
 				extraData: extraData,
 				orderGroupId: orderGroupId,
-				signature: signature,
+				signature: signature
 			});
 
 			// Tùy chọn của request
@@ -180,16 +185,16 @@ export async function POST(request: Request): Promise<Response> {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Content-Length': Buffer.byteLength(requestBody),
-				},
+					'Content-Length': Buffer.byteLength(requestBody)
+				}
 			};
 
 			// Sử dụng Promises để thực hiện HTTPS request
 			return new Promise((resolve, reject) => {
-				const req = https.request(options, (res) => {
+				const req = https.request(options, res => {
 					let data = '';
 
-					res.on('data', (chunk) => {
+					res.on('data', chunk => {
 						data += chunk;
 					});
 
@@ -203,7 +208,7 @@ export async function POST(request: Request): Promise<Response> {
 					});
 				});
 
-				req.on('error', (e) => {
+				req.on('error', e => {
 					reject(NextResponse.json({ error: e.message }, { status: 500 }));
 				});
 
@@ -227,8 +232,8 @@ export async function POST(request: Request): Promise<Response> {
 		// 	},
 		// });
 		return NextResponse.json({ error: 'Đơn hàng được tạo thành công' }, { status: 201 });
-	} catch (error: any) {
-		return NextResponse.json({ error: error.message }, { status: 500 });
+	} catch (error) {
+		return NextResponse.json({ error: error }, { status: 500 });
 	}
 }
 function sendEmail(email: string, content: string) {
@@ -241,8 +246,8 @@ function sendEmail(email: string, content: string) {
 			service: 'gmail',
 			auth: {
 				user: process.env.GMAIL_USER,
-				pass: process.env.GMAIL_PASS,
-			},
+				pass: process.env.GMAIL_PASS
+			}
 		});
 
 		const redirectLink = `http://localhost:3000/account/orders`;
@@ -251,7 +256,7 @@ function sendEmail(email: string, content: string) {
 			from: process.env.GMAIL_USER,
 			to: email,
 			subject: 'Đặt hàng thành công từ ThanhHuy Store',
-			text: `${content} ${redirectLink}`,
+			text: `${content} ${redirectLink}`
 		};
 
 		// Gửi email

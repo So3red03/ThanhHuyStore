@@ -43,9 +43,7 @@ const Input: React.FC<InputProps> = ({
 	const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
 	useEffect(() => {
-		if (defaultValue) {
-			setHasValue(true);
-		}
+		setHasValue(defaultValue !== ''); // Đồng bộ trạng thái
 	}, [defaultValue]);
 
 	const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,7 +81,7 @@ const Input: React.FC<InputProps> = ({
 					<select
 						id={id}
 						disabled={disabled}
-						{...register(id, { required })}
+						{...register(id, { required: true })}
 						defaultValue={defaultValue || ''}
 						aria-placeholder={placeholder}
 						className={`peer w-full p-4 pt-6 outline-none bg-white font-light border-2 rounded-md transition disabled:opacity-70 disabled:cursor-not-allowed 

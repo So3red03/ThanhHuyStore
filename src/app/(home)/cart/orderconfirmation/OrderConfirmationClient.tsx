@@ -9,6 +9,7 @@ import { SafeUser } from '../../../../../types';
 import { getOrderByPaymentId } from '@/app/actions/getOrderByPaymentId';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { OrderStatus } from '@prisma/client';
 
 interface CartBuyClientProps {
 	currentUser: SafeUser | null | undefined;
@@ -22,6 +23,7 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
 	const [order, setOrder] = useState<any>(null);
 
 	useEffect(() => {
+		console.log(paymentIntent);
 		if(!currentUser) {
 			router.push('/login');
             return;
@@ -46,11 +48,7 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
 					});
 
 				axios
-					.get(`/api/order`, {
-						params: {
-							paymentIntentId: paymentIntent,
-						},
-					})
+					.get(`/api/order/${paymentIntent}`)
 					.then((res) => {
 						if (res.data) {
 							setOrder(res.data);
@@ -152,13 +150,13 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
 						</div>
 					</div>
 				</div>
-				{order?.status === 'pending' || order == null ? (
-					<div className="bg-[#FFF6ED] lg:text-base text-sm border-2 font-semibold border-[#FF7A00] text-[#FF7A2E] lg:p-4 p-3 rounded-md text-center border-dashed">
-						Đơn hàng chưa được thanh toán
-					</div>
-				) : (
+				{order?.status === OrderStatus.completed|| order == null ? (
 					<div className="mt-4 bg-[#e3fae3] lg:text-base text-sm border-2 font-semibold border-green-300 text-[#1E9800] lg:p-4 p-3 rounded-md text-center border-dashed">
 						Đơn hàng đã được thanh toán
+					</div>
+				) : (
+					<div className="bg-[#FFF6ED] lg:text-base text-sm border-2 font-semibold border-[#FF7A00] text-[#FF7A2E] lg:p-4 p-3 rounded-md text-center border-dashed">
+						Đơn hàng chưa được thanh toán
 					</div>
 				)}
 			</div>

@@ -33,22 +33,29 @@ import { Editor } from 'primereact/editor';
 import { ImageType } from './AddProductModal';
 import { Rating } from '@mui/material';
 import { FaDollarSign, FaRegBuilding, FaRegEnvelope, FaRegListAlt, FaRegWindowMaximize } from 'react-icons/fa';
+import * as SlIcons  from 'react-icons/sl';
+import * as AiIcons  from 'react-icons/ai';
+import * as TbIcons  from 'react-icons/tb';
+import * as MdIcons  from 'react-icons/md';
 
 interface ManageProductsClientProps {
-	products: Product[];
+	products: any;
 	currentUser: SafeUser | null | undefined;
+	subCategories: any
+	parentCategories: any
 }
 
-const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, currentUser }) => {
+const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, currentUser, subCategories, parentCategories }) => {
 	const router = useRouter();
 	const storage = getStorage(firebase);
 	const [isOpen, setIsOpen] = useState(false);
 	const [isDelete, setIsDelete] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [selectedProduct, setSelectedProduct] = useState<Product>();
+	const Icons = { ...SlIcons, ...AiIcons, ...MdIcons, ...TbIcons};
+	const [selectedParentCategoryId, setSelectedParentCategoryId] = useState<string | null>(null);
 
 	const [text, setText] = useState('');
-	// const [isProductCreated, setIsProductCreated] = useState(false);
 	// const [images, setImages] = useState<any[] | null>(products.images);
 
 	const {
@@ -58,16 +65,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 		reset,
 		watch,
 		formState: { errors },
-	} = useForm<FieldValues>({
-		defaultValues: {
-			id: '',
-			name: '',
-			price: '',
-			description: '',
-			inStock: '',
-			category: '',
-		},
-	});
+	} = useForm<FieldValues>();
 
 	// Hàm cập nhật giá trị id, value: label
 	const setCustomValue = (id: string, value: any) => {
@@ -94,10 +92,22 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 
 	const handleOpenModal = (product: any) => {
 		setSelectedProduct(product);
-		const fieldsToSet = ['id', 'name', 'price', 'description', 'inStock', 'category', 'images'];
+		// Cập nhật giá trị danh mục cha và con vào form
+		setValue('parentCategories', product.parentId);
+		setSelectedParentCategoryId(product.parentId); // Để lọc danh mục con dựa vào danh mục cha
+		setValue('categoryId', product.categoryId);
+
+		// Các trường khác của sản phẩm
+		const fieldsToSet = ['id', 'name', 'price', 'description', 'inStock', 'images'];
 		fieldsToSet.forEach((field) => setCustomValue(field, product[field]));
+
 		toggleOpen();
 	};
+
+	// Lọc danh mục con dựa trên ID danh mục cha
+	const filteredSubCategories = selectedParentCategoryId
+		? subCategories.filter((subCategory: any) => subCategory.parentId === selectedParentCategoryId) : [];
+
 	const category = watch('category');
 
 	let rows: any = [];
@@ -106,13 +116,17 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 			// Tính điểm đánh giá của mỗi sản phẩm
 			const productRating =
 				product.reviews.reduce((acc: number, item: any) => item.rating + acc, 0) / product.reviews.length;
-
+			// Tìm tên danh mục cha dựa vào parentId
+			const subCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.name;
+			const parentCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.parentId;
 			return {
 				id: product.id,
 				images: product.images,
 				name: product.name,
 				price: product.price,
-				category: product.category,
+				categoryId: product.categoryId,
+				parentId: parentCategory,
+				subCategory: subCategory,
 				rating: productRating,
 				description: product.description,
 				inStock: product.inStock,
@@ -129,16 +143,16 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 				<Image src={params.row.images[0].images[0]} alt="Ảnh sản phẩm" width={50} height={50} />
 			),
 		},
-		{ field: 'name', headerName: 'Tên sản phẩm', width: 230 },
+		{ field: 'name', headerName: 'Tên sản phẩm', width: 210 },
 		{
 			field: 'price',
 			headerName: 'Giá bán',
-			width: 130,
+			width: 110,
 			renderCell: (params) => {
 				return <div className="font-bold text-slate-800">{formatPrice(params.row.price)}</div>;
 			},
 		},
-		{ field: 'category', headerName: 'Danh mục', width: 100 },
+		{ field: 'subCategory', headerName: 'Danh mục', width: 140 },
 		{
 			field: 'rating',
 			headerName: 'Đánh giá',
@@ -155,7 +169,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 		{
 			field: 'inStock',
 			headerName: 'Tồn kho',
-			width: 100,
+			width: 80,
 			renderCell: (params) => {
 				return (
 					<div className="flex justify-center items-center h-full">
@@ -179,7 +193,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 							icon={MdEdit}
 							onClick={() => {
 								handleOpenModal(params.row);
-								console.log(params.row)
 							}}
 						/>
 						<ActionBtn
@@ -233,6 +246,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 	};
 
 	const onSubmit: SubmitHandler<FieldValues> = async (data) => {
+		console.log(data);
 		setIsLoading(true);
 		axios
 			.put(`/api/product/${data.id}`, {
@@ -240,6 +254,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 				description: data.description,
 				price: Number(data.price),
 				inStock: Number(data.inStock),
+				categoryId: data.categoryId
 			})
 			.then((res) => {
 				toast.success('Lưu thông tin thành công');
@@ -360,6 +375,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 	// 		return prev;
 	// 	});
 	// }, []);
+
 	return (
 		<>
 			<div className="w-[78.5vw] m-auto text-xl mt-6">
@@ -475,29 +491,37 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 						<div className="w-full font-medium">
 							<div className="mb-2 font-semibold">Chọn danh mục sản phẩm</div>
 							<div className="grid !grid-cols-1 sm:!grid-cols-2 md:!grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto">
-								{categories.map((item) => {
-									if (item.value === 'All') {
-										return null;
-									}
-									if (item.value === 'News') {
-										return null;
-									}
-									if (item.value === 'Comparison') {
-										return null;
-									}
+								{parentCategories.map((item: any) => {
 									return (
-										<div key={item.label}>
+										<div key={item.id}>
 											<CategoryInput
-												onClick={(categoryParams) => setCustomValue('category', categoryParams)}
-												selected={category === item.label}
-												label={item.label}
-												icon={item.icon}
+												onClick={() => {
+													setSelectedParentCategoryId(item.id); // Cập nhật ID danh mục cha đã chọn
+													setValue("parentCategories", item.id); // Lưu vào form
+												}}
+												selected={selectedParentCategoryId === item.id} // So sánh với danh mục cha hiện tại
+												label={item.name}
+												icon={Icons[item.icon as keyof typeof Icons]} // Truyền icon
 											/>
 										</div>
 									);
 								})}
 							</div>
 						</div>
+						<Input
+							id="categoryId"
+							label="Danh mục con"
+							disabled={isLoading}
+							type="combobox"
+							register={register}
+							errors={errors}
+							defaultValue={selectedProduct?.categoryId || ""}
+							options={filteredSubCategories.map((subCategory: any) => ({
+								label: subCategory.name,
+								value: subCategory.id,
+							}))} // Hiển thị danh mục con đã lọc
+							required
+						/>
 						{/* <div className="w-full flex flex-col flex-wrap gap-4">
 							<div>
 								<div className="font-bold">Chọn màu và hình ảnh của sản phẩm</div>

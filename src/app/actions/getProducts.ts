@@ -24,32 +24,73 @@ export async function getProducts(params: IProductParams) {
 						name: {
 							contains: searchString,
 							// Tìm kiếm không phân biệt chữ hoa chữ thường
-							mode: 'insensitive',
+							mode: 'insensitive'
 						},
 						description: {
 							contains: searchString,
-							mode: 'insensitive',
-						},
-					},
-				],
+							mode: 'insensitive'
+						}
+					}
+				]
 			},
 			include: {
 				reviews: {
 					include: {
-						user: true,
+						user: true
 					},
 					orderBy: {
-						createdDate: 'desc',
-					},
+						createdDate: 'desc'
+					}
 				},
-			},
+				category: true
+			}
 		});
 		return products;
-	} catch (error: any) {
-		throw new Error(error);
+	} catch (error) {
+		console.log(error);
 	}
 }
 
-export async function getProductsByCategory(category: string) {
-	return getProducts({ category });
+export async function getParentCategoryAndProductsBySlug(parentSlug: string) {
+	try {
+		const parentCategory = await prisma.category.findFirst({
+			where: { slug: parentSlug },
+			include: {
+				subcategories: {
+					include: { products: true } // Lấy sản phẩm trong các danh mục con
+				}
+			}
+		});
+
+		if (!parentCategory) {
+			throw new Error(`Parent category with slug "${parentSlug}" not found.`);
+		}
+
+		// Gộp tất cả sản phẩm từ các danh mục con
+		const products = parentCategory.subcategories.flatMap(subcategory => subcategory.products);
+
+		return { parentCategory, products };
+	} catch (error) {
+		console.log(error);
+	}
+}
+
+export async function getProductsByCategory(slug: string) {
+	try {
+		const category = await prisma.category.findFirst({
+			where: { slug }
+		});
+
+		if (!category) {
+			throw new Error(`Category with slug "${slug}" not found.`);
+		}
+
+		const products = await prisma.product.findMany({
+			where: { categoryId: category.id }
+		});
+
+		return products;
+	} catch (error) {
+		console.error(error);
+	}
 }

@@ -17,6 +17,10 @@ import Input from '@/app/components/inputs/Input';
 import Heading from '@/app/components/Heading';
 import axios from 'axios';
 import firebase from '@/app/libs/firebase';
+import * as SlIcons  from 'react-icons/sl';
+import * as AiIcons  from 'react-icons/ai';
+import * as TbIcons  from 'react-icons/tb';
+import * as MdIcons  from 'react-icons/md';
 
 export type ImageType = {
 	color: string;
@@ -27,16 +31,16 @@ export type ImageType = {
 interface AddProductModalProps {
 	isOpen: boolean;
 	toggleOpen: () => void;
+	subCategories: any;
+	parentCategories: any;
 }
 
-const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen }) => {
+const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen, subCategories, parentCategories }) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [text, setText] = useState('');
 	const [images, setImages] = useState<ImageType[]>([]);
 	const [isProductCreated, setIsProductCreated] = useState(false);
 	const [isCheckCalender, setIsCheckCalender] = useState(false);
-	const router = useRouter();
-
 	const {
 		register,
 		handleSubmit,
@@ -44,20 +48,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen })
 		watch,
 		reset,
 		formState: { errors },
-	} = useForm<FieldValues>({
-		defaultValues: {
-			name: '',
-			description: '',
-			brand: 'Apple',
-			category: '',
-			inStock: '',
-			images: [],
-			price: '',
-			promotionalPrice: '',
-			promotionStart: '',
-			promotionEnd: '',
-		},
-	});
+	} = useForm<FieldValues>();
+	const router = useRouter();
+	const Icons = { ...SlIcons, ...AiIcons, ...MdIcons, ...TbIcons};
+	const parentCategory = watch('parentCategories');
+	const [selectedParentCategoryId, setSelectedParentCategoryId] = useState<string | null>(null);
+	// Lọc danh mục con dựa trên ID danh mục cha đã chọn
+	const filteredSubCategories = selectedParentCategoryId
+		? subCategories.filter((subCategory: any) => subCategory.parentId === selectedParentCategoryId)
+		: [];
 
 	const setCustomValue = useCallback(
 		(id: string, value: any) => {
@@ -79,7 +78,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen })
 		}
 	}, [isProductCreated, reset, toggleOpen]);
 
-	const category = watch('category');
 
 	useEffect(() => {
 		setCustomValue('images', images);
@@ -158,7 +156,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen })
 			return;
 		}
 
-		if (!data.category) {
+		if (!data.categoryId || !selectedParentCategoryId) {
 			toast.error('Danh mục chưa được chọn');
 			setIsLoading(false);
 			return;
@@ -230,6 +228,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen })
 			promotionalPrice: data.promotionalPrice,
 			promotionStart: new Date(data.promotionStart),
 			promotionEnd: new Date(data.promotionEnd),
+			description: text
 		};
 		// Gọi api
 		axios
@@ -334,29 +333,37 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen })
 				<div className="w-full font-medium">
 					<div className="mb-2 font-semibold">Chọn danh mục sản phẩm</div>
 					<div className="grid !grid-cols-1 sm:!grid-cols-2 md:!grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto">
-						{categories.map((item) => {
-							if (item.value === 'All') {
-								return null;
-							}
-							if (item.value === 'News') {
-								return null;
-							}
-							if (item.value === 'Comparison') {
-								return null;
-							}
+						{parentCategories.map((item: any) => {
 							return (
-								<div key={item.label}>
+								<div key={item.id}>
 									<CategoryInput
-										onClick={(categoryParams) => setCustomValue('category', categoryParams)}
-										selected={category === item.label}
-										label={item.label}
-										icon={item.icon}
+										onClick={() => {
+											setSelectedParentCategoryId(item.id); // Cập nhật ID danh mục cha đã chọn
+											setCustomValue("parentCategories", item.id); // Lưu vào form
+										}}
+										selected={parentCategory === item.id} // So sánh ID của danh mục cha đã chọn với item.id
+										label={item.name}
+										icon={Icons[item.icon as keyof typeof Icons]}   // Truyền IconType vào prop
 									/>
 								</div>
 							);
 						})}
 					</div>
 				</div>
+				<Input
+					id="categoryId"
+					label="Danh mục con"
+					disabled={isLoading}
+					type="combobox"
+					register={register}
+					errors={errors}
+					defaultValue={watch('categoryId') || ''}
+					options={filteredSubCategories.map((subCategory: any) => ({
+						label: subCategory.name,
+						value: subCategory.id
+					}))} // Hiển thị các danh mục con đã lọc
+					required
+				/>
 				<div className="w-full flex flex-col flex-wrap gap-4">
 					<div>
 						<div className="font-bold">Chọn màu và hình ảnh của sản phẩm</div>

@@ -1,6 +1,7 @@
 import moment from 'moment';
 import 'moment/locale/vi';
 import prisma from '../libs/prismadb';
+import { OrderStatus } from '@prisma/client';
 
 export default async function getColumnChartData() {
 	try {
@@ -15,7 +16,7 @@ export default async function getColumnChartData() {
 					gte: startDate.toISOString(),
 					lte: endDate.toISOString(),
 				},
-				status: 'complete',
+				status: OrderStatus.completed,
 			},
 			_sum: {
 				amount: true,

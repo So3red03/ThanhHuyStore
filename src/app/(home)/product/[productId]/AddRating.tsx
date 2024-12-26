@@ -1,5 +1,5 @@
 'use client';
-import { Order, Product, Review } from '@prisma/client';
+import { Order, OrderStatus, Product, Review } from '@prisma/client';
 import { SafeUser } from '../../../../../types';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -41,6 +41,10 @@ const AddRating: React.FC<AddRatingProps> = ({ product, user }) => {
 		});
 	};
 
+	const canComment = user?.orders.some(order =>   
+		order.products.some(item => item.id === product.id) && order.status === OrderStatus.completed  
+	); 
+
 	useEffect(() => {
 		if (isOpen) {
 			setSelectedValue(-1);
@@ -49,6 +53,10 @@ const AddRating: React.FC<AddRatingProps> = ({ product, user }) => {
 	}, [isOpen]);
 
 	const toggleOpen = () => {
+		if(!canComment) {
+			toast.error('Bạn cần mua hàng để đánh giá');
+            return;
+		}
 		setIsOpen(!isOpen);
 	};
 
