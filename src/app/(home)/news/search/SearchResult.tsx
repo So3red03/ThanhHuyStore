@@ -11,8 +11,10 @@ import NotFound from "@/app/components/NotFound";
 
 interface SearchResultProps {
 	articles: any;
+	initialArticles: any;
 }
-const SearchResult: React.FC<SearchResultProps> = ({ articles }) => {
+const SearchResult: React.FC<SearchResultProps> = ({ articles, initialArticles }) => {
+	const [initialArticlesState, setInitialArticlesState] = useState(initialArticles);
 	const [filteredArticles, setFilteredArticles] = useState<[]>([]);
 	const searchParams = useSearchParams();
 	const searchTerm = searchParams?.get('searchTerm'); // Lấy từ khóa từ URL
@@ -176,60 +178,62 @@ const SearchResult: React.FC<SearchResultProps> = ({ articles }) => {
 							<div className="w-full">
 								<div className="w-full max-w-[800px]">
 									<h2 className="mt-[0px] mb-[15px] block w-fit select-none text-xl font-[600] sm:text-2xl">
-										XEM NHIỀU TUẦN QUA
+										BÀI VIẾT MỚI NHẤT
 										<span className="mt-[5px] block w-[70%] border-b-[3px] border-slate-300"></span>
 									</h2>
-									<a
+									<Link
 										className="relative mb-[10px] block w-full overflow-hidden rounded-[5px] sm:mb-[15px]"
-										href="/sforum/cach-tinh-phan-tram"
+										href={`/article/${slugConvert(initialArticlesState[0].title)}-${initialArticlesState[0].id}`}
 									>
 										<img
-											alt="Cách tính phần trăm (%) và ví dụ cụ thể chính xác nhất 2024"
-											title="Cách tính phần trăm (%) và ví dụ cụ thể chính xác nhất 2024"
+											alt={initialArticlesState[0].title}
+											title={initialArticlesState[0].title}
 											loading="lazy"
 											width={640}
 											height={360}
 											decoding="async"
 											data-nimg={1}
 											className="block aspect-16/9 w-full object-cover "
-											src="https://cdn-media.sforum.vn/storage/app/media/wp-content/uploads/2023/03/cach-tinh-phan-tram-1.jpg"
+											src={initialArticlesState[0].image}
 											style={{ color: 'transparent' }}
 										/>
 										<div className="overlay-post absolute bottom-0 left-0 flex h-full w-full flex-col justify-end px-[5px] py-[10px]">
 											<div className="w-full">
 												<h3 className="m-[0px] line-clamp-3 text-ellipsis text-justify text-sm font-[500] text-white">
-													Cách tính phần trăm (%) và ví dụ cụ thể chính xác nhất 2024
+													{initialArticlesState[0].title}
 												</h3>
 											</div>
 										</div>
-									</a>
-									<div className="mb-[10px] flex w-full flex-col gap-[15px] sm:mb-[15px] sm:gap-[20px] ">
-										<Link
-											className="relative flex cursor-pointer items-start justify-between gap-[10px]"
-											href="/sforum/tat-tan-tat-cac-tinh-nang-moi-cua-ios-18-2-phan-1"
-										>
-											<div className="max-h-[60px] flex-1 hover:text-blue-500">
-												<h3
-													className="shadow-black m-[0px] line-clamp-3 text-ellipsis text-sm font-[500] sm:font-[600]"
-													style={{ containerType: 'inline-size' }}
-												>
-													Tất tần tật các tính năng mới có trong iOS 18.2
-												</h3>
-											</div>
-											<img
-												alt="Tất tần tật các tính năng mới có trong iOS 18.2"
-												title="Tất tần tật các tính năng mới có trong iOS 18.2"
-												loading="lazy"
-												width={320}
-												height={180}
-												decoding="async"
-												data-nimg={1}
-												className="block aspect-16/9 max-w-[40%] flex-1 shrink-0 rounded-[3px] object-cover sm:max-w-[120px]"
-												src="https://cdn-media.sforum.vn/storage/app/media/maithuong/tinh-nang-ios-18-2-1.jpg"
-												style={{ color: 'transparent' }}
-											/>
-										</Link>
-									</div>
+									</Link>
+									{initialArticlesState.slice(1).map((article: any, index: any) => (
+										<div key={article.id} className="mb-[10px] flex w-full flex-col gap-[15px] sm:mb-[15px] sm:gap-[20px] ">
+											<Link
+												className="relative flex cursor-pointer items-start justify-between gap-[10px]"
+												href={`/article/${slugConvert(article.title)}-${article.id}`}
+											>
+												<div className="max-h-[60px] flex-1 hover:text-blue-500">
+													<h3
+														className="shadow-black m-[0px] line-clamp-3 text-ellipsis text-sm font-[500] sm:font-[600]"
+														style={{ containerType: 'inline-size' }}
+													>
+														{article.title}
+													</h3>
+												</div>
+												<img
+													alt={article.title}
+													title={article.title}
+													loading="lazy"
+													width={320}
+													height={180}
+													decoding="async"
+													data-nimg={1}
+													className="block aspect-16/9 max-w-[40%] flex-1 shrink-0 rounded-[3px] object-cover sm:max-w-[120px]"
+													src={article.image}
+													style={{ color: 'transparent' }}
+												/>
+											</Link>
+										</div>
+									))}
 									<div className="flex w-full justify-end" />
 								</div>
 							</div>

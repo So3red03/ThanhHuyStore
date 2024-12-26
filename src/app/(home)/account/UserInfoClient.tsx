@@ -54,19 +54,19 @@ const UserInfoClient: React.FC<UserInfoClientProps> = ({ currentUser }) => {
 	}, [isOpen, remainingTime]);
 
 	const onSubmit: SubmitHandler<FieldValues> = (data) => {
-		console.log(data);
-		// setIsLoading(true);
-		// axios
-		// 	.put('/api/user', data)
-		// 	.then(() => {
-		// 		toast.success('Cập nhật thông tin thành công');
-		// 	})
-		// 	.catch((error) => {
-		// 		toast.error('Có lỗi khi cập nhật thông tin');
-		// 	})
-		// 	.finally(() => {
-		// 		setIsLoading(false);
-		// 	});
+		setIsLoading(true);
+		toast('Thông tin đang được cập nhật')
+		axios
+			.put('/api/user', data)
+			.then(() => {
+				toast.success('Cập nhật thông tin thành công');
+			})
+			.catch((error) => {
+				toast.error('Có lỗi khi cập nhật thông tin');
+			})
+			.finally(() => {
+				setIsLoading(false);
+			});
 	};
 
 	const toggleOpen = () => {
@@ -206,14 +206,16 @@ const UserInfoClient: React.FC<UserInfoClientProps> = ({ currentUser }) => {
 						<input
 							{...register('phone', { required: true })}
 							required
+							//@ts-ignore
+							defaultValue={userInfo?.phoneNumber}
 							disabled={isLoading}
 							type="text"
 							className={`border border-gray-300 focus:outline-none focus:ring-1
 									 focus:ring-gray-400 rounded-md p-2 flex-1 ${errors.phone ? 'border-red-500' : ''}`}
 						/>
-						<a onClick={toggleOpen} className="text-blue-600 underline text-base hover:cursor-pointer">
+						{/* <a onClick={toggleOpen} className="text-blue-600 underline text-base hover:cursor-pointer">
 							Xác thực
-						</a>
+						</a> */}
 					</div>
 				</div>
 

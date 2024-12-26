@@ -7,30 +7,32 @@ import { truncateText } from '../../../../../utils/truncateText';
 import { formatPrice } from '../../../../../utils/formatPrice';
 import { Product } from '@prisma/client';
 import NotFound from '@/app/components/NotFound';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { slugConvert } from '../../../../../utils/Slug';
 
-interface UserViewedClientProps {
-	productsViewed: any;
-}
-
-const UserViewedClient: React.FC<UserViewedClientProps> = ({ productsViewed }) => {
-	// const viewedProducts = JSON.parse(localStorage.getItem('viewedProducts') || '[]');
-	// console.log(viewedProducts);
-
+const UserViewedClient = () => {
+	const [viewedProducts, setViewedProducts] = useState<[]>([]);
 	const router = useRouter();
+	useEffect(() => {
+		const storedViewed = localStorage.getItem('viewedProducts');
+		if (storedViewed) {
+			setViewedProducts(JSON.parse(storedViewed));
+		}
+	}, []);
+
 	return (
 		<div className="px-6">
-			{false ? (
+			{viewedProducts ? (
 				<>
 					<Heading title="SẢN PHẨM ĐÃ XEM">
 						<></>
 					</Heading>
 					<div className="grid grid-cols-2 sm:grid-cols-3 xl:!grid-cols-4 gap-8 mt-8">
-						{productsViewed.map((data: any) => (
-							<div
+						{viewedProducts.map((data: any) => (
+							<Link
+								href={`/product/${slugConvert(data.name)}-${data.id}`}
 								key={data.id}
-								onClick={() => {
-									router.push(`/product/${data.id}`);
-								}}
 								className="col-span-1 cursor-pointer border-[1.2px] border-none bg-white rounded-sm p-2 transition hover:scale-105 text-center text-sm"
 							>
 								<div className="flex flex-col items-center gap-1 w-full">
@@ -49,7 +51,7 @@ const UserViewedClient: React.FC<UserViewedClientProps> = ({ productsViewed }) =
 									<div className="mt-4 text-base h-11">{truncateText(data.name)}</div>
 									<div className="font-semibold text-lg mt-2">{formatPrice(data.price)}</div>
 								</div>
-							</div>
+							</Link>
 						))}
 					</div>
 				</>

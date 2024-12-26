@@ -17,7 +17,8 @@ export function generateMetadata({ searchParams }: PageProps) {
 
 const page: React.FC<PageProps> = async ({ searchParams }) => {
 	const products = await getProductsBySearchParams(searchParams);
-	return <SearchResult products={products} />;
+	const articles = await getArticlesBySearchParams(searchParams);
+	return <SearchResult products={products} articles={articles}/>;
 };
 
 export default page;

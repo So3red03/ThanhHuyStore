@@ -12,21 +12,22 @@ export async function getProductById(params: IParams) {
 		}
 		const product = await prisma.product.findUnique({
 			where: {
-				id: productId,
+				id: productId
 			},
 			include: {
 				reviews: {
 					include: {
-						user: true,
+						user: true
 					},
 					orderBy: {
-						createdDate: 'desc',
-					},
+						createdDate: 'desc'
+					}
 				},
-			},
+				category: true
+			}
 		});
 		return product;
-	} catch (error: any) {
-		throw new Error(error);
+	} catch (error) {
+		console.log(error);
 	}
 }

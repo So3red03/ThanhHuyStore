@@ -35,7 +35,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
 		});
 	}, []);
 
-	const [viewedProducts, setViewedProducts] = useState<string[] | null>(null);
+	const [viewedProducts, setViewedProducts] = useState<CartProductType[] | null>(null);
 
 	useEffect(() => {
 		const viewedProducts: any = localStorage.getItem('viewedProducts');
@@ -44,18 +44,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
 		}
 	}, []);
 
-	const saveViewedProduct = useCallback((productId: string) => {
-		setViewedProducts((prev: any) => {
-			const updatedViewed = prev ? [...prev, productId] : [productId];
+	const saveViewedProduct = useCallback((product: CartProductType) => {
+		setViewedProducts(prev => {
+			if (!prev) return [product];
 
-			// Giới hạn danh sách ở 8 sản phẩm
+			const updatedViewed = prev.filter(p => p.id !== product.id);
+			updatedViewed.unshift(product);
+
 			if (updatedViewed.length > 8) {
-				updatedViewed.pop(); // Xóa sản phẩm cuối cùng nếu quá 8
+				updatedViewed.pop();
 			}
 
-			// Cập nhật localStorage
 			localStorage.setItem('viewedProducts', JSON.stringify(updatedViewed));
-
 			return updatedViewed;
 		});
 	}, []);
@@ -64,6 +64,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
 		<div className="col-span-1 cursor-pointer border-[1.2px] border-none bg-white rounded-sm p-2 transition hover:scale-105 text-center text-sm">
 			<Link
 				href={`/product/${slugConvert(data.name)}-${data.id}`}
+				onClick={() => saveViewedProduct(data)}
 				className="flex flex-col items-center gap-1 w-full"
 			>
 				<div className="aspect-square overflow-hidden relative w-full">

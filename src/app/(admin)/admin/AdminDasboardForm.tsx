@@ -25,6 +25,7 @@ import { Editor } from 'primereact/editor';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import Button from '@/app/components/Button';
 import ChatList from '@/app/components/admin/chat/ChatList';
+import { DeliveryStatus, OrderStatus } from '@prisma/client';
 
 type Review = {
 	id: any;
@@ -82,6 +83,7 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 	const [isDelete, setIsDelete] = useState(false);
 	const [selectedReview, setselectedReview] = useState<Review | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
+	const [isEditing, setIsEditing] = useState(false);
 
 	const toggleOpen = () => {
 		setIsOpen(!isOpen);
@@ -103,22 +105,24 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 	} = useForm<FieldValues>();
 
 	const onSubmit: SubmitHandler<FieldValues> = (data) => {
-		// Kiểm tra nếu bình luận đã được phản hồi
-		if (selectedReview?.reply) {
+  		// Kiểm tra nếu bình luận đã được phản hồi
+		if (selectedReview?.reply && !isEditing) {
 			toast.error('Bình luận này đã được phản hồi');
 			setValue('reply', '');
 			return;
 		}
+
 		setIsLoading(true);
+
+		const apiEndpoint = isEditing ? '/api/commentUpdate' : '/api/commentReply';
+		const payload = isEditing ? { id: selectedReview?.id, edit: data.edit } : { id: selectedReview?.id, reply: data.reply };
+
 		axios
-			.put('/api/commentReply', {
-				id: selectedReview?.id,
-				reply: data,
-			})
+			.put(apiEndpoint, payload)
 			.then(() => {
-				toast.success('Phản hồi thành công');
+				toast.success(isEditing ? 'Sửa phản hồi thành công' : 'Phản hồi thành công');
 				router.refresh();
-				setValue('reply', '');
+				setValue(isEditing ? 'edit' : 'reply', '');
 			})
 			.catch((error) => {
 				console.error(error);
@@ -127,7 +131,8 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 			.finally(() => {
 				setIsLoading(false);
 			});
-	};
+		};
+
 
 	// Xác nhận xóa
 	const handleConfirmDelete = () => {
@@ -189,8 +194,8 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 			},
 		],
 	};
-	const successOrder = orders?.filter((order) => order.status === 'completed');
-	const cancelledOrders = orders?.filter((order) => order.status !== 'completed');
+	const successOrder = orders?.filter((order) => order.status === OrderStatus.completed && order.deliveryStatus === DeliveryStatus.delivered);
+	const cancelledOrders = orders?.filter((order) => order.status === OrderStatus.canceled);
 	const orderPieData = {
 		labels: ['Đơn hàng thành công', 'Đơn hàng bị huỷ'],
 		datasets: [
@@ -210,53 +215,6 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 	if (!currentUser || currentUser.role !== 'ADMIN') {
 		return <NullData title="Từ chối đăng nhập" />;
 	}
-	const usersChat = [
-		{
-			id: 1,
-			name: 'Devid Heilo',
-			message: 'How are you?',
-			time: '12 min',
-			imgUrl: 'https://react-demo.tailadmin.com/assets/user-01-b007ff3f.png',
-			statusColor: 'rgb(16, 185, 129)',
-			unreadCount: 3,
-		},
-		{
-			id: 2,
-			name: 'Henry Fisher',
-			message: 'Waiting for you!',
-			time: '12 min',
-			imgUrl: 'https://react-demo.tailadmin.com/assets/user-01-b007ff3f.png',
-			statusColor: 'rgb(220, 53, 69)',
-			unreadCount: 0,
-		},
-		{
-			id: 3,
-			name: 'Jhon Doe',
-			message: "What's up?",
-			time: '32 min',
-			imgUrl: 'https://react-demo.tailadmin.com/assets/user-01-b007ff3f.png',
-			statusColor: 'rgb(16, 185, 129)',
-			unreadCount: 0,
-		},
-		{
-			id: 4,
-			name: 'Jane Doe',
-			message: 'Great',
-			time: '32 min',
-			imgUrl: 'https://react-demo.tailadmin.com/assets/user-01-b007ff3f.png',
-			statusColor: 'rgb(255, 186, 0)',
-			unreadCount: 2,
-		},
-		{
-			id: 5,
-			name: 'Jhon Doe',
-			message: 'How are you?',
-			time: '32 min',
-			imgUrl: 'https://react-demo.tailadmin.com/assets/user-01-b007ff3f.png',
-			statusColor: 'rgb(16, 185, 129)',
-			unreadCount: 0,
-		},
-	];
 
 	return (
 		<>
@@ -273,14 +231,14 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 									View All
 								</Link>
 							</div>
-							<div className="flex justify-center items-center mt-4">
+							<div className="flex justify-center items-center mt-4 gap-4">
 								<div className="p-4 bg-slate-200 rounded-full">
 									<FaFileInvoiceDollar className="text-3xl text-blue-600" />
 								</div>
 								<div className="flex items-center flex-col">
 									<div className="text-2xl font-bold text-blue-600">{orders.length}</div>
 									<div className="ml-4 text-green-600">
-										<span className="text-sm">12% increase</span>
+										<span className="text-sm"></span>
 									</div>
 								</div>
 							</div>
@@ -294,7 +252,7 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 								<div className="flex items-center flex-col">
 									<div className="text-2xl font-bold text-green-600">{formatPrice(totalRevenue)}</div>
 									<div className="ml-4 text-green-600">
-										<span className="text-sm">12% increase</span>
+										<span className="text-sm"></span>
 									</div>
 								</div>
 							</div>
@@ -309,14 +267,14 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 									View All
 								</Link>
 							</div>
-							<div className="flex justify-center items-center mt-4">
+							<div className="flex justify-center items-center mt-4 gap-4">
 								<div className="p-4 bg-[#ffecdf] rounded-full">
 									<FaUsers className="text-3xl text-orange-600" />
 								</div>
 								<div className="flex items-center flex-col">
 									<div className="text-2xl font-bold text-orange-600">{filteredClient.length}</div>
 									<div className="ml-4 text-red-600">
-										<span className="text-sm">12% increase</span>
+										<span className="text-sm"></span>
 									</div>
 								</div>
 							</div>
@@ -480,7 +438,9 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 												className="hover:underline cursor-pointer"
 												onClick={() => {
 													setselectedReview(review);
+													setIsEditing(false);
 													toggleOpen();
+													setisUpdateOpen(false);
 												}}
 											>
 												Phản hồi{' '}
@@ -490,7 +450,9 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 												className="hover:underline ml-1 cursor-pointer"
 												onClick={() => {
 													setselectedReview(review);
+													setIsEditing(true);
 													toggleUpdateOpen();
+													setIsOpen(false);
 												}}
 											>
 												Sửa{' '}

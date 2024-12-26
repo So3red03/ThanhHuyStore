@@ -4,10 +4,9 @@ import { getProducts } from '@/app/actions/getProducts';
 export const dynamic = 'force-dynamic';
 
 const Viewed = async () => {
-	const products = await getProducts({ category: null });
 	return (
 		<Suspense fallback={<div>Loading...</div>}>
-			<UserViewedClient productsViewed={products} />
+			<UserViewedClient />
 		</Suspense>
 	);
 };

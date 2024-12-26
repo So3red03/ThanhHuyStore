@@ -37,15 +37,15 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 		register,
 		handleSubmit,
 		setValue,
-		formState: { errors },
+		formState: { errors }
 	} = useForm<FieldValues>({
 		defaultValues: {
 			id: '',
 			name: '',
 			email: '',
 			newPassword: '',
-			role: '',
-		},
+			role: ''
+		}
 	});
 
 	// Hàm cập nhật giá trị id, value: label
@@ -53,7 +53,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 		setValue(id, value, {
 			shouldValidate: true,
 			shouldDirty: true,
-			shouldTouch: true,
+			shouldTouch: true
 		});
 	};
 
@@ -69,7 +69,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 		setSelectedUser(user);
 		// Cập nhật giá trị lên defaultValues
 		const fieldsToSet = ['id', 'name', 'email', 'role'];
-		fieldsToSet.forEach((field) => setCustomValue(field, user[field]));
+		fieldsToSet.forEach(field => setCustomValue(field, user[field]));
 
 		toggleOpen();
 	};
@@ -84,7 +84,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 				password: user.hashedPassword,
 				createAt: formatDate(user.createAt),
 				updateAt: formatDate(user.updateAt),
-				role: user.role,
+				role: user.role
 			};
 		});
 	}
@@ -94,7 +94,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 			field: 'name',
 			headerName: 'Người dùng',
 			width: 200,
-			renderCell: (params) => {
+			renderCell: params => {
 				return (
 					<div className="flex items-center justify-stretch gap-4 h-full">
 						<div className="relative h-[40px] w-[40px] rounded-full">
@@ -109,14 +109,14 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 						<Link href={`/admin/manage-users/view/${params.row.id}`}>{params.row.name}</Link>
 					</div>
 				);
-			},
+			}
 		},
 		{ field: 'email', headerName: 'Email', width: 210 },
 		{
 			field: 'role',
 			headerName: 'Vai trò',
 			width: 90,
-			renderCell: (params) => {
+			renderCell: params => {
 				return params.row.role === 'ADMIN' ? (
 					<span className="bg-red-200 text-rose-500 text-xs font-semibold px-2 py-1 rounded-full mt-4">
 						ADMIN
@@ -126,7 +126,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 						USER
 					</span>
 				);
-			},
+			}
 		},
 		// { field: 'password', headerName: 'Mật khẩu', width: 140 },
 		{ field: 'createAt', headerName: 'Ngày tạo', width: 200 },
@@ -135,14 +135,13 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 			field: 'action',
 			headerName: '',
 			width: 180,
-			renderCell: (params) => {
+			renderCell: params => {
 				return (
 					<div className="flex items-center justify-center gap-4 h-full">
 						<ActionBtn
 							icon={MdEdit}
 							onClick={() => {
 								handleOpenModal(params.row);
-								console.log(selectedUser?.role);
 							}}
 						/>
 						<ActionBtn
@@ -160,8 +159,8 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 						/>
 					</div>
 				);
-			},
-		},
+			}
+		}
 	];
 
 	// Xác nhận xóa
@@ -177,17 +176,17 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 
 		axios
 			.delete(`/api/user/${id}`)
-			.then((res) => {
+			.then(res => {
 				toast.success('Xóa tài khoản thành công');
 				router.refresh();
 			})
-			.catch((error) => {
+			.catch(error => {
 				toast.error('Có lỗi xảy ra khi xóa');
 				console.error(error);
 			});
 	};
 
-	const onSubmit: SubmitHandler<FieldValues> = async (data) => {
+	const onSubmit: SubmitHandler<FieldValues> = async data => {
 		setIsLoading(true);
 		console.log(data);
 
@@ -196,14 +195,14 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 				name: data.name,
 				email: data.email,
 				newPassword: data.newPassword,
-				role: data.role,
+				role: data.role
 			})
-			.then((res) => {
+			.then(res => {
 				toggleOpen();
 				toast.success('Lưu thông tin thành công');
 				router.refresh();
 			})
-			.catch((error) => {
+			.catch(error => {
 				toast.error('Có lỗi xảy ra khi cập nhật thông tin');
 				setIsLoading(false);
 				console.error(error);
@@ -232,7 +231,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 			description: 'Tổng người dùng',
 			icon: 'fa fa-user',
 			iconColor: 'text-primary',
-			changeColor: 'text-success',
+			changeColor: 'text-success'
 		},
 		{
 			title: 'Paid Users',
@@ -241,7 +240,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 			description: 'Last Week Analytics',
 			icon: 'ri-user-add-line',
 			iconColor: 'text-red-500',
-			changeColor: 'text-success',
+			changeColor: 'text-success'
 		},
 		{
 			title: 'Active Users',
@@ -250,7 +249,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 			description: 'Last Week Analytics',
 			icon: 'ri-user-follow-line',
 			iconColor: 'text-green-500',
-			changeColor: 'text-red-500',
+			changeColor: 'text-red-500'
 		},
 		{
 			title: 'Pending Users',
@@ -259,17 +258,14 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 			description: 'Last Week Analytics',
 			icon: 'ri-user-search-line',
 			iconColor: 'text-yellow-500',
-			changeColor: 'text-success',
-		},
+			changeColor: 'text-success'
+		}
 	];
-	const roles = [
-		{ label: 'ADMIN', value: '1' },
-		{ label: 'USER', value: '2' },
-	];
+	const roles = [{ label: 'ADMIN', value: '1' }, { label: 'USER', value: '2' }];
 
 	return (
 		<>
-			<div className="w-[78.5vw] m-auto text-xl mt-6">
+			{/* <div className="w-[78.5vw] m-auto text-xl mt-6">
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-3 pr-0 border border-r-0 border-gray-200 rounded-lg">
 					{stats.map((stat, index) => (
 						<div
@@ -331,7 +327,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 						}}
 					/>
 				</div>
-			</div>
+			</div> */}
 			{selectedUser && (
 				<AdminModal isOpen={isOpen} handleClose={toggleOpen}>
 					<FormWarp custom="!pt-8">

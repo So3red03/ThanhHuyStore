@@ -41,6 +41,11 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 		}
 	};
 
+	const getRandomArticles = () => {
+		const shuffledArticles = [...articles].sort(() => Math.random() - 0.5); // Xáo trộn các phần tử trong mảng
+		return shuffledArticles.slice(0, 3); // Lấy 3 phần tử đầu tiên
+	};
+
 	const handleArticleClick = async (articleId: string) => {
 		console.log('geqgqe')
 		// try {
@@ -51,27 +56,6 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 		// }
 	};
 
-
-	const articlesTest = [
-		{
-			title: 'Đỉnh quá! Có màn hình cảm ứng, chống ồn ANC nhưng chiếc tai nghe này chỉ có giá 600k',
-			author: 'Admin',
-			date: '20/01/2024',
-			image: 'https://cdn-media.sforum.vn/storage/app/media/wp-content/uploads/2023/03/cach-tinh-phan-tram-1.jpg',
-		},
-		{
-			title: 'Trên tay mẫu chuột Logitech khiến fan Genshin "đứng ngồi không yên", có tiền cũng chưa chắc mua được!',
-			author: 'Admin',
-			date: '20/02/2024',
-			image: 'https://cdn-media.sforum.vn/storage/app/media/nhatquang519/tren-tay-logitech-g309-kamisato-ayaka-edition/tren-tay-logitech-g309-ayaka-26.jpg',
-		},
-		{
-			title: 'Robot nhỏ "rủ rê" 12 robot lớn đình công bỏ về gây xôn xao cộng đồng mạng',
-			author: 'Admin',
-			date: '18/01/2024',
-			image: 'https://cdn-media.sforum.vn/storage/app/media/ace chu tu/robot-nho-nhung-co-vo-ru-re-12-robot-lon/robot-nho-nhung-co-vo-ru-re-12-robot-lon-ava.jpg',
-		},
-	];
 	return (
 		<div className="py-8 px-4">
 			<div className="max-w-[1050px] mx-auto">
@@ -81,13 +65,13 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 						<div className="relative block aspect-16/9 md:h-full h-[360px] w-full overflow-hidden rounded-[5px] ">
 							<div className="relative h-full w-full">
 								<img
-									alt="Đánh giá camera Tecno Camon 30S: Chưa tới 5 triệu mà chụp được như này cũng là ngon quá đó chứ!"
-									title="Đánh giá camera Tecno Camon 30S: Chưa tới 5 triệu mà chụp được như này cũng là ngon quá đó chứ!"
+									alt={`${articles[0].title}`}
+									title={`${articles[0].title}`}
 									loading="eager"
 									decoding="async"
 									data-nimg="fill"
 									className="h-full w-full object-cover"
-									src="https://cdn-media.sforum.vn/storage/app/media/chibao/danh-gia-camera-tecno-camon-30s-cover-1.jpg"
+									src={`${articles[0].image}`}
 									style={{
 										position: 'absolute',
 										height: '100%',
@@ -98,35 +82,30 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 								/>
 							</div>
 							<div className="overlay-post absolute bottom-0 left-0 flex h-full w-full flex-col justify-between p-[10px] sm:p-[15px]">
-								<a
+								<Link
 									className="mb-[10px] flex w-fit items-center gap-[6px] rounded-[5px] bg-slate-600 px-[10px] py-[2px] text-white"
-									href="/sforum/danh-gia"
+									href={`/news/${articles[0].category.slug}`}
 								>
-									<span className="text-base font-[400] ">Đánh giá</span>
-								</a>
+									<span className="text-base font-[400] ">{articles[0].category.name}</span>
+								</Link>
 								<div className="flex w-full flex-col gap-[10px] ">
-									<a
+									<Link
 										className="m-[0px] line-clamp-3 text-ellipsis text-base font-[500] text-white sm:text-lg"
-										href="/sforum/danh-gia-camera-tecno-camon-30s"
+										href={`/article/${slugConvert(articles[0].title)}-${articles[0].id}`}
 									>
 										<h3 className="m-[0px]">
-											Đánh giá camera Tecno Camon 30S: Chưa tới 5 triệu mà chụp được như này cũng
-											là ngon quá đó chứ!
+											{articles[0].title}
 										</h3>
-									</a>
+									</Link>
 									<div className="hidden w-full sm:block">
 										<p className="line-clamp-2 text-ellipsis text-xs font-[300] text-white">
-											Bên cạnh hiệu năng tốt với con chip Helio G100, mình đánh giá camera của
-											Tecno Camon 30S còn thể hiện khả năng đáp ứng tốt các nhu cầu chụp ảnh hàng
-											ngày, mang đến chất lượng hình ảnh ưng mắt. Tecno Camon 30S là một lựa chọn
-											đáng cân
+											{getSummary(articles[0].content)}
 										</p>
 									</div>
 									<div className="flex w-full items-center gap-[10px]">
 										<div className="flex flex-wrap items-center gap-[10px] text-[#cfcfcf]">
-											<a
+											<div
 												className="flex items-center gap-[2px] text-xs font-[500] sm:text-sm"
-												href="/sforum/author/chibao"
 											>
 												<svg
 													stroke="currentColor"
@@ -140,7 +119,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 													<path d="M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20ZM79.57,196.57a60,60,0,0,1,96.86,0,83.72,83.72,0,0,1-96.86,0ZM100,120a28,28,0,1,1,28,28A28,28,0,0,1,100,120ZM194,179.94a83.48,83.48,0,0,0-29-23.42,52,52,0,1,0-74,0,83.48,83.48,0,0,0-29,23.42,84,84,0,1,1,131.9,0Z" />
 												</svg>
 												<span>Admin</span>
-											</a>
+											</div>
 											<span className="flex items-center gap-[2px] text-xs font-[400] sm:text-sm">
 												<svg
 													stroke="currentColor"
@@ -153,7 +132,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 												>
 													<path d="M236,137A108.13,108.13,0,1,1,119,20,12,12,0,0,1,121,44,84.12,84.12,0,1,0,212,135,12,12,0,1,1,236,137ZM116,76v52a12,12,0,0,0,12,12h52a12,12,0,0,0,0-24H140V76a12,12,0,0,0-24,0Zm92,20a16,16,0,1,0-16-16A16,16,0,0,0,208,96ZM176,64a16,16,0,1,0-16-16A16,16,0,0,0,176,64Z" />
 												</svg>
-												<span>15/11/2024</span>
+												<span>{articles[0].createdAt ? format(new Date(articles[0].createdAt), 'dd/MM/yyyy') : 'Không xác định'}</span>
 											</span>
 										</div>
 									</div>
@@ -162,14 +141,14 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 						</div>
 					</div>
 					<div className=" grid flex-1 grid-cols-1 grid-rows-3 gap-[15px] sm:gap-[20px] ">
-						{articlesTest?.map((article: any, index: any) => (
-							<div className="relative flex cursor-pointer items-start gap-[10px]" key={index}>
-								<a
+						{getRandomArticles().map((article: any, index: any) => (
+							<div className="relative flex cursor-pointer items-start gap-[10px]" key={article.id}>
+								<Link
 									className="relative block aspect-16/10 h-full w-[140px] flex-shrink-0 xs:w-[160px]"
-									href="/sforum/tren-tay-riversong-airfly-t2"
+									href={`/article/${slugConvert(article.title)}-${article.id}`}
 								>
 									<img
-										alt={article.title}
+										alt={''}
 										title={article.title}
 										loading="lazy"
 										width={200}
@@ -180,18 +159,17 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 										src={article.image}
 										style={{ color: 'transparent' }}
 									/>
-								</a>
+								</Link>
 								<div className="max-h-[60px] flex-1 ">
-									<a
+									<Link
 										className="line-clamp-2 text-ellipsis text-sm font-[500] text-[#212B36] hover:text-blue-500 sm:text-base"
-										href="/sforum/tren-tay-riversong-airfly-t2"
+										href={`/article/${slugConvert(article.title)}-${article.id}`}
 									>
 										<h3 className="m-[0px]">{article.title}</h3>
-									</a>
+									</Link>
 									<div className="mt-[5px] flex flex-wrap items-center gap-[4px]  font-[500] text-[#637381] text-xs lg:mt-[8px] lg:gap-[8px]">
-										<a
+										<div
 											className="flex items-center gap-[2px] text-blue-500"
-											href="/sforum/author/luudat"
 										>
 											<svg
 												stroke="currentColor"
@@ -204,8 +182,8 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 											>
 												<path d="M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20ZM79.57,196.57a60,60,0,0,1,96.86,0,83.72,83.72,0,0,1-96.86,0ZM100,120a28,28,0,1,1,28,28A28,28,0,0,1,100,120ZM194,179.94a83.48,83.48,0,0,0-29-23.42,52,52,0,1,0-74,0,83.48,83.48,0,0,0-29,23.42,84,84,0,1,1,131.9,0Z" />
 											</svg>
-											<span className="mt-[2px]">{article.author}</span>
-										</a>
+											<span className="mt-[2px]">Admin</span>
+										</div>
 										<span className="flex items-center gap-[2px]">
 											<svg
 												stroke="currentColor"
@@ -218,7 +196,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 											>
 												<path d="M236,137A108.13,108.13,0,1,1,119,20,12,12,0,0,1,121,44,84.12,84.12,0,1,0,212,135,12,12,0,1,1,236,137ZM116,76v52a12,12,0,0,0,12,12h52a12,12,0,0,0,0-24H140V76a12,12,0,0,0-24,0Zm92,20a16,16,0,1,0-16-16A16,16,0,0,0,208,96ZM176,64a16,16,0,1,0-16-16A16,16,0,0,0,176,64Z" />
 											</svg>
-											<span className="mt-[2px]">{article.date}</span>
+											<span className="mt-[2px]">{article.createdAt ? format(new Date(article.createdAt), 'dd/MM/yyyy') : 'Không xác định'}</span>
 										</span>
 									</div>
 								</div>
@@ -241,10 +219,9 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 						className="w-full"
 					>
 						{articles.map((article: any, index: any) => (
-							<SwiperSlide key={index} className="w-full">
+							<SwiperSlide key={article.id} className="w-full">
 								<div className="w-full overflow-hidden">
 									<Link
-										onClick={() => handleArticleClick(article.id)}
 										className="relative block aspect-16/9 w-full flex-shrink-0 overflow-hidden rounded-[5px]"
 										href={`/article/${slugConvert(article.title)}-${article.id}`}
 									>
@@ -263,7 +240,6 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 									</Link>
 									<div className="mt-[8px]">
 										<Link
-											onClick={() => handleArticleClick(article.id)}
 											href={`/article/${slugConvert(article.title)}-${article.id}`}
 											className="line-clamp-2 text-[#212B36] text-sm font-medium hover:text-blue-500"
 										>
@@ -324,7 +300,6 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 											className="relative flex items-start justify-between gap-[10px] transition-all lg:gap-[15px] "
 										>
 											<Link
-												onClick={() => handleArticleClick(article.id)}
 												className="relative mt-[4px] block aspect-16/9 w-[140px] flex-shrink-0 overflow-hidden rounded-[5px] sm:w-[180px] md:w-[150px] lg:w-[240px]"
 												href={`/article/${slugConvert(article.title)}-${article.id}`}
 											>
@@ -344,7 +319,6 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 											<div className="flex flex-1 flex-col gap-[9px]">
 												<div className="w-full">
 													<Link
-														onClick={() => handleArticleClick(article.id)}
 														className="block w-full text-[#212B36]  hover:text-blue-500"
 														href={`/article/${slugConvert(article.title)}-${article.id}`}
 													>
@@ -391,7 +365,6 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 															</svg>
 															<span>
 																{article.createdAt ? format(new Date(article.createdAt), 'dd/MM/yyyy') : 'Không xác định'}
-
 															</span>
 														</span>
 													</div>
@@ -447,7 +420,6 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 							<div className="mb-[10px] flex w-full flex-col gap-[15px] sm:mb-[15px] sm:gap-[20px] ">
 								{articles?.map((article: any, index: any) => (
 									<Link
-										onClick={() => handleArticleClick(article.id)}
 										className="relative flex cursor-pointer items-start justify-between gap-[10px]"
 										href={`/article/${slugConvert(article.title)}-${article.id}`}
 										key={index}
@@ -512,7 +484,6 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 							<div className="mb-[10px] flex w-full flex-col gap-[15px] sm:mb-[15px] sm:gap-[20px] ">
 								{ArticlesListRightSide?.map((article: any, index: any) => (
 									<Link
-										onClick={() => handleArticleClick(article.id)}
 										className="relative flex cursor-pointer items-start justify-between gap-[10px]"
 										href={`/article/${slugConvert(article.title)}-${article.id}`}
 										key={index}

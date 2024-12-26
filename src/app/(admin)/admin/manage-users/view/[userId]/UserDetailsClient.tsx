@@ -1,6 +1,6 @@
 'use client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
-import { CartProductType, Order, Review, User } from '@prisma/client';
+import { CartProductType, DeliveryStatus, Order, OrderStatus, Review, User } from '@prisma/client';
 import { formatPrice } from '../../../../../../../utils/formatPrice';
 import Status from '@/app/components/Status';
 import { MdAccessTimeFilled, MdDelete, MdDeliveryDining, MdDone, MdRemoveRedEye } from 'react-icons/md';
@@ -33,10 +33,9 @@ interface UserDetailsClientProps {
 	};
 }
 const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
-	const total = user.orders.reduce((accumulator, currentValue) => accumulator + currentValue.amount, 0);
+	const total = user.orders.filter((order) => order.status === OrderStatus.completed && order.deliveryStatus === DeliveryStatus.delivered)
+		.reduce((accumulator, currentValue) => accumulator + currentValue.amount, 0);
 	const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
-	console.log(user.orders);
-
 	let rows: any = [];
 	if (user.orders) {
 		rows = user.orders.map((invoice: any) => {
@@ -69,46 +68,48 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
 		{
 			field: 'paymentStatus',
 			headerName: 'Thanh toán',
-			width: 110,
+			width: 150,
 			renderCell: (params) => {
 				return (
-					<div className="flex justify-center items-center h-full">
-						{params.row.paymentStatus === 'pending' ? (
-							<Status
-								text="Đang chờ"
-								icon={MdAccessTimeFilled}
-								bg="bg-slate-200"
-								color="text-slate-700"
-							/>
-						) : (
-							<Status text="Thành công" icon={MdDone} bg="bg-green-200" color="text-green-700" />
-						)}
-					</div>
+				<div className="flex justify-center items-center h-full">
+					<select
+					value={params.row.paymentStatus}
+					onChange={(event) =>
+						handleUpdateOrderStatus(params.row.id, event.target.value)
+					}
+					className="border rounded-md px-2 py-1 text-sm bg-white shadow-sm"
+					>
+						<option value={OrderStatus.pending}>Chờ thanh toán</option>
+						<option value={OrderStatus.confirmed}>Đã thanh toán</option>
+						<option value={OrderStatus.completed}>Hoàn thành</option>
+						<option value={OrderStatus.canceled}>Đã hủy</option>
+					</select>
+				</div>
 				);
 			},
 		},
 		{
 			field: 'deliveryStatus',
 			headerName: 'Giao hàng',
-			width: 110,
+			width: 118,
 			renderCell: (params) => {
 				return (
 					<div className="flex justify-center items-center h-full">
-						{params.row.deliveryStatus === 'pending' ? (
+						{params.row.deliveryStatus === DeliveryStatus.not_shipped ? (
 							<Status
 								text="Đang chờ"
 								icon={MdAccessTimeFilled}
 								bg="bg-slate-200"
 								color="text-slate-700"
 							/>
-						) : params.row.deliveryStatus === 'dispatched' ? (
+						) : params.row.deliveryStatus === DeliveryStatus.in_transit ? (
 							<Status
 								text="Đang giao hàng"
 								icon={MdDeliveryDining}
 								bg="bg-purple-200"
 								color="text-purple-700"
 							/>
-						) : params.row.deliveryStatus === 'delivered' ? (
+						) : params.row.deliveryStatus === DeliveryStatus.delivered ? (
 							<Status text="Giao thành công" icon={MdDone} bg="bg-green-200" color="text-green-700" />
 						) : (
 							<></>
@@ -121,17 +122,26 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
 		{
 			field: 'action',
 			headerName: '',
-			width: 130,
+			width: 180,
 			renderCell: (params) => {
 				return (
 					<div className="flex items-center justify-center gap-4 h-full">
-						<ActionBtn icon={MdDelete} onClick={() => {}} />
+						<ActionBtn
+							icon={MdDeliveryDining}
+							onClick={() => {
+								handleDispatch(params.row.id);
+							}}
+						/>
+						<ActionBtn
+							icon={MdDone}
+							onClick={() => {
+								handleDeliver(params.row.id);
+							}}
+						/>
 						<ActionBtn
 							icon={MdRemoveRedEye}
 							onClick={() => {
 								setSelectedOrder(params.row);
-								console.log(selectedOrder);
-
 								toggleOpen();
 							}}
 						/>
@@ -140,6 +150,48 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
 			},
 		},
 	];
+	const handleUpdateOrderStatus = (id: string, newStatus: any) => {
+		axios
+			.put(`/api/order/${id}`, { status: newStatus })
+			.then(() => {
+				toast.success('Cập nhật đơn hàng thành công');
+				router.refresh(); // Làm mới dữ liệu trong bảng
+			})
+			.catch((error) => {
+				toast.error('Có lỗi xảy ra khi cập nhật đơn hàng');
+				console.error(error);
+			});
+	};
+	const handleDispatch = (id: string) => {
+		axios
+			.put('/api/order', {
+				id,
+				deliveryStatus: DeliveryStatus.in_transit,
+			})
+			.then((res) => {
+				toast.success('Đơn hàng đã được gửi đi');
+				router.refresh();
+			})
+			.catch((error) => {
+				toast.error('Có lỗi xảy ra khi gửi đơn hàng');
+				console.error(error);
+			});
+	};
+
+	const handleDeliver = async (id: string) => {
+		try {
+			await Promise.all([
+			axios.put(`/api/order/${id}`, { status: OrderStatus.completed}),
+			axios.put('/api/order', { id, deliveryStatus: DeliveryStatus.delivered }),
+			]);
+
+			toast.success('Cập nhật và giao hàng thành công');
+			router.refresh(); // Làm mới dữ liệu trong bảng
+		} catch (error) {
+			toast.error('Có lỗi xảy ra khi cập nhật đơn hàng hoặc giao hàng');
+			console.error(error);
+		}
+	};
 	const router = useRouter();
 	const {
 		register,
@@ -545,15 +597,33 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
 						<div className="grid grid-cols-4 gap-4 border-b pb-4 mb-8">
 							<div className="border-r border-gray-300">
 								<h2 className="font-semibold">Đơn hàng đã đặt</h2>
-								{/* <p>{selectedOrder?.createDate}</p> */}
+								<p>{formatDate(selectedOrder?.createDate)}</p>
 							</div>
 							<div className="border-r border-gray-300">
 								<h2 className="font-semibold">Tình trạng đặt hàng</h2>
-								<p>{selectedOrder?.deliveryStatus}</p>
+								<p>{selectedOrder?.deliveryStatus === 'not_shipped' ? (
+									'Đang chờ'
+									) : selectedOrder?.deliveryStatus === 'in_transit' ? (
+										'Đang vận chuyển'
+									) : selectedOrder?.deliveryStatus === 'delivered' ? (
+										'Đã giao'
+									) : (
+										'Đã hoàn trả'
+									)}
+								</p>
 							</div>
 							<div className="border-r border-gray-300">
 								<h2 className="font-semibold">Trạng thái thanh toán</h2>
-								<p>{selectedOrder?.status}</p>
+								<p>{selectedOrder?.status === 'pending' ? (
+									'Chưa thanh toán'
+									) : selectedOrder?.status === 'confirmed' ? (
+										'Đã thanh toán'
+									) : selectedOrder?.status === 'canceled' ? (
+										'Đã hủy'
+									) : (
+										'Đã thanh toán'
+									)}
+								</p>
 							</div>
 							<div>
 								<h2 className="font-semibold">Phương thức thanh toán</h2>
