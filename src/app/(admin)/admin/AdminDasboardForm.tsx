@@ -39,7 +39,6 @@ type Review = {
 		name: any;
 		description: any;
 		price: any;
-		brand: any;
 		category: any;
 		inStock: any;
 		images: any[];

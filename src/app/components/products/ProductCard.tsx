@@ -23,15 +23,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
 		name: data.name,
 		description: data.description,
 		category: data.category,
-		brand: data.brand,
 		selectedImg: { ...data.images[0] },
 		quantity: 1,
 		price: data.price,
-		inStock: data.inStock,
+		inStock: data.inStock
 	});
 
 	const handleColorSelect = useCallback((value: selectedImgType) => {
-		setCartProduct((prev) => {
+		setCartProduct(prev => {
 			return { ...prev, selectedImg: value };
 		});
 	}, []);
