@@ -38,17 +38,31 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
 	const [viewedProducts, setViewedProducts] = useState<CartProductType[] | null>(null);
 
 	useEffect(() => {
-		const viewedProducts: any = localStorage.getItem('viewedProducts');
-		if (viewedProducts) {
-			setViewedProducts(JSON.parse(viewedProducts));
-		}
+		const syncViewedProducts = () => {
+			const storedViewed = localStorage.getItem('viewedProducts');
+			if (storedViewed) {
+				setViewedProducts(JSON.parse(storedViewed));
+			} else {
+				setViewedProducts([]);
+			}
+		};
+
+		// Lắng nghe sự kiện storage thay đổi
+		window.addEventListener('storage', syncViewedProducts);
+
+		// Gọi lần đầu khi component mount
+		syncViewedProducts();
+		return () => {
+			window.removeEventListener('storage', syncViewedProducts);
+		};
 	}, []);
 
-	const saveViewedProduct = useCallback((product: CartProductType) => {
-		setViewedProducts(prev => {
-			if (!prev) return [product];
 
-			const updatedViewed = prev.filter(p => p.id !== product.id);
+	const saveViewedProduct = useCallback((product: CartProductType) => {
+		if (!product) return;
+
+		setViewedProducts(prev => {
+			const updatedViewed = prev?.filter(p => p.id !== product.id) || [];
 			updatedViewed.unshift(product);
 
 			if (updatedViewed.length > 8) {
@@ -59,6 +73,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
 			return updatedViewed;
 		});
 	}, []);
+
 
 	return (
 		<div className="col-span-1 cursor-pointer border-[1.2px] border-none bg-white rounded-sm p-2 transition hover:scale-105 text-center text-sm">

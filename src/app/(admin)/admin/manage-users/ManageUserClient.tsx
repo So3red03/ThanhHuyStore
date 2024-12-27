@@ -265,8 +265,8 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 
 	return (
 		<>
-			{/* <div className="w-[78.5vw] m-auto text-xl mt-6">
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-3 pr-0 border border-r-0 border-gray-200 rounded-lg">
+			<div className="w-[78.5vw] m-auto text-xl mt-6">
+				{/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-3 pr-0 border border-r-0 border-gray-200 rounded-lg">
 					{stats.map((stat, index) => (
 						<div
 							key={index}
@@ -291,8 +291,8 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 							</div>
 						</div>
 					))}
-				</div>
-				<div className="mb-4 mt-5"></div>
+				</div> */}
+				<div className="mb-4 mt-5" />
 				<div className="h-[600px] w-full">
 					<DataGrid
 						rows={rows}
@@ -300,15 +300,15 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 						className="py-5"
 						initialState={{
 							pagination: {
-								paginationModel: { page: 0, pageSize: 10 },
-							},
+								paginationModel: { page: 0, pageSize: 10 }
+							}
 						}}
 						slots={{ toolbar: GridToolbar }}
 						slotProps={{
 							toolbar: {
 								showQuickFilter: true,
-								quickFilterProps: { debounceMs: 500 },
-							},
+								quickFilterProps: { debounceMs: 500 }
+							}
 						}}
 						pageSizeOptions={[10, 20, 30]}
 						checkboxSelection
@@ -319,15 +319,15 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 						sx={{
 							'& .MuiDataGrid-toolbarContainer': {
 								flexDirection: 'row-reverse',
-								padding: '15px',
+								padding: '15px'
 							},
 							'& .css-yrdy0g-MuiDataGrid-columnHeaderRow': {
-								backgroundColor: '#F6F7FB !important',
-							},
+								backgroundColor: '#F6F7FB !important'
+							}
 						}}
 					/>
 				</div>
-			</div> */}
+			</div>
 			{selectedUser && (
 				<AdminModal isOpen={isOpen} handleClose={toggleOpen}>
 					<FormWarp custom="!pt-8">
