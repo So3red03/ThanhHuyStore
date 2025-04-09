@@ -3,7 +3,7 @@
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { ArticleCategory } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
-import { MdDelete, MdEdit } from 'react-icons/md';
+import { MdAdd, MdDelete, MdEdit } from 'react-icons/md';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SafeUser } from '../../../../../types';
@@ -21,6 +21,7 @@ import 'moment/locale/vi';
 import NullData from '@/app/components/NullData';
 import { formatDateNoTime } from '@/app/(home)/account/orders/OrdersClient';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
+import { generateSlug } from '../../../../../utils/Articles';
 
 const formatDateToInput = (date: Date | string) => {
 	const d = new Date(date);
@@ -50,6 +51,7 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
 		handleSubmit,
 		setValue,
 		watch,
+		getValues,
 		formState: { errors },
 	} = useForm<FieldValues>();
 
@@ -72,7 +74,7 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
 
 	const handleOpenModal = (product: any) => {
 		setselectedCategory(product);
-		const fieldsToSet = ['id', 'name', 'slug', 'description', 'isActive'];
+		const fieldsToSet = ['id', 'name', 'slug', 'icon', 'description', 'isActive'];
 		fieldsToSet.forEach((field) => setCustomValue(field, product[field]));
 		toggleOpen();
 	};
@@ -84,6 +86,7 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
 				id: category.id,
 				name: category.name,
 				slug: category.slug,
+				icon: category.icon,
 				description: category.description,
 				isActive: category.isActive,
 				createdAt: category.createdAt,
@@ -93,7 +96,21 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
 
 	const columns: GridColDef[] = [
 		{ field: 'name', headerName: 'Tên danh mục', width: 150 },
-		{ field: 'slug', headerName: 'Slug', width: 150 },
+		{ field: 'slug', headerName: 'Slug', width: 130 },
+		{
+			field: 'icon',
+			headerName: 'Icon',
+			width: 50,
+			renderCell: (params) => {
+				return (
+					<div className="flex justify-center items-center w-full h-full">
+						{params.row.icon ? (
+							<div dangerouslySetInnerHTML={{ __html: params.row.icon }} className="w-6 h-6" />
+						) : null}
+					</div>
+				);
+			},
+		},
 		{ field: 'description', headerName: 'Mô tả', width: 500 },
 		{
 			field: 'isActive',
@@ -167,6 +184,7 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
 				name: data.name,
 				slug: data.slug,
 				description: data.description,
+				icon: data.icon,
 			})
 			.then((res) => {
 				toast.success('Lưu thông tin thành công');
@@ -186,6 +204,14 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
 			router.push('/login');
 		}
 	}, [currentUser, router]);
+
+	const handleSlugUpdate = () => {
+		const nameValue = getValues('name'); // Lấy giá trị của input "name"
+		if (nameValue) {
+			const generatedSlug = generateSlug(nameValue);
+			setValue('slug', generatedSlug); // Cập nhật giá trị trong form
+		}
+	};
 
 	if (!currentUser || currentUser.role !== 'ADMIN') {
 		return <NullData title="Từ chối đăng nhập" />;
@@ -245,13 +271,31 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
 							defaultValue={selectedCategory?.name}
 							required
 						/>
+						<div className="flex justify-center items-center w-full gap-2">
+							<Input
+								id="slug"
+								label="Slug"
+								disabled={isLoading}
+								register={register}
+								errors={errors}
+								defaultValue={selectedCategory?.slug}
+								required
+							/>
+							<Button
+								label="Đổi"
+								small
+								custom="!gap-1 !w-auto !h-full !text-xs lg:!text-base"
+								icon={MdAdd}
+								onClick={() => handleSlugUpdate()}
+							/>
+						</div>
 						<Input
-							id="slug"
-							label="Slug"
+							id="icon"
+							label="Icon"
 							disabled={isLoading}
 							register={register}
 							errors={errors}
-							defaultValue={selectedCategory?.slug}
+							defaultValue={selectedCategory?.icon}
 							required
 						/>
 						<Input

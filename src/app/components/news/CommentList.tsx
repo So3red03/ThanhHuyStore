@@ -11,7 +11,6 @@ import { vi } from 'date-fns/locale/vi';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import Button from '../Button';
-import { getArticleById } from '@/app/actions/getArticleById';
 
 export type Replies = {
 	id: string;
@@ -114,25 +113,25 @@ const CommentList: React.FC<CommentListProps> = ({ currentUser, article }) => {
 	const [comments, setComments] = useState<CommentType[]>(article.reviews);
 	const [skip, setSkip] = useState(0);
 	// Hàm gọi API để tải thêm bình luận
-	const loadComments = async (offset: number) => {
-		setIsLoadMoreLoading(true);
-		try {
-			const response = await axios.get(`/api/article/${article.id}?offset=${offset}`);
-			setComments((prevComments) => [...prevComments, ...response.data.reviews]);
-		} catch (error) {
-			console.error('Lỗi:', error);
-		} finally {
-			setIsLoadMoreLoading(false);
-		}
-	};
+	// const loadComments = async (offset: number) => {
+	// 	setIsLoadMoreLoading(true);
+	// 	try {
+	// 		const response = await axios.get(`/api/article/${article.id}?offset=${offset}`);
+	// 		setComments((prevComments) => [...prevComments, ...response.data.reviews]);
+	// 	} catch (error) {
+	// 		console.error('Lỗi:', error);
+	// 	} finally {
+	// 		setIsLoadMoreLoading(false);
+	// 	}
+	// };
 
-	useEffect(() => {
-		loadComments(2); // Mặc định lấy 2 bình luận đầu tiên
-	}, [article.id]);
+	// useEffect(() => {
+	// 	loadComments(2); // Mặc định lấy 2 bình luận đầu tiên
+	// }, [article.id]);
 
-	const loadMore = () => {
-		setSkip((prev) => prev + 2); // Tăng số bình luận bỏ qua khi load thêm
-	};
+	// const loadMore = () => {
+	// 	setSkip((prev) => prev + 2); // Tăng số bình luận bỏ qua khi load thêm
+	// };
 	return (
 		<>
 			<div className="my-[30px]">

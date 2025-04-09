@@ -7,9 +7,9 @@ const nextConfig = {
 			'firebasestorage.googleapis.com',
 			'file.hstatic.net',
 			'theme.hstatic.net',
-			'static.id.gtech.asia',
-		],
-	},
+			'static.id.gtech.asia'
+		]
+	}
 };
 
 module.exports = nextConfig;

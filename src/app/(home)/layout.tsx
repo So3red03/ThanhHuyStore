@@ -15,6 +15,9 @@ const poppins = Poppins({ subsets: ['latin'], weight: ['400', '700'] });
 
 export const metadata: Metadata = {
 	title: 'ThanhHuy Store - Apple shop chính hãng',
+	icons: {
+		icon: '/favicon.svg', // Đường dẫn tới favicon
+	},
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

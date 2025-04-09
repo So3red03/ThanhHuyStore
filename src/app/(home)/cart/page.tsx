@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic';
 
 const Cart = async () => {
 	const currentUser = await getCurrentUser();
-
 	return (
 		<Suspense fallback={<div>Loading...</div>}>
 			<CartBuyClient currentUser={currentUser} />

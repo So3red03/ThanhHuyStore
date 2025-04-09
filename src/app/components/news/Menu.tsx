@@ -152,9 +152,9 @@ const NewsMenu: React.FC<NewsMenuProps> = ({ newsMenu }) => {
 	];
 	return (
 		<ul className="group pb-1 lg:pb-0 lg:mb-0 mt-0 lg:mt-3 flex flex-row lg:flex-col justify-center gap-y-1 lg:sticky lg:top-[135px] overflow-y-auto scrollbar-none hover:scrollbar-thin hover:scrollbar-thumb-[#c0c0c0] hover:scrollbar-track-transparent">
-			{menuItems.map((item) => {
+			{newsMenu.map((item) => {
 				const itemUrl = `/news/${item.slug}`;
-				const isHomeSelected = item.label === 'Trang chủ' && pathName === '/news';
+				const isHomeSelected = item.name === 'Trang chủ' && pathName === '/news';
 				const isSelected = pathName === itemUrl;
 				if (pathName === '/news/trang-chu') {
 					router.push('/news');
@@ -168,8 +168,8 @@ const NewsMenu: React.FC<NewsMenuProps> = ({ newsMenu }) => {
 							(isSelected || isHomeSelected) && '!text-blue-500 bg-gray-100'
 						}`}
 					>
-						{item.icon}
-						<span className="text-xs lg:text-base">{item.label}</span>
+						{item.icon ? <div dangerouslySetInnerHTML={{ __html: item.icon }} /> : null}
+						<span className="text-xs lg:text-base">{item.name}</span>
 					</Link>
 				);
 			})}

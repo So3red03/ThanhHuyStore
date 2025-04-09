@@ -1,5 +1,6 @@
 'use client';
 import { CartProductType } from '@/app/(home)/product/[productId]/ProductDetails';
+import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -118,7 +119,7 @@ export const CartContextProvider = (props: Props) => {
 
 	const handleAddProductToCart = useCallback((product: CartProductType) => {
 		// Vì setCartProducts không thay đổi nên không cần dependencies
-		setCartProducts((prev) => {
+		setCartProducts(prev => {
 			const updateCart = prev ? [...prev, product] : [product];
 			localStorage.setItem('CartItems', JSON.stringify(updateCart));
 			return updateCart;
@@ -129,7 +130,7 @@ export const CartContextProvider = (props: Props) => {
 	const handleRemoveProductFromCart = useCallback(
 		(product: CartProductType) => {
 			if (cartProducts) {
-				const updateCart = cartProducts.filter((item) => item.id !== product.id);
+				const updateCart = cartProducts.filter(item => item.id !== product.id);
 				setCartProducts(updateCart);
 				localStorage.setItem('CartItems', JSON.stringify(updateCart));
 				toast.success('Xóa sản phẩm thành công');
@@ -143,7 +144,7 @@ export const CartContextProvider = (props: Props) => {
 			let updateCart;
 			if (cartProducts) {
 				updateCart = [...cartProducts];
-				const existsProduct = cartProducts.findIndex((cartProduct) => cartProduct.id === product.id);
+				const existsProduct = cartProducts.findIndex(cartProduct => cartProduct.id === product.id);
 				if (existsProduct > -1) {
 					if (updateCart[existsProduct].quantity >= product.inStock) {
 						toast.error(`${product.name} chỉ còn ${product.inStock} sản phẩm`);
@@ -163,7 +164,7 @@ export const CartContextProvider = (props: Props) => {
 			let updateCart;
 			if (cartProducts) {
 				updateCart = [...cartProducts];
-				const existsProduct = cartProducts.findIndex((cartProduct) => cartProduct.id === product.id);
+				const existsProduct = cartProducts.findIndex(cartProduct => cartProduct.id === product.id);
 				if (existsProduct > -1) {
 					if (updateCart[existsProduct].quantity <= 1) {
 						toast.error('Số lượng không thể dưới 1');
@@ -211,7 +212,7 @@ export const CartContextProvider = (props: Props) => {
 				},
 				{
 					total: 0,
-					qty: 0,
+					qty: 0
 				}
 			);
 			setCartTotalAmount(total);
@@ -245,7 +246,7 @@ export const CartContextProvider = (props: Props) => {
 		setCartInfo,
 		setShippingFee,
 		shippingFee,
-		shippingFeeClient,
+		shippingFeeClient
 	};
 
 	// Provider

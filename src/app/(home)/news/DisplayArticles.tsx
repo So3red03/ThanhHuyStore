@@ -47,7 +47,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 	};
 
 	const handleArticleClick = async (articleId: string) => {
-		console.log('geqgqe')
+		console.log('geqgqe');
 		// try {
 		// 	const response = await axios.post(`/api/articleViewCount/${articleId}`);
 		// 	console.log('Bài viết đã được cập nhật:', response.data);
@@ -93,9 +93,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 										className="m-[0px] line-clamp-3 text-ellipsis text-base font-[500] text-white sm:text-lg"
 										href={`/article/${slugConvert(articles[0].title)}-${articles[0].id}`}
 									>
-										<h3 className="m-[0px]">
-											{articles[0].title}
-										</h3>
+										<h3 className="m-[0px]">{articles[0].title}</h3>
 									</Link>
 									<div className="hidden w-full sm:block">
 										<p className="line-clamp-2 text-ellipsis text-xs font-[300] text-white">
@@ -104,9 +102,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 									</div>
 									<div className="flex w-full items-center gap-[10px]">
 										<div className="flex flex-wrap items-center gap-[10px] text-[#cfcfcf]">
-											<div
-												className="flex items-center gap-[2px] text-xs font-[500] sm:text-sm"
-											>
+											<div className="flex items-center gap-[2px] text-xs font-[500] sm:text-sm">
 												<svg
 													stroke="currentColor"
 													fill="currentColor"
@@ -132,7 +128,11 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 												>
 													<path d="M236,137A108.13,108.13,0,1,1,119,20,12,12,0,0,1,121,44,84.12,84.12,0,1,0,212,135,12,12,0,1,1,236,137ZM116,76v52a12,12,0,0,0,12,12h52a12,12,0,0,0,0-24H140V76a12,12,0,0,0-24,0Zm92,20a16,16,0,1,0-16-16A16,16,0,0,0,208,96ZM176,64a16,16,0,1,0-16-16A16,16,0,0,0,176,64Z" />
 												</svg>
-												<span>{articles[0].createdAt ? format(new Date(articles[0].createdAt), 'dd/MM/yyyy') : 'Không xác định'}</span>
+												<span>
+													{articles[0].createdAt
+														? format(new Date(articles[0].createdAt), 'dd/MM/yyyy')
+														: 'Không xác định'}
+												</span>
 											</span>
 										</div>
 									</div>
@@ -168,9 +168,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 										<h3 className="m-[0px]">{article.title}</h3>
 									</Link>
 									<div className="mt-[5px] flex flex-wrap items-center gap-[4px]  font-[500] text-[#637381] text-xs lg:mt-[8px] lg:gap-[8px]">
-										<div
-											className="flex items-center gap-[2px] text-blue-500"
-										>
+										<div className="flex items-center gap-[2px] text-blue-500">
 											<svg
 												stroke="currentColor"
 												fill="currentColor"
@@ -196,7 +194,11 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 											>
 												<path d="M236,137A108.13,108.13,0,1,1,119,20,12,12,0,0,1,121,44,84.12,84.12,0,1,0,212,135,12,12,0,1,1,236,137ZM116,76v52a12,12,0,0,0,12,12h52a12,12,0,0,0,0-24H140V76a12,12,0,0,0-24,0Zm92,20a16,16,0,1,0-16-16A16,16,0,0,0,208,96ZM176,64a16,16,0,1,0-16-16A16,16,0,0,0,176,64Z" />
 											</svg>
-											<span className="mt-[2px]">{article.createdAt ? format(new Date(article.createdAt), 'dd/MM/yyyy') : 'Không xác định'}</span>
+											<span className="mt-[2px]">
+												{article.createdAt
+													? format(new Date(article.createdAt), 'dd/MM/yyyy')
+													: 'Không xác định'}
+											</span>
 										</span>
 									</div>
 								</div>
@@ -212,7 +214,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 					<Swiper
 						modules={[Navigation, Autoplay]}
 						spaceBetween={20}
-      					slidesPerView={4}
+						slidesPerView={4}
 						navigation
 						autoplay={{ delay: 3000, disableOnInteraction: false }}
 						loop={true}
@@ -273,8 +275,9 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 												<path d="M12 1c6.075 0 11 4.925 11 11s-4.925 11-11 11S1 18.075 1 12 5.925 1 12 1ZM2.5 12a9.5 9.5 0 0 0 9.5 9.5 9.5 9.5 0 0 0 9.5-9.5A9.5 9.5 0 0 0 12 2.5 9.5 9.5 0 0 0 2.5 12Z"></path>
 											</svg>
 											<span className="text-xs">
-												{article.createdAt ? format(new Date(article.createdAt), 'dd/MM/yyyy') : 'Không xác định'}
-
+												{article.createdAt
+													? format(new Date(article.createdAt), 'dd/MM/yyyy')
+													: 'Không xác định'}
 											</span>
 										</span>
 									</div>
@@ -364,7 +367,9 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 																<path d="M12 1c6.075 0 11 4.925 11 11s-4.925 11-11 11S1 18.075 1 12 5.925 1 12 1ZM2.5 12a9.5 9.5 0 0 0 9.5 9.5 9.5 9.5 0 0 0 9.5-9.5A9.5 9.5 0 0 0 12 2.5 9.5 9.5 0 0 0 2.5 12Z"></path>
 															</svg>
 															<span>
-																{article.createdAt ? format(new Date(article.createdAt), 'dd/MM/yyyy') : 'Không xác định'}
+																{article.createdAt
+																	? format(new Date(article.createdAt), 'dd/MM/yyyy')
+																	: 'Không xác định'}
 															</span>
 														</span>
 													</div>
@@ -375,30 +380,30 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
 								</div>
 								{/* Nút "Xem thêm" */}
 								{hasMore && (
-								<div className="mt-[20px] flex w-full justify-center">
-									{isLoading ? (
-										<p>Đang tải</p>
-									) : (
-									<button
-										type="button"
-										onClick={loadMore}
-										className="flex h-[35px] items-center gap-[3px] text-base font-[500] hover:text-blue-500"
-									>
-										<span className="underline">Xem thêm</span>
-										<svg
-										stroke="currentColor"
-										fill="currentColor"
-										strokeWidth={0}
-										viewBox="0 0 512 512"
-										height={18}
-										width={18}
-										xmlns="http://www.w3.org/2000/svg"
-										>
-										<path d="M256 294.1L383 167c9.4-9.4 24.6-9.4 33.9 0s9.3 24.6 0 34L273 345c-9.1 9.1-23.7 9.3-33.1.7L95 201.1c-4.7-4.7-7-10.9-7-17s2.3-12.3 7-17c9.4-9.4 24.6-9.4 33.9 0l127.1 127z" />
-										</svg>
-									</button>
-									)}
-								</div>
+									<div className="mt-[20px] flex w-full justify-center">
+										{isLoading ? (
+											<p>Đang tải</p>
+										) : (
+											<button
+												type="button"
+												onClick={loadMore}
+												className="flex h-[35px] items-center gap-[3px] text-base font-[500] hover:text-blue-500"
+											>
+												<span className="underline">Xem thêm</span>
+												<svg
+													stroke="currentColor"
+													fill="currentColor"
+													strokeWidth={0}
+													viewBox="0 0 512 512"
+													height={18}
+													width={18}
+													xmlns="http://www.w3.org/2000/svg"
+												>
+													<path d="M256 294.1L383 167c9.4-9.4 24.6-9.4 33.9 0s9.3 24.6 0 34L273 345c-9.1 9.1-23.7 9.3-33.1.7L95 201.1c-4.7-4.7-7-10.9-7-17s2.3-12.3 7-17c9.4-9.4 24.6-9.4 33.9 0l127.1 127z" />
+												</svg>
+											</button>
+										)}
+									</div>
 								)}
 							</div>
 						</div>

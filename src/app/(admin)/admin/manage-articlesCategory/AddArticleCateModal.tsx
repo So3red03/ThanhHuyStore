@@ -2,8 +2,7 @@
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
-import { useCallback, useEffect, useState } from 'react';
-import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/storage';
+import { useEffect, useState } from 'react';
 import firebase from '@/app/libs/firebase';
 import AdminModal from '@/app/components/admin/AdminModal';
 import Button from '@/app/components/Button';
@@ -11,7 +10,8 @@ import Input from '@/app/components/inputs/Input';
 import Heading from '@/app/components/Heading';
 import FormWarp from '@/app/components/FormWrap';
 import { useRouter } from 'next/navigation';
-import { Editor } from 'primereact/editor';
+import { MdAdd } from 'react-icons/md';
+import { generateSlug } from '../../../../../utils/Articles';
 
 interface AddArticleCateModalProps {
 	isOpen: boolean;
@@ -27,8 +27,9 @@ const AddArticleCateModal: React.FC<AddArticleCateModalProps> = ({ isOpen, toggl
 		handleSubmit,
 		setValue,
 		watch,
+		getValues,
 		reset,
-		formState: { errors }
+		formState: { errors },
 	} = useForm<FieldValues>();
 
 	const handleOpenModal = () => {
@@ -43,10 +44,10 @@ const AddArticleCateModal: React.FC<AddArticleCateModalProps> = ({ isOpen, toggl
 		}
 	}, [isCategoryCreated, reset]);
 
-	const onSubmit: SubmitHandler<FieldValues> = async data => {
+	const onSubmit: SubmitHandler<FieldValues> = async (data) => {
 		const formattedData = {
 			...data,
-			isActive: data.isActive === 'true'
+			isActive: data.isActive === 'true',
 		};
 		console.log(formattedData);
 		setIsLoading(true);
@@ -58,7 +59,7 @@ const AddArticleCateModal: React.FC<AddArticleCateModalProps> = ({ isOpen, toggl
 				setIsCategoryCreated(true);
 				router.refresh();
 			})
-			.catch(error => {
+			.catch((error) => {
 				toast.error('Có lỗi khi lưu danh mục');
 			})
 			.finally(() => {
@@ -67,7 +68,18 @@ const AddArticleCateModal: React.FC<AddArticleCateModalProps> = ({ isOpen, toggl
 			});
 	};
 
-	const cateOptions = [{ label: 'Hoạt động', value: true }, { label: 'Tạm dừng', value: false }];
+	const cateOptions = [
+		{ label: 'Hoạt động', value: true },
+		{ label: 'Tạm dừng', value: false },
+	];
+
+	const handleSlugUpdate = () => {
+		const nameValue = getValues('name'); // Lấy giá trị của input "name"
+		if (nameValue) {
+			const generatedSlug = generateSlug(nameValue);
+			setValue('slug', generatedSlug); // Cập nhật giá trị trong form
+		}
+	};
 
 	return (
 		<>
@@ -85,13 +97,31 @@ const AddArticleCateModal: React.FC<AddArticleCateModalProps> = ({ isOpen, toggl
 						defaultValue={watch('name')}
 						required
 					/>
+					<div className="flex justify-center items-center w-full gap-2">
+						<Input
+							id="slug"
+							label="Slug"
+							disabled={isLoading}
+							register={register}
+							errors={errors}
+							defaultValue={watch('slug')}
+							required
+						/>
+						<Button
+							label="Đổi"
+							small
+							custom="!gap-1 !w-auto !h-full !text-xs lg:!text-base"
+							icon={MdAdd}
+							onClick={() => handleSlugUpdate()}
+						/>
+					</div>
 					<Input
-						id="slug"
-						label="Slug"
+						id="icon"
+						label="Icon"
 						disabled={isLoading}
 						register={register}
 						errors={errors}
-						defaultValue={watch('slug')}
+						defaultValue={watch('icon')}
 						required
 					/>
 					<Input

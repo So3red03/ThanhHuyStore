@@ -1,7 +1,6 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-import { MessageType } from '../../../../../types';
+import { MessageType, SafeUser } from '../../../../../types';
 import Avatar from './Avatar';
 import { format } from 'date-fns';
 
@@ -9,13 +8,12 @@ interface MessageBoxProps {
 	data: MessageType;
 	isLast: boolean;
 	smallChatBox?: boolean;
+	currentUser: SafeUser | null | undefined;
 }
-const MessageBox: React.FC<MessageBoxProps> = ({ data, isLast, smallChatBox }) => {
-	const session = useSession();
-	const isOwn = session?.data?.user?.email === data?.sender?.email;
-	// console.log(session?.data?.user?.email);
-	// console.log(data?.sender?.email);
+const MessageBox: React.FC<MessageBoxProps> = ({ data, isLast, smallChatBox, currentUser }) => {
 
+	const isOwn = currentUser?.email === data?.sender?.email;
+	
 	return (
 		<div className={`flex gap-3 p-4 ${isOwn ? 'justify-end' : 'justify-start'}`}>
 			<div className={`${isOwn && 'order-1'}`}>

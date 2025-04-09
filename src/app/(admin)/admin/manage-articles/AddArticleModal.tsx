@@ -129,10 +129,17 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
 				toggleOpen();
 			});
 	};
-	const cateOptions = articleCategory.map((cate) => ({
-		label: cate.name, // Hiển thị tên trong combobox
-		value: cate.id, // Gửi id khi chọn
-	}));
+	const cateOptions = articleCategory
+		.map((cate) => {
+			if (cate.name === 'Trang chủ') {
+				return null; // Nếu cate.name là "Trang chủ", trả về null
+			}
+			return {
+				label: cate.name, // Hiển thị tên trong combobox
+				value: cate.id, // Gửi id khi chọn
+			};
+		})
+		.filter((option) => option !== null); // Loại bỏ giá trị null
 
 	return (
 		<>

@@ -5,6 +5,10 @@ import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { MessageType, SafeUser } from '../../../../types';
 import axios from 'axios';
 import Body from '../admin/chat/Body';
+import Image from 'next/image';
+import { FaUser, FaVolumeUp } from 'react-icons/fa';
+import { FaRobot } from 'react-icons/fa6';
+import ChatBaseBot from './ChatbaseBot';
 
 interface ChatBoxClientProps {
 	currentUser: SafeUser | null | undefined;
@@ -16,17 +20,12 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [messages, setMessages] = useState<MessageType[]>();
 	const [chatRoomId, setChatRoomId] = useState<string>();
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const [isAiChat, setIsAiChat] = useState(false);
 	const bottomRef = useRef<HTMLDivElement>(null);
-	const {
-		register,
-		handleSubmit,
-		setValue,
-		formState: { errors },
-	} = useForm<FieldValues>({
-		defaultValues: {
-			message: '',
-		},
-	});
+
+	const { register, handleSubmit, setValue } = useForm<FieldValues>();
+
 	const toggleChat = () => {
 		if (isChatOpen) {
 			setIsChatOpen(false);
@@ -39,27 +38,27 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
 		}
 	};
 
-	// useEffect(() => {
-	// 	const getChatRoomId = async () => {
-	// 		try {
-	// 			const response = await axios.post('/api/conversation', { userId: '6672c8928fd20efba9fafee4' });
-	// 			const { id: chatRoomId } = response.data;
-	// 			localStorage.setItem('chatRoomId', chatRoomId);
-	// 			loadMessages(chatRoomId); // Lấy tin nhắn sau khi có chatRoomId
-	// 			setChatRoomId(chatRoomId);
-	// 		} catch (error) {
-	// 			console.error('Error getting or creating chat room:', error);
-	// 		}
-	// 	};
+	useEffect(() => {
+		const getChatRoomId = async () => {
+			try {
+				const response = await axios.post('/api/conversation', { userId: '6672c8928fd20efba9fafee4' });
+				const { id: chatRoomId } = response.data;
+				localStorage.setItem('chatRoomId', chatRoomId);
+				loadMessages(chatRoomId); // Lấy tin nhắn sau khi có chatRoomId
+				setChatRoomId(chatRoomId);
+			} catch (error) {
+				console.error('Error getting or creating chat room:', error);
+			}
+		};
 
-	// 	const savedChatRoomId = localStorage.getItem('chatRoomId');
-	// 	if (savedChatRoomId) {
-	// 		loadMessages(savedChatRoomId); // Lấy tin nhắn nếu có sẵn chatRoomId
-	// 		setChatRoomId(savedChatRoomId);
-	// 	} else {
-	// 		getChatRoomId();
-	// 	}
-	// }, []);
+		const savedChatRoomId = localStorage.getItem('chatRoomId');
+		if (savedChatRoomId) {
+			loadMessages(savedChatRoomId); // Lấy tin nhắn nếu có sẵn chatRoomId
+			setChatRoomId(savedChatRoomId);
+		} else {
+			getChatRoomId();
+		}
+	}, []);
 
 	// Hàm để tải tin nhắn
 	const loadMessages = async (chatroomId: string) => {
@@ -135,30 +134,84 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
 						<div>ThanhHuy Store</div>
 						<div className="font-light text-slate-100">Chat với chúng tôi</div>
 					</div>
-					<button className="text-white text-3xl" onClick={toggleChat}>
-						&times;
-					</button>
+					<div className="flex gap-1">
+						<button
+							className="text-white select-none text-2xl w-7 h-7 flex items-center justify-center bg-gray-700 hover:bg-slate-600 rounded-full"
+							onClick={() => setIsMenuOpen(!isMenuOpen)}
+						>
+							&equiv;
+						</button>
+						{/* Dropdown menu với hiệu ứng CSS */}
+						<div
+							className={`absolute z-30 right-9 top-14 bg-white shadow-lg rounded-md w-56 transition-all duration-200 ease-in-out
+							${isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}
+						>
+							<div className="relative">
+								<div className="absolute -top-1 right-5 w-3 h-3 bg-white rotate-45"></div>
+								<div className="p-2">
+									<button
+										onClick={() => {
+											setIsAiChat(true);
+											setIsMenuOpen(false);
+										}}
+										className="flex items-center gap-2 w-full px-3 py-2 text-sm text-black hover:bg-gray-100 rounded"
+									>
+										<FaRobot className="text-gray-600" />
+										<span>Tư vấn với siêu AI</span>
+									</button>
+									<button
+										onClick={() => {
+											setIsAiChat(false);
+											setIsMenuOpen(false);
+										}}
+										className="flex items-center gap-2 w-full px-3 py-2 text-sm text-black hover:bg-gray-100 rounded"
+									>
+										<FaUser className="text-gray-600" />
+										<span>Tư vấn với Admin</span>
+									</button>
+								</div>
+							</div>
+						</div>
+						<button
+							className="text-white select-none text-3xl w-7 h-7 flex items-center justify-center bg-gray-700 hover:bg-slate-600 rounded-full"
+							onClick={toggleChat}
+						>
+							&times;
+						</button>
+					</div>
 				</div>
-				<div className="flex-1 overflow-y-auto">
-					{currentUser ? (
+				<div className={`flex-1 overflow-y-auto ${isAiChat ? '!h-[92.2%]' : '!h-[70%]'}`}>
+					{isAiChat ? (
+						<div className="w-full h-full">
+							<ChatBaseBot />
+						</div>
+					) : currentUser ? (
 						messages && chatRoomId ? (
-							<Body Messages={messages} chatRoomId={chatRoomId} className="w-full h-[310px]" />
+							<Body
+								Messages={messages}
+								currentUser={currentUser}
+								chatRoomId={chatRoomId}
+								className="w-full h-[310px]"
+							/>
 						) : (
-							<div>Loading...</div>
+							<div className="bg-[#F7F6FA] w-full h-full flex justify-center items-center">
+								<Image src="/loader2.svg" alt="Loading" width={37} height={37} />
+							</div>
 						)
 					) : (
-						<div>Bạn cần đăng nhập để trò chuyện</div>
+						<div className="text-center">Bạn cần đăng nhập để trò chuyện</div>
 					)}
-
-					<div className="absolute bottom-0 left-0 right-0 max-h-[200px] min-h-[63px] h-[63px] !text-black">
-						<textarea
-							{...register('message')}
-							placeholder="Nhập nội dung..."
-							className="w-full h-full p-4 pt-4 outline-none border-t bg-white font-light text-sm"
-							onKeyDown={handleKeyDown}
-							disabled={currentUser ? false : true}
-						/>
-					</div>
+					{!isAiChat && (
+						<div className="absolute bottom-0 left-0 right-0 max-h-[200px] min-h-[63px] h-[63px] !text-black">
+							<textarea
+								{...register('message')}
+								placeholder="Nhập nội dung..."
+								className="w-full h-full p-4 pt-4 outline-none border-t bg-white font-light text-sm"
+								onKeyDown={handleKeyDown}
+								disabled={currentUser ? false : true}
+							/>
+						</div>
+					)}
 				</div>
 			</div>
 		</>

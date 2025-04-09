@@ -63,7 +63,7 @@ const Categories: React.FC<CategoriesProps> = ({categories}) => {
 						<div className="font-medium text-sm">Tin tức</div>
 					</Link>
 					<Link
-						href={'/comparision'}
+						href={'/comparison'}
 						className={`select-none whitespace-nowrap flex items-center justify-center text-center gap-1 p-2 border-b-2 hover:text-slate-800 hover:border-b-slate-700 cursor-pointer ${
 							selectedComparison ? 'border-b-slate-700 text-slate-800' : 'border-transparent text-slate-500'
 						}`}

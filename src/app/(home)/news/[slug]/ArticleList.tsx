@@ -50,7 +50,7 @@ const ArticleList = ({ articles }: ArticleListProps) => {
 								<path d="M13 6l-1.41 1.41L16.17 12l-4.58 4.59L13 18l6-6z"></path>
 							</svg>
 							<div className="line-clamp-1 min-w-[100px] flex-1 select-none text-ellipsis rounded-[8px] py-[1px] text-sm font-[500] text-[#676767]">
-								{articles[0].category.name}
+								{articles[0]?.category?.name}
 							</div>
 						</div>
 					</div>

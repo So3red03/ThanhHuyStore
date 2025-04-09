@@ -12,10 +12,16 @@ export const getSummary = (content: any) => {
 
 export const generateSlug = (value: string, delimiter: string = '-'): string => {
 	if (!value) return '';
-	return value
+
+	// Chuẩn hóa chuỗi, loại bỏ dấu tiếng Việt
+	const slug = value
+		.normalize('NFD') // Tách dấu khỏi chữ cái
+		.replace(/[\u0300-\u036f]/g, '') // Loại bỏ dấu
 		.toLowerCase() // Chuyển thành chữ thường
 		.replace(/\s+/g, delimiter) // Thay khoảng trắng bằng ký tự phân cách
 		.replace(/[^a-z0-9-]/g, '') // Loại bỏ ký tự đặc biệt
 		.replace(new RegExp(`${delimiter}{2,}`, 'g'), delimiter) // Loại bỏ ký tự phân cách dư thừa
 		.replace(new RegExp(`^${delimiter}|${delimiter}$`, 'g'), ''); // Loại bỏ ký tự phân cách ở đầu và cuối
+
+	return slug;
 };

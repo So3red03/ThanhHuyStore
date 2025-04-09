@@ -15,14 +15,14 @@ const ChatForm: React.FC<ChatFormProps> = ({ chatRoomId }) => {
 		register,
 		handleSubmit,
 		setValue,
-		formState: { errors },
+		formState: { errors }
 	} = useForm<FieldValues>({
 		defaultValues: {
-			message: '',
-		},
+			message: ''
+		}
 	});
 
-	const onSubmit: SubmitHandler<FieldValues> = async (data) => {
+	const onSubmit: SubmitHandler<FieldValues> = async data => {
 		// Xóa rỗng input sau khi gửi
 		setValue('message', '');
 
@@ -30,7 +30,7 @@ const ChatForm: React.FC<ChatFormProps> = ({ chatRoomId }) => {
 			setIsLoading(true);
 			await axios.post('/api/messages', {
 				...data,
-				chatRoomId,
+				chatRoomId
 			});
 		} catch (error) {
 			console.error('Error posting message:', error);
@@ -51,7 +51,7 @@ const ChatForm: React.FC<ChatFormProps> = ({ chatRoomId }) => {
 			<div className="flex items-center gap-2 lg:gap-4">
 				<Input
 					id="message"
-					placeholder="Nhắn ccc"
+					placeholder="Nhập nội dung..."
 					disabled={isLoading}
 					register={register}
 					errors={errors}
