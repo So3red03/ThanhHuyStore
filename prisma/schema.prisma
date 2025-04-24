@@ -1,0 +1,272 @@
+//Config prisma, defind model in db
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+ 
+generator client {
+  provider = "prisma-client-js"
+}
+ 
+model Account {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String          @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?         @db.String
+  access_token      String?         @db.String
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?         @db.String
+  session_state     String?
+ 
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@unique([provider, providerAccountId])
+}
+
+
+model User {
+  id             String             @id @default(auto()) @map("_id") @db.ObjectId
+  name           String?
+  email          String             @unique
+  emailVerified  Boolean?
+  phoneNumber    String?
+  image          String?
+  hashedPassword String?
+  createAt       DateTime           @default(now())
+  updateAt       DateTime           @updatedAt
+  role           Role               @default(USER)
+
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
+  accounts        Account[]
+  orders          Order[]
+  reviews         Review[]
+  articleReviews  ArticleReview[]
+  notifications   Notification[]
+
+  chatRoomIds     String[]          @db.ObjectId
+  chatRoom        ChatRoom[]        @relation(fields: [chatRoomIds], references: [id])
+
+  seenMessageIds  String[]          @db.ObjectId
+  seenMessage     Message[]         @relation("Seen", fields: [seenMessageIds], references: [id])
+  Message         Message[]
+}
+
+model Order {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String            @db.ObjectId
+  amount          Float
+  currency        String
+  status          OrderStatus       @default(pending) 
+  deliveryStatus  DeliveryStatus?   
+  createDate      DateTime          @default(now())
+  paymentIntentId String            @unique
+  phoneNumber     String?
+  address         Address?
+  paymentMethod   String?
+  shippingFee     Float?
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products        CartProductType[]
+}
+
+type CartProductType {
+  id          String
+  name        String
+  description String
+  category    String
+  selectedImg Image
+  quantity    Int
+  price       Float
+  inStock     Int
+}
+
+type Image {
+  color     String
+  colorCode String
+  images    String[]
+}
+
+type Address {
+  city        String
+  country     String
+  line1       String
+  line2       String?
+  postal_code String
+}
+
+model Product {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  description      String
+  price            Float
+  promotionalPrice Float?
+  promotionStart   DateTime?
+  promotionEnd     DateTime?
+  categoryId       String    @db.ObjectId
+  category         Category  @relation(fields: [categoryId], references: [id], onDelete: NoAction)
+  inStock          Int
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  images           Image[]
+  reviews          Review[]
+  notifications    Notification[]
+}
+
+model Category {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  slug        String
+  image       String?
+  icon        String?
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  parentId    String?     @db.ObjectId
+  parent      Category?   @relation("Subcategories", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subcategories Category[] @relation("Subcategories")
+  products    Product[]
+}
+
+model Review {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  productId   String    @db.ObjectId
+  rating      Int
+  comment     String
+  reply       String?
+  createdDate DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Article {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String            @db.ObjectId
+  title       String
+  image       String
+  content     String
+  viewCount   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  reviews     ArticleReview[]
+  categoryId  String?           @db.ObjectId
+  category    ArticleCategory?  @relation(fields: [categoryId], references: [id])
+}
+
+model ArticleReview {
+  id          String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String           @db.ObjectId
+  articleId   String           @db.ObjectId
+  rating      Int?             
+  comment     String?          
+  parentId    String?          @db.ObjectId // ID của bình luận cha (null nếu là bình luận gốc)
+  parent      ArticleReview?   @relation("Replies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction) // Quan hệ với bình luận cha
+  replies     ArticleReview[]  @relation("Replies") 
+  createdDate DateTime         @default(now())
+  updatedAt   DateTime?        @updatedAt
+
+  article     Article          @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model ArticleCategory {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  slug        String?           // Trường này có thể chứa giá trị null, không cần @default(null)
+  description String?
+  icon        String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  Article     Article[]
+}
+
+
+model ChatRoom {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  userIds       String[]        @db.ObjectId
+  messageIds    String[]        @db.ObjectId
+  createdAt     DateTime        @default(now())
+  lastMessageAt DateTime        @default(now())
+  name          String?
+  
+  messages Message[]
+  users    User[]               @relation(fields: [userIds], references: [id])
+}
+
+model Message {
+  id         String             @id @default(auto()) @map("_id") @db.ObjectId
+  chatroomId String             @db.ObjectId
+  senderId   String             @db.ObjectId
+  body       String?
+  image      String?
+  createdAt  DateTime           @default(now())
+  seenIds    String[]           @db.ObjectId
+
+  chatroom ChatRoom             @relation(fields: [chatroomId], references: [id], onDelete: Cascade)
+  sender   User                 @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  seen     User[]               @relation("Seen", fields: [seenIds], references: [id])
+}
+
+model Banner {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  description     String?
+  image           String
+  imageResponsive String
+  startDate       DateTime
+  endDate         DateTime 
+  status          String   
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Notification {  
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String?           @db.ObjectId
+  productId       String?          @db.ObjectId
+  type            NotificationType
+  message         String
+  isRead          Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime?        @updatedAt
+
+  user            User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product         Product?   @relation(fields: [productId], references: [id], onDelete: Cascade)
+}  
+
+enum NotificationType {  
+  ORDER_PLACED  
+  COMMENT_RECEIVED  
+  LOW_STOCK
+}  
+
+enum Role {
+    USER
+    ADMIN
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  canceled
+  completed
+}
+
+enum DeliveryStatus {
+  not_shipped
+  in_transit
+  delivered
+  returning
+  returned
+}
