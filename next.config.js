@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+	reactStrictMode: false,
 	images: {
 		domains: [
 			'm.media-amazon.com',
@@ -7,9 +8,9 @@ const nextConfig = {
 			'firebasestorage.googleapis.com',
 			'file.hstatic.net',
 			'theme.hstatic.net',
-			'static.id.gtech.asia'
-		]
-	}
+			'static.id.gtech.asia',
+		],
+	},
 };
 
 module.exports = nextConfig;

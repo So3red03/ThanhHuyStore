@@ -225,7 +225,10 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
 						register={register}
 						errors={errors}
 						defaultValue={watch('status')}
-						options={['Hoạt động', 'Tạm dừng']}
+						options={[
+							{ value: 'Hoạt động', label: 'Hoạt động' },
+							{ value: 'Tạm dừng', label: 'Tạm dừng' },
+						]}
 						required
 					/>
 					<div className="relative w-full p-3 pt-7 outline-none bg-white font-light border-2 rounded-md transition border-slate-300 focus:border-slate-500">

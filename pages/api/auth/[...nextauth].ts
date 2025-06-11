@@ -155,6 +155,10 @@ export const authOptions: AuthOptions = {
 	// Token đc next-auth mặc định lưu vào cookie
 	session: {
 		strategy: 'jwt',
+		maxAge: 86400, // 2 phút
+	},
+	jwt: {
+		maxAge: 86400, // 2 phút
 	},
 	secret: process.env.NEXTAUTH_SECRET,
 };

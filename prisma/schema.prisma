@@ -48,6 +48,7 @@ model User {
   reviews         Review[]
   articleReviews  ArticleReview[]
   notifications   Notification[]
+  activities      Activity[]
 
   chatRoomIds     String[]          @db.ObjectId
   chatRoom        ChatRoom[]        @relation(fields: [chatRoomIds], references: [id])
@@ -231,7 +232,7 @@ model Banner {
   updatedAt       DateTime  @updatedAt
 }
 
-model Notification {  
+model Notification {
   id              String           @id @default(auto()) @map("_id") @db.ObjectId
   userId          String?           @db.ObjectId
   productId       String?          @db.ObjectId
@@ -243,13 +244,41 @@ model Notification {
 
   user            User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
   product         Product?   @relation(fields: [productId], references: [id], onDelete: Cascade)
-}  
+}
 
-enum NotificationType {  
-  ORDER_PLACED  
-  COMMENT_RECEIVED  
+model Activity {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String       @db.ObjectId
+  type        ActivityType
+  title       String
+  description String?
+  data        Json?        // Flexible data storage for activity-specific information
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  ORDER_PLACED
+  COMMENT_RECEIVED
   LOW_STOCK
-}  
+}
+
+enum ActivityType {
+  ORDER_CREATED
+  ORDER_UPDATED
+  ORDER_CANCELLED
+  PAYMENT_SUCCESS
+  COMMENT
+  REVIEW
+  PROFILE_UPDATED
+  PASSWORD_CHANGED
+  EMAIL_CHANGED
+}
 
 enum Role {
     USER
