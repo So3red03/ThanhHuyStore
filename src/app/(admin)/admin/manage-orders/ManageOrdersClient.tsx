@@ -18,6 +18,9 @@ import NullData from '@/app/components/NullData';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import { FaRegFaceFrown } from 'react-icons/fa6';
 import { FaCheckDouble, FaRegCalendarAlt } from 'react-icons/fa';
+import { MdViewKanban } from 'react-icons/md';
+import { Button } from '@mui/material';
+import Link from 'next/link';
 
 interface ManageOrdersClientProps {
   orders: Order[];
@@ -258,7 +261,18 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders, current
             </div>
           ))}
         </div>
-        <div className='mb-4 mt-5'></div>
+        <div className='mb-4 mt-5 flex justify-between items-center'>
+          <h2 className='text-xl font-semibold'>Danh sách đơn hàng</h2>
+          <Link href='/admin/manage-orders/kanban'>
+            <Button
+              variant='outlined'
+              startIcon={<MdViewKanban />}
+              className='text-blue-600 border-blue-600 hover:bg-blue-50'
+            >
+              Xem Kanban
+            </Button>
+          </Link>
+        </div>
         <div className='h-[600px] w-full'>
           <DataGrid
             rows={rows}
@@ -314,7 +328,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders, current
             <div className='grid grid-cols-4 gap-4 border-b pb-4 mb-8'>
               <div className='border-r border-gray-300'>
                 <h2 className='font-semibold'>Đơn hàng đã đặt</h2>
-                <p>{formatDate(selectedOrder?.createDate)}</p>
+                <p>{selectedOrder?.createDate}</p>
               </div>
               <div className='border-r border-gray-300'>
                 <h2 className='font-semibold'>Tình trạng đặt hàng</h2>
@@ -382,7 +396,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders, current
             <div className='border-t pt-4 mt-8'>
               <div className='flex justify-between'>
                 <p>Tạm tính ({selectedOrder?.products.length} sản phẩm)</p>
-                <p>{formatPrice(selectedOrder?.amount)}</p>
+                <p>{selectedOrder?.amount}</p>
               </div>
               <div className='flex justify-between'>
                 <p>Phí ship</p>
@@ -398,7 +412,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders, current
               </div>
               <div className='flex justify-between font-semibold text-lg mt-4'>
                 <p>Tổng</p>
-                <p>{formatPrice(selectedOrder?.amount)}</p>
+                <p>{selectedOrder?.amount}</p>
               </div>
             </div>
 

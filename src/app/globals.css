@@ -11,35 +11,61 @@
 }
 
 .flex-g-4 {
-	flex: 4;
+  flex: 4;
 }
 
 .overlay-post {
-	background: linear-gradient(180deg, transparent 45%, #101426);
+  background: linear-gradient(180deg, transparent 45%, #101426);
 }
 
 .swiper-button-next,
 .swiper-button-prev {
-	opacity: 0;
-	transition: opacity 0.3s ease;
-	background-color: #16b1ff;
-	border-radius: 100%;
-	width: 40px !important;
-	height: 40px !important;
-	display: flex !important;
-	align-items: center !important;
-	justify-content: center !important;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background-color: #16b1ff;
+  border-radius: 100%;
+  width: 40px !important;
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .swiper:hover .swiper-button-next,
 .swiper:hover .swiper-button-prev {
-	opacity: 1; /* Hiển thị nút khi hover */
+  opacity: 1; /* Hiển thị nút khi hover */
 }
 
 .swiper-button-next::after,
 .swiper-button-prev::after {
-	font-size: 18px !important;
-	font-weight: bold !important;
-	color: white;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  color: white;
+}
+
+/* Custom scrollbar styles for Kanban */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 12px;
+  width: 12px;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+.scrollbar-track-gray-100::-webkit-scrollbar-track {
+  background-color: #f9fafb;
+  border-radius: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-corner {
+  background-color: #f9fafb;
 }

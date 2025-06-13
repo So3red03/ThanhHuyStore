@@ -16,16 +16,16 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'seed':
         const seeded = await seedActivities();
-        return NextResponse.json({ 
-          message: 'Activities seeded successfully', 
-          count: seeded.count 
+        return NextResponse.json({
+          message: 'Activities seeded successfully',
+          count: seeded?.count || 0
         });
 
       case 'clear':
         const cleared = await clearAllActivities();
-        return NextResponse.json({ 
-          message: 'All activities cleared', 
-          count: cleared.count 
+        return NextResponse.json({
+          message: 'All activities cleared',
+          count: cleared?.count || 0
         });
 
       case 'stats':
@@ -37,9 +37,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error: any) {
     console.error('[ACTIVITIES_SEED]', error);
-    return NextResponse.json(
-      { error: 'Internal error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

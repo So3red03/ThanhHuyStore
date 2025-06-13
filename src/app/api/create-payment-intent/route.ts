@@ -9,260 +9,334 @@ import https from 'https';
 const nodemailer = require('nodemailer');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-	apiVersion: '2024-04-10'
+  apiVersion: '2024-04-10'
 });
 
 const calculateOrderAmount = (items: CartProductType[]) => {
-	const totalPrice = items.reduce((acc, item) => {
-		const itemTotal = item.price * item.quantity;
-		return acc + itemTotal;
-	}, 0);
-	return totalPrice;
+  const totalPrice = items.reduce((acc, item) => {
+    const itemTotal = item.price * item.quantity;
+    return acc + itemTotal;
+  }, 0);
+  return totalPrice;
 };
 
 export async function POST(request: Request): Promise<Response> {
-	const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUser();
 
-	if (!currentUser) {
-		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-	}
+  if (!currentUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-	const body = await request.json();
-	const { products, phoneNumber, address, payment_intent_id, shippingFee, paymentMethod } = body;
+  const body = await request.json();
+  const { products, phoneNumber, address, payment_intent_id, shippingFee, paymentMethod, voucher } = body;
 
-	const totalVND = calculateOrderAmount(products);
+  const totalVND = calculateOrderAmount(products);
+  const originalAmount = totalVND + shippingFee;
+  let finalAmount = originalAmount;
+  let discountAmount = 0;
+  let voucherData = null;
 
-	const orderData = {
-		user: { connect: { id: currentUser.id } },
-		amount: totalVND,
-		currency: 'vnd',
-		status: OrderStatus.pending,
-		deliveryStatus: DeliveryStatus.not_shipped,
-		paymentIntentId: payment_intent_id,
-		products: products,
-		phoneNumber: phoneNumber,
-		address: address,
-		shippingFee: shippingFee,
-		paymentMethod: paymentMethod
-	};
+  // Handle voucher if provided
+  if (voucher) {
+    // Validate voucher
+    const voucherValidation = await fetch(`${process.env.NEXTAUTH_URL}/api/voucher/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        voucherId: voucher.id,
+        cartTotal: totalVND
+      })
+    });
 
-	try {
-		if (paymentMethod === 'stripe') {
-			if (payment_intent_id) {
-				const current_intent = await stripe.paymentIntents.retrieve(payment_intent_id);
-				// Webhook
-				if (current_intent && current_intent.status !== 'succeeded') {
-					const updated_intent = await stripe.paymentIntents.update(payment_intent_id, { amount: totalVND });
-					// Update order
-					const existing_order = await prisma.order.findFirst({
-						where: { paymentIntentId: payment_intent_id }
-					});
-					if (!existing_order) {
-						return NextResponse.json({ error: 'Lỗi không tìm thấy đơn hàng trong db' }, { status: 404 });
-					}
-					await prisma.order.update({
-						where: { paymentIntentId: payment_intent_id },
-						data: {
-							amount: totalVND,
-							products: products
-						}
-					});
-					return NextResponse.json({ paymentIntent: updated_intent });
-				}
-			} else {
-				// Create intent bên stripe
-				const paymentIntent = await stripe.paymentIntents.create({
-					amount: totalVND,
-					currency: 'vnd',
-					automatic_payment_methods: { enabled: true }
-				});
+    if (voucherValidation.ok) {
+      const validationResult = await voucherValidation.json();
+      discountAmount = validationResult.discountAmount;
+      finalAmount = originalAmount - discountAmount;
+      voucherData = voucher;
+    }
+  }
 
-				if (!paymentIntent || !paymentIntent.id) {
-					return NextResponse.json({ error: 'Lỗi khi tạo thanh toán.' }, { status: 500 });
-				}
+  const orderData = {
+    user: { connect: { id: currentUser.id } },
+    amount: finalAmount,
+    originalAmount: originalAmount,
+    currency: 'vnd',
+    status: OrderStatus.pending,
+    deliveryStatus: DeliveryStatus.not_shipped,
+    paymentIntentId: payment_intent_id,
+    products: products,
+    phoneNumber: phoneNumber,
+    address: address,
+    shippingFee: shippingFee,
+    paymentMethod: paymentMethod,
+    voucherId: voucherData?.id || null,
+    voucherCode: voucherData?.code || null,
+    discountAmount: discountAmount
+  };
 
-				orderData.paymentIntentId = paymentIntent.id;
-				// Tạo đơn hàng trong db
-				const createdOrder = await prisma.order.create({
-					data: orderData
-				});
+  try {
+    if (paymentMethod === 'stripe') {
+      if (payment_intent_id) {
+        const current_intent = await stripe.paymentIntents.retrieve(payment_intent_id);
+        // Webhook
+        if (current_intent && current_intent.status !== 'succeeded') {
+          const updated_intent = await stripe.paymentIntents.update(payment_intent_id, { amount: finalAmount });
+          // Update order
+          const existing_order = await prisma.order.findFirst({
+            where: { paymentIntentId: payment_intent_id }
+          });
+          if (!existing_order) {
+            return NextResponse.json({ error: 'Lỗi không tìm thấy đơn hàng trong db' }, { status: 404 });
+          }
+          await prisma.order.update({
+            where: { paymentIntentId: payment_intent_id },
+            data: {
+              amount: finalAmount,
+              originalAmount: originalAmount,
+              products: products,
+              voucherId: voucherData?.id || null,
+              voucherCode: voucherData?.code || null,
+              discountAmount: discountAmount
+            }
+          });
+          return NextResponse.json({ paymentIntent: updated_intent });
+        }
+      } else {
+        // Create intent bên stripe
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: finalAmount,
+          currency: 'vnd',
+          automatic_payment_methods: { enabled: true }
+        });
 
-				if (!createdOrder) {
-					return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
-				}
+        if (!paymentIntent || !paymentIntent.id) {
+          return NextResponse.json({ error: 'Lỗi khi tạo thanh toán.' }, { status: 500 });
+        }
 
-				// Gửi email xác nhận đơn hàng
-				await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dỗi đơn hàng: ');
+        orderData.paymentIntentId = paymentIntent.id;
+        // Tạo đơn hàng trong db
+        const createdOrder = await prisma.order.create({
+          data: orderData
+        });
 
-				return NextResponse.json({ paymentIntent });
-			}
-		} else if (paymentMethod === 'cod') {
-			try {
-				orderData.paymentIntentId = `${Date.now()}`;
+        if (!createdOrder) {
+          return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
+        }
 
-				const createdOrder = await prisma.order.create({
-					data: orderData
-				});
+        // Record voucher usage if voucher was used
+        if (voucherData) {
+          try {
+            await fetch(`${process.env.NEXTAUTH_URL}/api/voucher/use`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                voucherId: voucherData.id,
+                orderId: createdOrder.id
+              })
+            });
+          } catch (error) {
+            console.error('Error recording voucher usage:', error);
+          }
+        }
 
-				if (!createdOrder) {
-					return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
-				}
+        // Gửi email xác nhận đơn hàng
+        await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dỗi đơn hàng: ');
 
-				await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dỗi đơn hàng: ');
+        return NextResponse.json({ paymentIntent });
+      }
+    } else if (paymentMethod === 'cod') {
+      try {
+        orderData.paymentIntentId = `${Date.now()}`;
 
-				return NextResponse.json({ createdOrder });
-			} catch (error) {
-				console.log(error);
-				return NextResponse.json(
-					{ error: 'Đã xảy ra lỗi khi xử lý đơn hàng hoặc gửi email.' },
-					{ status: 500 }
-				);
-			}
-		} else if (paymentMethod === 'momo') {
-			orderData.paymentIntentId = `${Date.now()}`;
-			const createdOrder = await prisma.order.create({
-				data: orderData
-			});
+        const createdOrder = await prisma.order.create({
+          data: orderData
+        });
 
-			if (!createdOrder) {
-				return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng trong db.' }, { status: 500 });
-			}
+        if (!createdOrder) {
+          return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
+        }
 
-			// Gửi email xác nhận đơn hàng
-			await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dõi đơn hàng: ');
+        // Record voucher usage if voucher was used
+        if (voucherData) {
+          try {
+            await fetch(`${process.env.NEXTAUTH_URL}/api/voucher/use`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                voucherId: voucherData.id,
+                orderId: createdOrder.id
+              })
+            });
+          } catch (error) {
+            console.error('Error recording voucher usage:', error);
+          }
+        }
 
-			// Tạo thanh toán momo
-			const accessKey = 'F8BBA842ECF85';
-			const secretKey = 'K951B6PE1waDMi640xX08PD3vg6EkVlz';
-			const partnerCode = 'MOMO';
-			const partnerName = 'Test';
-			const storeId = 'MomoTestStore';
-			const redirectUrl = 'localhost:3000/cart/orderconfirmation';
-			const ipnUrl = 'localhost:3000/cart/orderconfirmation';
-			const orderInfo = 'pay with MoMo';
-			const requestType = 'payWithMethod';
-			const amount = totalVND;
-			const orderId = createdOrder.id;
-			const requestId = orderId;
-			const extraData = '';
-			const orderGroupId = '';
-			const autoCapture = true;
-			const lang = 'vi';
+        await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dỗi đơn hàng: ');
 
-			// Tạo raw signature
-			const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
+        return NextResponse.json({ createdOrder });
+      } catch (error) {
+        console.log(error);
+        return NextResponse.json({ error: 'Đã xảy ra lỗi khi xử lý đơn hàng hoặc gửi email.' }, { status: 500 });
+      }
+    } else if (paymentMethod === 'momo') {
+      orderData.paymentIntentId = `${Date.now()}`;
+      const createdOrder = await prisma.order.create({
+        data: orderData
+      });
 
-			// Tạo signature sử dụng HMAC SHA256
-			const signature = crypto
-				.createHmac('sha256', secretKey)
-				.update(rawSignature)
-				.digest('hex');
+      if (!createdOrder) {
+        return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng trong db.' }, { status: 500 });
+      }
 
-			// JSON object gửi đến MoMo endpoint
-			const requestBody = JSON.stringify({
-				partnerCode: partnerCode,
-				partnerName: partnerName,
-				storeId: storeId,
-				requestId: requestId,
-				amount: amount,
-				orderId: orderId,
-				orderInfo: orderInfo,
-				redirectUrl: redirectUrl,
-				ipnUrl: ipnUrl,
-				lang: lang,
-				requestType: requestType,
-				autoCapture: autoCapture,
-				extraData: extraData,
-				orderGroupId: orderGroupId,
-				signature: signature
-			});
+      // Record voucher usage if voucher was used
+      if (voucherData) {
+        try {
+          await fetch(`${process.env.NEXTAUTH_URL}/api/voucher/use`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              voucherId: voucherData.id,
+              orderId: createdOrder.id
+            })
+          });
+        } catch (error) {
+          console.error('Error recording voucher usage:', error);
+        }
+      }
 
-			// Tùy chọn của request
-			const options = {
-				hostname: 'test-payment.momo.vn',
-				port: 443,
-				path: '/v2/gateway/api/create',
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Content-Length': Buffer.byteLength(requestBody)
-				}
-			};
+      // Gửi email xác nhận đơn hàng
+      await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dõi đơn hàng: ');
 
-			// Sử dụng Promises để thực hiện HTTPS request
-			return new Promise((resolve, reject) => {
-				const req = https.request(options, res => {
-					let data = '';
+      // Tạo thanh toán momo
+      const accessKey = 'F8BBA842ECF85';
+      const secretKey = 'K951B6PE1waDMi640xX08PD3vg6EkVlz';
+      const partnerCode = 'MOMO';
+      const partnerName = 'Test';
+      const storeId = 'MomoTestStore';
+      const redirectUrl = 'localhost:3000/cart/orderconfirmation';
+      const ipnUrl = 'localhost:3000/cart/orderconfirmation';
+      const orderInfo = 'pay with MoMo';
+      const requestType = 'payWithMethod';
+      const amount = finalAmount;
+      const orderId = createdOrder.id;
+      const requestId = orderId;
+      const extraData = '';
+      const orderGroupId = '';
+      const autoCapture = true;
+      const lang = 'vi';
 
-					res.on('data', chunk => {
-						data += chunk;
-					});
+      // Tạo raw signature
+      const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
 
-					res.on('end', () => {
-						const jsonResponse = JSON.parse(data);
-						if (res.statusCode === 200) {
-							resolve(NextResponse.json({ payUrl: jsonResponse.payUrl, createdOrder: createdOrder }));
-						} else {
-							resolve(NextResponse.json({ error: jsonResponse }, { status: res.statusCode }));
-						}
-					});
-				});
+      // Tạo signature sử dụng HMAC SHA256
+      const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
 
-				req.on('error', e => {
-					reject(NextResponse.json({ error: e.message }, { status: 500 }));
-				});
+      // JSON object gửi đến MoMo endpoint
+      const requestBody = JSON.stringify({
+        partnerCode: partnerCode,
+        partnerName: partnerName,
+        storeId: storeId,
+        requestId: requestId,
+        amount: amount,
+        orderId: orderId,
+        orderInfo: orderInfo,
+        redirectUrl: redirectUrl,
+        ipnUrl: ipnUrl,
+        lang: lang,
+        requestType: requestType,
+        autoCapture: autoCapture,
+        extraData: extraData,
+        orderGroupId: orderGroupId,
+        signature: signature
+      });
 
-				// Gửi request body
-				req.write(requestBody);
-				req.end();
-			});
-		} else {
-			// Đảm bảo trả về một Response nếu không khớp với bất kỳ paymentMethod nào
-			return NextResponse.json({ error: 'Lỗi không chọn phương thức thanh toán' }, { status: 400 });
-		}
+      // Tùy chọn của request
+      const options = {
+        hostname: 'test-payment.momo.vn',
+        port: 443,
+        path: '/v2/gateway/api/create',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(requestBody)
+        }
+      };
 
-		//Lỗi 500
-		// Tạo thông báo nếu đặt hàng thành công
-		// await prisma.notification.create({
-		// 	data: {
-		// 		userId: currentUser.id, // ID của người đặt hàng
-		// 		productId: products.map((product: any) => product.productId),
-		// 		type: 'ORDER_PLACED',
-		// 		message: `Đơn hàng của bạn đã được đặt thành công`,
-		// 	},
-		// });
-		return NextResponse.json({ error: 'Đơn hàng được tạo thành công' }, { status: 201 });
-	} catch (error) {
-		return NextResponse.json({ error: error }, { status: 500 });
-	}
+      // Sử dụng Promises để thực hiện HTTPS request
+      return new Promise((resolve, reject) => {
+        const req = https.request(options, res => {
+          let data = '';
+
+          res.on('data', chunk => {
+            data += chunk;
+          });
+
+          res.on('end', () => {
+            const jsonResponse = JSON.parse(data);
+            if (res.statusCode === 200) {
+              resolve(NextResponse.json({ payUrl: jsonResponse.payUrl, createdOrder: createdOrder }));
+            } else {
+              resolve(NextResponse.json({ error: jsonResponse }, { status: res.statusCode }));
+            }
+          });
+        });
+
+        req.on('error', e => {
+          reject(NextResponse.json({ error: e.message }, { status: 500 }));
+        });
+
+        // Gửi request body
+        req.write(requestBody);
+        req.end();
+      });
+    } else {
+      // Đảm bảo trả về một Response nếu không khớp với bất kỳ paymentMethod nào
+      return NextResponse.json({ error: 'Lỗi không chọn phương thức thanh toán' }, { status: 400 });
+    }
+
+    //Lỗi 500
+    // Tạo thông báo nếu đặt hàng thành công
+    // await prisma.notification.create({
+    // 	data: {
+    // 		userId: currentUser.id, // ID của người đặt hàng
+    // 		productId: products.map((product: any) => product.productId),
+    // 		type: 'ORDER_PLACED',
+    // 		message: `Đơn hàng của bạn đã được đặt thành công`,
+    // 	},
+    // });
+    return NextResponse.json({ error: 'Đơn hàng được tạo thành công' }, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: error }, { status: 500 });
+  }
 }
 function sendEmail(email: string, content: string) {
-	try {
-		// Cấu hình transporter
-		const transporter = nodemailer.createTransport({
-			host: 'smtp.gmail.com',
-			port: 587,
-			secure: false,
-			service: 'gmail',
-			auth: {
-				user: process.env.GMAIL_USER,
-				pass: process.env.GMAIL_PASS
-			}
-		});
+  try {
+    // Cấu hình transporter
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS
+      }
+    });
 
-		const redirectLink = `http://localhost:3000/account/orders`;
+    const redirectLink = `http://localhost:3000/account/orders`;
 
-		const mailOptions = {
-			from: process.env.GMAIL_USER,
-			to: email,
-			subject: 'Đặt hàng thành công từ ThanhHuy Store',
-			text: `${content} ${redirectLink}`
-		};
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: 'Đặt hàng thành công từ ThanhHuy Store',
+      text: `${content} ${redirectLink}`
+    };
 
-		// Gửi email
-		transporter.sendMail(mailOptions);
-	} catch (error) {
-		console.error('Lỗi khi gửi email:', error);
-		throw new Error('Gửi email thất bại');
-	}
+    // Gửi email
+    transporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error('Lỗi khi gửi email:', error);
+    throw new Error('Gửi email thất bại');
+  }
 }

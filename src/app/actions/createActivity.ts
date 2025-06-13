@@ -1,4 +1,4 @@
-import prisma from '@/libs/prismadb';
+import prisma from '../libs/prismadb';
 import { ActivityType } from '@prisma/client';
 
 export interface CreateActivityParams {
@@ -80,12 +80,7 @@ export async function createOrderActivity(
   });
 }
 
-export async function createPaymentActivity(
-  userId: string,
-  orderId: string,
-  amount: number,
-  paymentMethod?: string
-) {
+export async function createPaymentActivity(userId: string, orderId: string, amount: number, paymentMethod?: string) {
   return createActivity({
     userId,
     type: 'PAYMENT_SUCCESS',

@@ -1,7 +1,6 @@
 // Activity Tracking Components
 export { default as ActivityTimeline } from './ActivityTimeline';
 export { default as AllActivitiesTimeline } from './AllActivitiesTimeline';
-export { default as ActivityDemo } from './ActivityDemo';
 
 // Activity Tracking Hooks and Utils
 export { useUserActivities } from './useUserActivities';

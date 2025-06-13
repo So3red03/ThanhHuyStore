@@ -36,6 +36,22 @@ interface UserDetailsClientProps {
 }
 
 const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
+  // All hooks must be called before any early returns
+  const { activities, loading } = useUserActivities({ user });
+  const router = useRouter();
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors }
+  } = useForm<FieldValues>();
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isUpdatedModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isDelete, setIsDelete] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   // Early return nếu không có user
   if (!user) {
     return (
@@ -45,12 +61,9 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
     );
   }
 
-  const { activities, loading } = useUserActivities({ user });
   const total = user.orders
     .filter(order => order.status === OrderStatus.completed && order.deliveryStatus === DeliveryStatus.delivered)
     .reduce((accumulator, currentValue) => accumulator + currentValue.amount, 0);
-
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   let rows: any = [];
   if (user.orders) {
     rows = user.orders.map((invoice: any) => {
@@ -213,18 +226,6 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
       console.error(error);
     }
   };
-  const router = useRouter();
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors }
-  } = useForm<FieldValues>();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isUpdatedModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [isDelete, setIsDelete] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const toggleUpdateModalOpen = () => {
     setIsUpdateModalOpen(!isUpdatedModalOpen);

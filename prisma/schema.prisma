@@ -49,6 +49,7 @@ model User {
   articleReviews  ArticleReview[]
   notifications   Notification[]
   activities      Activity[]
+  userVouchers    UserVoucher[]
 
   chatRoomIds     String[]          @db.ObjectId
   chatRoom        ChatRoom[]        @relation(fields: [chatRoomIds], references: [id])
@@ -63,14 +64,20 @@ model Order {
   userId          String            @db.ObjectId
   amount          Float
   currency        String
-  status          OrderStatus       @default(pending) 
-  deliveryStatus  DeliveryStatus?   
+  status          OrderStatus       @default(pending)
+  deliveryStatus  DeliveryStatus?
   createDate      DateTime          @default(now())
   paymentIntentId String            @unique
   phoneNumber     String?
   address         Address?
   paymentMethod   String?
   shippingFee     Float?
+
+  // Voucher information
+  voucherId       String?           @db.ObjectId
+  voucherCode     String?
+  discountAmount  Float?            @default(0)
+  originalAmount  Float?
 
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   products        CartProductType[]
@@ -298,4 +305,71 @@ enum DeliveryStatus {
   delivered
   returning
   returned
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum VoucherType {
+  NEW_USER
+  RETARGETING
+  UPSELL
+  LOYALTY
+  EVENT
+  GENERAL
+}
+
+model Voucher {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  code            String      @unique
+  description     String?
+  image           String?
+  discountType    DiscountType
+  discountValue   Float
+  minOrderValue   Float?
+  maxDiscount     Float?
+  quantity        Int
+  usedCount       Int         @default(0)
+  maxUsagePerUser Int         @default(1)
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean     @default(true)
+  voucherType     VoucherType @default(GENERAL)
+  targetUserIds   String[]    @db.ObjectId
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  userVouchers    UserVoucher[]
+}
+
+model UserVoucher {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  voucherId String   @db.ObjectId
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voucher   Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, voucherId])
+}
+
+model Promotion {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  description     String?
+  discountType    DiscountType
+  discountValue   Float
+  maxDiscount     Float?
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean      @default(true)
+  applyToAll      Boolean      @default(false)
+  productIds      String[]     @db.ObjectId
+  categoryIds     String[]     @db.ObjectId
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 }

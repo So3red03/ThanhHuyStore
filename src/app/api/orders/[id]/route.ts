@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '../../../libs/prismadb';
 import { NextResponse } from 'next/server';
+
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   const currentUser = await getCurrentUser();
 
@@ -15,27 +16,18 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   if (status !== undefined) updateData.status = status;
   if (deliveryStatus !== undefined) updateData.deliveryStatus = deliveryStatus;
 
-  const order = await prisma.order.update({
-    where: { id: params.id },
-    data: updateData
-  });
-  return NextResponse.json(order);
-}
-
-export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const order = await prisma.order.findUnique({
-      where: { paymentIntentId: params.id },
-      include: { user: true }
+    const order = await prisma.order.update({
+      where: { id: params.id },
+      data: updateData,
+      include: {
+        user: true
+      }
     });
-
-    if (!order) {
-      return NextResponse.json({ message: 'Order not found' }, { status: 404 });
-    }
-
+    
     return NextResponse.json(order);
   } catch (error) {
-    console.error('Error fetching order:', error);
+    console.error('Error updating order:', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
