@@ -40,13 +40,13 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products }) =
 
   // Lọc sản phẩm mới (trong 30 ngày gần đây)
   const recentProducts = products.filter(product => {
-    const productDate = new Date(product.createDate || product.createdAt);
+    const productDate = new Date(product.createDate || product.createdAt || Date.now());
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     return productDate >= thirtyDaysAgo;
   }).sort((a, b) => {
-    const dateA = new Date(a.createDate || a.createdAt);
-    const dateB = new Date(b.createDate || b.createdAt);
+    const dateA = new Date(a.createDate || a.createdAt || Date.now());
+    const dateB = new Date(b.createDate || b.createdAt || Date.now());
     return dateB.getTime() - dateA.getTime();
   });
 
@@ -69,7 +69,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products }) =
           <option value="">-- Chọn sản phẩm --</option>
           {recentProducts.map((product) => (
             <option key={product.id} value={product.id}>
-              {product.name} - {new Date(product.createDate || product.createdAt).toLocaleDateString('vi-VN')}
+              {product.name} - {new Date(product.createDate || product.createdAt || Date.now()).toLocaleDateString('vi-VN')}
             </option>
           ))}
         </select>
