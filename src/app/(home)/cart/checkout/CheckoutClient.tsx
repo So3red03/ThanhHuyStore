@@ -69,9 +69,8 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
 
     setIsLoading(true);
     if (paymentMethod === 'cod') {
-      handleNextStep();
-      axios
-        .post('/api/create-payment-intent', {
+      try {
+        const response = await axios.post('/api/create-payment-intent', {
           products: cartProducts,
           payment_intent_id: paymentIntent,
           phoneNumber: cartInfo.phone,
@@ -84,26 +83,32 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
           shippingFee: shippingFee,
           paymentMethod: cartInfo.payment,
           voucher: selectedVoucher
-        })
-        .then(res => {
-          if (res.status === 401) {
-            return router.push('/login');
-          }
-          handleSetPaymentIntent(res.data.createdOrder.paymentIntentId);
-          return res.data;
-        })
-        .catch(error => {
-          if (error) return;
-        })
-        .finally(() => {
-          setIsLoading(false);
-          router.push('/cart/orderconfirmation');
         });
+
+        if (response.status === 401) {
+          return router.push('/login');
+        }
+
+        if (response.data.createdOrder) {
+          handleSetPaymentIntent(response.data.createdOrder.paymentIntentId);
+          handleNextStep();
+          toast.success('Đặt hàng thành công!');
+          router.push('/cart/orderconfirmation');
+        } else {
+          throw new Error('Không nhận được thông tin đơn hàng');
+        }
+      } catch (error: any) {
+        console.error('Error creating COD order:', error);
+        toast.error('Đặt đơn thất bại. Vui lòng thử lại!');
+      } finally {
+        setIsLoading(false);
+      }
     } else if (paymentMethod === 'stripe') {
+      setIsLoading(false);
       router.push('/stripecheckout');
     } else if (paymentMethod === 'momo') {
-      axios
-        .post('/api/create-payment-intent', {
+      try {
+        const response = await axios.post('/api/create-payment-intent', {
           products: cartProducts,
           payment_intent_id: paymentIntent,
           phoneNumber: cartInfo.phone,
@@ -116,27 +121,28 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
           shippingFee: shippingFee,
           paymentMethod: cartInfo.payment,
           voucher: selectedVoucher
-        })
-        .then(res => {
-          if (res.status === 401) {
-            return router.push('/login');
-          }
-          console.log('API response:', res.data);
-          router.push(`${res.data.payUrl}`);
-          handleSetPaymentIntent(res.data.createdOrder.paymentIntentId);
-          return res.data;
-        })
-        .catch(error => {
-          console.error('API Error:', error);
-          if (error) return;
-        })
-        .finally(() => {
-          setIsLoading(false);
         });
+
+        if (response.status === 401) {
+          return router.push('/login');
+        }
+
+        if (response.data.payUrl && response.data.createdOrder) {
+          console.log('API response:', response.data);
+          handleSetPaymentIntent(response.data.createdOrder.paymentIntentId);
+          handleNextStep();
+          toast.success('Đang chuyển hướng đến MoMo...');
+          router.push(`${response.data.payUrl}`);
+        } else {
+          throw new Error('Không nhận được URL thanh toán MoMo');
+        }
+      } catch (error: any) {
+        console.error('API Error:', error);
+        toast.error('Đặt đơn thất bại. Vui lòng thử lại!');
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
   };
 
   const toggleOpen = () => {

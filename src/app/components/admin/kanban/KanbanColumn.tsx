@@ -16,7 +16,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, count, ch
       </div>
 
       {/* Content - scrollable */}
-      <div className='p-2 flex-1 overflow-y-auto'>{children}</div>
+      <div className='p-2 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100'>{children}</div>
     </div>
   );
 };

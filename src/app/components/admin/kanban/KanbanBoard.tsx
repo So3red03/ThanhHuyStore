@@ -2,7 +2,7 @@
 
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Order, OrderStatus, DeliveryStatus } from '@prisma/client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import KanbanColumn from './KanbanColumn';
@@ -47,8 +47,14 @@ const KANBAN_COLUMNS = [
   }
 ];
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders, onOrderUpdate }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrderUpdate }) => {
+  const [orders, setOrders] = useState(initialOrders);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Cập nhật orders khi prop thay đổi
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
 
   // Phân loại đơn hàng theo cột (đã cập nhật logic)
   const getOrdersByColumn = (columnId: string) => {
@@ -117,6 +123,19 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders, onOrderUpdate }) => {
           break;
       }
 
+      // Cập nhật optimistic UI trước
+      const updatedOrders = orders.map(order => {
+        if (order.id === orderId) {
+          return {
+            ...order,
+            status: newStatus,
+            deliveryStatus: newDeliveryStatus
+          };
+        }
+        return order;
+      });
+      setOrders(updatedOrders);
+
       // Gọi API cập nhật trạng thái
       await Promise.all([
         axios.put(`/api/order/${orderId}`, { status: newStatus }),
@@ -128,6 +147,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders, onOrderUpdate }) => {
     } catch (error) {
       console.error('Error updating order:', error);
       toast.error('Có lỗi xảy ra khi cập nhật đơn hàng');
+
+      // Rollback optimistic update
+      setOrders(initialOrders);
     } finally {
       setIsLoading(false);
     }

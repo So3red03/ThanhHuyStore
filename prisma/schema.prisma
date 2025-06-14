@@ -51,6 +51,7 @@ model User {
   reviews         Review[]
   articleReviews  ArticleReview[]
   notifications   Notification[]
+  sentNotifications Notification[] @relation("NotificationFromUser")
   activities      Activity[]
   userVouchers    UserVoucher[]
 
@@ -249,14 +250,20 @@ model Notification {
   id              String           @id @default(auto()) @map("_id") @db.ObjectId
   userId          String?           @db.ObjectId
   productId       String?          @db.ObjectId
+  orderId         String?          @db.ObjectId
+  messageId       String?          @db.ObjectId
+  fromUserId      String?          @db.ObjectId
   type            NotificationType
+  title           String
   message         String
+  data            Json?            // Flexible data storage
   isRead          Boolean          @default(false)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime?        @updatedAt
 
   user            User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
   product         Product?   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  fromUser        User?       @relation("NotificationFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
 }
 
 model Activity {
@@ -278,7 +285,9 @@ model Activity {
 enum NotificationType {
   ORDER_PLACED
   COMMENT_RECEIVED
+  MESSAGE_RECEIVED
   LOW_STOCK
+  SYSTEM_ALERT
 }
 
 enum ActivityType {

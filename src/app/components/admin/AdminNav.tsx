@@ -1,8 +1,9 @@
 'use client';
 import Heading from '../Heading';
 import Button from '../Button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { useNotifications } from '@/app/hooks/useNotifications';
 import { MdAdd, MdNotifications, MdNotificationsNone, MdOutlineChat, MdPublic, MdSearch } from 'react-icons/md';
 import AddProductModal from '@/app/(admin)/admin/manage-products/AddProductModal';
 import AddBannerModal from '@/app/(admin)/admin/manage-banner/AddBannerModal';
@@ -60,7 +61,9 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  // Sử dụng notification hook
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(currentUser);
   // Thêm sản phẩm
   const toggleOpen = () => {
     setIsOpen(!isOpen);
@@ -106,6 +109,22 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
   const toggleMesssages = () => {
     setIsNotificationsOpen(false);
     setIsMessagesOpen(!isMessagesOpen);
+  };
+
+  // Mở thông báo và đánh dấu đã đọc
+  const toggleNotifications = async () => {
+    setIsMessagesOpen(false);
+    setIsNotificationsOpen(!isNotificationsOpen);
+
+    if (!isNotificationsOpen) {
+      // Đánh dấu tất cả notifications đã đọc khi mở
+      await markAllAsRead();
+    }
+  };
+
+  // Handle click notification item
+  const handleNotificationClick = async (notificationId: string) => {
+    await markAsRead(notificationId);
   };
 
   // Thêm bài viết
@@ -239,7 +258,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
               )}
             </div>
             {/* Hiển thị tin nhắn */}
-            {/* <div
+            <div
 							className={`absolute top-10 right-[-20px] bg-white z-10 shadow-lg rounded-lg w-72 lg:w-80  transition-opacity duration-300 max-h-[470px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent ${
 								isMessagesOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
 							}`}
@@ -317,10 +336,10 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
 									onClick={() => {}}
 								/>
 							</div>
-						</div> */}
+						</div>
             <div
               className='relative cursor-pointer hover:bg-gray-300 focus:bg-gray-300 rounded-full p-[6px]'
-              // onClick={toggleNotifications}
+              onClick={toggleNotifications}
             >
               <MdNotificationsNone className='text-xl lg:text-2xl cursor-pointer' />
               {unreadCount > 0 && ( // Chỉ hiển thị span nếu có thông báo chưa đọc
@@ -333,7 +352,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
             </div>
 
             {/* Hiển thị thông báo */}
-            {/* <div
+            <div
 							className={`absolute top-10 right-[-20px] bg-white z-10 shadow-lg rounded-lg w-72 lg:w-80  transition-opacity duration-300 max-h-[470px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent ${
 								isNotificationsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
 							}`}
@@ -344,66 +363,32 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
 									{notifications.length}
 								</span>
 							</div>
-							{notifications.map((notification: any) => (
-								<div
-									key={notification.id}
-									className="hover:bg-[#f6f9ff] border-b border-gray-300 flex items-start justify-between p-4 cursor-pointer transition-all duration-300"
-								>
-									<div>
-										{notification.type === 'ORDER_PLACED' && (
-											<>
-												<div className="text-sm font-medium">Thông báo đặt hàng</div>
-												<div className="flex items-center p-4 border-b border-[#CFCFCF]">
-													<Image
-														className="rounded-full object-cover"
-														src="/no-avatar-2.jpg"
-														alt=""
-														width="50"
-														height="50"
-													/>
-													<div className="text-xs text-gray-500">
-														{notification.user.name} vừa đặt hàng
-													</div>
-												</div>
-											</>
-										)}
-										{notification.type === 'COMMENT_RECEIVED' && (
-											<>
-												<div className="text-sm font-medium">Thông báo comment</div>
-												<div className="flex items-center gap-x-3 mt-1">
-													<Image
-														className="rounded-full object-cover"
-														src="/no-avatar-2.jpg"
-														alt={notification.user.name}
-														width="30"
-														height="30"
-													/>
-													<div className="text-xs text-gray-500">
-														{notification.user.name} vừa bình luận
-													</div>
-												</div>
-											</>
-										)}
-										{notification.type === 'LOW_STOCK' && (
-											<>
-												<div className="text-sm font-medium">Thông báo hết hàng</div>
-												<div className="flex items-center gap-x-3 mt-1">
-													<Image
-														className="rounded-full object-cover"
-														src="/no-avatar-2.jpg"
-														alt={notification.user.name}
-														width="30"
-														height="30"
-													/>
-													<div className="text-xs text-gray-500">
-														{notification.products} hết hàng
-													</div>
-												</div>
-											</>
+							{notifications.length === 0 ? (
+								<div className="p-4 text-center text-gray-500">
+									Không có thông báo nào
+								</div>
+							) : (
+								notifications.map((notification: any) => (
+									<div
+										key={notification.id}
+										className={`hover:bg-[#f6f9ff] border-b border-gray-300 flex items-start justify-between p-4 cursor-pointer transition-all duration-300 ${
+											!notification.isRead ? 'bg-blue-50' : ''
+										}`}
+										onClick={() => handleNotificationClick(notification.id)}
+									>
+										<div className="flex-1">
+											<div className="text-sm font-medium">{notification.title}</div>
+											<div className="text-xs text-gray-500 mt-1">{notification.message}</div>
+											<div className="text-xs text-gray-400 mt-1">
+												{new Date(notification.createdAt).toLocaleString('vi-VN')}
+											</div>
+										</div>
+										{!notification.isRead && (
+											<div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
 										)}
 									</div>
-								</div>
-							))}
+								))
+							)}
 							<div className="flex justify-center py-2">
 								<Button
 									label="Tất cả thông báo"
@@ -411,7 +396,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
 									onClick={() => {}}
 								/>
 							</div>
-						</div>  */}
+						</div>
           </div>
           <div className='flex items-center bg-white rounded-lg lg:gap-x-2 gap-x-1'>
             <MdSearch size={18} className='ml-1' />

@@ -3,7 +3,8 @@ import prisma from '../../libs/prismadb';
 import { CartProductType } from '@/app/(home)/product/[productId]/ProductDetails';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
-import { OrderStatus, DeliveryStatus } from '@prisma/client';
+// import { OrderStatus, DeliveryStatus } from '@prisma/client';
+import { NotificationService } from '@/app/libs/notificationService';
 import crypto from 'crypto';
 import https from 'https';
 import axios from 'axios';
@@ -131,21 +132,29 @@ export async function POST(request: Request): Promise<Response> {
 
   // Handle voucher if provided
   if (voucher) {
-    // Validate voucher
-    const voucherValidation = await fetch(`${process.env.NEXTAUTH_URL}/api/voucher/validate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        voucherId: voucher.id,
-        cartTotal: totalVND
-      })
-    });
+    try {
+      // Validate voucher - sử dụng URL tuyệt đối hoặc relative
+      const baseUrl = process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3001}`;
+      const voucherValidation = await fetch(`${baseUrl}/api/voucher/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          voucherId: voucher.id,
+          cartTotal: totalVND
+        })
+      });
 
-    if (voucherValidation.ok) {
-      const validationResult = await voucherValidation.json();
-      discountAmount = validationResult.discountAmount;
-      finalAmount = originalAmount - discountAmount;
-      voucherData = voucher;
+      if (voucherValidation.ok) {
+        const validationResult = await voucherValidation.json();
+        discountAmount = validationResult.discountAmount;
+        finalAmount = originalAmount - discountAmount;
+        voucherData = voucher;
+      } else {
+        console.error('Voucher validation failed:', await voucherValidation.text());
+      }
+    } catch (error) {
+      console.error('Error validating voucher:', error);
+      // Tiếp tục xử lý đơn hàng mà không áp dụng voucher
     }
   }
 
@@ -154,8 +163,8 @@ export async function POST(request: Request): Promise<Response> {
     amount: finalAmount,
     originalAmount: originalAmount,
     currency: 'vnd',
-    status: OrderStatus.pending,
-    deliveryStatus: DeliveryStatus.not_shipped,
+    status: 'pending',
+    deliveryStatus: 'not_shipped',
     paymentIntentId: payment_intent_id,
     products: products,
     phoneNumber: phoneNumber,
@@ -219,7 +228,8 @@ export async function POST(request: Request): Promise<Response> {
         // Record voucher usage if voucher was used
         if (voucherData) {
           try {
-            await fetch(`${process.env.NEXTAUTH_URL}/api/voucher/use`, {
+            const baseUrl = process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3001}`;
+            await fetch(`${baseUrl}/api/voucher/use`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -241,6 +251,22 @@ export async function POST(request: Request): Promise<Response> {
         // Cập nhật danh mục đã mua cho user
         await updateUserPurchasedCategories(currentUser.id, products);
 
+        // Tạo notification cho admin (sẽ gửi cho tất cả admin)
+        const admins = await prisma.user.findMany({
+          where: { role: 'ADMIN' }
+        });
+
+        for (const admin of admins) {
+          await NotificationService.createNotification({
+            userId: admin.id,
+            fromUserId: currentUser.id,
+            type: 'ORDER_PLACED',
+            title: 'Đơn hàng mới',
+            message: `${currentUser.name} vừa đặt đơn hàng mới`,
+            data: { paymentIntentId: payment_intent_id }
+          });
+        }
+
         return NextResponse.json({ paymentIntent });
       }
     } else if (paymentMethod === 'cod') {
@@ -258,7 +284,8 @@ export async function POST(request: Request): Promise<Response> {
         // Record voucher usage if voucher was used
         if (voucherData) {
           try {
-            await fetch(`${process.env.NEXTAUTH_URL}/api/voucher/use`, {
+            const baseUrl = process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3001}`;
+            await fetch(`${baseUrl}/api/voucher/use`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -279,6 +306,23 @@ export async function POST(request: Request): Promise<Response> {
         // Cập nhật danh mục đã mua cho user
         await updateUserPurchasedCategories(currentUser.id, products);
 
+        // Tạo notification cho admin
+        const admins = await prisma.user.findMany({
+          where: { role: 'ADMIN' }
+        });
+
+        for (const admin of admins) {
+          await NotificationService.createNotification({
+            userId: admin.id,
+            orderId: createdOrder.id,
+            fromUserId: currentUser.id,
+            type: 'ORDER_PLACED',
+            title: 'Đơn hàng mới (COD)',
+            message: `${currentUser.name} vừa đặt đơn hàng COD`,
+            data: { orderId: createdOrder.id, paymentMethod: 'cod' }
+          });
+        }
+
         return NextResponse.json({ createdOrder });
       } catch (error) {
         console.log(error);
@@ -297,7 +341,8 @@ export async function POST(request: Request): Promise<Response> {
       // Record voucher usage if voucher was used
       if (voucherData) {
         try {
-          await fetch(`${process.env.NEXTAUTH_URL}/api/voucher/use`, {
+          const baseUrl = process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3001}`;
+          await fetch(`${baseUrl}/api/voucher/use`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -318,6 +363,23 @@ export async function POST(request: Request): Promise<Response> {
 
       // Cập nhật danh mục đã mua cho user
       await updateUserPurchasedCategories(currentUser.id, products);
+
+      // Tạo notification cho admin
+      const admins = await prisma.user.findMany({
+        where: { role: 'ADMIN' }
+      });
+
+      for (const admin of admins) {
+        await NotificationService.createNotification({
+          userId: admin.id,
+          orderId: createdOrder.id,
+          fromUserId: currentUser.id,
+          type: 'ORDER_PLACED',
+          title: 'Đơn hàng mới (MoMo)',
+          message: `${currentUser.name} vừa đặt đơn hàng MoMo`,
+          data: { orderId: createdOrder.id, paymentMethod: 'momo' }
+        });
+      }
 
       // Tạo thanh toán momo
       const accessKey = 'F8BBA842ECF85';

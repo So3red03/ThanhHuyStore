@@ -18,6 +18,11 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({ orders: initial
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // Cập nhật orders khi prop thay đổi
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
+
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'ADMIN') {
       router.push('/');
@@ -25,14 +30,29 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({ orders: initial
     }
   }, [currentUser, router]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsLoading(true);
-    router.refresh();
-    setTimeout(() => setIsLoading(false), 1000);
+    try {
+      // Fetch fresh data
+      const response = await fetch('/api/orders');
+      if (response.ok) {
+        const freshOrders = await response.json();
+        setOrders(freshOrders);
+      } else {
+        // Fallback to router refresh
+        router.refresh();
+      }
+    } catch (error) {
+      console.error('Error refreshing orders:', error);
+      router.refresh();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleOrderUpdate = () => {
-    router.refresh();
+  const handleOrderUpdate = async () => {
+    // Tự động refresh sau khi update
+    await handleRefresh();
   };
 
   if (!currentUser || currentUser.role !== 'ADMIN') {

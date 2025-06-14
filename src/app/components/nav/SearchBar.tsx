@@ -32,18 +32,23 @@ const createSearchKeywords = (productName: string): string => {
 	const normalized = normalizeString(productName);
 	const words = normalized.split(' ');
 
-	// Tạo các từ khóa bổ sung
+	// Tạo các từ khóa bổ sung và biến thể
 	const keywords = [
 		normalized,
 		...words,
 		// Thêm các từ khóa phổ biến
-		normalized.includes('iphone') ? 'dien thoai' : '',
-		normalized.includes('samsung') ? 'dien thoai' : '',
-		normalized.includes('galaxy') ? 'dien thoai' : '',
-		normalized.includes('macbook') ? 'laptop' : '',
-		normalized.includes('ipad') ? 'may tinh bang' : '',
-		normalized.includes('airpods') ? 'tai nghe' : '',
-		normalized.includes('watch') ? 'dong ho' : '',
+		normalized.includes('iphone') || normalized.includes('i phone') ? 'dien thoai iphone apple' : '',
+		normalized.includes('samsung') ? 'dien thoai samsung' : '',
+		normalized.includes('galaxy') ? 'dien thoai samsung galaxy' : '',
+		normalized.includes('macbook') ? 'laptop macbook apple' : '',
+		normalized.includes('ipad') ? 'may tinh bang ipad apple' : '',
+		normalized.includes('airpods') ? 'tai nghe airpods apple' : '',
+		normalized.includes('watch') ? 'dong ho apple watch' : '',
+		// Thêm biến thể cho iPhone
+		normalized.includes('iphone') ? normalized.replace('iphone', 'i phone') : '',
+		normalized.includes('i phone') ? normalized.replace('i phone', 'iphone') : '',
+		// Thêm từ khóa chung
+		'dien thoai', 'smartphone', 'phone'
 	].filter(Boolean).join(' ');
 
 	return keywords;
@@ -57,13 +62,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
 	// Cấu hình Fuse.js cho fuzzy search
 	const fuseOptions = {
 		keys: [
-			{ name: 'name', weight: 0.7 },
-			{ name: 'searchKeywords', weight: 0.3 }
+			{ name: 'name', weight: 0.6 },
+			{ name: 'searchKeywords', weight: 0.3 },
+			{ name: 'brand', weight: 0.1 }
 		],
-		threshold: 0.4, // Độ tương tự (0 = chính xác, 1 = mọi thứ)
-		distance: 100,
-		minMatchCharLength: 2,
-		includeScore: true
+		threshold: 0.6, // Tăng threshold để tìm kiếm rộng hơn
+		distance: 200, // Tăng distance để cho phép sai khác nhiều hơn
+		minMatchCharLength: 1, // Giảm xuống 1 để tìm được từ ngắn
+		includeScore: true,
+		ignoreLocation: true, // Bỏ qua vị trí của từ khóa
+		findAllMatches: true // Tìm tất cả matches
 	};
 
 	// Tạo dữ liệu tìm kiếm với keywords
@@ -113,7 +121,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
 
 		// Lấy kết quả và sắp xếp theo score
 		const filtered = fuseResults
-			.filter(result => result.score && result.score < 0.6) // Chỉ lấy kết quả có độ tương tự cao
+			.filter(result => result.score && result.score < 0.8) // Tăng threshold để lấy nhiều kết quả hơn
 			.map(result => result.item)
 			.slice(0, 8); // Giới hạn 8 kết quả
 
