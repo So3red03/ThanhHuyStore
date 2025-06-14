@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import { OrderStatus, DeliveryStatus } from '@prisma/client';
 import crypto from 'crypto';
 import https from 'https';
+import axios from 'axios';
 const nodemailer = require('nodemailer');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
@@ -18,6 +19,98 @@ const calculateOrderAmount = (items: CartProductType[]) => {
     return acc + itemTotal;
   }, 0);
   return totalPrice;
+};
+
+// Function để gửi thông báo Discord
+const sendDiscordNotification = async (orderData: any, currentUser: any) => {
+  try {
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    if (!webhookUrl) {
+      console.error('Discord webhook URL not configured');
+      return;
+    }
+
+    // Format sản phẩm
+    const productList = orderData.products.map((product: any, index: number) =>
+      `${index + 1}. **${product.name}** - Số lượng: ${product.quantity} - Giá: ${product.price.toLocaleString('vi-VN')}₫`
+    ).join('\n');
+
+    // Tính tổng tiền
+    const totalAmount = orderData.amount.toLocaleString('vi-VN');
+    const originalAmount = orderData.originalAmount.toLocaleString('vi-VN');
+
+    // Format địa chỉ
+    const fullAddress = `${orderData.address.line1}, ${orderData.address.city}, ${orderData.address.country}`;
+
+    const embed = {
+      title: "🛒 **ĐƠN HÀNG MỚI**",
+      color: 0x00ff00, // Màu xanh lá
+      fields: [
+        {
+          name: "👤 **Thông tin khách hàng**",
+          value: `**Tên:** ${currentUser.name || 'N/A'}\n**Email:** ${currentUser.email}\n**SĐT:** ${orderData.phoneNumber}`,
+          inline: false
+        },
+        {
+          name: "📍 **Địa chỉ giao hàng**",
+          value: fullAddress,
+          inline: false
+        },
+        {
+          name: "🛍️ **Sản phẩm đặt mua**",
+          value: productList,
+          inline: false
+        },
+        {
+          name: "💰 **Thông tin thanh toán**",
+          value: `**Tổng tiền hàng:** ${originalAmount}₫\n**Phí ship:** ${orderData.shippingFee.toLocaleString('vi-VN')}₫\n**Giảm giá:** ${orderData.discountAmount.toLocaleString('vi-VN')}₫\n**Tổng thanh toán:** ${totalAmount}₫\n**Phương thức:** ${orderData.paymentMethod.toUpperCase()}`,
+          inline: false
+        }
+      ],
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: "ThanhHuy Store - Đơn hàng mới"
+      }
+    };
+
+    await axios.post(webhookUrl, {
+      embeds: [embed]
+    });
+
+    console.log('Discord notification sent successfully');
+  } catch (error) {
+    console.error('Error sending Discord notification:', error);
+  }
+};
+
+// Function để cập nhật danh mục đã mua của user
+const updateUserPurchasedCategories = async (userId: string, products: CartProductType[]) => {
+  try {
+    // Lấy danh mục từ các sản phẩm đã mua
+    const categories = products.map(product => product.category);
+    const uniqueCategories = [...new Set(categories)];
+
+    // Lấy danh mục đã mua trước đó của user
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { purchasedCategories: true }
+    });
+
+    if (user) {
+      // Gộp danh mục mới với danh mục cũ
+      const allCategories = [...new Set([...user.purchasedCategories, ...uniqueCategories])];
+
+      // Cập nhật user
+      await prisma.user.update({
+        where: { id: userId },
+        data: { purchasedCategories: allCategories }
+      });
+
+      console.log(`Updated purchased categories for user ${userId}:`, allCategories);
+    }
+  } catch (error) {
+    console.error('Error updating user purchased categories:', error);
+  }
 };
 
 export async function POST(request: Request): Promise<Response> {
@@ -142,6 +235,12 @@ export async function POST(request: Request): Promise<Response> {
         // Gửi email xác nhận đơn hàng
         await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dỗi đơn hàng: ');
 
+        // Gửi thông báo Discord
+        await sendDiscordNotification(orderData, currentUser);
+
+        // Cập nhật danh mục đã mua cho user
+        await updateUserPurchasedCategories(currentUser.id, products);
+
         return NextResponse.json({ paymentIntent });
       }
     } else if (paymentMethod === 'cod') {
@@ -173,6 +272,12 @@ export async function POST(request: Request): Promise<Response> {
         }
 
         await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dỗi đơn hàng: ');
+
+        // Gửi thông báo Discord
+        await sendDiscordNotification(orderData, currentUser);
+
+        // Cập nhật danh mục đã mua cho user
+        await updateUserPurchasedCategories(currentUser.id, products);
 
         return NextResponse.json({ createdOrder });
       } catch (error) {
@@ -207,6 +312,12 @@ export async function POST(request: Request): Promise<Response> {
 
       // Gửi email xác nhận đơn hàng
       await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dõi đơn hàng: ');
+
+      // Gửi thông báo Discord
+      await sendDiscordNotification(orderData, currentUser);
+
+      // Cập nhật danh mục đã mua cho user
+      await updateUserPurchasedCategories(currentUser.id, products);
 
       // Tạo thanh toán momo
       const accessKey = 'F8BBA842ECF85';

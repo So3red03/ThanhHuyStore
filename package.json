@@ -33,6 +33,7 @@
     "eslint-config-next": "14.2.3",
     "exact": "^1.0.1",
     "firebase": "^10.12.2",
+    "fuse.js": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "micro": "^10.0.1",
     "moment": "^2.30.1",

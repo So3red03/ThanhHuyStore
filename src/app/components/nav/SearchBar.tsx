@@ -1,6 +1,5 @@
 'use client';
 
-import { Product } from '@prisma/client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import queryString from 'query-string';
@@ -10,15 +9,71 @@ import { formatPrice } from '../../../../utils/formatPrice';
 import Image from 'next/image';
 import ProductCard from '../products/ProductCard';
 import { slugConvert } from '../../../../utils/Slug';
+import Fuse from 'fuse.js';
 
 interface SearchBarProps {
 	products: any[];
 }
 
+// Utility function để normalize chuỗi
+const normalizeString = (str: string): string => {
+	return str
+		.toLowerCase()
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '') // Bỏ dấu tiếng Việt
+		.replace(/đ/g, 'd')
+		.replace(/Đ/g, 'D')
+		.replace(/\s+/g, ' ') // Thay thế nhiều khoảng trắng bằng 1 khoảng trắng
+		.trim();
+};
+
+// Utility function để tạo từ khóa tìm kiếm từ tên sản phẩm
+const createSearchKeywords = (productName: string): string => {
+	const normalized = normalizeString(productName);
+	const words = normalized.split(' ');
+
+	// Tạo các từ khóa bổ sung
+	const keywords = [
+		normalized,
+		...words,
+		// Thêm các từ khóa phổ biến
+		normalized.includes('iphone') ? 'dien thoai' : '',
+		normalized.includes('samsung') ? 'dien thoai' : '',
+		normalized.includes('galaxy') ? 'dien thoai' : '',
+		normalized.includes('macbook') ? 'laptop' : '',
+		normalized.includes('ipad') ? 'may tinh bang' : '',
+		normalized.includes('airpods') ? 'tai nghe' : '',
+		normalized.includes('watch') ? 'dong ho' : '',
+	].filter(Boolean).join(' ');
+
+	return keywords;
+};
+
 const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
-	const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-	const [searchTerm, setSearchTerm] = useState('');
+	const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+	const [searchTerm, setSearchTerm] = useState('');	
 	const router = useRouter();
+
+	// Cấu hình Fuse.js cho fuzzy search
+	const fuseOptions = {
+		keys: [
+			{ name: 'name', weight: 0.7 },
+			{ name: 'searchKeywords', weight: 0.3 }
+		],
+		threshold: 0.4, // Độ tương tự (0 = chính xác, 1 = mọi thứ)
+		distance: 100,
+		minMatchCharLength: 2,
+		includeScore: true
+	};
+
+	// Tạo dữ liệu tìm kiếm với keywords
+	const searchData = products?.map(product => ({
+		...product,
+		brand: product.brand || 'Apple', // Default brand nếu chưa có
+		searchKeywords: createSearchKeywords(product.name)
+	}));
+
+	const fuse = new Fuse(searchData, fuseOptions);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -42,15 +97,26 @@ const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
 
 	// Khi người dùng gõ ký tự vào ô tìm kiếm
 	const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const seachValue = e.target.value;
-		setSearchTerm(seachValue);
+		const searchValue = e.target.value;
+		setSearchTerm(searchValue);
 
-		if (seachValue.trim() === '') {
+		if (searchValue.trim() === '') {
 			setFilteredProducts([]);
 			return;
 		}
 
-		const filtered = products.filter(product => product.name.toLowerCase().includes(seachValue.toLowerCase()));
+		// Normalize search term
+		const normalizedSearch = normalizeString(searchValue);
+
+		// Sử dụng Fuse.js để tìm kiếm fuzzy
+		const fuseResults = fuse.search(normalizedSearch);
+
+		// Lấy kết quả và sắp xếp theo score
+		const filtered = fuseResults
+			.filter(result => result.score && result.score < 0.6) // Chỉ lấy kết quả có độ tương tự cao
+			.map(result => result.item)
+			.slice(0, 8); // Giới hạn 8 kết quả
+
 		setFilteredProducts(filtered);
 	};
 

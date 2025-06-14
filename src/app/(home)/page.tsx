@@ -1,17 +1,22 @@
 import { getArticles } from '../actions/getArticlesData';
 import { getBanner } from '../actions/getBannerData';
 import { getParentCategoryAndProductsBySlug } from '../actions/getProducts';
+import { getAllProducts } from '../actions/getAllProducts';
+import { getCurrentUser } from '../actions/getCurrentUser';
 import Container from '../components/Container';
 import DisplayCategory from '../components/DisplayCategory';
 import DisplayNews from '../components/DisplayNews';
 import { HomeBanner } from '../components/HomeBanner';
 import DisplayProductsBySlug from '../components/products/DisplayProductsBySlug';
+import PersonalizedRecommendations from '../components/PersonalizedRecommendations';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
 	const bannerData = await getBanner();
 	const articles = await getArticles();
+	const currentUser = await getCurrentUser();
+	const allProducts = await getAllProducts();
 	const iphone = await getParentCategoryAndProductsBySlug('iphone');
 	const mac = await getParentCategoryAndProductsBySlug('mac');
 	const ipad = await getParentCategoryAndProductsBySlug('ipad');
@@ -27,6 +32,7 @@ export default async function Home() {
 			<div>
 				<DisplayCategory />
 			</div>
+		<PersonalizedRecommendations allProducts={allProducts} currentUser={currentUser} />
 			<Container>
 				<div className="xl:px-[50px]">
 					<DisplayProductsBySlug data={iphone} />

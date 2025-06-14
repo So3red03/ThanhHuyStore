@@ -28,6 +28,7 @@ import CategoryInput from '@/app/components/inputs/CategoryInput';
 import 'moment/locale/vi';
 import NullData from '@/app/components/NullData';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
+import SendNewProductEmail from '@/app/components/admin/SendNewProductEmail';
 import Image from 'next/image';
 import { Editor } from 'primereact/editor';
 import { ImageType } from './AddProductModal';
@@ -406,6 +407,9 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({ products, c
 							</div>
 						</div>
 					))}
+				</div>
+				<div className="mb-4 mt-5">
+					<SendNewProductEmail products={products} />
 				</div>
 				<div className="mb-4 mt-5"></div>
 				<div className="h-[600px] w-full">
