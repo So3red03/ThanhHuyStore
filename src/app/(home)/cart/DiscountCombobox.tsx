@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiChevronDown, FiChevronUp, FiSearch } from 'react-icons/fi';
 import { formatPrice } from '../../../../utils/formatPrice';
 import { useCart } from '../../hooks/useCart';
@@ -13,7 +13,6 @@ interface Voucher {
   discountType: 'PERCENTAGE' | 'FIXED';
   discountValue: number;
   minOrderValue?: number;
-  maxDiscount?: number;
   quantity: number;
   usedCount: number;
   maxUsagePerUser: number;
@@ -33,11 +32,26 @@ const DiscountComboBox: React.FC<DiscountComboBoxProps> = ({ cartTotal = 0 }) =>
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
+  const comboboxRef = useRef<HTMLDivElement>(null);
   // Use cartTotalAmount from useCart if cartTotal is not provided
   const totalAmount = cartTotal || cartTotalAmount;
 
   const toggleOpen = () => setIsOpen(!isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   // Fetch vouchers from API
   useEffect(() => {
@@ -53,17 +67,17 @@ const DiscountComboBox: React.FC<DiscountComboBoxProps> = ({ cartTotal = 0 }) =>
       }
     };
 
-    if (isOpen) {
-      fetchVouchers();
-    }
-  }, [isOpen]);
+    fetchVouchers();
+  }, []);
 
   // Filter vouchers based on search term and cart total
   const filteredVouchers = vouchers.filter(voucher => {
     const matchesSearch =
       voucher.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       voucher.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const meetsMinOrder = !voucher.minOrderValue || totalAmount >= voucher.minOrderValue;
+
     return matchesSearch && meetsMinOrder && voucher.isActive;
   });
 
@@ -103,7 +117,7 @@ const DiscountComboBox: React.FC<DiscountComboBoxProps> = ({ cartTotal = 0 }) =>
   };
 
   return (
-    <div className='relative'>
+    <div className='relative' ref={comboboxRef}>
       <div
         className='cursor-pointer flex items-center w-full justify-between bg-white border rounded px-3 py-2 text-blue-600 border-gray-300 hover:border-blue-400 transition-colors'
         onClick={toggleOpen}
@@ -115,19 +129,8 @@ const DiscountComboBox: React.FC<DiscountComboBoxProps> = ({ cartTotal = 0 }) =>
               fill='#1982F9'
             ></path>
           </svg>
-          <span>{selectedVoucher ? `Đã chọn: ${selectedVoucher.code}` : 'Sử dụng mã giảm giá'}</span>
+          <span>{selectedVoucher ? `Đã chọn ${selectedVoucher.code}` : 'Sử dụng mã giảm giá'}</span>
         </div>
-        {selectedVoucher && (
-          <button
-            onClick={e => {
-              e.stopPropagation();
-              handleRemoveVoucher();
-            }}
-            className='text-red-500 hover:text-red-700 text-sm font-medium'
-          >
-            Bỏ
-          </button>
-        )}
         {isOpen ? <FiChevronUp /> : <FiChevronDown />}
       </div>
 
@@ -182,19 +185,16 @@ const DiscountComboBox: React.FC<DiscountComboBoxProps> = ({ cartTotal = 0 }) =>
                       <span className='text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded'>{voucher.voucherType}</span>
                     </div>
                     <p className='text-sm text-gray-700 mb-1'>{voucher.description}</p>
-                    <div className='flex items-center gap-4 text-xs text-gray-500'>
+                    <div className='flex items-center gap-3 text-xs text-gray-500'>
                       <span className='font-medium text-green-600'>{getDiscountDisplay(voucher)}</span>
-                      {voucher.minOrderValue && <span>Đơn tối thiểu {formatPrice(voucher.minOrderValue)}</span>}
-                      {voucher.maxDiscount && voucher.discountType === 'PERCENTAGE' && (
-                        <span>Tối đa {formatPrice(voucher.maxDiscount)}</span>
-                      )}
+                      {voucher.minOrderValue && <span>| Đơn tối thiểu {formatPrice(voucher.minOrderValue)}</span>}
                     </div>
                   </div>
 
                   {/* Hover Effect */}
-                  <div className='opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 font-medium text-sm'>
+                  {/* <div className='opacity-0 group-hover:opacity-100 transition-opacity text-blue-600 font-medium text-sm'>
                     Chọn
-                  </div>
+                  </div> */}
                 </div>
               ))
             )}

@@ -44,7 +44,6 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
             discountType: voucher.discountType,
             discountValue: voucher.discountValue,
             minOrderValue: voucher.minOrderValue,
-            maxDiscount: voucher.maxDiscount,
             quantity: voucher.quantity,
             maxUsagePerUser: voucher.maxUsagePerUser,
             startDate: voucher.startDate ? new Date(voucher.startDate).toISOString().slice(0, 16) : '',
@@ -141,7 +140,6 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
         image: imageUrl,
         discountValue: parseFloat(data.discountValue),
         minOrderValue: data.minOrderValue ? parseFloat(data.minOrderValue) : null,
-        maxDiscount: data.maxDiscount ? parseFloat(data.maxDiscount) : null,
         quantity: parseInt(data.quantity),
         maxUsagePerUser: data.maxUsagePerUser ? parseInt(data.maxUsagePerUser) : 1,
         startDate: new Date(data.startDate).toISOString(),
@@ -293,27 +291,15 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
           />
         </div>
 
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <Input
-            id='minOrderValue'
-            label='Giá trị đơn tối thiểu (VNĐ)'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='number'
-            placeholder='VD: 300000'
-          />
-
-          <Input
-            id='maxDiscount'
-            label='Giảm tối đa (VNĐ)'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='number'
-            placeholder='VD: 100000 (chỉ cho loại %)'
-          />
-        </div>
+        <Input
+          id='minOrderValue'
+          label='Giá trị đơn tối thiểu (VNĐ)'
+          disabled={isLoading}
+          register={register}
+          errors={errors}
+          type='number'
+          placeholder='VD: 300000'
+        />
 
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <Input

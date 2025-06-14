@@ -16,7 +16,6 @@ interface Voucher {
   discountType: 'PERCENTAGE' | 'FIXED';
   discountValue: number;
   minOrderValue?: number;
-  maxDiscount?: number;
   quantity: number;
   usedCount: number;
   maxUsagePerUser: number;
@@ -258,9 +257,6 @@ export const CartContextProvider = (props: Props) => {
 
       if (selectedVoucher.discountType === 'PERCENTAGE') {
         discount = (cartTotalAmount * selectedVoucher.discountValue) / 100;
-        if (selectedVoucher.maxDiscount && discount > selectedVoucher.maxDiscount) {
-          discount = selectedVoucher.maxDiscount;
-        }
       } else {
         discount = selectedVoucher.discountValue;
       }

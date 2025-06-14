@@ -48,7 +48,6 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
             description: promotion.description,
             discountType: promotion.discountType,
             discountValue: promotion.discountValue,
-            maxDiscount: promotion.maxDiscount,
             startDate: promotion.startDate ? new Date(promotion.startDate).toISOString().slice(0, 16) : '',
             endDate: promotion.endDate ? new Date(promotion.endDate).toISOString().slice(0, 16) : '',
             applyToAll: promotion.applyToAll,
@@ -187,16 +186,6 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
             placeholder='VD: 20 (cho 20% hoặc 20000 VNĐ)'
           />
         </div>
-
-        <Input
-          id='maxDiscount'
-          label='Giảm tối đa (VNĐ)'
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          type='number'
-          placeholder='VD: 500000 (chỉ cho loại %)'
-        />
 
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <Input

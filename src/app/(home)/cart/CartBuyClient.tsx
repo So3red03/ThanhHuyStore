@@ -56,8 +56,8 @@ const CartBuyClient: React.FC<CartBuyClientProps> = ({ currentUser }) => {
         return <ItemContent key={product.id} item={product} />;
       })}
       <div className='py-6 border-t border-b'>
-        <VoucherDisplay />
         <DiscountComboBox />
+        <VoucherDisplay />
       </div>
       <div className='flex flex-col mt-5 gap-4'>
         <div className='flex justify-between '>

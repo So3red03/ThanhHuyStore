@@ -89,7 +89,6 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
         discountType: voucher.discountType,
         discountValue: voucher.discountValue,
         minOrderValue: voucher.minOrderValue,
-        maxDiscount: voucher.maxDiscount,
         quantity: voucher.quantity,
         usedCount: usageCount,
         usagePercentage: usagePercentage.toFixed(1),

@@ -188,8 +188,8 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
         </div>
 
         <div className='py-6 border-t border-b'>
-          <VoucherDisplay />
           <DiscountComboBox />
+          <VoucherDisplay />
         </div>
 
         <div className='p-6 border-b'>

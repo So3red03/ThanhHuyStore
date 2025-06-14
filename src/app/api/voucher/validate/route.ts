@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Validate voucher
     const now = new Date();
-    
+
     if (!voucher.isActive) {
       return NextResponse.json({ error: 'Voucher is not active' }, { status: 400 });
     }
@@ -45,9 +45,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (voucher.minOrderValue && cartTotal < voucher.minOrderValue) {
-      return NextResponse.json({ 
-        error: `Minimum order value is ${voucher.minOrderValue.toLocaleString('vi-VN')} VNĐ` 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: `Minimum order value is ${voucher.minOrderValue.toLocaleString('vi-VN')} VNĐ`
+        },
+        { status: 400 }
+      );
     }
 
     // Check user usage limit
@@ -59,18 +62,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (userVoucherUsage >= voucher.maxUsagePerUser) {
-      return NextResponse.json({ 
-        error: 'You have reached the maximum usage limit for this voucher' 
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: 'You have reached the maximum usage limit for this voucher'
+        },
+        { status: 400 }
+      );
     }
 
     // Calculate discount
     let discountAmount = 0;
     if (voucher.discountType === 'PERCENTAGE') {
       discountAmount = (cartTotal * voucher.discountValue) / 100;
-      if (voucher.maxDiscount && discountAmount > voucher.maxDiscount) {
-        discountAmount = voucher.maxDiscount;
-      }
     } else {
       discountAmount = voucher.discountValue;
     }
@@ -81,7 +84,6 @@ export async function POST(request: NextRequest) {
       discountAmount,
       finalAmount: cartTotal - discountAmount
     });
-
   } catch (error) {
     console.error('Error validating voucher:', error);
     return NextResponse.json({ error: 'Failed to validate voucher' }, { status: 500 });
