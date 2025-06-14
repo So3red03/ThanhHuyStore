@@ -84,27 +84,30 @@ export async function seedActivities() {
         createdAt: new Date(baseTime.getTime() - 7 * 24 * 60 * 60 * 1000) // 1 week ago
       });
 
-      // Review activities
+      // Comment and Review activities (gộp chung)
       activities.push({
         userId: user.id,
-        type: ActivityType.REVIEW,
-        title: 'Đánh giá sản phẩm',
-        description: 'Đã đánh giá sản phẩm iPhone 15 Pro',
+        type: ActivityType.COMMENT_REVIEW,
+        title: 'Bình luận và đánh giá sản phẩm',
+        description: 'Đã bình luận và đánh giá sản phẩm iPhone 15 Pro',
         data: {
           productName: 'iPhone 15 Pro',
-          rating: 5
+          rating: 5,
+          hasComment: true
         },
         createdAt: new Date(baseTime.getTime() - 3 * 24 * 60 * 60 * 1000) // 3 days ago
       });
 
-      // Comment activities
+      // Review only activity
       activities.push({
         userId: user.id,
-        type: ActivityType.COMMENT,
-        title: 'Bình luận sản phẩm',
-        description: 'Đã bình luận ở sản phẩm MacBook Pro M3',
+        type: ActivityType.COMMENT_REVIEW,
+        title: 'Đánh giá sản phẩm',
+        description: 'Đã đánh giá sản phẩm MacBook Pro M3',
         data: {
-          productName: 'MacBook Pro M3'
+          productName: 'MacBook Pro M3',
+          rating: 4,
+          hasComment: false
         },
         createdAt: new Date(baseTime.getTime() - 5 * 24 * 60 * 60 * 1000) // 5 days ago
       });

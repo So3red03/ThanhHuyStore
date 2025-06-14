@@ -140,33 +140,23 @@ export const useUserActivities = ({ user }: UseUserActivitiesProps) => {
         }
       });
 
-      // Tạo activities từ reviews
+      // Tạo activities từ reviews (gộp comment và review)
       user.reviews?.forEach((review: any) => {
+        const hasComment = review.comment && review.comment.trim() !== '';
         activityList.push({
-          id: `review-${review.id}`,
-          type: 'review',
-          title: 'Đánh giá sản phẩm',
-          description: `Đã đánh giá sản phẩm ${review.product?.name || 'N/A'}`,
+          id: `comment-review-${review.id}`,
+          type: 'comment_review',
+          title: hasComment ? 'Bình luận và đánh giá sản phẩm' : 'Đánh giá sản phẩm',
+          description: hasComment
+            ? `Đã bình luận và đánh giá sản phẩm ${review.product?.name || 'N/A'}`
+            : `Đã đánh giá sản phẩm ${review.product?.name || 'N/A'}`,
           timestamp: new Date(review.createdDate),
           data: {
             productName: review.product?.name,
-            rating: review.rating
+            rating: review.rating,
+            hasComment
           }
         });
-
-        // Nếu có comment trong review
-        if (review.comment) {
-          activityList.push({
-            id: `comment-${review.id}`,
-            type: 'comment',
-            title: 'Bình luận sản phẩm',
-            description: `Đã bình luận ở sản phẩm ${review.product?.name || 'N/A'}`,
-            timestamp: new Date(review.createdDate.getTime() + 2 * 60 * 1000), // 2 phút sau review
-            data: {
-              productName: review.product?.name
-            }
-          });
-        }
       });
 
       // Thêm một số activities mẫu cho profile updates

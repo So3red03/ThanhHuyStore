@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
 import { buffer } from 'micro';
 import { OrderStatus } from '@prisma/client';
+import prisma from '../../src/app/libs/prismadb';
 
 // Tránh parse dữ liệu vì bắt buộc dữ liệu là raw để xác minh chữ kí của stripe
 export const config = {
@@ -39,10 +40,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			const charge: any = event.data.object as Stripe.Charge;
 
 			if (typeof charge.payment_intent === 'string') {
-				await prisma?.order.update({
+				const updatedOrder = await prisma?.order.update({
 					where: { paymentIntentId: charge.payment_intent },
 					data: { status: OrderStatus.completed },
 				});
+
+				// Tự động tạo PDF và gửi email
+				if (updatedOrder) {
+					try {
+						const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+						const response = await fetch(`${baseUrl}/api/orders/process-payment`, {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								orderId: updatedOrder.id,
+								paymentIntentId: charge.payment_intent,
+							}),
+						});
+
+						if (!response.ok) {
+							console.error('Failed to process payment:', await response.text());
+						} else {
+							console.log('Payment processed successfully in webhook');
+						}
+					} catch (error) {
+						console.error('Error processing payment in webhook:', error);
+					}
+				}
 			}
 			break;
 		default:

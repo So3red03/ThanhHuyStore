@@ -1,6 +1,12 @@
 'use client';
 
-import { formatPrice } from '../../../../utils/formatPrice';
+// Helper function to format price
+const formatPrice = (price: number): string => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+  }).format(price);
+};
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { FaChartBar } from 'react-icons/fa';
@@ -12,8 +18,7 @@ export interface ActivityItem {
     | 'order_updated'
     | 'order_cancelled'
     | 'payment_success'
-    | 'comment'
-    | 'review'
+    | 'comment_review'
     | 'profile_updated'
     | 'password_changed'
     | 'email_changed';
@@ -27,6 +32,8 @@ export interface ActivityItem {
     amount?: number;
     status?: string;
     rating?: number;
+    pdfFileId?: string;
+    paymentIntentId?: string;
     products?: Array<{
       id: string;
       name: string;
@@ -55,10 +62,8 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
         return '❌';
       case 'payment_success':
         return '💳';
-      case 'comment':
-        return '🗨️';
-      case 'review':
-        return '🌟';
+      case 'comment_review':
+        return '💬⭐';
       case 'profile_updated':
         return '📝';
       case 'password_changed':
@@ -79,8 +84,7 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
         return { bg: 'bg-[#EAF9E0]', dot: 'bg-[#56CA00]' };
       case 'order_cancelled':
         return { bg: 'bg-[#FFE5E5]', dot: 'bg-[#FF4444]' };
-      case 'comment':
-      case 'review':
+      case 'comment_review':
         return { bg: 'bg-[#FFF4E6]', dot: 'bg-[#FF8C00]' };
       case 'profile_updated':
       case 'password_changed':
@@ -98,7 +102,7 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
           <div>
             <p className='text-gray-500 mb-2'>{activity.description}</p>
             {activity.data?.products && (
-              <div className='flex'>
+              <div className='flex mb-2'>
                 {activity.data.products.slice(0, 3).map((product, index) => (
                   <img
                     key={index}
@@ -114,6 +118,23 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
                 )}
               </div>
             )}
+            {activity.data?.pdfFileId && (
+              <div className='flex items-center w-fit bg-neutral-200 p-1 px-3 rounded-md'>
+                <img
+                  src='https://demos.themeselection.com/materio-vuetify-vuejs-laravel-admin-template/demo-1/build/assets/pdf-tnlsS08R.png'
+                  alt='invoice'
+                  className='w-5 h-5 mr-2'
+                />
+                <a
+                  href={`/api/pdf/${activity.data.pdfFileId}`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='text-blue-500 hover:underline'
+                >
+                  invoice.pdf
+                </a>
+              </div>
+            )}
           </div>
         );
 
@@ -121,22 +142,29 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
         return (
           <div>
             <p className='text-gray-500 mb-2'>
-              Đã thanh toán đơn hàng #{activity.data?.orderId} – tổng tiền {formatPrice(activity.data?.amount || 0)}
+              Đã thanh toán đơn hàng #{activity.data?.paymentIntentId?.slice(-6).toUpperCase()} – tổng tiền {formatPrice(activity.data?.amount || 0)}
             </p>
-            <div className='flex items-center w-fit bg-neutral-200 p-1 px-3 rounded-md'>
-              <img
-                src='https://demos.themeselection.com/materio-vuetify-vuejs-laravel-admin-template/demo-1/build/assets/pdf-tnlsS08R.png'
-                alt='invoice'
-                className='w-5 h-5 mr-2'
-              />
-              <a href='#' className='text-blue-500'>
-                invoice.pdf
-              </a>
-            </div>
+            {activity.data?.pdfFileId && (
+              <div className='flex items-center w-fit bg-neutral-200 p-1 px-3 rounded-md'>
+                <img
+                  src='https://demos.themeselection.com/materio-vuetify-vuejs-laravel-admin-template/demo-1/build/assets/pdf-tnlsS08R.png'
+                  alt='invoice'
+                  className='w-5 h-5 mr-2'
+                />
+                <a
+                  href={`/api/pdf/${activity.data.pdfFileId}`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='text-blue-500 hover:underline'
+                >
+                  invoice.pdf
+                </a>
+              </div>
+            )}
           </div>
         );
 
-      case 'comment':
+      case 'comment_review':
         return (
           <div>
             <p className='text-gray-500 mb-2'>{activity.description}</p>
@@ -146,24 +174,19 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
                 <p className='text-sm font-medium'>{userName}</p>
               </div>
             </div>
-          </div>
-        );
-
-      case 'review':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>{activity.description}</p>
-            <div className='flex items-center'>
-              {[...Array(5)].map((_, i) => (
-                <span
-                  key={i}
-                  className={`text-lg ${i < (activity.data?.rating || 0) ? 'text-yellow-400' : 'text-gray-300'}`}
-                >
-                  ⭐
-                </span>
-              ))}
-              <span className='ml-2 text-sm text-gray-600'>({activity.data?.rating}/5)</span>
-            </div>
+            {activity.data?.rating && (
+              <div className='flex items-center mt-2'>
+                {[...Array(5)].map((_, i) => (
+                  <span
+                    key={i}
+                    className={`text-lg ${i < (activity.data?.rating || 0) ? 'text-yellow-400' : 'text-gray-300'}`}
+                  >
+                    ⭐
+                  </span>
+                ))}
+                <span className='ml-2 text-sm text-gray-600'>({activity.data?.rating}/5)</span>
+              </div>
+            )}
           </div>
         );
 

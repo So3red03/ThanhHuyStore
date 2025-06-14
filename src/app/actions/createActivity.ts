@@ -101,30 +101,19 @@ export async function createReviewActivity(
   rating: number,
   hasComment: boolean = false
 ) {
-  if (hasComment) {
-    // Create comment activity
-    await createActivity({
-      userId,
-      type: 'COMMENT',
-      title: 'Bình luận sản phẩm',
-      description: `Đã bình luận ở sản phẩm ${productName}`,
-      data: {
-        productId,
-        productName
-      }
-    });
-  }
-
-  // Create review activity
+  // Create combined comment_review activity
   return createActivity({
     userId,
-    type: 'REVIEW',
-    title: 'Đánh giá sản phẩm',
-    description: `Đã đánh giá sản phẩm ${productName}`,
+    type: 'COMMENT_REVIEW',
+    title: hasComment ? 'Bình luận và đánh giá sản phẩm' : 'Đánh giá sản phẩm',
+    description: hasComment
+      ? `Đã bình luận và đánh giá sản phẩm ${productName}`
+      : `Đã đánh giá sản phẩm ${productName}`,
     data: {
       productId,
       productName,
-      rating
+      rating,
+      hasComment
     }
   });
 }

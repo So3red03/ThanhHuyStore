@@ -225,6 +225,31 @@ export async function POST(request: Request): Promise<Response> {
           return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
         }
 
+        // Tạo ORDER_CREATED activity
+        try {
+          await prisma.activity.create({
+            data: {
+              userId: currentUser.id,
+              type: 'ORDER_CREATED',
+              title: 'Đơn hàng được tạo',
+              description: `Tài khoản vừa tạo đơn hàng #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
+              data: {
+                orderId: createdOrder.id,
+                paymentIntentId: createdOrder.paymentIntentId,
+                amount: createdOrder.amount,
+                paymentMethod: 'stripe',
+                products: products.slice(0, 3).map((product: any) => ({
+                  id: product.id,
+                  name: product.name,
+                  image: product.selectedImg?.images?.[0] || '/placeholder.png'
+                }))
+              },
+            },
+          });
+        } catch (error) {
+          console.error('Error creating ORDER_CREATED activity:', error);
+        }
+
         // Record voucher usage if voucher was used
         if (voucherData) {
           try {
@@ -281,6 +306,31 @@ export async function POST(request: Request): Promise<Response> {
           return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
         }
 
+        // Tạo ORDER_CREATED activity cho COD
+        try {
+          await prisma.activity.create({
+            data: {
+              userId: currentUser.id,
+              type: 'ORDER_CREATED',
+              title: 'Đơn hàng được tạo',
+              description: `Tài khoản vừa tạo đơn hàng COD #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
+              data: {
+                orderId: createdOrder.id,
+                paymentIntentId: createdOrder.paymentIntentId,
+                amount: createdOrder.amount,
+                paymentMethod: 'cod',
+                products: products.slice(0, 3).map((product: any) => ({
+                  id: product.id,
+                  name: product.name,
+                  image: product.selectedImg?.images?.[0] || '/placeholder.png'
+                }))
+              },
+            },
+          });
+        } catch (error) {
+          console.error('Error creating ORDER_CREATED activity for COD:', error);
+        }
+
         // Record voucher usage if voucher was used
         if (voucherData) {
           try {
@@ -323,6 +373,21 @@ export async function POST(request: Request): Promise<Response> {
           });
         }
 
+        // Tự động tạo PDF và gửi email cho COD
+        try {
+          const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+          await fetch(`${baseUrl}/api/orders/process-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: createdOrder.id,
+              paymentIntentId: createdOrder.paymentIntentId,
+            }),
+          });
+        } catch (error) {
+          console.error('Error processing COD payment:', error);
+        }
+
         return NextResponse.json({ createdOrder });
       } catch (error) {
         console.log(error);
@@ -336,6 +401,31 @@ export async function POST(request: Request): Promise<Response> {
 
       if (!createdOrder) {
         return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng trong db.' }, { status: 500 });
+      }
+
+      // Tạo ORDER_CREATED activity cho MoMo
+      try {
+        await prisma.activity.create({
+          data: {
+            userId: currentUser.id,
+            type: 'ORDER_CREATED',
+            title: 'Đơn hàng được tạo',
+            description: `Tài khoản vừa tạo đơn hàng MoMo #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
+            data: {
+              orderId: createdOrder.id,
+              paymentIntentId: createdOrder.paymentIntentId,
+              amount: createdOrder.amount,
+              paymentMethod: 'momo',
+              products: products.slice(0, 3).map((product: any) => ({
+                id: product.id,
+                name: product.name,
+                image: product.selectedImg?.images?.[0] || '/placeholder.png'
+              }))
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Error creating ORDER_CREATED activity for MoMo:', error);
       }
 
       // Record voucher usage if voucher was used
