@@ -86,7 +86,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       purchaseHistory.forEach((order: any) => {
         order.products.forEach((product: any) => {
           interestedCategories.add(product.category);
-          interestedBrands.add(product.brand);
+          interestedBrands.add(product.brand || 'Apple'); // Handle null brand
         });
       });
 

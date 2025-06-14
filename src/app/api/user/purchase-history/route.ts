@@ -14,7 +14,7 @@ export async function GET() {
     const orders = await prisma.order.findMany({
       where: {
         userId: currentUser.id,
-        status: 'complete' // Chỉ lấy đơn hàng đã hoàn thành
+        status: 'completed' // Sửa từ 'complete' thành 'completed' theo OrderStatus enum
       },
       select: {
         id: true,
