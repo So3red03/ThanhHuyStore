@@ -40,7 +40,7 @@ export class EmailService {
       },
     };
 
-    this.transporter = nodemailer.createTransporter(emailConfig);
+    this.transporter = nodemailer.createTransport(emailConfig);
   }
 
   async sendOrderConfirmationWithPDF(orderData: OrderEmailData): Promise<void> {

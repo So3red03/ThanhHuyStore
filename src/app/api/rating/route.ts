@@ -33,6 +33,7 @@ export async function POST(request: Request) {
 		data: {
 			userId: currentUser.id, // ID của người gửi thông báo
 			type: 'COMMENT_RECEIVED',
+			title: 'Bình luận mới',
 			message: `Người dùng comment`,
 		},
 	});

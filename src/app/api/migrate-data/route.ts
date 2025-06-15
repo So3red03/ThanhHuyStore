@@ -17,8 +17,8 @@ export async function POST() {
     const productsWithoutBrand = await prisma.product.findMany({
       where: {
         OR: [
-          { brand: null },
-          { brand: '' }
+          { brand: { equals: undefined } },
+          { brand: { equals: '' } }
         ]
       }
     });

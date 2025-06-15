@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         purchasedCategories: {
           has: product.category.name
         },
-        email: { not: null }
+        email: { not: '' }
       },
       select: {
         id: true,
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 const sendNewProductEmail = async (email: string, userName: string, product: any) => {
   try {
     // Cấu hình transporter
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
       secure: false,

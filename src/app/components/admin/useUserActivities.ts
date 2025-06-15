@@ -153,8 +153,7 @@ export const useUserActivities = ({ user }: UseUserActivitiesProps) => {
           timestamp: new Date(review.createdDate),
           data: {
             productName: review.product?.name,
-            rating: review.rating,
-            hasComment
+            rating: review.rating
           }
         });
       });

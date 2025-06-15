@@ -4,6 +4,8 @@ import { getUsers } from '@/app/actions/getUsers';
 import ManageVouchersClient from './ManageVouchersClient';
 import NullData from '@/app/components/NullData';
 
+export const dynamic = 'force-dynamic';
+
 const ManageVouchers = async () => {
 	const currentUser = await getCurrentUser();
 	const vouchers = await getVouchers();

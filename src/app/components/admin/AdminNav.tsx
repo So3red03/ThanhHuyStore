@@ -63,7 +63,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
 
   // Sử dụng notification hook
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(currentUser);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(currentUser || null);
   // Thêm sản phẩm
   const toggleOpen = () => {
     setIsOpen(!isOpen);

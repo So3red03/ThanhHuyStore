@@ -143,7 +143,11 @@ export class MongoService {
         contentType: 'application/pdf',
         size: file.length,
         uploadDate: file.uploadDate,
-        metadata: file.metadata,
+        metadata: file.metadata as {
+          orderPaymentIntentId: string;
+          userId: string;
+          type: 'invoice' | 'receipt';
+        },
       }));
     } catch (error) {
       console.error('Error getting PDFs by order ID:', error);
@@ -167,7 +171,11 @@ export class MongoService {
         contentType: 'application/pdf',
         size: file.length,
         uploadDate: file.uploadDate,
-        metadata: file.metadata,
+        metadata: file.metadata as {
+          orderPaymentIntentId: string;
+          userId: string;
+          type: 'invoice' | 'receipt';
+        },
       }));
     } catch (error) {
       console.error('Error getting PDFs by user ID:', error);

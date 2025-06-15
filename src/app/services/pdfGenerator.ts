@@ -18,7 +18,6 @@ interface OrderData {
     line1: string;
     line2?: string;
     city: string;
-    state: string;
     postal_code: string;
     country: string;
   };
@@ -37,7 +36,11 @@ interface OrderData {
     description: string;
     price: number;
     quantity: number;
-    image: string;
+    selectedImg: {
+      color: string;
+      colorCode: string;
+      images: string[];
+    };
   }>;
 }
 
@@ -117,7 +120,7 @@ export class PDFGenerator {
       }
       
       this.doc.text(
-        `${orderData.address.city}, ${orderData.address.state}, ${orderData.address.postal_code}`,
+        `${orderData.address.city}, ${orderData.address.postal_code}, ${orderData.address.country}`,
         300,
         customerInformationTop + 65
       );

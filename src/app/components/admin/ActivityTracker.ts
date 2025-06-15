@@ -259,7 +259,7 @@ export const trackPaymentSuccess = (userId: string, orderId: string, amount: num
 export const trackProductComment = (userId: string, productName: string) => {
   const tracker = ActivityTracker.getInstance();
   tracker.addActivity({
-    type: 'comment',
+    type: 'comment_review',
     title: 'Bình luận sản phẩm',
     description: `Đã bình luận ở sản phẩm ${productName}`,
     data: {
@@ -272,7 +272,7 @@ export const trackProductComment = (userId: string, productName: string) => {
 export const trackProductReview = (userId: string, productName: string, rating: number) => {
   const tracker = ActivityTracker.getInstance();
   tracker.addActivity({
-    type: 'review',
+    type: 'comment_review',
     title: 'Đánh giá sản phẩm',
     description: `Đã đánh giá sản phẩm ${productName}`,
     data: {

@@ -45,7 +45,7 @@ export default async function createActivity(params: CreateActivityParams) {
     return activity;
   } catch (error: any) {
     console.error('Error creating activity:', error);
-    throw new Error(error);
+    throw error;
   }
 }
 

@@ -3,7 +3,7 @@ import prisma from '../../libs/prismadb';
 import { CartProductType } from '@/app/(home)/product/[productId]/ProductDetails';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
-// import { OrderStatus, DeliveryStatus } from '@prisma/client';
+import { OrderStatus, DeliveryStatus } from '@prisma/client';
 import { NotificationService } from '@/app/libs/notificationService';
 import crypto from 'crypto';
 import https from 'https';
@@ -163,8 +163,8 @@ export async function POST(request: Request): Promise<Response> {
     amount: finalAmount,
     originalAmount: originalAmount,
     currency: 'vnd',
-    status: 'pending',
-    deliveryStatus: 'not_shipped',
+    status: OrderStatus.pending,
+    deliveryStatus: DeliveryStatus.not_shipped,
     paymentIntentId: payment_intent_id,
     products: products,
     phoneNumber: phoneNumber,

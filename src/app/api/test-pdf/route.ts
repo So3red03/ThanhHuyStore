@@ -38,7 +38,13 @@ export async function POST(request: NextRequest) {
       createDate: testOrder.createDate,
       paymentIntentId: testOrder.paymentIntentId,
       phoneNumber: testOrder.phoneNumber || undefined,
-      address: testOrder.address || undefined,
+      address: testOrder.address ? {
+        line1: testOrder.address.line1,
+        line2: testOrder.address.line2 || undefined,
+        city: testOrder.address.city,
+        postal_code: testOrder.address.postal_code,
+        country: testOrder.address.country,
+      } : undefined,
       paymentMethod: testOrder.paymentMethod || undefined,
       shippingFee: testOrder.shippingFee || undefined,
       discountAmount: testOrder.discountAmount || undefined,
@@ -48,7 +54,14 @@ export async function POST(request: NextRequest) {
         name: testOrder.user.name || 'Test User',
         email: testOrder.user.email,
       },
-      products: testOrder.products || [],
+      products: (testOrder.products || []).map((product: any) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        quantity: product.quantity,
+        selectedImg: product.selectedImg,
+      })),
     });
     console.log('✅ PDF generated successfully, size:', pdfBuffer.length);
 

@@ -5,6 +5,8 @@ import { getProductCategories } from '@/app/actions/getProductCategories';
 import ManagePromotionsClient from './ManagePromotionsClient';
 import NullData from '@/app/components/NullData';
 
+export const dynamic = 'force-dynamic';
+
 const ManagePromotions = async () => {
   const currentUser = await getCurrentUser();
   const promotions = await getPromotions();

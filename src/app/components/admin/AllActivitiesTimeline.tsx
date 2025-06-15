@@ -235,7 +235,7 @@ const AllActivitiesTimeline: React.FC<AllActivitiesTimelineProps> = ({ limit = 5
                       </div>
                     )}
 
-                    {activity.type === 'review' && activity.data?.rating && (
+                    {activity.type === 'comment_review' && activity.data?.rating && (
                       <div className='mt-2 flex items-center'>
                         {[...Array(5)].map((_, i) => (
                           <span

@@ -51,7 +51,13 @@ export async function POST(
       createDate: order.createDate,
       paymentIntentId: order.paymentIntentId,
       phoneNumber: order.phoneNumber || undefined,
-      address: order.address || undefined,
+      address: order.address ? {
+        line1: order.address.line1,
+        line2: order.address.line2 || undefined,
+        city: order.address.city,
+        postal_code: order.address.postal_code,
+        country: order.address.country,
+      } : undefined,
       paymentMethod: order.paymentMethod || undefined,
       shippingFee: order.shippingFee || undefined,
       discountAmount: order.discountAmount || undefined,
@@ -61,7 +67,14 @@ export async function POST(
         name: order.user.name || 'Unknown',
         email: order.user.email,
       },
-      products: order.products || [],
+      products: (order.products || []).map((product: any) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        quantity: product.quantity,
+        selectedImg: product.selectedImg,
+      })),
     });
 
     // Lưu PDF vào MongoDB
