@@ -1,4 +1,5 @@
 {
   "explorer.compactFolders": false,
-  "workbench.colorTheme": "Andromeda Colorizer"
+  "workbench.colorTheme": "Andromeda Colorizer",
+  "postman.settings.dotenv-detection-notification-visibility": false
 }
