@@ -373,27 +373,27 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
                 <hr className='my-4' />
                 <div className='space-y-2'>
                   <div className='flex justify-between'>
-                    <span className='font-medium'>Tài khoản:</span>
-                    <span className='text-gray-700'>{user.email}</span>
+                    <span className='font-medium'>Tài khoản</span>
+                    <span className='text-gray-700 text-sm'>{user.email}</span>
                   </div>
                   <div className='flex justify-between'>
-                    <span className='font-medium'>Email:</span>
-                    <span className='text-gray-700'>{user.email}</span>
+                    <span className='font-medium'>Email</span>
+                    <span className='text-gray-700 text-sm'>{user.email}</span>
                   </div>
                   <div className='flex justify-between'>
-                    <span className='font-medium'>Trạng thái:</span>
+                    <span className='font-medium'>Trạng thái</span>
                     <span className='bg-green-200 text-green-500 font-semibold  text-xs px-2 py-1 rounded-full'>
                       Hoạt động
                     </span>
                   </div>
 
                   <div className='flex justify-between'>
-                    <span className='font-medium'>Liên hệ:</span>
+                    <span className='font-medium'>Liên hệ</span>
                     <span className='text-gray-700'>{user.phoneNumber || 'Chưa có'}</span>
                   </div>
 
                   <div className='flex justify-between'>
-                    <span className='font-medium'>Quốc tịch:</span>
+                    <span className='font-medium'>Quốc tịch</span>
                     <span className='text-gray-700'>Việt Nam</span>
                   </div>
                 </div>

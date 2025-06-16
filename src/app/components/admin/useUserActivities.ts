@@ -143,16 +143,15 @@ export const useUserActivities = ({ user }: UseUserActivitiesProps) => {
       // Tạo activities từ reviews (gộp comment và review)
       user.reviews?.forEach((review: any) => {
         const hasComment = review.comment && review.comment.trim() !== '';
+        const productName = review.product?.name || 'N/A';
         activityList.push({
           id: `comment-review-${review.id}`,
           type: 'comment_review',
-          title: hasComment ? 'Bình luận và đánh giá sản phẩm' : 'Đánh giá sản phẩm',
-          description: hasComment
-            ? `Đã bình luận và đánh giá sản phẩm ${review.product?.name || 'N/A'}`
-            : `Đã đánh giá sản phẩm ${review.product?.name || 'N/A'}`,
+          title: 'Bình luận và đánh giá sản phẩm',
+          description: `Đã bình luận và đánh giá sản phẩm ${productName}`,
           timestamp: new Date(review.createdDate),
           data: {
-            productName: review.product?.name,
+            productName: productName,
             rating: review.rating
           }
         });

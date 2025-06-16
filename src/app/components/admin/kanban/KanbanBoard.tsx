@@ -13,7 +13,7 @@ interface KanbanBoardProps {
   onOrderUpdate: () => void;
 }
 
-// Định nghĩa các cột Kanban (đã bỏ "Đã xác nhận" và "Đang giao hàng - Nội bộ")
+// Định nghĩa các cột Kanban
 const KANBAN_COLUMNS = [
   {
     id: 'pending',
@@ -123,7 +123,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
           break;
       }
 
-      // Cập nhật optimistic UI trước
+      // Cập nhật UI trước khi gọi API
       const updatedOrders = orders.map(order => {
         if (order.id === orderId) {
           return {

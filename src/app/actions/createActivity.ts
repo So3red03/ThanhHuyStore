@@ -101,17 +101,18 @@ export async function createReviewActivity(
   rating: number,
   hasComment: boolean = false
 ) {
+  // Đảm bảo productName không null/undefined
+  const safeName = productName || 'N/A';
+
   // Create combined comment_review activity
   return createActivity({
     userId,
     type: 'COMMENT_REVIEW',
     title: hasComment ? 'Bình luận và đánh giá sản phẩm' : 'Đánh giá sản phẩm',
-    description: hasComment
-      ? `Đã bình luận và đánh giá sản phẩm ${productName}`
-      : `Đã đánh giá sản phẩm ${productName}`,
+    description: hasComment ? `Đã bình luận và đánh giá sản phẩm ${safeName}` : `Đã đánh giá sản phẩm ${safeName}`,
     data: {
       productId,
-      productName,
+      productName: safeName,
       rating,
       hasComment
     }

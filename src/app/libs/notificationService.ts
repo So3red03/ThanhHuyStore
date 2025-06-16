@@ -28,27 +28,27 @@ export class NotificationService {
           type: data.type,
           title: data.title,
           message: data.message,
-          data: data.data,
+          data: data.data
         },
         include: {
           user: true,
           product: true,
-          fromUser: true,
-        },
+          fromUser: true
+        }
       });
 
       // Gửi realtime notification qua Pusher
       if (data.userId) {
         await pusherServer.trigger(`user-${data.userId}`, 'notification', {
           notification,
-          type: 'new_notification',
+          type: 'new_notification'
         });
 
         // Gửi cho admin channel nếu cần
         if (data.type === 'ORDER_PLACED' || data.type === 'COMMENT_RECEIVED') {
           await pusherServer.trigger('admin-notifications', 'notification', {
             notification,
-            type: 'new_notification',
+            type: 'new_notification'
           });
         }
       }
@@ -63,45 +63,54 @@ export class NotificationService {
   // Lấy notifications cho user
   static async getUserNotifications(userId: string, limit = 20) {
     try {
-      return await prisma.notification.findMany({
-        where: { userId },
+      const notifications = await prisma.notification.findMany({
+        where: {
+          userId
+        },
         include: {
           user: true,
           product: true,
-          fromUser: true,
+          fromUser: true
         },
         orderBy: { createdAt: 'desc' },
-        take: limit,
+        take: limit * 2 // Lấy nhiều hơn để filter
       });
+
+      // Filter ra những notification có title null sau khi lấy dữ liệu
+      return notifications
+        .filter(notification => notification.title && notification.title.trim() !== '')
+        .slice(0, limit);
     } catch (error) {
       console.error('Error fetching user notifications:', error);
-      throw error;
+      // Trả về array rỗng thay vì throw error
+      return [];
     }
   }
 
   // Lấy notifications cho admin
   static async getAdminNotifications(limit = 50) {
     try {
-      return await prisma.notification.findMany({
+      const notifications = await prisma.notification.findMany({
         where: {
-          OR: [
-            { type: 'ORDER_PLACED' },
-            { type: 'COMMENT_RECEIVED' },
-            { type: 'LOW_STOCK' },
-            { type: 'SYSTEM_ALERT' },
-          ],
+          OR: [{ type: 'ORDER_PLACED' }, { type: 'COMMENT_RECEIVED' }, { type: 'LOW_STOCK' }, { type: 'SYSTEM_ALERT' }]
         },
         include: {
           user: true,
           product: true,
-          fromUser: true,
+          fromUser: true
         },
         orderBy: { createdAt: 'desc' },
-        take: limit,
+        take: limit * 2 // Lấy nhiều hơn để filter
       });
+
+      // Filter ra những notification có title null sau khi lấy dữ liệu
+      return notifications
+        .filter(notification => notification.title && notification.title.trim() !== '')
+        .slice(0, limit);
     } catch (error) {
       console.error('Error fetching admin notifications:', error);
-      throw error;
+      // Trả về array rỗng thay vì throw error
+      return [];
     }
   }
 
@@ -114,15 +123,15 @@ export class NotificationService {
         include: {
           user: true,
           product: true,
-          fromUser: true,
-        },
+          fromUser: true
+        }
       });
 
       // Gửi update qua Pusher
       if (notification.userId) {
         await pusherServer.trigger(`user-${notification.userId}`, 'notification', {
           notification,
-          type: 'notification_read',
+          type: 'notification_read'
         });
       }
 
@@ -138,12 +147,12 @@ export class NotificationService {
     try {
       await prisma.notification.updateMany({
         where: { userId, isRead: false },
-        data: { isRead: true },
+        data: { isRead: true }
       });
 
       // Gửi update qua Pusher
       await pusherServer.trigger(`user-${userId}`, 'notification', {
-        type: 'all_notifications_read',
+        type: 'all_notifications_read'
       });
 
       return true;
@@ -156,12 +165,59 @@ export class NotificationService {
   // Đếm số notifications chưa đọc
   static async getUnreadCount(userId: string) {
     try {
-      return await prisma.notification.count({
-        where: { userId, isRead: false },
+      // Lấy tất cả notifications chưa đọc và filter trong JavaScript
+      const notifications = await prisma.notification.findMany({
+        where: {
+          userId,
+          isRead: false
+        },
+        select: {
+          id: true,
+          title: true
+        }
       });
+
+      // Filter ra những notification có title null và đếm
+      return notifications.filter(notification => notification.title && notification.title.trim() !== '').length;
     } catch (error) {
       console.error('Error counting unread notifications:', error);
       return 0;
+    }
+  }
+
+  // Lấy tin nhắn cho admin từ Message model
+  static async getAdminMessages(limit = 50) {
+    try {
+      return await prisma.message.findMany({
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true
+            }
+          },
+          chatroom: {
+            include: {
+              users: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true,
+                  role: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit
+      });
+    } catch (error) {
+      console.error('Error fetching admin messages:', error);
+      throw error;
     }
   }
 
@@ -174,7 +230,7 @@ export class NotificationService {
       type: 'ORDER_PLACED',
       title: 'Đơn hàng mới',
       message: 'Bạn có đơn hàng mới cần xử lý',
-      data: { orderId },
+      data: { orderId }
     });
   }
 
@@ -186,7 +242,7 @@ export class NotificationService {
       type: 'MESSAGE_RECEIVED',
       title: 'Tin nhắn mới',
       message: `Bạn có tin nhắn mới: ${message.substring(0, 50)}...`,
-      data: { messageId },
+      data: { messageId }
     });
   }
 
@@ -198,14 +254,14 @@ export class NotificationService {
       type: 'COMMENT_RECEIVED',
       title: 'Bình luận mới',
       message: 'Sản phẩm của bạn có bình luận mới',
-      data: { productId },
+      data: { productId }
     });
   }
 
   static async createLowStockNotification(productId: string, productName: string, stock: number) {
     // Gửi cho tất cả admin
     const admins = await prisma.user.findMany({
-      where: { role: 'ADMIN' },
+      where: { role: 'ADMIN' }
     });
 
     const notifications = await Promise.all(
@@ -216,7 +272,7 @@ export class NotificationService {
           type: 'LOW_STOCK',
           title: 'Cảnh báo hết hàng',
           message: `Sản phẩm "${productName}" chỉ còn ${stock} sản phẩm`,
-          data: { productId, stock },
+          data: { productId, stock }
         })
       )
     );

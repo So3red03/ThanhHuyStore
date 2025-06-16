@@ -50,6 +50,7 @@ interface AdminNavProps {
 
 const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, parentCategory, subCategories }) => {
   const pathName = usePathname();
+  const router = useRouter();
   const title = pathName?.startsWith('/admin/chat') ? 'Tin nhắn' : pathTitle[pathName as string];
   const [isOpen, setIsOpen] = useState(false);
   const { toggleSidebar } = useSidebar();
@@ -61,6 +62,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
 
   // Sử dụng notification hook
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(currentUser || null);
@@ -105,10 +107,46 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
   // 		}
   // 	}
   // };
+  // Fetch messages khi component mount
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const response = await axios.get('/api/notifications/messages');
+        setMessages(response.data);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        // Set empty array nếu có lỗi
+        setMessages([]);
+      }
+    };
+
+    if (currentUser?.role === 'ADMIN') {
+      fetchMessages();
+    }
+  }, [currentUser]);
+
   // Mở thông báo tin nhắn
   const toggleMesssages = () => {
     setIsNotificationsOpen(false);
     setIsMessagesOpen(!isMessagesOpen);
+  };
+
+  // Handle click message item - điều hướng đến chat
+  const handleMessageClick = async (message: any) => {
+    if (message.sender?.id) {
+      // Tạo hoặc tìm conversation với user
+      try {
+        const response = await axios.post('/api/conversation', {
+          userId: message.sender.id
+        });
+        router.push(`/admin/chat/${response.data.id}`);
+      } catch (error) {
+        console.error('Error creating conversation:', error);
+      }
+    } else if (message.chatroomId) {
+      // Nếu đã có chatroom ID thì điều hướng trực tiếp
+      router.push(`/admin/chat/${message.chatroomId}`);
+    }
   };
 
   // Mở thông báo và đánh dấu đã đọc
@@ -259,84 +297,55 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
             </div>
             {/* Hiển thị tin nhắn */}
             <div
-							className={`absolute top-10 right-[-20px] bg-white z-10 shadow-lg rounded-lg w-72 lg:w-80  transition-opacity duration-300 max-h-[470px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent ${
-								isMessagesOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-							}`}
-						>
-							<div className="flex justify-between items-center p-3 border-b border-gray-300">
-								<div className="font-semibold text-lg">Tin nhắn</div>
-								<span className="bg-slate-600 rounded-full px-2 py-1 text-white font-semibold text-xs select-none">
-									{notifications.length}
-								</span>
-							</div>
-							{notifications.map((notification: any) => (
-								<div
-									key={notification.id}
-									className="hover:bg-[#f6f9ff] border-b border-gray-300 flex items-start justify-between p-4 cursor-pointer transition-all duration-300"
-								>
-									<div>
-										{notification.type === 'ORDER_PLACED' && (
-											<>
-												<div className="text-sm font-medium">Thông báo đặt hàng</div>
-												<div className="flex items-center p-4 border-b border-[#CFCFCF]">
-													<Image
-														className="rounded-full object-cover"
-														src="/no-avatar-2.jpg"
-														alt=""
-														width="50"
-														height="50"
-													/>
-													<div className="text-xs text-gray-500">
-														{notification.user.name} vừa đặt hàng
-													</div>
-												</div>
-											</>
-										)}
-										{notification.type === 'COMMENT_RECEIVED' && (
-											<>
-												<div className="text-sm font-medium">Thông báo comment</div>
-												<div className="flex items-center gap-x-3 mt-1">
-													<Image
-														className="rounded-full object-cover"
-														src="/no-avatar-2.jpg"
-														alt={notification.user.name}
-														width="30"
-														height="30"
-													/>
-													<div className="text-xs text-gray-500">
-														{notification.user.name} vừa bình luận
-													</div>
-												</div>
-											</>
-										)}
-										{notification.type === 'LOW_STOCK' && (
-											<>
-												<div className="text-sm font-medium">Thông báo hết hàng</div>
-												<div className="flex items-center gap-x-3 mt-1">
-													<Image
-														className="rounded-full object-cover"
-														src="/no-avatar-2.jpg"
-														alt={notification?.user?.name}
-														width="30"
-														height="30"
-													/>
-													<div className="text-xs text-gray-500">
-														{notification?.products} hết hàng
-													</div>
-												</div>
-											</>
-										)}
-									</div>
-								</div>
-							))}
-							<div className="flex justify-center py-2">
-								<Button
-									label="Tất cả thông báo"
-									custom="!w-[250px] !text-sm !py-1 !px-2"
-									onClick={() => {}}
-								/>
-							</div>
-						</div>
+              className={`absolute top-10 right-[-20px] bg-white z-10 shadow-lg rounded-lg w-72 lg:w-80  transition-opacity duration-300 max-h-[470px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent ${
+                isMessagesOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              <div className='flex justify-between items-center p-3 border-b border-gray-300'>
+                <div className='font-semibold text-lg'>Tin nhắn</div>
+                <span className='bg-slate-600 rounded-full px-2 py-1 text-white font-semibold text-xs select-none'>
+                  {messages.length}
+                </span>
+              </div>
+              {messages.length === 0 ? (
+                <div className='p-4 text-center text-gray-500'>Không có tin nhắn nào</div>
+              ) : (
+                messages.map((message: any) => (
+                  <div
+                    key={message.id}
+                    className='hover:bg-[#f6f9ff] border-b border-gray-300 flex items-start justify-between p-4 cursor-pointer transition-all duration-300'
+                    onClick={() => handleMessageClick(message)}
+                  >
+                    <div className='flex items-center gap-x-3 w-full'>
+                      <Image
+                        className='rounded-full object-cover'
+                        src={message.sender?.image || '/no-avatar-2.jpg'}
+                        alt={message.sender?.name || 'User'}
+                        width='40'
+                        height='40'
+                      />
+                      <div className='flex-1'>
+                        <div className='text-sm font-medium'>{message.sender?.name || 'Người dùng'}</div>
+                        <div className='text-xs text-gray-500 mt-1 truncate'>{message.body || 'Tin nhắn'}</div>
+                        <div className='text-xs text-gray-400 mt-1'>
+                          {new Date(message.createdAt).toLocaleString('vi-VN')}
+                        </div>
+                      </div>
+                      {message.seenIds && !message.seenIds.includes(currentUser?.id) && (
+                        <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className='flex justify-center py-2'>
+                <Button
+                  label='Tất cả tin nhắn'
+                  custom='!w-[250px] !text-sm !py-1 !px-2'
+                  onClick={() => router.push('/admin/chat')}
+                />
+              </div>
+            </div>
             <div
               className='relative cursor-pointer hover:bg-gray-300 focus:bg-gray-300 rounded-full p-[6px]'
               onClick={toggleNotifications}
@@ -353,50 +362,42 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
 
             {/* Hiển thị thông báo */}
             <div
-							className={`absolute top-10 right-[-20px] bg-white z-10 shadow-lg rounded-lg w-72 lg:w-80  transition-opacity duration-300 max-h-[470px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent ${
-								isNotificationsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-							}`}
-						>
-							<div className="flex justify-between items-center p-3 border-b border-gray-300">
-								<div className="font-semibold text-lg">Thông báo</div>
-								<span className="bg-slate-600 rounded-full px-2 py-1 text-white font-semibold text-xs select-none">
-									{notifications.length}
-								</span>
-							</div>
-							{notifications.length === 0 ? (
-								<div className="p-4 text-center text-gray-500">
-									Không có thông báo nào
-								</div>
-							) : (
-								notifications.map((notification: any) => (
-									<div
-										key={notification.id}
-										className={`hover:bg-[#f6f9ff] border-b border-gray-300 flex items-start justify-between p-4 cursor-pointer transition-all duration-300 ${
-											!notification.isRead ? 'bg-blue-50' : ''
-										}`}
-										onClick={() => handleNotificationClick(notification.id)}
-									>
-										<div className="flex-1">
-											<div className="text-sm font-medium">{notification.title}</div>
-											<div className="text-xs text-gray-500 mt-1">{notification.message}</div>
-											<div className="text-xs text-gray-400 mt-1">
-												{new Date(notification.createdAt).toLocaleString('vi-VN')}
-											</div>
-										</div>
-										{!notification.isRead && (
-											<div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-										)}
-									</div>
-								))
-							)}
-							<div className="flex justify-center py-2">
-								<Button
-									label="Tất cả thông báo"
-									custom="!w-[250px] !text-sm !py-1 !px-2"
-									onClick={() => {}}
-								/>
-							</div>
-						</div>
+              className={`absolute top-10 right-[-20px] bg-white z-10 shadow-lg rounded-lg w-72 lg:w-80  transition-opacity duration-300 max-h-[470px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent ${
+                isNotificationsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              <div className='flex justify-between items-center p-3 border-b border-gray-300'>
+                <div className='font-semibold text-lg'>Thông báo</div>
+                <span className='bg-slate-600 rounded-full px-2 py-1 text-white font-semibold text-xs select-none'>
+                  {notifications.length}
+                </span>
+              </div>
+              {notifications.length === 0 ? (
+                <div className='p-4 text-center text-gray-500'>Không có thông báo nào</div>
+              ) : (
+                notifications.map((notification: any) => (
+                  <div
+                    key={notification.id}
+                    className={`hover:bg-[#f6f9ff] border-b border-gray-300 flex items-start justify-between p-4 cursor-pointer transition-all duration-300 ${
+                      !notification.isRead ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={() => handleNotificationClick(notification.id)}
+                  >
+                    <div className='flex-1'>
+                      <div className='text-sm font-medium'>{notification.title}</div>
+                      <div className='text-xs text-gray-500 mt-1'>{notification.message}</div>
+                      <div className='text-xs text-gray-400 mt-1'>
+                        {new Date(notification.createdAt).toLocaleString('vi-VN')}
+                      </div>
+                    </div>
+                    {!notification.isRead && <div className='w-2 h-2 bg-blue-500 rounded-full mt-2'></div>}
+                  </div>
+                ))
+              )}
+              <div className='flex justify-center py-2'>
+                <Button label='Tất cả thông báo' custom='!w-[250px] !text-sm !py-1 !px-2' onClick={() => {}} />
+              </div>
+            </div>
           </div>
           <div className='flex items-center bg-white rounded-lg lg:gap-x-2 gap-x-1'>
             <MdSearch size={18} className='ml-1' />

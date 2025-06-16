@@ -152,7 +152,7 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
             </div>
           </div>
           <ReviewsSection reviews={reviews} />
-          <div className='rounded-lg border border-gray-200 w-full py-6 flex-1'>
+          <div className='rounded-lg border max-h-96 scroll-bar overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent border-gray-200 w-full py-6 flex-1'>
             <h2 className='mb-3 text-gray-500 px-6 font-semibold text-lg'>Tin nhắn</h2>
             <ChatList conversations={conversations} userInSession={userInSession} dashboard={true} />
           </div>

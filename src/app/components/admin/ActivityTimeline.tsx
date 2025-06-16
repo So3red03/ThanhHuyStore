@@ -4,7 +4,7 @@
 const formatPrice = (price: number): string => {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
-    currency: 'VND',
+    currency: 'VND'
   }).format(price);
 };
 import { format } from 'date-fns';
@@ -142,7 +142,8 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
         return (
           <div>
             <p className='text-gray-500 mb-2'>
-              Đã thanh toán đơn hàng #{activity.data?.paymentIntentId?.slice(-6).toUpperCase()} – tổng tiền {formatPrice(activity.data?.amount || 0)}
+              Đã thanh toán đơn hàng #{activity.data?.paymentIntentId?.slice(-6).toUpperCase()} – tổng tiền{' '}
+              {formatPrice(activity.data?.amount || 0)}
             </p>
             {activity.data?.pdfFileId && (
               <div className='flex items-center w-fit bg-neutral-200 p-1 px-3 rounded-md'>
@@ -220,7 +221,7 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
       </div>
 
       {/* Timeline Items */}
-      <div className='space-y-6'>
+      <div className='space-y-6 max-h-80 scroll-bar overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent'>
         {activities.length === 0 ? (
           <div className='text-center py-8 text-gray-500'>
             <span className='text-4xl mb-4 block'>📭</span>
