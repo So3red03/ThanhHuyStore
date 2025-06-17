@@ -2,8 +2,8 @@ import { getArticlesBySearchParams } from '@/app/actions/getArticlesBySearchPara
 import SearchResult from './SearchResult';
 import { getProductsBySearchParams, IParams } from '@/app/actions/getProductsBySearchParams';
 
-// Optimized caching: Search results can be cached briefly to reduce database load
-export const revalidate = 1800; // 30 minutes
+// Keep force-dynamic due to searchParams usage
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: IParams;

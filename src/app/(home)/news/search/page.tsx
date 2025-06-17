@@ -1,9 +1,9 @@
 import { ArticleParams, getArticlesBySearchParams } from '@/app/actions/getArticlesBySearchParams';
 import SearchResult from './SearchResult';
-import axios from 'axios';
+import { getArticles } from '@/app/actions/getArticlesData';
 
-// Optimized caching: Article search results can be cached briefly
-export const revalidate = 1800; // 30 minutes
+// Keep force-dynamic due to searchParams usage
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: ArticleParams;
@@ -14,7 +14,8 @@ export const metadata = {
 };
 
 const page: React.FC<PageProps> = async ({ searchParams }) => {
-  const { data: initialArticles } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/articlePagination/0/4`);
+  // Use direct database action instead of axios to avoid dynamic server usage
+  const initialArticles = await getArticles();
   const articles = await getArticlesBySearchParams(searchParams);
   return <SearchResult initialArticles={initialArticles} articles={articles} />;
 };

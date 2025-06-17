@@ -10,8 +10,8 @@ import { HomeBanner } from '../components/HomeBanner';
 import DisplayProductsBySlug from '../components/products/DisplayProductsBySlug';
 import PersonalizedRecommendations from '../components/PersonalizedRecommendations';
 
-// Optimized caching: Homepage data changes infrequently, cache for 1 hour
-export const revalidate = 3600; // 1 hour
+// Keep force-dynamic due to analytics tracking and complex dynamic usage
+export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   try {
