@@ -58,7 +58,25 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
     } else {
       getChatRoomId();
     }
-  }, []);
+
+    // Listen for custom event to open chat box
+    const handleOpenChatBox = (event: CustomEvent) => {
+      setIsButtonHidden(true);
+      setIsChatOpen(true);
+      setIsAiChat(false); // Ensure we're in admin chat mode
+
+      // Set the message if provided
+      if (event.detail?.message) {
+        setValue('message', event.detail.message);
+      }
+    };
+
+    window.addEventListener('openChatBox', handleOpenChatBox as EventListener);
+
+    return () => {
+      window.removeEventListener('openChatBox', handleOpenChatBox as EventListener);
+    };
+  }, [setValue]);
 
   // Hàm để tải tin nhắn
   const loadMessages = async (chatroomId: string) => {

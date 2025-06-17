@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Product } from '@prisma/client';
 import Container from './Container';
 import ProductCard from './products/ProductCard';
-import { getCurrentUser } from '../actions/getCurrentUser';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import 'swiper/css';
@@ -109,10 +108,13 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
   // Lấy sản phẩm tồn kho thấp (cho người dùng chưa đăng nhập)
   const getLowStockProducts = (): Product[] => {
-    return allProducts
+    const lowStockProducts = allProducts
       .filter(product => product.inStock > 0 && product.inStock <= 10) // Tồn kho <= 10
       .sort((a, b) => a.inStock - b.inStock) // Sắp xếp theo tồn kho tăng dần
       .slice(0, 8);
+
+    // Nếu không có sản phẩm tồn kho thấp, lấy sản phẩm ngẫu nhiên
+    return lowStockProducts.length > 0 ? lowStockProducts : getRandomProducts();
   };
 
   // Lấy sản phẩm ngẫu nhiên (fallback)

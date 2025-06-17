@@ -1,6 +1,6 @@
 'use client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
-import { CartProductType, DeliveryStatus, Order, OrderStatus, Review, User } from '@prisma/client';
+import { CartProductType, DeliveryStatus, Order, OrderStatus, Review, Role, User } from '@prisma/client';
 import { formatPrice } from '../../../../../../../utils/formatPrice';
 import Status from '@/app/components/Status';
 import { MdAccessTimeFilled, MdDelete, MdDeliveryDining, MdDone, MdRemoveRedEye } from 'react-icons/md';
@@ -308,6 +308,11 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
       });
   };
 
+  const roles = [
+    { label: 'ADMIN', value: Role.ADMIN },
+    { label: 'USER', value: Role.USER }
+  ];
+
   return (
     <>
       <div className='flex justify-between items-center flex-wrap gap-y-4 mb-6 mt-6 px-6 lg:px-0'>
@@ -494,7 +499,7 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
               register={register}
               errors={errors}
               defaultValue={selectedUser?.role}
-              options={['ADMIN', 'USER']}
+              options={roles}
               required
             />
 

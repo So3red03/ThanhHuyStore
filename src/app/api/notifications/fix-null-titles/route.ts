@@ -10,17 +10,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Tìm tất cả notifications có title null
+    // Tìm tất cả notifications có title empty
     const nullTitleNotifications = await prisma.notification.findMany({
       where: {
-        title: null
+        title: { equals: '' }
       }
     });
 
     console.log(`Found ${nullTitleNotifications.length} notifications with null title`);
 
     // Cập nhật từng notification với title mặc định dựa trên type
-    const updatePromises = nullTitleNotifications.map(async (notification) => {
+    const updatePromises = nullTitleNotifications.map(async notification => {
       let defaultTitle = 'Thông báo';
       let defaultMessage = 'Thông báo hệ thống';
 
@@ -67,9 +67,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error fixing null title notifications:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

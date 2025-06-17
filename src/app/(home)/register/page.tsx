@@ -5,13 +5,19 @@ import RegisterForm from './RegisterForm';
 export const dynamic = 'force-dynamic';
 
 const Register = async () => {
-	const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUser();
 
-	return (
-		<Suspense fallback={<div>Loading...</div>}>
-			<RegisterForm currentUser={currentUser} />
-		</Suspense>
-	);
+  return (
+    <Suspense
+      fallback={
+        <div className='flex items-center justify-center h-64'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600'></div>
+        </div>
+      }
+    >
+      <RegisterForm currentUser={currentUser} />
+    </Suspense>
+  );
 };
 
 export default Register;

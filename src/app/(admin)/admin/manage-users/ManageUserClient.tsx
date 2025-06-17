@@ -1,6 +1,6 @@
 'use client';
 
-import { User } from '@prisma/client';
+import { Role, User } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { MdDelete, MdEdit, MdRemoveRedEye } from 'react-icons/md';
 import { useCallback, useEffect, useState } from 'react';
@@ -250,8 +250,8 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
     }
   ];
   const roles = [
-    { label: 'ADMIN', value: '1' },
-    { label: 'USER', value: '2' }
+    { label: 'ADMIN', value: Role.ADMIN },
+    { label: 'USER', value: Role.USER }
   ];
 
   return (
