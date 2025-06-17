@@ -67,6 +67,28 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
       return toast.error('Vui lòng chọn hình thức thanh toán!');
     }
 
+    // SECURITY: Additional validation before payment
+    if (!cartProducts || cartProducts.length === 0) {
+      toast.error('Giỏ hàng trống!');
+      return;
+    }
+
+    if (!cartInfo || !cartInfo.phone || !cartInfo.address) {
+      toast.error('Thông tin giao hàng không đầy đủ!');
+      return;
+    }
+
+    // Validate cart total
+    if (cartTotalAmount > 99000000) {
+      toast.error('Tổng giá trị đơn hàng không được vượt quá 99tr VND');
+      return;
+    }
+
+    if (cartTotalAmount < 1000) {
+      toast.error('Tổng giá trị đơn hàng tối thiểu 1,000 VND');
+      return;
+    }
+
     setIsLoading(true);
     if (paymentMethod === 'cod') {
       try {

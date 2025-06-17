@@ -30,6 +30,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     inStock: data.inStock
   });
 
+  // Helper functions for tags
+  const isNewProduct = () => {
+    const productDate = new Date(data.createDate || data.createdAt || Date.now());
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return productDate >= thirtyDaysAgo;
+  };
+
+  const isOnSale = () => {
+    if (!data.promotionalPrice || !data.promotionStart || !data.promotionEnd) return false;
+    const now = new Date();
+    const startDate = new Date(data.promotionStart);
+    const endDate = new Date(data.promotionEnd);
+    return now >= startDate && now <= endDate && data.promotionalPrice < data.price;
+  };
+
   const handleColorSelect = useCallback((value: selectedImgType) => {
     setCartProduct(prev => {
       return { ...prev, selectedImg: value };
@@ -92,6 +108,20 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
             className='w-full h-full object-cover'
             loading='lazy'
           />
+
+          {/* Product Tags */}
+          <div className='absolute top-2 left-2 flex flex-col gap-1 z-10'>
+            {isNewProduct() && (
+              <div className='bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg transform -rotate-12 border border-green-400'>
+                NEW
+              </div>
+            )}
+            {isOnSale() && (
+              <div className='bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg transform rotate-12 border border-red-400'>
+                SALE
+              </div>
+            )}
+          </div>
         </div>
         <div className='mt-3 text-base h-11'>{truncateText(data.name)}</div>
         <div className='font-semibold text-lg mt-2'>{formatPrice(data.price)}</div>

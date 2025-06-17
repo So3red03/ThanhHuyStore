@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import { Suspense } from 'react';
 import Container from '@/app/components/Container';
 
+// Keep force-dynamic due to analytics tracking
 export const dynamic = 'force-dynamic';
 
 const ManageArticles = async () => {

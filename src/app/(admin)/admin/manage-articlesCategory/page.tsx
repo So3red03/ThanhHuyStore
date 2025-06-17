@@ -7,6 +7,7 @@ import ManageCategoriesClient from '../manage-categories/ManageCategoriesClient'
 import ManageArticlesCategoriesClient from './ManageArticlesCategoriesClient';
 import { getArticlesCategory } from '@/app/actions/getArticlesCategory';
 
+// Keep force-dynamic due to analytics tracking
 export const dynamic = 'force-dynamic';
 
 const ManageBanner = async () => {

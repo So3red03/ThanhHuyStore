@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import ManageBannerClient from './ManageBannerClient';
 import { getBanner } from '@/app/actions/getBannerData';
 
+// Keep force-dynamic due to analytics tracking
 export const dynamic = 'force-dynamic';
 
 const ManageBanner = async () => {

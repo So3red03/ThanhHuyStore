@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import { Suspense } from 'react';
 import { getProductCategories, getSubCategories } from '@/app/actions/getProductCategories';
 
+// Keep force-dynamic due to analytics tracking
 export const dynamic = 'force-dynamic';
 
 const ManageProducts = async () => {

@@ -22,6 +22,110 @@ const calculateOrderAmount = (items: CartProductType[]) => {
   return totalPrice;
 };
 
+// Enhanced validation functions for security
+const validateOrderData = async (products: CartProductType[], currentUser: any) => {
+  const errors: string[] = [];
+
+  // 1. Validate products exist and are available
+  for (const product of products) {
+    try {
+      const dbProduct = await prisma.product.findUnique({
+        where: { id: product.id },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          promotionalPrice: true,
+          promotionStart: true,
+          promotionEnd: true,
+          inStock: true,
+          category: true
+        }
+      });
+
+      if (!dbProduct) {
+        errors.push(`Product ${product.name} not found`);
+        continue;
+      }
+
+      // 2. Validate stock availability
+      if (dbProduct.inStock < product.quantity) {
+        errors.push(
+          `Insufficient stock for ${product.name}. Available: ${dbProduct.inStock}, Requested: ${product.quantity}`
+        );
+      }
+
+      // 3. Validate price integrity (check for price manipulation)
+      let expectedPrice = dbProduct.price;
+
+      // Check if product has active promotion
+      if (dbProduct.promotionalPrice && dbProduct.promotionStart && dbProduct.promotionEnd) {
+        const now = new Date();
+        const startDate = new Date(dbProduct.promotionStart);
+        const endDate = new Date(dbProduct.promotionEnd);
+
+        if (now >= startDate && now <= endDate) {
+          expectedPrice = dbProduct.promotionalPrice;
+        }
+      }
+
+      if (Math.abs(product.price - expectedPrice) > 0.01) {
+        errors.push(`Price mismatch for ${product.name}. Expected: ${expectedPrice}, Received: ${product.price}`);
+      }
+
+      // 4. Validate quantity limits
+      if (product.quantity <= 0) {
+        errors.push(`Invalid quantity for ${product.name}: ${product.quantity}`);
+      }
+
+      if (product.quantity > 10) {
+        // Max 10 items per product
+        errors.push(`Quantity limit exceeded for ${product.name}. Max: 10, Requested: ${product.quantity}`);
+      }
+    } catch (error) {
+      errors.push(`Error validating product ${product.name}: ${error}`);
+    }
+  }
+
+  // 5. Validate cart total limits
+  const totalAmount = calculateOrderAmount(products);
+  if (totalAmount > 99000000) {
+    // 99M VND limit
+    errors.push(`Order total exceeds limit: ${totalAmount} VND`);
+  }
+
+  if (totalAmount < 1000) {
+    // Minimum order 1K VND
+    errors.push(`Order total below minimum: ${totalAmount} VND`);
+  }
+
+  // 6. Validate user permissions
+  if (!currentUser || !currentUser.id) {
+    errors.push('Invalid user authentication');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors: errors
+  };
+};
+
+// Rate limiting check
+const checkRateLimit = async (userId: string) => {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+  const recentOrders = await prisma.order.count({
+    where: {
+      userId: userId,
+      createDate: {
+        gte: oneHourAgo
+      }
+    }
+  });
+
+  return recentOrders < 5; // Max 5 orders per hour
+};
+
 // Function để gửi thông báo Discord
 const sendDiscordNotification = async (orderData: any, currentUser: any) => {
   try {
@@ -32,9 +136,14 @@ const sendDiscordNotification = async (orderData: any, currentUser: any) => {
     }
 
     // Format sản phẩm
-    const productList = orderData.products.map((product: any, index: number) =>
-      `${index + 1}. **${product.name}** - Số lượng: ${product.quantity} - Giá: ${product.price.toLocaleString('vi-VN')}₫`
-    ).join('\n');
+    const productList = orderData.products
+      .map(
+        (product: any, index: number) =>
+          `${index + 1}. **${product.name}** - Số lượng: ${product.quantity} - Giá: ${product.price.toLocaleString(
+            'vi-VN'
+          )}₫`
+      )
+      .join('\n');
 
     // Tính tổng tiền
     const totalAmount = orderData.amount.toLocaleString('vi-VN');
@@ -44,33 +153,39 @@ const sendDiscordNotification = async (orderData: any, currentUser: any) => {
     const fullAddress = `${orderData.address.line1}, ${orderData.address.city}, ${orderData.address.country}`;
 
     const embed = {
-      title: "🛒 **ĐƠN HÀNG MỚI**",
+      title: '🛒 **ĐƠN HÀNG MỚI**',
       color: 0x00ff00, // Màu xanh lá
       fields: [
         {
-          name: "👤 **Thông tin khách hàng**",
-          value: `**Tên:** ${currentUser.name || 'N/A'}\n**Email:** ${currentUser.email}\n**SĐT:** ${orderData.phoneNumber}`,
+          name: '👤 **Thông tin khách hàng**',
+          value: `**Tên:** ${currentUser.name || 'N/A'}\n**Email:** ${currentUser.email}\n**SĐT:** ${
+            orderData.phoneNumber
+          }`,
           inline: false
         },
         {
-          name: "📍 **Địa chỉ giao hàng**",
+          name: '📍 **Địa chỉ giao hàng**',
           value: fullAddress,
           inline: false
         },
         {
-          name: "🛍️ **Sản phẩm đặt mua**",
+          name: '🛍️ **Sản phẩm đặt mua**',
           value: productList,
           inline: false
         },
         {
-          name: "💰 **Thông tin thanh toán**",
-          value: `**Tổng tiền hàng:** ${originalAmount}₫\n**Phí ship:** ${orderData.shippingFee.toLocaleString('vi-VN')}₫\n**Giảm giá:** ${orderData.discountAmount.toLocaleString('vi-VN')}₫\n**Tổng thanh toán:** ${totalAmount}₫\n**Phương thức:** ${orderData.paymentMethod.toUpperCase()}`,
+          name: '💰 **Thông tin thanh toán**',
+          value: `**Tổng tiền hàng:** ${originalAmount}₫\n**Phí ship:** ${orderData.shippingFee.toLocaleString(
+            'vi-VN'
+          )}₫\n**Giảm giá:** ${orderData.discountAmount.toLocaleString(
+            'vi-VN'
+          )}₫\n**Tổng thanh toán:** ${totalAmount}₫\n**Phương thức:** ${orderData.paymentMethod.toUpperCase()}`,
           inline: false
         }
       ],
       timestamp: new Date().toISOString(),
       footer: {
-        text: "ThanhHuy Store - Đơn hàng mới"
+        text: 'ThanhHuy Store - Đơn hàng mới'
       }
     };
 
@@ -123,6 +238,55 @@ export async function POST(request: Request): Promise<Response> {
 
   const body = await request.json();
   const { products, phoneNumber, address, payment_intent_id, shippingFee, paymentMethod, voucher } = body;
+
+  // SECURITY VALIDATION LAYER
+  try {
+    // 1. Rate limiting check
+    const isWithinRateLimit = await checkRateLimit(currentUser.id);
+    if (!isWithinRateLimit) {
+      return NextResponse.json(
+        {
+          error: 'Too many orders. Please wait before placing another order.'
+        },
+        { status: 429 }
+      );
+    }
+
+    // 2. Validate input data
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return NextResponse.json({ error: 'Invalid products data' }, { status: 400 });
+    }
+
+    if (!phoneNumber || !address || !paymentMethod) {
+      return NextResponse.json({ error: 'Missing required order information' }, { status: 400 });
+    }
+
+    if (!['cod', 'stripe', 'momo'].includes(paymentMethod)) {
+      return NextResponse.json({ error: 'Invalid payment method' }, { status: 400 });
+    }
+
+    // 3. Comprehensive order validation
+    const validation = await validateOrderData(products, currentUser);
+    if (!validation.isValid) {
+      return NextResponse.json(
+        {
+          error: 'Order validation failed',
+          details: validation.errors
+        },
+        { status: 400 }
+      );
+    }
+
+    console.log(`Order validation passed for user ${currentUser.id}`);
+  } catch (error) {
+    console.error('Validation error:', error);
+    return NextResponse.json(
+      {
+        error: 'Internal validation error'
+      },
+      { status: 500 }
+    );
+  }
 
   const totalVND = calculateOrderAmount(products);
   const originalAmount = totalVND + shippingFee;
@@ -243,8 +407,8 @@ export async function POST(request: Request): Promise<Response> {
                   name: product.name,
                   image: product.selectedImg?.images?.[0] || '/placeholder.png'
                 }))
-              },
-            },
+              }
+            }
           });
         } catch (error) {
           console.error('Error creating ORDER_CREATED activity:', error);
@@ -324,8 +488,8 @@ export async function POST(request: Request): Promise<Response> {
                   name: product.name,
                   image: product.selectedImg?.images?.[0] || '/placeholder.png'
                 }))
-              },
-            },
+              }
+            }
           });
         } catch (error) {
           console.error('Error creating ORDER_CREATED activity for COD:', error);
@@ -381,8 +545,8 @@ export async function POST(request: Request): Promise<Response> {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderId: createdOrder.id,
-              paymentIntentId: createdOrder.paymentIntentId,
-            }),
+              paymentIntentId: createdOrder.paymentIntentId
+            })
           });
         } catch (error) {
           console.error('Error processing COD payment:', error);
@@ -421,8 +585,8 @@ export async function POST(request: Request): Promise<Response> {
                 name: product.name,
                 image: product.selectedImg?.images?.[0] || '/placeholder.png'
               }))
-            },
-          },
+            }
+          }
         });
       } catch (error) {
         console.error('Error creating ORDER_CREATED activity for MoMo:', error);

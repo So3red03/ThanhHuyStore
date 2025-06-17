@@ -4,26 +4,23 @@ import { getUsers } from '@/app/actions/getUsers';
 import ManageVouchersClient from './ManageVouchersClient';
 import NullData from '@/app/components/NullData';
 
+// Keep force-dynamic due to analytics tracking
 export const dynamic = 'force-dynamic';
 
 const ManageVouchers = async () => {
-	const currentUser = await getCurrentUser();
-	const vouchers = await getVouchers();
-	const users = await getUsers();
+  const currentUser = await getCurrentUser();
+  const vouchers = await getVouchers();
+  const users = await getUsers();
 
-	if (!currentUser || currentUser.role !== 'ADMIN') {
-		return <NullData title="Oops! Access denied" />;
-	}
+  if (!currentUser || currentUser.role !== 'ADMIN') {
+    return <NullData title='Oops! Access denied' />;
+  }
 
-	return (
-		<div className="pt-8">
-			<ManageVouchersClient 
-				vouchers={vouchers} 
-				users={users}
-				currentUser={currentUser} 
-			/>
-		</div>
-	);
+  return (
+    <div className='pt-8'>
+      <ManageVouchersClient vouchers={vouchers} users={users} currentUser={currentUser} />
+    </div>
+  );
 };
 
 export default ManageVouchers;
