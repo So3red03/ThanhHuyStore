@@ -1,19 +1,27 @@
 'use client';
-import { createContext, useContext, useState } from 'react';
+import { createContext } from 'react';
+import { useUIStore } from '@/stores/uiStore';
 
+// Keep old context for backward compatibility (but won't be used)
 const SidebarContext = createContext({
-	isOpen: false,
-	toggleSidebar: () => {},
+  isOpen: false,
+  toggleSidebar: () => {}
 });
 
-export const useSidebar = () => useContext(SidebarContext);
+// Updated useSidebar hook - now uses Zustand store
+export const useSidebar = () => {
+  const { isSidebarOpen, toggleSidebar, closeSidebar, openSidebar } = useUIStore();
 
+  return {
+    isOpen: isSidebarOpen,
+    toggleSidebar,
+    closeSidebar,
+    openSidebar
+  };
+};
+
+// Simplified provider - just a wrapper now
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-	const [isOpen, setIsOpen] = useState(false);
-
-	const toggleSidebar = () => {
-		setIsOpen(!isOpen);
-	};
-
-	return <SidebarContext.Provider value={{ isOpen, toggleSidebar }}>{children}</SidebarContext.Provider>;
+  // No state needed - Zustand handles everything
+  return <>{children}</>;
 };

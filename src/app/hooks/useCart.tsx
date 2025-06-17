@@ -1,11 +1,11 @@
 'use client';
 import { CartProductType } from '@/app/(home)/product/[productId]/ProductDetails';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { toast } from 'react-hot-toast';
+import { useCallback, useEffect } from 'react';
+import { useCartStore } from '@/stores/cartStore';
 
-//Tạo đối tượng context quản lý giỏ hàng (React Context API)
+// Keep the old Context for backward compatibility (but it won't be used)
+import { createContext } from 'react';
 export const CartContext = createContext<CartContextType | null>(null);
 
 interface Voucher {
@@ -65,257 +65,199 @@ interface Props {
 }
 
 export const CartContextProvider = (props: Props) => {
-  // State quản lý trạng thái giỏ hàng
-  const [cartTotalQty, setCartTotalQty] = useState(0);
-  const [cartTotalAmount, setCartTotalAmount] = useState(0);
-  const [cartProducts, setCartProducts] = useState<CartProductType[] | null>(null);
-  const [paymentIntent, setPaymentIntent] = useState<string | null>(null);
+  // Now just a wrapper component - all logic moved to Zustand store
   const router = useRouter();
-  const [cartInfo, setCartInfo] = useState(null);
-  const [step, setStep] = useState(1);
-  const [shippingFee, setShippingFee] = useState(0);
-  const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [finalAmount, setFinalAmount] = useState(0);
 
-  // Chạy useEffect để thiết lập giá trị từ localStorage
+  // Initialize store on mount (Zustand handles persistence automatically)
   useEffect(() => {
-    const savedInfo = localStorage.getItem('CartInfo');
-    const savedShippingFee = localStorage.getItem('shippingFee');
-    const savedStep = localStorage.getItem('cartStep');
-    const savedVoucher = localStorage.getItem('selectedVoucher');
-
-    if (savedInfo) {
-      setCartInfo(JSON.parse(savedInfo));
-    }
-    if (savedStep) {
-      setStep(JSON.parse(savedStep));
-    }
-    if (savedShippingFee) {
-      setShippingFee(JSON.parse(savedShippingFee));
-    }
-    if (savedVoucher) {
-      setSelectedVoucher(JSON.parse(savedVoucher));
-    }
+    // Zustand persist middleware handles localStorage automatically
+    // No manual localStorage operations needed
   }, []);
 
-  const shippingFeeClient = (params: number) => {
-    setShippingFee(params);
-    localStorage.setItem('shippingFee', JSON.stringify(params));
-  };
+  // All logic now handled by Zustand store
+  // These are just wrapper functions for backward compatibility
 
-  // Handling step
+  const store = useCartStore();
+
+  const shippingFeeClient = useCallback(
+    (params: number) => {
+      store.setShippingFee(params);
+    },
+    [store]
+  );
+
   const handleNextStep = useCallback(() => {
-    if (step < 4) {
-      setStep((prev: any) => {
-        const updateStep = prev + 1;
-        localStorage.setItem('cartStep', JSON.stringify(updateStep));
-        return updateStep;
-      });
-    }
-  }, []);
+    store.nextStep();
+  }, [store]);
 
   const handleGoToStep = useCallback(
     (targetStep: number) => {
-      if (step === 4) {
-        if (targetStep === 4) {
-          return;
-        }
-      } else if (targetStep <= step) {
-        setStep(targetStep);
-        switch (targetStep) {
-          case 1:
-            router.push('/cart');
-            break;
-          case 2:
-            router.push('/cart/cartinfo');
-            break;
-          case 3:
-            router.push('/cart/checkout');
-            break;
-          case 4:
-            router.push('/cart/orderconfirmation');
-            break;
-        }
+      store.goToStep(targetStep);
+      // Handle navigation
+      switch (targetStep) {
+        case 1:
+          router.push('/cart');
+          break;
+        case 2:
+          router.push('/cart/cartinfo');
+          break;
+        case 3:
+          router.push('/cart/checkout');
+          break;
+        case 4:
+          router.push('/cart/orderconfirmation');
+          break;
       }
     },
-    [step, router]
+    [store, router]
   );
 
-  const handleInfoClient = useCallback((info: any) => {
-    setCartInfo(info);
-    localStorage.setItem('CartInfo', JSON.stringify(info));
-  }, []);
+  const handleInfoClient = useCallback(
+    (info: any) => {
+      store.setCartInfo(info);
+    },
+    [store]
+  );
 
-  const handleAddProductToCart = useCallback((product: CartProductType) => {
-    // Vì setCartProducts không thay đổi nên không cần dependencies
-    setCartProducts(prev => {
-      const updateCart = prev ? [...prev, product] : [product];
-      localStorage.setItem('CartItems', JSON.stringify(updateCart));
-      return updateCart;
-    });
-    toast.success('Thêm sản phẩm thành công');
-  }, []);
+  const handleAddProductToCart = useCallback(
+    (product: CartProductType) => {
+      store.addProduct(product);
+    },
+    [store]
+  );
 
   const handleRemoveProductFromCart = useCallback(
     (product: CartProductType) => {
-      if (cartProducts) {
-        const updateCart = cartProducts.filter(item => item.id !== product.id);
-        setCartProducts(updateCart);
-        localStorage.setItem('CartItems', JSON.stringify(updateCart));
-        toast.success('Xóa sản phẩm thành công');
-      }
+      store.removeProduct(product);
     },
-    [cartProducts]
+    [store]
   );
 
   const handleCartQtyIncrease = useCallback(
     (product: CartProductType) => {
-      let updateCart;
-      if (cartProducts) {
-        updateCart = [...cartProducts];
-        const existsProduct = cartProducts.findIndex(cartProduct => cartProduct.id === product.id);
-        if (existsProduct > -1) {
-          if (updateCart[existsProduct].quantity >= product.inStock) {
-            toast.error(`${product.name} chỉ còn ${product.inStock} sản phẩm`);
-            return;
-          }
-          updateCart[existsProduct].quantity += 1;
-          setCartProducts(updateCart);
-          localStorage.setItem('CartItems', JSON.stringify(updateCart));
-        }
-      }
+      store.increaseQty(product);
     },
-    [cartProducts]
+    [store]
   );
 
   const handleCartQtyDecrease = useCallback(
     (product: CartProductType) => {
-      let updateCart;
-      if (cartProducts) {
-        updateCart = [...cartProducts];
-        const existsProduct = cartProducts.findIndex(cartProduct => cartProduct.id === product.id);
-        if (existsProduct > -1) {
-          if (updateCart[existsProduct].quantity <= 1) {
-            toast.error('Số lượng không thể dưới 1');
-            return;
-          }
-          updateCart[existsProduct].quantity -= 1;
-          setCartProducts(updateCart);
-          localStorage.setItem('CartItems', JSON.stringify(updateCart));
-        }
-      }
+      store.decreaseQty(product);
     },
-    [cartProducts]
+    [store]
   );
 
   const handleClearCart = useCallback(() => {
-    if (cartProducts) {
-      setCartTotalQty(0);
-      setCartProducts(null);
-      localStorage.setItem('CartItems', JSON.stringify(null));
-    }
-    toast.success('Xóa tất cả sản phẩm thành công');
-  }, [cartProducts]);
+    store.clearCart();
+  }, [store]);
 
-  // Invoking data from localStorage
+  // Handle hydration and initialize store
   useEffect(() => {
-    const cartItems: any = localStorage.getItem('CartItems');
-    const eShopPaymentIntent: any = localStorage.getItem('eShopPaymentIntent');
-    const paymentIntent: string | null = JSON.parse(eShopPaymentIntent);
+    // Rehydrate the store from localStorage
+    useCartStore.persist.rehydrate();
+    // Calculate totals after hydration
+    setTimeout(() => store.calculateTotals(), 0);
+  }, [store]);
 
-    setCartProducts(JSON.parse(cartItems));
-    setPaymentIntent(paymentIntent);
-  }, []);
+  const handleSetPaymentIntent = useCallback(
+    (val: string | null) => {
+      store.setPaymentIntent(val);
+    },
+    [store]
+  );
 
-  // Handling total quantity and total price
-  useEffect(() => {
-    if (cartProducts) {
-      const { total, qty } = cartProducts.reduce(
-        (acc, item) => {
-          const itemTotal = item.price * item.quantity;
-
-          acc.total += itemTotal;
-          acc.qty += item.quantity;
-
-          return acc;
-        },
-        {
-          total: 0,
-          qty: 0
-        }
-      );
-      setCartTotalAmount(total);
-      setCartTotalQty(qty);
-    }
-  }, [cartProducts]);
-
-  // Calculate discount amount and final amount
-  useEffect(() => {
-    if (selectedVoucher && cartTotalAmount > 0) {
-      let discount = 0;
-
-      if (selectedVoucher.discountType === 'PERCENTAGE') {
-        discount = (cartTotalAmount * selectedVoucher.discountValue) / 100;
-      } else {
-        discount = selectedVoucher.discountValue;
-      }
-
-      setDiscountAmount(discount);
-      setFinalAmount(cartTotalAmount + shippingFee - discount);
-    } else {
-      setDiscountAmount(0);
-      setFinalAmount(cartTotalAmount + shippingFee);
-    }
-  }, [selectedVoucher, cartTotalAmount, shippingFee]);
-
-  const handleSetPaymentIntent = useCallback((val: string | null) => {
-    setPaymentIntent(val);
-    localStorage.setItem('eShopPaymentIntent', JSON.stringify(val));
-  }, []);
-
-  // Handle voucher selection
-  const handleSetSelectedVoucher = useCallback((voucher: Voucher | null) => {
-    setSelectedVoucher(voucher);
-    localStorage.setItem('selectedVoucher', JSON.stringify(voucher));
-  }, []);
+  const handleSetSelectedVoucher = useCallback(
+    (voucher: Voucher | null) => {
+      store.setSelectedVoucher(voucher);
+    },
+    [store]
+  );
 
   const value = {
-    cartTotalQty,
-    cartProducts,
+    cartTotalQty: store.cartTotalQty,
+    cartProducts: store.cartProducts,
     handleAddProductToCart,
     handleRemoveProductFromCart,
     handleCartQtyIncrease,
     handleCartQtyDecrease,
     handleClearCart,
-    cartTotalAmount: cartTotalAmount + shippingFee,
-    setCartTotalAmount,
-    paymentIntent,
+    cartTotalAmount: store.getTotalWithShipping(),
+    setCartTotalAmount: () => {}, // Not needed with Zustand
+    paymentIntent: store.paymentIntent,
     handleSetPaymentIntent,
-    step,
-    setStep,
+    step: store.step,
+    setStep: store.goToStep,
     handleNextStep,
     handleGoToStep,
     handleInfoClient,
-    cartInfo,
-    setCartInfo,
-    setShippingFee,
-    shippingFee,
+    cartInfo: store.cartInfo,
+    setCartInfo: store.setCartInfo,
+    setShippingFee: store.setShippingFee,
+    shippingFee: store.shippingFee,
     shippingFeeClient,
-    selectedVoucher,
+    selectedVoucher: store.selectedVoucher,
     setSelectedVoucher: handleSetSelectedVoucher,
-    discountAmount,
-    finalAmount
+    discountAmount: store.discountAmount,
+    finalAmount: store.finalAmount
   };
 
   // Provider
   return <CartContext.Provider value={value} {...props} />;
 };
 
-// Sử dụng useContext(consumer) để lấy giá trị của context từ <CartContext.Provider> và check lỗi
+// Updated useCart hook - now uses Zustand store directly
 export const useCart = () => {
-  const context = useContext(CartContext);
-  if (context === null) throw new Error('useCart must be used within a CartContextProvider');
+  const store = useCartStore();
+  const router = useRouter();
 
-  return context;
+  // Create wrapper functions for backward compatibility
+  const handleGoToStep = useCallback(
+    (targetStep: number) => {
+      store.goToStep(targetStep);
+      // Handle navigation
+      switch (targetStep) {
+        case 1:
+          router.push('/cart');
+          break;
+        case 2:
+          router.push('/cart/cartinfo');
+          break;
+        case 3:
+          router.push('/cart/checkout');
+          break;
+        case 4:
+          router.push('/cart/orderconfirmation');
+          break;
+      }
+    },
+    [store, router]
+  );
+
+  return {
+    cartTotalQty: store.cartTotalQty,
+    cartProducts: store.cartProducts,
+    handleAddProductToCart: store.addProduct,
+    handleRemoveProductFromCart: store.removeProduct,
+    handleCartQtyIncrease: store.increaseQty,
+    handleCartQtyDecrease: store.decreaseQty,
+    handleClearCart: store.clearCart,
+    cartTotalAmount: store.getTotalWithShipping(),
+    setCartTotalAmount: () => {}, // Not needed with Zustand
+    paymentIntent: store.paymentIntent,
+    handleSetPaymentIntent: store.setPaymentIntent,
+    step: store.step,
+    setStep: store.goToStep,
+    handleNextStep: store.nextStep,
+    handleGoToStep,
+    handleInfoClient: store.setCartInfo,
+    cartInfo: store.cartInfo,
+    setCartInfo: store.setCartInfo,
+    setShippingFee: store.setShippingFee,
+    shippingFee: store.shippingFee,
+    shippingFeeClient: store.setShippingFee,
+    selectedVoucher: store.selectedVoucher,
+    setSelectedVoucher: store.setSelectedVoucher,
+    discountAmount: store.discountAmount,
+    finalAmount: store.finalAmount
+  };
 };
