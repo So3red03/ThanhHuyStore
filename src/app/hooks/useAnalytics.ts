@@ -136,6 +136,60 @@ export const useArticleAnalytics = (days: number = 7, limit: number = 10) => {
   return { data, loading, error, refetch: fetchData };
 };
 
+export const usePaymentMethodAnalytics = (days: number = 7) => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await axios.get(`/api/analytics/payment-methods?days=${days}`);
+      setData(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to fetch payment method analytics');
+      console.error('Payment method analytics error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [days]);
+
+  return { data, loading, error, refetch: fetchData };
+};
+
+export const usePromotionAnalytics = (days: number = 7) => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await axios.get(`/api/analytics/promotions?days=${days}`);
+      setData(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to fetch promotion analytics');
+      console.error('Promotion analytics error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [days]);
+
+  return { data, loading, error, refetch: fetchData };
+};
+
 // Hook để track events
 export const useAnalyticsTracker = () => {
   const trackEvent = async (eventData: {

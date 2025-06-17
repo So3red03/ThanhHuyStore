@@ -401,6 +401,13 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
                     <span className='font-medium'>Quốc tịch</span>
                     <span className='text-gray-700'>Việt Nam</span>
                   </div>
+
+                  <div className='flex justify-between'>
+                    <span className='font-medium'>Lần cuối đăng nhập</span>
+                    <span className='text-gray-700 text-sm'>
+                      {user.lastLogin ? formatDate(user.lastLogin) : 'Chưa có'}
+                    </span>
+                  </div>
                 </div>
               </div>
               <button

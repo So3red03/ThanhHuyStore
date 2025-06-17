@@ -38,6 +38,7 @@ model User {
   hashedPassword String?
   createAt       DateTime           @default(now())
   updateAt       DateTime           @updatedAt
+  lastLogin      DateTime?
   role           Role               @default(USER)
 
   resetPasswordToken   String?

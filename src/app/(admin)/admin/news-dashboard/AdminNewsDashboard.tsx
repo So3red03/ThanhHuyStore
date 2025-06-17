@@ -1,11 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAnalyticsOverview, useProductAnalytics, useArticleAnalytics } from '@/app/hooks/useAnalytics';
+import {
+  useAnalyticsOverview,
+  useProductAnalytics,
+  useArticleAnalytics,
+  usePaymentMethodAnalytics,
+  usePromotionAnalytics
+} from '@/app/hooks/useAnalytics';
 import AnalyticsKPICards from '@/app/components/analytics/AnalyticsKPICards';
 import AnalyticsTrendChart from '@/app/components/analytics/AnalyticsTrendChart';
 import TopProductsTable from '@/app/components/analytics/TopProductsTable';
 import TopArticlesTable from '@/app/components/analytics/TopArticlesTable';
+import PaymentMethodChart from '@/app/components/analytics/PaymentMethodChart';
+import PromotionChart from '@/app/components/analytics/PromotionChart';
 import AnalyticsTestPanel from '@/app/components/analytics/AnalyticsTestPanel';
 import { Button } from '@mui/material';
 import { MdRefresh, MdAutorenew, MdDateRange } from 'react-icons/md';
@@ -35,6 +43,20 @@ const NewsDashboard = () => {
     refetch: refetchArticles
   } = useArticleAnalytics(selectedPeriod, 10);
 
+  const {
+    data: paymentData,
+    loading: paymentLoading,
+    error: paymentError,
+    refetch: refetchPayments
+  } = usePaymentMethodAnalytics(selectedPeriod);
+
+  const {
+    data: promotionData,
+    loading: promotionLoading,
+    error: promotionError,
+    refetch: refetchPromotions
+  } = usePromotionAnalytics(selectedPeriod);
+
   // Auto refresh every 5 minutes
   useEffect(() => {
     if (!autoRefresh) return;
@@ -43,6 +65,8 @@ const NewsDashboard = () => {
       refetchOverview();
       refetchProducts();
       refetchArticles();
+      refetchPayments();
+      refetchPromotions();
     }, 5 * 60 * 1000); // 5 minutes
 
     return () => clearInterval(interval);
@@ -56,9 +80,11 @@ const NewsDashboard = () => {
     refetchOverview();
     refetchProducts();
     refetchArticles();
+    refetchPayments();
+    refetchPromotions();
   };
 
-  if (overviewLoading && productLoading && articleLoading) {
+  if (overviewLoading && productLoading && articleLoading && paymentLoading && promotionLoading) {
     return (
       <div className='flex items-center justify-center h-64'>
         <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600'></div>
@@ -66,10 +92,12 @@ const NewsDashboard = () => {
     );
   }
 
-  if (overviewError || productError || articleError) {
+  if (overviewError || productError || articleError || paymentError || promotionError) {
     return (
       <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
-        <p className='text-red-600'>Lỗi tải dữ liệu: {overviewError || productError || articleError}</p>
+        <p className='text-red-600'>
+          Lỗi tải dữ liệu: {overviewError || productError || articleError || paymentError || promotionError}
+        </p>
         <button onClick={handleRefresh} className='mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700'>
           Thử lại
         </button>
@@ -164,6 +192,12 @@ const NewsDashboard = () => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Payment Methods Chart */}
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+        {paymentData && <PaymentMethodChart data={paymentData.data} title='Phương thức thanh toán' />}
+        {promotionData && <PromotionChart data={promotionData.data} title='Top 5 Chương trình khuyến mãi' />}
       </div>
 
       {/* Products Analytics */}
