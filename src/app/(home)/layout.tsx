@@ -1,4 +1,5 @@
 import '../globals.css';
+import '../styles/nprogress.css';
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 import Navbar from '../components/nav/Navbar';
@@ -11,6 +12,7 @@ import { getSession } from 'next-auth/react';
 import ClientSessionProvider from '../providers/ClientSessionProvider';
 import { getCurrentUser } from '../actions/getCurrentUser';
 import AnalyticsTracker from '../components/analytics/AnalyticsTracker';
+import NProgressProvider from '../components/NProgressProvider';
 
 const poppins = Poppins({ subsets: ['latin'], weight: ['400', '700'] });
 
@@ -45,6 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ClientSessionProvider session={session}>
           <CartProvider>
             <AnalyticsTracker>
+              <NProgressProvider />
               <div className='flex flex-col min-h-screen'>
                 <Navbar />
                 <main className='flex-grow'>{children}</main>
