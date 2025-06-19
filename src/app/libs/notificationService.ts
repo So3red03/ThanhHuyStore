@@ -90,9 +90,26 @@ export class NotificationService {
   // Lấy notifications cho admin
   static async getAdminNotifications(limit = 50) {
     try {
+      // Trước tiên, fix các notification có title null
+      await this.fixNullTitleNotifications();
+
       const notifications = await prisma.notification.findMany({
         where: {
-          OR: [{ type: 'ORDER_PLACED' }, { type: 'COMMENT_RECEIVED' }, { type: 'LOW_STOCK' }, { type: 'SYSTEM_ALERT' }]
+          AND: [
+            {
+              OR: [
+                { type: 'ORDER_PLACED' },
+                { type: 'COMMENT_RECEIVED' },
+                { type: 'LOW_STOCK' },
+                { type: 'SYSTEM_ALERT' }
+              ]
+            },
+            {
+              title: {
+                not: ''
+              }
+            }
+          ]
         },
         include: {
           user: true,
@@ -100,13 +117,10 @@ export class NotificationService {
           fromUser: true
         },
         orderBy: { createdAt: 'desc' },
-        take: limit * 2 // Lấy nhiều hơn để filter
+        take: limit
       });
 
-      // Filter ra những notification có title null sau khi lấy dữ liệu
-      return notifications
-        .filter(notification => notification.title && notification.title.trim() !== '')
-        .slice(0, limit);
+      return notifications;
     } catch (error) {
       console.error('Error fetching admin notifications:', error);
       // Trả về array rỗng thay vì throw error
@@ -278,5 +292,29 @@ export class NotificationService {
     );
 
     return notifications;
+  }
+
+  // Fix notifications có title null
+  static async fixNullTitleNotifications() {
+    try {
+      // Tìm và update các notification có title empty
+      const result = await prisma.notification.updateMany({
+        where: {
+          title: ''
+        },
+        data: {
+          title: 'Thông báo hệ thống'
+        }
+      });
+
+      if (result.count > 0) {
+        console.log(`Fixed ${result.count} notifications with null/empty title`);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error fixing null title notifications:', error);
+      return { count: 0 };
+    }
   }
 }

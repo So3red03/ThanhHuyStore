@@ -3,11 +3,11 @@ datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
- 
+
 generator client {
   provider = "prisma-client-js"
 }
- 
+
 model Account {
   id                String          @id @default(auto()) @map("_id") @db.ObjectId
   userId            String          @db.ObjectId
@@ -21,9 +21,9 @@ model Account {
   scope             String?
   id_token          String?         @db.String
   session_state     String?
- 
+
   user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   @@unique([provider, providerAccountId])
 }
 
@@ -127,6 +127,7 @@ model Product {
   categoryId       String    @db.ObjectId
   category         Category  @relation(fields: [categoryId], references: [id], onDelete: NoAction)
   inStock          Int
+  priority         Int       @default(0) // 0: normal, 1-10: priority levels
   createDate       DateTime? @default(now())
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -183,11 +184,11 @@ model ArticleReview {
   id          String           @id @default(auto()) @map("_id") @db.ObjectId
   userId      String           @db.ObjectId
   articleId   String           @db.ObjectId
-  rating      Int?             
-  comment     String?          
+  rating      Int?
+  comment     String?
   parentId    String?          @db.ObjectId // ID của bình luận cha (null nếu là bình luận gốc)
   parent      ArticleReview?   @relation("Replies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction) // Quan hệ với bình luận cha
-  replies     ArticleReview[]  @relation("Replies") 
+  replies     ArticleReview[]  @relation("Replies")
   createdDate DateTime         @default(now())
   updatedAt   DateTime?        @updatedAt
 
@@ -216,7 +217,7 @@ model ChatRoom {
   createdAt     DateTime        @default(now())
   lastMessageAt DateTime        @default(now())
   name          String?
-  
+
   messages Message[]
   users    User[]               @relation(fields: [userIds], references: [id])
 }
@@ -242,8 +243,8 @@ model Banner {
   image           String
   imageResponsive String
   startDate       DateTime
-  endDate         DateTime 
-  status          String   
+  endDate         DateTime
+  status          String
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -290,6 +291,8 @@ enum NotificationType {
   MESSAGE_RECEIVED
   LOW_STOCK
   SYSTEM_ALERT
+  PROMOTION_SUGGESTION
+  VOUCHER_SUGGESTION
 }
 
 enum ActivityType {

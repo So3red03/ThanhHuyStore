@@ -38,7 +38,8 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-articlesCategory': 'Quản lý danh mục',
   '/admin/manage-vouchers': 'Quản lý Voucher',
   '/admin/manage-promotions': 'Quản lý Promotion',
-  '/admin/news-dashboard': 'Phân tích'
+  '/admin/news-dashboard': 'Phân tích',
+  '/admin/settings': 'Cài đặt hệ thống'
 };
 
 interface AdminNavProps {

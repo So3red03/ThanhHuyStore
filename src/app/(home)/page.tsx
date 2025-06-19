@@ -9,6 +9,7 @@ import DisplayNews from '../components/DisplayNews';
 import { HomeBanner } from '../components/HomeBanner';
 import DisplayProductsBySlug from '../components/products/DisplayProductsBySlug';
 import PersonalizedRecommendations from '../components/PersonalizedRecommendations';
+import RecentlyViewedProducts from '../components/RecentlyViewedProducts';
 
 // Keep force-dynamic due to analytics tracking and complex dynamic usage
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,8 @@ export default async function Home() {
             </div>
           </Container>
         )}
+        <RecentlyViewedProducts allProducts={allProducts || []} maxProducts={5} />
+
         <div className='max-w-[1280px] mx-auto flex flex-col lg:flex-row pb-10 lg:mt-5 mt-2 relative'>
           <DisplayNews articles={articles || []} />
         </div>

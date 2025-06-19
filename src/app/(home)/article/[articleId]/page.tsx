@@ -5,6 +5,8 @@ import NotFound from '../../404';
 import axios from 'axios';
 import { getArticleListBySlug } from '@/app/actions/getArticleListBySlug';
 import RelatedArticles from '@/app/components/news/RelatedArticles';
+import { getAllProducts } from '@/app/actions/getAllProducts';
+import RecentlyViewedProducts from '@/app/components/RecentlyViewedProducts';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +40,7 @@ const Article = async ({ params }: { params: IParams }) => {
   const currentUser = await getCurrentUser();
   const slug = article.category.slug;
   const relatedArticles = await getArticleListBySlug({ slug });
+  const allProducts = await getAllProducts();
   return (
     <Suspense
       fallback={
@@ -47,7 +50,7 @@ const Article = async ({ params }: { params: IParams }) => {
       }
     >
       <div className='max-w-full mx-auto h-full px-2 lg:px-0 relative w-full'>
-        <ArticleDetails article={article} currentUser={currentUser} />
+        <ArticleDetails article={article} allProducts={allProducts} currentUser={currentUser} />
         <RelatedArticles article={article} articleList={relatedArticles} />
       </div>
     </Suspense>

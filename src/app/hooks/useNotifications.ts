@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { SafeUser } from '../../../types';
 
@@ -27,9 +27,16 @@ export const useNotifications = (currentUser: SafeUser | null) => {
   const store = useNotificationStore();
 
   // Update current user in store when it changes
+  // Use useRef to track previous user to prevent unnecessary calls
+  const prevUserRef = useRef<SafeUser | null>(null);
+
   useEffect(() => {
-    store.setCurrentUser(currentUser);
-  }, [currentUser, store]);
+    // Only call setCurrentUser if user actually changed
+    if (prevUserRef.current?.id !== currentUser?.id) {
+      store.setCurrentUser(currentUser);
+      prevUserRef.current = currentUser;
+    }
+  }, [currentUser?.id, store]); // Only depend on user ID, not the whole user object
 
   // All Pusher subscription and data fetching now handled by Zustand store
   // No additional useEffects needed

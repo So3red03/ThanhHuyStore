@@ -74,20 +74,43 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     };
   }, []);
 
-  const saveViewedProduct = useCallback((product: CartProductType) => {
+  const saveViewedProduct = useCallback((product: any) => {
     if (!product) return;
 
-    setViewedProducts(prev => {
-      const updatedViewed = prev?.filter(p => p.id !== product.id) || [];
-      updatedViewed.unshift(product);
+    try {
+      // Lưu theo format mới cho RecentlyViewedProducts
+      const viewHistory = JSON.parse(localStorage.getItem('productViewHistory') || '[]');
 
-      if (updatedViewed.length > 8) {
-        updatedViewed.pop();
-      }
+      const newView = {
+        productId: product.id,
+        category: product.categoryId,
+        brand: product.brand || 'Apple',
+        viewedAt: Date.now()
+      };
 
-      localStorage.setItem('viewedProducts', JSON.stringify(updatedViewed));
-      return updatedViewed;
-    });
+      // Loại bỏ view cũ của cùng sản phẩm
+      const filteredHistory = viewHistory.filter((item: any) => item.productId !== product.id);
+
+      // Thêm view mới và giữ tối đa 50 records
+      const updatedHistory = [newView, ...filteredHistory].slice(0, 50);
+
+      localStorage.setItem('productViewHistory', JSON.stringify(updatedHistory));
+
+      // Vẫn giữ logic cũ cho backward compatibility
+      setViewedProducts(prev => {
+        const updatedViewed = prev?.filter(p => p.id !== product.id) || [];
+        updatedViewed.unshift(product);
+
+        if (updatedViewed.length > 8) {
+          updatedViewed.pop();
+        }
+
+        localStorage.setItem('viewedProducts', JSON.stringify(updatedViewed));
+        return updatedViewed;
+      });
+    } catch (error) {
+      console.error('Error saving viewed product:', error);
+    }
   }, []);
 
   return (

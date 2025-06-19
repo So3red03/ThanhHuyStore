@@ -10,43 +10,75 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 
 interface DisplayProductsBySlugProps {
-	data: any;
+  data: any;
 }
 
 const DisplayProductsBySlug: React.FC<DisplayProductsBySlugProps> = ({ data }) => {
-	const [products, setProducts] = useState<[]>(data.products);
-	const [loading, setLoading] = useState(true);
-	useEffect(() => {
-		if (data.products && data.products.length > 0) {
-			setProducts(data.products);
-			setLoading(false);
-		}
-	}, [data]);
-	return (
-		<>
-			<Link
-				href={`/${data.parentCategory.slug}`}
-				className="mt-12 w-full text-center mb-[20px] block select-none text-xl font-[600] sm:text-2xl"
-			>
-				{data.parentCategory.name}
-			</Link>
-			{/* <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:!grid-cols-5 3xl:!grid-cols-6 gap-7">
+  const [products, setProducts] = useState<[]>(data.products);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (data.products && data.products.length > 0) {
+      setProducts(data.products);
+      setLoading(false);
+    }
+  }, [data]);
+  return (
+    <>
+      <Link
+        href={`/${data.parentCategory.slug}`}
+        className='mt-12 w-full text-center mb-[20px] block select-none text-xl font-[600] sm:text-2xl'
+      >
+        {data.parentCategory.name}
+      </Link>
+      {/* <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:!grid-cols-5 3xl:!grid-cols-6 gap-7">
 				{loading
 					? Array.from({ length: 5 }).map((_, index) => <SkeletonLoader key={index} />)
 					: products.map((product: any) => <ProductCard key={product.id} data={product} />)}
 
 			</div> */}
-			<Swiper modules={[Navigation]} spaceBetween={28} slidesPerView={5} loop={false} className="w-full">
-				{loading
-					? Array.from({ length: 5 }).map((_, index) => <SkeletonLoader key={index} />)
-					: products.map((product: any) => (
-							<SwiperSlide key={product.id} className="w-full">
-								<ProductCard data={product} />
-							</SwiperSlide>
-					  ))}
-			</Swiper>
-		</>
-	);
+      <Swiper
+        modules={[Navigation]}
+        spaceBetween={28}
+        slidesPerView={5}
+        loop={false}
+        className='w-full'
+        breakpoints={{
+          320: {
+            slidesPerView: 1,
+            spaceBetween: 10
+          },
+          640: {
+            slidesPerView: 2,
+            spaceBetween: 15
+          },
+          768: {
+            slidesPerView: 3,
+            spaceBetween: 20
+          },
+          1024: {
+            slidesPerView: 4,
+            spaceBetween: 25
+          },
+          1280: {
+            slidesPerView: 5,
+            spaceBetween: 28
+          }
+        }}
+      >
+        {loading
+          ? Array.from({ length: 5 }).map((_, index) => (
+              <SwiperSlide key={index} className='w-full'>
+                <SkeletonLoader />
+              </SwiperSlide>
+            ))
+          : products.map((product: any) => (
+              <SwiperSlide key={product.id} className='w-full'>
+                <ProductCard data={product} />
+              </SwiperSlide>
+            ))}
+      </Swiper>
+    </>
+  );
 };
 
 export default DisplayProductsBySlug;

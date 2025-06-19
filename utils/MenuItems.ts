@@ -13,7 +13,8 @@ import {
   MdOutlineHome,
   MdSupervisedUserCircle,
   MdLocalOffer,
-  MdCardGiftcard
+  MdCardGiftcard,
+  MdOutlineSettings
 } from 'react-icons/md';
 import { BiCategory, BiNews, BiSolidCategory } from 'react-icons/bi';
 import { CiViewList } from 'react-icons/ci';
@@ -126,19 +127,7 @@ export const MenuItems = [
     }
   },
   {
-    title: 'Cài đặt',
-    list: [
-      // {
-      // 	title: 'Settings',
-      // 	path: '/dashboard/settings',
-      // 	icon: MdOutlineSettings,
-      // },
-      // {
-      // 	title: 'Help',
-      // 	path: '/dashboard/help',
-      // 	icon: MdHelpCenter,
-      // },
-      // {
-    ]
+    title: 'Khác',
+    list: []
   }
 ];

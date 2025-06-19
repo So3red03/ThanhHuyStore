@@ -6,7 +6,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 import { getSummary } from '../../../../utils/Articles';
@@ -21,6 +21,16 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true); // Trạng thái hiển thị nút "Xem thêm"
   const [isLoading, setIsLoading] = useState(false);
+  const [randomArticles, setRandomArticles] = useState<any[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  // Fix hydration mismatch - chỉ chạy random trên client
+  useEffect(() => {
+    setIsClient(true);
+    // Tạo random articles chỉ trên client để tránh hydration mismatch
+    const shuffledArticles = [...articles].sort(() => Math.random() - 0.5);
+    setRandomArticles(shuffledArticles.slice(0, 3));
+  }, [articles]);
 
   const loadMore = async () => {
     setIsLoading(true);
@@ -41,9 +51,12 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
     }
   };
 
-  const getRandomArticles = () => {
-    const shuffledArticles = [...articles].sort(() => Math.random() - 0.5); // Xáo trộn các phần tử trong mảng
-    return shuffledArticles.slice(0, 3); // Lấy 3 phần tử đầu tiên
+  // Fallback cho server-side rendering - sử dụng 3 articles đầu tiên
+  const getDisplayArticles = () => {
+    if (!isClient) {
+      return articles.slice(0, 3); // Server-side: luôn trả về 3 articles đầu
+    }
+    return randomArticles; // Client-side: sử dụng random articles
   };
 
   const handleArticleClick = async (articleId: string) => {
@@ -66,11 +79,6 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
     } catch (error) {
       console.error('Có lỗi xảy ra khi tăng viewCount:', error);
     }
-  };
-
-  const getViewCount = (articleId: string) => {
-    const viewCounts = JSON.parse(localStorage.getItem('articleViewCounts') || '{}');
-    return viewCounts[articleId] || 0;
   };
 
   return (
@@ -158,7 +166,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
             </div>
           </div>
           <div className=' grid flex-1 grid-cols-1 grid-rows-3 gap-[15px] sm:gap-[20px] '>
-            {getRandomArticles().map((article: any, index: any) => (
+            {getDisplayArticles().map((article: any) => (
               <div className='relative flex cursor-pointer items-start gap-[10px]' key={article.id}>
                 <Link
                   className='relative block aspect-16/10 h-full w-[140px] flex-shrink-0 xs:w-[160px]'
@@ -228,14 +236,36 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
           </h2>
           <Swiper
             modules={[Navigation, Autoplay]}
-            spaceBetween={20}
+            spaceBetween={10}
             slidesPerView={4}
             navigation
             autoplay={{ delay: 3000, disableOnInteraction: false }}
             loop={true}
+            breakpoints={{
+              320: {
+                slidesPerView: 1,
+                spaceBetween: 10
+              },
+              640: {
+                slidesPerView: 2,
+                spaceBetween: 10
+              },
+              768: {
+                slidesPerView: 3,
+                spaceBetween: 10
+              },
+              1024: {
+                slidesPerView: 4,
+                spaceBetween: 10
+              },
+              1280: {
+                slidesPerView: 4,
+                spaceBetween: 20
+              }
+            }}
             className='w-full'
           >
-            {articles.map((article: any, index: any) => (
+            {articles.map((article: any) => (
               <SwiperSlide key={article.id} className='w-full'>
                 <div className='w-full overflow-hidden'>
                   <Link
@@ -275,10 +305,6 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
                       >
                         <path d='M128,26A102,102,0,1,0,230,128,102.12,102.12,0,0,0,128,26ZM71.44,198a66,66,0,0,1,113.12,0,89.8,89.8,0,0,1-113.12,0ZM94,120a34,34,0,1,1,34,34A34,34,0,0,1,94,120Zm99.51,69.64a77.53,77.53,0,0,0-40-31.38,46,46,0,1,0-51,0,77.53,77.53,0,0,0-40,31.38,90,90,0,1,1,131,0Z' />
                       </svg>
-                      <div className='flex flex-col'>
-                        <span>{article.viewCount} lượt xem</span>
-                        <span className='text-xs'>Admin</span>
-                      </div>
                     </div>
                     <span className='mt-[5px] flex items-center gap-[3px] text-[#637381]'>
                       <svg
@@ -314,9 +340,9 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
               </h2>
               <div className='w-full'>
                 <div className='flex w-full flex-col gap-[10px] md:gap-[25px]'>
-                  {articles?.map((article: any, index: any) => (
+                  {articles?.map((article: any) => (
                     <div
-                      key={index}
+                      key={article.id}
                       className='relative flex items-start justify-between gap-[10px] transition-all lg:gap-[15px] '
                     >
                       <Link
@@ -440,11 +466,11 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
                 </span>
               </h2>
               <div className='mb-[10px] flex w-full flex-col gap-[15px] sm:mb-[15px] sm:gap-[20px] '>
-                {articles?.map((article: any, index: any) => (
+                {articles?.map((article: any) => (
                   <Link
                     className='relative flex cursor-pointer items-start justify-between gap-[10px]'
                     href={`/article/${slugConvert(article.title)}-${article.id}`}
-                    key={index}
+                    key={article.id}
                   >
                     <img
                       title={article.title}
@@ -504,11 +530,11 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
                 </span>
               </h2>
               <div className='mb-[10px] flex w-full flex-col gap-[15px] sm:mb-[15px] sm:gap-[20px] '>
-                {ArticlesListRightSide?.map((article: any, index: any) => (
+                {ArticlesListRightSide?.map((article: any) => (
                   <Link
                     className='relative flex cursor-pointer items-start justify-between gap-[10px]'
                     href={`/article/${slugConvert(article.title)}-${article.id}`}
-                    key={index}
+                    key={article.id}
                   >
                     <img
                       title={article.title}

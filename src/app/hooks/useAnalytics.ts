@@ -190,33 +190,111 @@ export const usePromotionAnalytics = (days: number = 7) => {
   return { data, loading, error, refetch: fetchData };
 };
 
+// Utility function to get or create session ID
+const getSessionId = (): string => {
+  if (typeof window === 'undefined') return '';
+
+  let sessionId = localStorage.getItem('analytics_session_id') || '';
+  if (!sessionId) {
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    localStorage.setItem('analytics_session_id', sessionId);
+  }
+  return sessionId;
+};
+
+// Base tracking function
+const trackEvent = async (eventData: {
+  eventType: string;
+  entityType?: string;
+  entityId?: string;
+  metadata?: any;
+  path?: string;
+  referrer?: string;
+}) => {
+  try {
+    await axios.post('/api/analytics/track', {
+      ...eventData,
+      sessionId: getSessionId(),
+      path: eventData.path || (typeof window !== 'undefined' ? window.location.pathname : '/'),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error(`Failed to track ${eventData.eventType}:`, error);
+  }
+};
+
+// Helper function to track purchase events
+export const trackPurchase = async (orderId: string, userId?: string, orderData?: any) => {
+  await trackEvent({
+    eventType: 'PURCHASE',
+    entityType: 'order',
+    entityId: orderId,
+    path: '/checkout',
+    metadata: {
+      orderId,
+      userId,
+      amount: orderData?.amount,
+      currency: orderData?.currency || 'VND',
+      products: orderData?.products || [],
+      timestamp: new Date().toISOString()
+    }
+  });
+};
+
+// Helper function to track product interactions
+export const trackProductInteraction = async (
+  eventType: 'PRODUCT_VIEW' | 'PRODUCT_CLICK',
+  productId: string,
+  additionalData?: any
+) => {
+  await trackEvent({
+    eventType,
+    entityType: 'product',
+    entityId: productId,
+    metadata: {
+      productId,
+      ...additionalData,
+      timestamp: new Date().toISOString()
+    }
+  });
+};
+
+// Helper function to track search events
+export const trackSearch = async (searchTerm: string, resultCount?: number, additionalData?: any) => {
+  await trackEvent({
+    eventType: 'SEARCH',
+    metadata: {
+      searchTerm,
+      resultCount,
+      searchQuery: searchTerm, // For better analytics
+      hasResults: resultCount !== undefined && resultCount > 0,
+      ...additionalData,
+      timestamp: new Date().toISOString()
+    }
+  });
+};
+
+// Helper function to track article interactions
+export const trackArticleView = async (articleId: string, additionalData?: any) => {
+  await trackEvent({
+    eventType: 'ARTICLE_VIEW',
+    entityType: 'article',
+    entityId: articleId,
+    metadata: {
+      articleId,
+      ...additionalData,
+      timestamp: new Date().toISOString()
+    }
+  });
+};
+
 // Hook để track events
 export const useAnalyticsTracker = () => {
-  const trackEvent = async (eventData: {
-    eventType: string;
-    entityType?: string;
-    entityId?: string;
-    metadata?: any;
-    path: string;
-    referrer?: string;
-  }) => {
-    try {
-      // Generate session ID if not exists
-      let sessionId = localStorage.getItem('analytics_session_id');
-      if (!sessionId) {
-        sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem('analytics_session_id', sessionId);
-      }
-
-      await axios.post('/api/analytics/track', {
-        ...eventData,
-        sessionId,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Failed to track event:', error);
-    }
+  return {
+    trackEvent,
+    trackPurchase,
+    trackProductInteraction,
+    trackSearch,
+    trackArticleView
   };
-
-  return { trackEvent };
 };

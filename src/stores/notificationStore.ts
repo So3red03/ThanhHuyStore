@@ -27,7 +27,7 @@ export interface NotificationStore {
   unreadCount: number;
   isLoading: boolean;
   currentUser: SafeUser | null;
-  
+
   // Actions
   setCurrentUser: (user: SafeUser | null) => void;
   fetchNotifications: () => Promise<void>;
@@ -35,7 +35,7 @@ export interface NotificationStore {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   addNotification: (notification: Notification) => void;
-  
+
   // Internal actions
   setupPusherSubscription: () => void;
   cleanupPusherSubscription: () => void;
@@ -44,6 +44,9 @@ export interface NotificationStore {
 // Store pusher channels outside of store to manage cleanup
 let userChannel: any = null;
 let adminChannel: any = null;
+
+// Debounce mechanism to prevent rapid setCurrentUser calls
+let setUserTimeout: NodeJS.Timeout | null = null;
 
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
   // Initial state
@@ -54,32 +57,55 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
   // Actions
   setCurrentUser: (user: SafeUser | null) => {
-    const prevUser = get().currentUser;
+    const state = get();
+    const prevUser = state.currentUser;
+
+    // Prevent infinite loops - only update if user actually changed
+    if (prevUser?.id === user?.id) {
+      return; // No change, exit early
+    }
+
+    // Clear any pending timeout
+    if (setUserTimeout) {
+      clearTimeout(setUserTimeout);
+    }
+
     set({ currentUser: user });
-    
-    // If user changed, cleanup old subscriptions and setup new ones
-    if (prevUser?.id !== user?.id) {
-      get().cleanupPusherSubscription();
-      if (user) {
-        get().setupPusherSubscription();
-        get().fetchNotifications();
-        get().fetchUnreadCount();
-      } else {
-        set({ notifications: [], unreadCount: 0 });
-      }
+
+    // Cleanup old subscriptions
+    state.cleanupPusherSubscription();
+
+    if (user) {
+      // Debounce the setup to prevent rapid calls
+      setUserTimeout = setTimeout(() => {
+        const currentState = get();
+        if (currentState.currentUser?.id === user.id) {
+          currentState.setupPusherSubscription();
+          currentState.fetchNotifications();
+          currentState.fetchUnreadCount();
+        }
+        setUserTimeout = null;
+      }, 100); // 100ms debounce
+    } else {
+      // Clear notifications when user logs out
+      set({ notifications: [], unreadCount: 0 });
     }
   },
 
   fetchNotifications: async () => {
-    const { currentUser } = get();
-    if (!currentUser) return;
-    
+    const { currentUser, isLoading } = get();
+    if (!currentUser || isLoading) return;
+
     try {
       set({ isLoading: true });
       const response = await fetch('/api/notifications');
       if (response.ok) {
         const data = await response.json();
-        set({ notifications: data });
+        // Double check user hasn't changed during fetch
+        const currentState = get();
+        if (currentState.currentUser?.id === currentUser.id) {
+          set({ notifications: data });
+        }
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -91,12 +117,16 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   fetchUnreadCount: async () => {
     const { currentUser } = get();
     if (!currentUser) return;
-    
+
     try {
       const response = await fetch('/api/notifications/unread-count');
       if (response.ok) {
         const data = await response.json();
-        set({ unreadCount: data.unreadCount });
+        // Double check user hasn't changed during fetch
+        const currentState = get();
+        if (currentState.currentUser?.id === currentUser.id) {
+          set({ unreadCount: data.unreadCount });
+        }
       }
     } catch (error) {
       console.error('Error fetching unread count:', error);
@@ -106,10 +136,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   markAsRead: async (notificationId: string) => {
     try {
       const response = await fetch(`/api/notifications/${notificationId}`, {
-        method: 'PUT',
+        method: 'PUT'
       });
       if (response.ok) {
-        set((state) => ({
+        set(state => ({
           notifications: state.notifications.map(notif =>
             notif.id === notificationId ? { ...notif, isRead: true } : notif
           ),
@@ -124,10 +154,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   markAllAsRead: async () => {
     try {
       const response = await fetch('/api/notifications/mark-all-read', {
-        method: 'PUT',
+        method: 'PUT'
       });
       if (response.ok) {
-        set((state) => ({
+        set(state => ({
           notifications: state.notifications.map(notif => ({ ...notif, isRead: true })),
           unreadCount: 0
         }));
@@ -138,7 +168,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   },
 
   addNotification: (notification: Notification) => {
-    set((state) => ({
+    set(state => ({
       notifications: [notification, ...state.notifications],
       unreadCount: state.unreadCount + 1
     }));
@@ -153,18 +183,18 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
     // User-specific channel
     userChannel = pusherClient.subscribe(`user-${currentUser.id}`);
-    
+
     userChannel.bind('notification', (data: any) => {
       if (data.type === 'new_notification') {
         get().addNotification(data.notification);
       } else if (data.type === 'notification_read') {
-        set((state) => ({
+        set(state => ({
           notifications: state.notifications.map(notif =>
             notif.id === data.notification.id ? data.notification : notif
           )
         }));
       } else if (data.type === 'all_notifications_read') {
-        set((state) => ({
+        set(state => ({
           notifications: state.notifications.map(notif => ({ ...notif, isRead: true })),
           unreadCount: 0
         }));
@@ -190,10 +220,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
       }
       userChannel = null;
     }
-    
+
     if (adminChannel) {
       pusherClient.unsubscribe('admin-notifications');
       adminChannel = null;
     }
-  },
+  }
 }));
