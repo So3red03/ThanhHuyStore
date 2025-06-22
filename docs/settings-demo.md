@@ -8,42 +8,37 @@
 2. Truy cập: `http://localhost:3000/admin/settings`
 3. Hoặc click vào menu "Cài đặt" trong admin sidebar (nằm trên "Đăng xuất")
 
-## 📱 Sections Có Sẵn (Tiếng Việt)
+## 📱 Sections Tối Ưu (4 Tabs)
 
-### 1. **Thông báo**
+### 1. **Thông báo** ⭐ GỘP EMAIL
 
-- ✅ Thông báo Discord
-- ✅ Thông báo đơn hàng
-- ✅ Thông báo đẩy
+- ✅ **Thông báo hệ thống**:
+  - Thông báo Discord
+  - Thông báo đơn hàng
+  - Thông báo đẩy
+- ✅ **Email marketing**:
+  - Email marketing
 
-### 2. **Email**
+### 2. **Hệ thống** ⭐ GỘP BẢO MẬT + THANH TOÁN
 
-- ✅ Email marketing
-
-### 3. **Bảo mật**
-
-- ✅ Thời gian hết phiên (dropdown: 15 phút, 30 phút, 1 giờ, 2 giờ, 4 giờ)
-
-### 4. **Hệ thống** ⭐ CẬP NHẬT
-
+- ✅ **Bảo mật & Phiên làm việc**:
+  - Thời gian hết phiên (15 phút → 4 giờ)
 - ✅ **Phân tích & Theo dõi**:
   - Theo dõi phân tích
 - ✅ **Phương thức thanh toán**:
-  - Thanh toán khi nhận hàng (COD)
-  - Ví điện tử MoMo
-  - Thẻ tín dụng/ghi nợ (Stripe)
+  - COD, MoMo, Stripe
 
-### 5. **Tự động hóa**
+### 3. **Tự động hóa**
 
 - ✅ Cảnh báo tồn kho thấp (≤10 sản phẩm)
 - ✅ Hỗ trợ Chatbot
 - ✅ Đề xuất voucher tự động
 
-### 6. **Báo cáo** ⭐ MỚI
+### 4. **Báo cáo** ⭐ MỚI
 
 - ✅ Báo cáo hằng ngày qua Discord
 - ✅ Tần suất báo cáo (12h, 24h, 48h, 72h, tuần)
-- ✅ Nội dung: đơn hàng, doanh thu, sản phẩm hot, tồn kho thấp
+- ✅ Test button + 7 chỉ số quan trọng
 
 ## 🔧 Tính Năng
 

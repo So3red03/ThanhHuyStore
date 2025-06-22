@@ -11,6 +11,15 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
     return format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: vi });
   };
 
+  // Determine shipping method based on order ID (consistent)
+  const getShippingMethod = (orderId: string) => {
+    const hash = orderId.split('').reduce((a, b) => {
+      a = (a << 5) - a + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    return Math.abs(hash) % 2 === 0 ? 'Giao hàng tiết kiệm' : 'Giao hàng nhanh';
+  };
+
   return (
     <div className='bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer'>
       {/* Order ID */}
@@ -59,7 +68,17 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
 
       {/* Payment Method */}
       <div className='mb-2'>
-        <p className='text-xs text-gray-600'>Thanh toán: {order.paymentMethod || 'Chưa xác định'}</p>
+        <p className='text-xs text-gray-600'>Thanh toán: {order.paymentMethod || 'COD'}</p>
+      </div>
+
+      {/* Sales Staff - Fixed */}
+      <div className='mb-2'>
+        <p className='text-xs text-gray-600'>NV bán hàng: Admin</p>
+      </div>
+
+      {/* Shipping Method - Fixed */}
+      <div className='mb-2'>
+        <p className='text-xs text-gray-600'>Vận chuyển: {getShippingMethod(order.id)}</p>
       </div>
 
       {/* Amount */}
@@ -72,6 +91,15 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
       {order.voucherCode && (
         <div className='mt-1 text-xs text-green-600'>
           Voucher: {order.voucherCode} (-{formatPrice(order.discountAmount || 0)})
+        </div>
+      )}
+
+      {/* Cancel reason if exists */}
+      {order.status === 'canceled' && order.cancelReason && (
+        <div className='mt-2 p-2 bg-red-50 border border-red-200 rounded'>
+          <p className='text-xs text-red-600 font-medium'>Lý do hủy:</p>
+          <p className='text-xs text-red-700'>{order.cancelReason}</p>
+          {order.cancelDate && <p className='text-xs text-red-500 mt-1'>{formatDate(order.cancelDate)}</p>}
         </div>
       )}
     </div>

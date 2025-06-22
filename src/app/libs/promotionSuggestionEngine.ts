@@ -84,8 +84,9 @@ export class PromotionSuggestionEngine {
     // Lấy sản phẩm có tồn kho > 3 (giảm threshold để test) và không có khuyến mãi hiện tại
     const highStockProducts = await prisma.product.findMany({
       where: {
-        inStock: { gt: 3 }, // Giảm từ 50 xuống 3 để test
-        OR: [{ promotionStart: null }, { promotionEnd: { lt: new Date() } }, { promotionalPrice: null }]
+        inStock: { gt: 3 } // Giảm từ 50 xuống 3 để test
+        // Note: Promotion fields removed as they don't exist in current Product model
+        // TODO: Implement when ProductPromotion table is ready
       },
       include: {
         category: true
@@ -158,8 +159,9 @@ export class PromotionSuggestionEngine {
     // Lấy tất cả sản phẩm và đếm đơn hàng
     const products = await prisma.product.findMany({
       where: {
-        inStock: { gt: 0 },
-        OR: [{ promotionStart: null }, { promotionEnd: { lt: new Date() } }]
+        inStock: { gt: 0 }
+        // Note: Promotion fields removed as they don't exist in current Product model
+        // TODO: Implement when ProductPromotion table is ready
       },
       include: {
         category: true

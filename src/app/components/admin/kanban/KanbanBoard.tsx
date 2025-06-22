@@ -7,6 +7,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import KanbanColumn from './KanbanColumn';
 import KanbanCard from './KanbanCard';
+import AdminCancelOrderDialog from '../AdminCancelOrderDialog';
 
 interface KanbanBoardProps {
   orders: any[];
@@ -50,6 +51,8 @@ const KANBAN_COLUMNS = [
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrderUpdate }) => {
   const [orders, setOrders] = useState(initialOrders);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<any>(null);
 
   // Cập nhật orders khi prop thay đổi
   useEffect(() => {
@@ -91,12 +94,22 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
     if (!destination) return;
     if (destination.droppableId === source.droppableId) return;
 
+    const orderId = draggableId;
+    const newColumnId = destination.droppableId;
+
+    // Nếu kéo sang cột "cancelled", hiển thị dialog để nhập lý do
+    if (newColumnId === 'cancelled') {
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        setOrderToCancel(order);
+        setShowCancelDialog(true);
+      }
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const orderId = draggableId;
-      const newColumnId = destination.droppableId;
-
       // Xác định trạng thái mới dựa trên cột đích
       let newStatus: OrderStatus = OrderStatus.pending;
       let newDeliveryStatus: DeliveryStatus = DeliveryStatus.not_shipped;
@@ -117,9 +130,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
         case 'completed':
           newStatus = OrderStatus.completed;
           newDeliveryStatus = DeliveryStatus.delivered;
-          break;
-        case 'cancelled':
-          newStatus = OrderStatus.canceled;
           break;
       }
 
@@ -153,6 +163,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCancelSuccess = () => {
+    setShowCancelDialog(false);
+    setOrderToCancel(null);
+    onOrderUpdate();
   };
 
   return (
@@ -197,6 +213,20 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
           </div>
         </div>
       </DragDropContext>
+
+      {/* Admin Cancel Order Dialog */}
+      {showCancelDialog && orderToCancel && (
+        <AdminCancelOrderDialog
+          isOpen={showCancelDialog}
+          onClose={() => {
+            setShowCancelDialog(false);
+            setOrderToCancel(null);
+          }}
+          orderId={orderToCancel.id}
+          customerName={orderToCancel.user?.name || 'N/A'}
+          onSuccess={handleCancelSuccess}
+        />
+      )}
     </div>
   );
 };

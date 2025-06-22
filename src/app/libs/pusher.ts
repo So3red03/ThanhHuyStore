@@ -3,12 +3,16 @@ import PusherClient from 'pusher-js';
 
 // Khởi tạo Pusher trên máy chủ
 export const pusherServer = new PusherServer({
-	appId: process.env.PUSHER_APP_ID!,
-	key: process.env.NEXT_PUBLIC_PUSHER_APP_KEY!,
-	secret: process.env.PUSHER_SECRET!,
-	cluster: 'ap1',
-	useTLS: true,
+  appId: process.env.PUSHER_APP_ID!,
+  key: process.env.NEXT_PUBLIC_PUSHER_APP_KEY!,
+  secret: process.env.PUSHER_SECRET!,
+  cluster: 'ap1',
+  useTLS: true
 });
 export const pusherClient = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
-	cluster: 'ap1',
+  cluster: 'ap1',
+  enabledTransports: ['ws', 'wss'], // Limit transports
+  disabledTransports: ['xhr_polling', 'xhr_streaming'], // Disable polling
+  pongTimeout: 30000, // 30 seconds
+  unavailableTimeout: 30000 // 30 seconds
 });

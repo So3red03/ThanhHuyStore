@@ -15,6 +15,7 @@
 ## **🏗️ KIẾN TRÚC HỆ THỐNG**
 
 ### **1. Database Changes**
+
 ```prisma
 // Thêm vào Product model
 priority Int @default(0) // 0: normal, 1-10: priority levels
@@ -27,6 +28,7 @@ VOUCHER_SUGGESTION
 ### **2. Core Components**
 
 #### **A. PromotionSuggestionEngine** (`src/app/lib/promotionSuggestionEngine.ts`)
+
 - **Singleton pattern** để quản lý analysis
 - **4 thuật toán phân tích**:
   - High stock products (tồn kho > 50, không bán 30 ngày)
@@ -35,17 +37,20 @@ VOUCHER_SUGGESTION
   - High view low sales (xem nhiều nhưng không mua)
 
 #### **B. DiscordWebhookService** (`src/app/lib/discordWebhook.ts`)
+
 - **Rich embeds** với màu sắc theo priority
 - **Detailed formatting** cho từng suggestion
 - **Error handling** và retry logic
 - **Test connection** functionality
 
 #### **C. API Endpoints**
+
 - `GET /api/admin/promotion-suggestions` - Lấy gợi ý
 - `POST /api/admin/promotion-suggestions` - Chạy analysis + Discord
 - `GET /api/cron/promotion-analysis` - Automated cron job
 
 #### **D. Admin Component** (`src/app/components/admin/PromotionSuggestions.tsx`)
+
 - **Real-time analysis** với loading states
 - **Discord integration** buttons
 - **Priority visualization** với color coding
@@ -56,6 +61,7 @@ VOUCHER_SUGGESTION
 ## **🧠 THUẬT TOÁN PHÂN TÍCH**
 
 ### **1. High Stock Analysis**
+
 ```typescript
 // Điều kiện phát hiện:
 - inStock > 50
@@ -69,6 +75,7 @@ VOUCHER_SUGGESTION
 ```
 
 ### **2. Low Sales Analysis**
+
 ```typescript
 // Điều kiện phát hiện:
 - ≤ 2 đơn hàng trong 30 ngày
@@ -81,6 +88,7 @@ VOUCHER_SUGGESTION
 ```
 
 ### **3. Category Performance**
+
 ```typescript
 // Điều kiện phát hiện:
 - ≥ 5 sản phẩm có stock > 20
@@ -92,6 +100,7 @@ VOUCHER_SUGGESTION
 ```
 
 ### **4. High View Low Sales**
+
 ```typescript
 // Điều kiện phát hiện:
 - > 50 lượt xem trong 30 ngày
@@ -108,6 +117,7 @@ VOUCHER_SUGGESTION
 ## **🔧 SETUP & DEPLOYMENT**
 
 ### **1. Database Migration**
+
 ```bash
 # Chạy migration để thêm priority field
 npx prisma db push
@@ -117,9 +127,10 @@ npx prisma migrate dev --name add-product-priority
 ```
 
 ### **2. Environment Variables**
+
 ```env
 # Discord webhook URL (đã có)
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/1384809092597547008/...
+DISCORD_ORDER_WEBHOOK_URL=https://discord.com/api/webhooks/1384809092597547008/...
 
 # Cron job security
 CRON_SECRET=your-secret-token
@@ -127,6 +138,7 @@ ADMIN_SECRET=your-admin-token
 ```
 
 ### **3. Cron Job Setup**
+
 ```bash
 # Vercel cron (vercel.json)
 {
@@ -148,18 +160,21 @@ curl -H "Authorization: Bearer your-secret-token" \
 ## **📱 USAGE GUIDE**
 
 ### **1. Admin Dashboard**
+
 - Truy cập admin panel
 - Tìm component "Gợi Ý Khuyến Mãi Tự Động"
 - Click "Chạy Phân Tích" để manual analysis
 - Click "Phân Tích + Discord" để gửi thông báo
 
 ### **2. Discord Notifications**
+
 - Tự động gửi khi có gợi ý mới
 - Rich embeds với đầy đủ thông tin
 - Priority color coding
 - Action suggestions
 
 ### **3. Automated Analysis**
+
 - Chạy hàng ngày lúc 9:00 AM
 - Chỉ gửi Discord cho suggestions mới
 - Tránh spam bằng 24h cooldown
@@ -170,16 +185,19 @@ curl -H "Authorization: Bearer your-secret-token" \
 ## **🎨 UI/UX FEATURES**
 
 ### **Priority Color System**
+
 - 🔴 **HIGH**: Red - Cần xử lý ngay
 - 🟡 **MEDIUM**: Yellow - Cần quan tâm
 - 🟢 **LOW**: Green - Có thể đợi
 
 ### **Suggestion Types**
+
 - 🎫 **PRODUCT_VOUCHER**: Voucher cho sản phẩm cụ thể
 - 🏷️ **CATEGORY_PROMOTION**: Khuyến mãi toàn danh mục
 - 📦 **STOCK_CLEARANCE**: Xả kho sản phẩm tồn
 
 ### **Action Buttons**
+
 - ✅ **Thực hiện**: Redirect đến tạo voucher
 - ❌ **Bỏ qua**: Dismiss suggestion
 - 🔄 **Refresh**: Reload suggestions
@@ -189,12 +207,14 @@ curl -H "Authorization: Bearer your-secret-token" \
 ## **📊 MONITORING & ANALYTICS**
 
 ### **Success Metrics**
+
 - **Suggestion Accuracy**: % suggestions được thực hiện
 - **Stock Reduction**: Giảm tồn kho sau khuyến mãi
 - **Revenue Impact**: Doanh thu từ suggested promotions
 - **Response Time**: Thời gian admin phản hồi
 
 ### **System Health**
+
 - **Discord Delivery**: Success rate của notifications
 - **Analysis Performance**: Thời gian chạy analysis
 - **Database Load**: Impact lên database performance
@@ -205,12 +225,14 @@ curl -H "Authorization: Bearer your-secret-token" \
 ## **🔮 FUTURE ENHANCEMENTS**
 
 ### **Phase 2: Advanced Analytics**
+
 - **Seasonal Adjustments**: Điều chỉnh logic theo mùa
 - **Competitor Analysis**: So sánh giá với đối thủ
 - **Customer Segmentation**: Gợi ý target audience
 - **A/B Testing**: Test hiệu quả các mức discount
 
 ### **Phase 3: Automation**
+
 - **Auto-create Vouchers**: Tự động tạo voucher với approval
 - **Dynamic Pricing**: Điều chỉnh giá real-time
 - **Inventory Forecasting**: Dự đoán tồn kho tương lai
@@ -221,18 +243,21 @@ curl -H "Authorization: Bearer your-secret-token" \
 ## **⚠️ IMPORTANT NOTES**
 
 ### **Security Considerations**
+
 - Cron job được bảo vệ bằng secret token
 - Admin endpoints require authentication
 - Discord webhook URL được bảo mật
 - Input validation cho tất cả APIs
 
 ### **Performance Considerations**
+
 - Analysis chạy async để không block UI
 - Database queries được optimize
 - Caching cho repeated calculations
 - Rate limiting cho Discord API
 
 ### **Business Rules**
+
 - Chỉ gợi ý, không tự động tạo voucher
 - Admin có quyền approve/reject
 - Không duplicate suggestions trong 24h

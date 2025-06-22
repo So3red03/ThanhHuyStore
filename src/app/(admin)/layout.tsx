@@ -7,11 +7,9 @@ import AdminNav from '../components/admin/AdminNav';
 import ClientSessionProvider from '../providers/ClientSessionProvider';
 import { getSession } from 'next-auth/react';
 import { SidebarProvider } from '../providers/SidebarProvider';
-import { getNotifications } from '../actions/getNotifications';
 import { getCurrentUser } from '../actions/getCurrentUser';
 import { getArticlesCategory } from '../actions/getArticlesCategory';
 import { getProductCategories, getSubCategories } from '../actions/getProductCategories';
-import NProgressProvider from '../components/NProgressProvider';
 export const metadata = {
   title: 'ThanhHuy Store - Dashboard',
   description: 'Apple Shop Admin Dashboard'
@@ -20,7 +18,6 @@ const inter = Inter({ subsets: ['latin'] });
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
-  // const notifications = await getNotifications();
   const currentUser = await getCurrentUser();
   const articleCategory = await getArticlesCategory();
   const parentCategory = await getProductCategories();
@@ -46,14 +43,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {/* Lấy toàn bộ thông tin của user theo phiên hiện tại  */}
         <ClientSessionProvider session={session}>
           <SidebarProvider>
-            <NProgressProvider />
             <div className='flex min-h-screen'>
               <div className='shadow-md xl:w-[37vh] bg-slate-200'>
                 <AdminSideBar />
               </div>
               <div className='flex-g-4 p-0 xl:px-5 xl:py-2 w-full'>
                 <AdminNav
-                  // notifications={notifications}
                   currentUser={currentUser}
                   articleCategory={articleCategory}
                   parentCategory={parentCategory}

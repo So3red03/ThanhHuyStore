@@ -1,19 +1,19 @@
 'use client';
 
+import ToggleSwitch from '@/app/components/admin/settings/ToggleSwitch';
+import PusherConnectionStatus from '@/app/components/admin/PusherConnectionStatus';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import {
-  MdSettings,
   MdNotifications,
   MdEmail,
   MdSecurity,
   MdStorage,
   MdSmartToy,
-  MdLocalOffer,
   MdAccessTime,
   MdAssessment,
   MdPayment
 } from 'react-icons/md';
-import toast from 'react-hot-toast';
 
 interface SettingsData {
   discordNotifications: boolean;
@@ -21,14 +21,12 @@ interface SettingsData {
   emailNotifications: boolean;
   pushNotifications: boolean;
   analyticsTracking: boolean;
-  sessionTimeout: number; // minutes
+  sessionTimeout: number;
   lowStockAlerts: boolean;
   chatbotSupport: boolean;
   autoVoucherSuggestion: boolean;
-  // Báo cáo thống kê
   dailyReports: boolean;
-  reportInterval: number; // hours: 12, 24, 48
-  // Phương thức thanh toán
+  reportInterval: number;
   codPayment: boolean;
   momoPayment: boolean;
   stripePayment: boolean;
@@ -41,14 +39,12 @@ const AdminSettings = () => {
     emailNotifications: true,
     pushNotifications: false,
     analyticsTracking: true,
-    sessionTimeout: 30, // 30 minutes default
+    sessionTimeout: 30,
     lowStockAlerts: true,
     chatbotSupport: false,
     autoVoucherSuggestion: true,
-    // Báo cáo thống kê
     dailyReports: true,
-    reportInterval: 24, // 24 hours default
-    // Phương thức thanh toán
+    reportInterval: 24,
     codPayment: true,
     momoPayment: true,
     stripePayment: false
@@ -58,23 +54,50 @@ const AdminSettings = () => {
   const [activeSection, setActiveSection] = useState('notifications');
   const [testingReport, setTestingReport] = useState(false);
 
-  // Load settings từ localStorage hoặc API
+  // Load settings từ database
   useEffect(() => {
-    const savedSettings = localStorage.getItem('adminSettings');
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
-    }
+    const loadSettings = async () => {
+      try {
+        const response = await fetch('/api/admin/settings');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setSettings(data.settings);
+          }
+        } else if (response.status === 401) {
+          toast.error('Bạn không có quyền truy cập settings');
+        }
+      } catch (error) {
+        console.error('Load settings error:', error);
+        toast.error('Không thể tải cài đặt');
+      }
+    };
+
+    loadSettings();
   }, []);
 
-  // Save settings
+  // Save settings to database
   const handleSave = async () => {
     setLoading(true);
     try {
-      // Lưu vào localStorage (có thể thay bằng API call)
-      localStorage.setItem('adminSettings', JSON.stringify(settings));
-      toast.success('Cài đặt đã được lưu thành công!');
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(settings)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success(data.message || 'Cài đặt đã được lưu thành công!');
+      } else {
+        toast.error(data.error || 'Có lỗi xảy ra khi lưu cài đặt');
+      }
     } catch (error) {
-      toast.error('Có lỗi xảy ra khi lưu cài đặt');
+      console.error('Save settings error:', error);
+      toast.error('Không thể lưu cài đặt');
     } finally {
       setLoading(false);
     }
@@ -129,8 +152,6 @@ const AdminSettings = () => {
 
   const menuItems = [
     { id: 'notifications', label: 'Thông báo', icon: MdNotifications },
-    { id: 'email', label: 'Email', icon: MdEmail },
-    { id: 'security', label: 'Bảo mật', icon: MdSecurity },
     { id: 'system', label: 'Hệ thống', icon: MdStorage },
     { id: 'automation', label: 'Tự động hóa', icon: MdSmartToy },
     { id: 'reports', label: 'Báo cáo', icon: MdAssessment }
@@ -139,9 +160,9 @@ const AdminSettings = () => {
   return (
     <div className='min-h-screen bg-white p-6'>
       <div className='max-w-6xl mx-auto'>
-        <div className='flex gap-8 mt-5'>
-          {/* Sidebar Menu */}
-          <div className='w-64 bg-gray-50 rounded-lg shadow-sm p-6'>
+        <div className='flex gap-8 mt-12'>
+          {/* Sidebar */}
+          <div className='w-64 bg-white rounded-lg border border-b-gray-200 shadow-sm p-6'>
             <nav className='space-y-2'>
               {menuItems.map(item => {
                 const Icon = item.icon;
@@ -164,120 +185,119 @@ const AdminSettings = () => {
           </div>
 
           {/* Main Content */}
-          <div className='flex-1 bg-gray-50 rounded-lg shadow-sm p-8'>
+          <div className='flex-1 bg-white rounded-lg border border-b-gray-200 shadow-sm p-8'>
+            {/* Notifications Section */}
             {activeSection === 'notifications' && (
               <div>
-                <h2 className='text-2xl font-semibold mb-2'>Thông báo</h2>
-                <p className='text-gray-600 mb-6'>Cấu hình cách bạn nhận thông báo.</p>
+                <h2 className='text-2xl font-semibold mb-2'>Thông báo & Email</h2>
+                <p className='text-gray-600 mb-6'>Cấu hình cách bạn nhận thông báo và email.</p>
 
                 <div className='space-y-6'>
+                  {/* Discord & System Notifications */}
                   <div className='border-b pb-6'>
+                    <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
+                      <MdNotifications className='w-5 h-5' />
+                      Thông báo hệ thống
+                    </h3>
+
+                    {/* Pusher Connection Status */}
+                    <PusherConnectionStatus />
+
                     <div className='space-y-4'>
-                      <div className='flex items-center justify-between'>
-                        <div>
-                          <h4 className='font-medium'>Thông báo Discord</h4>
-                          <p className='text-sm text-gray-600'>Nhận thông báo qua Discord webhook</p>
-                        </div>
-                        <label className='relative inline-flex items-center cursor-pointer'>
-                          <input
-                            type='checkbox'
-                            checked={settings.discordNotifications}
-                            onChange={() => handleToggle('discordNotifications')}
-                            className='sr-only peer'
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
-
-                      <div className='flex items-center justify-between'>
-                        <div>
-                          <h4 className='font-medium'>Thông báo đơn hàng</h4>
-                          <p className='text-sm text-gray-600'>Nhận thông báo về đơn hàng mới và cập nhật đơn hàng</p>
-                        </div>
-                        <label className='relative inline-flex items-center cursor-pointer'>
-                          <input
-                            type='checkbox'
-                            checked={settings.orderNotifications}
-                            onChange={() => handleToggle('orderNotifications')}
-                            className='sr-only peer'
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
-
-                      <div className='flex items-center justify-between'>
-                        <div>
-                          <h4 className='font-medium'>Thông báo đẩy</h4>
-                          <p className='text-sm text-gray-600'>Nhận thông báo đẩy trên trình duyệt</p>
-                        </div>
-                        <label className='relative inline-flex items-center cursor-pointer'>
-                          <input
-                            type='checkbox'
-                            checked={settings.pushNotifications}
-                            onChange={() => handleToggle('pushNotifications')}
-                            className='sr-only peer'
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'email' && (
-              <div>
-                <h2 className='text-2xl font-semibold mb-2'>Thông báo Email</h2>
-                <p className='text-gray-600 mb-6'>Quản lý tùy chọn email của bạn.</p>
-
-                <div className='space-y-6'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <h4 className='font-medium'>Email marketing</h4>
-                      <p className='text-sm text-gray-600'>Nhận email về sản phẩm mới, tính năng và nhiều hơn nữa</p>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input
-                        type='checkbox'
-                        checked={settings.emailNotifications}
-                        onChange={() => handleToggle('emailNotifications')}
-                        className='sr-only peer'
+                      <ToggleSwitch
+                        id='discordNotifications'
+                        checked={settings.discordNotifications}
+                        onChange={() => handleToggle('discordNotifications')}
+                        title='Thông báo Discord'
+                        description='Nhận thông báo qua Discord webhook'
                       />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
+
+                      <ToggleSwitch
+                        id='orderNotifications'
+                        checked={settings.orderNotifications}
+                        onChange={() => handleToggle('orderNotifications')}
+                        title='Thông báo đơn hàng'
+                        description='Nhận thông báo về đơn hàng mới và cập nhật đơn hàng'
+                      />
+
+                      <ToggleSwitch
+                        id='pushNotifications'
+                        checked={settings.pushNotifications}
+                        onChange={() => handleToggle('pushNotifications')}
+                        title='Thông báo đẩy & Realtime'
+                        description='Bật/tắt thông báo realtime qua Pusher và thông báo đẩy trên trình duyệt'
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email Notifications */}
+                  <div>
+                    <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
+                      <MdEmail className='w-5 h-5' />
+                      Email marketing
+                    </h3>
+                    <ToggleSwitch
+                      id='emailNotifications'
+                      checked={settings.emailNotifications}
+                      onChange={() => handleToggle('emailNotifications')}
+                      title='Email marketing'
+                      description='Nhận email về sản phẩm mới, tính năng và nhiều hơn nữa'
+                    />
                   </div>
                 </div>
               </div>
             )}
 
+            {/* System Section */}
             {activeSection === 'system' && (
               <div>
-                <h2 className='text-2xl font-semibold mb-2'>Cài đặt hệ thống</h2>
-                <p className='text-gray-600 mb-6'>Cấu hình cài đặt toàn hệ thống và phương thức thanh toán.</p>
+                <h2 className='text-2xl font-semibold mb-2'>Hệ thống & Bảo mật</h2>
+                <p className='text-gray-600 mb-6'>Cấu hình hệ thống, bảo mật và phương thức thanh toán.</p>
 
                 <div className='space-y-6'>
+                  {/* Security Section */}
+                  <div className='border-b pb-6'>
+                    <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
+                      <MdSecurity className='w-5 h-5' />
+                      Bảo mật & Phiên làm việc
+                    </h3>
+
+                    <div className='flex items-center justify-between'>
+                      <div>
+                        <h4 className='font-medium'>Thời gian hết phiên</h4>
+                        <p className='text-sm text-gray-600'>Tự động đăng xuất sau khi không hoạt động (phút)</p>
+                      </div>
+                      <div className='flex items-center gap-3'>
+                        <MdAccessTime className='w-5 h-5 text-gray-500' />
+                        <select
+                          value={settings.sessionTimeout}
+                          onChange={e => handleSessionTimeoutChange(Number(e.target.value))}
+                          className='px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        >
+                          <option value={1}>1 phút</option>
+                          <option value={15}>15 phút</option>
+                          <option value={30}>30 phút</option>
+                          <option value={60}>1 giờ</option>
+                          <option value={120}>2 giờ</option>
+                          <option value={240}>4 giờ</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Analytics Section */}
                   <div className='border-b pb-6'>
                     <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
                       <MdStorage className='w-5 h-5' />
                       Phân tích & Theo dõi
                     </h3>
-                    <div className='flex items-center justify-between'>
-                      <div>
-                        <h4 className='font-medium'>Theo dõi phân tích</h4>
-                        <p className='text-sm text-gray-600'>Bật theo dõi hành vi người dùng và phân tích</p>
-                      </div>
-                      <label className='relative inline-flex items-center cursor-pointer'>
-                        <input
-                          type='checkbox'
-                          checked={settings.analyticsTracking}
-                          onChange={() => handleToggle('analyticsTracking')}
-                          className='sr-only peer'
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </div>
+                    <ToggleSwitch
+                      id='analyticsTracking'
+                      checked={settings.analyticsTracking}
+                      onChange={() => handleToggle('analyticsTracking')}
+                      title='Theo dõi phân tích'
+                      description='Bật theo dõi hành vi người dùng và phân tích'
+                    />
                   </div>
 
                   {/* Payment Methods Section */}
@@ -287,53 +307,29 @@ const AdminSettings = () => {
                       Phương thức thanh toán
                     </h3>
                     <div className='space-y-4'>
-                      <div className='flex items-center justify-between'>
-                        <div>
-                          <h4 className='font-medium'>Thanh toán khi nhận hàng (COD)</h4>
-                          <p className='text-sm text-gray-600'>Cho phép khách hàng thanh toán khi nhận hàng</p>
-                        </div>
-                        <label className='relative inline-flex items-center cursor-pointer'>
-                          <input
-                            type='checkbox'
-                            checked={settings.codPayment}
-                            onChange={() => handleToggle('codPayment')}
-                            className='sr-only peer'
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
+                      <ToggleSwitch
+                        id='codPayment'
+                        checked={settings.codPayment}
+                        onChange={() => handleToggle('codPayment')}
+                        title='Thanh toán khi nhận hàng (COD)'
+                        description='Cho phép khách hàng thanh toán khi nhận hàng'
+                      />
 
-                      <div className='flex items-center justify-between'>
-                        <div>
-                          <h4 className='font-medium'>Ví điện tử MoMo</h4>
-                          <p className='text-sm text-gray-600'>Thanh toán qua ví điện tử MoMo</p>
-                        </div>
-                        <label className='relative inline-flex items-center cursor-pointer'>
-                          <input
-                            type='checkbox'
-                            checked={settings.momoPayment}
-                            onChange={() => handleToggle('momoPayment')}
-                            className='sr-only peer'
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
+                      <ToggleSwitch
+                        id='momoPayment'
+                        checked={settings.momoPayment}
+                        onChange={() => handleToggle('momoPayment')}
+                        title='Ví điện tử MoMo'
+                        description='Thanh toán qua ví điện tử MoMo'
+                      />
 
-                      <div className='flex items-center justify-between'>
-                        <div>
-                          <h4 className='font-medium'>Thẻ tín dụng/ghi nợ (Stripe)</h4>
-                          <p className='text-sm text-gray-600'>Thanh toán bằng thẻ quốc tế qua Stripe</p>
-                        </div>
-                        <label className='relative inline-flex items-center cursor-pointer'>
-                          <input
-                            type='checkbox'
-                            checked={settings.stripePayment}
-                            onChange={() => handleToggle('stripePayment')}
-                            className='sr-only peer'
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
-                      </div>
+                      <ToggleSwitch
+                        id='stripePayment'
+                        checked={settings.stripePayment}
+                        onChange={() => handleToggle('stripePayment')}
+                        title='Thẻ tín dụng/ghi nợ (Stripe)'
+                        description='Thanh toán bằng thẻ quốc tế qua Stripe'
+                      />
                     </div>
 
                     <div className='bg-yellow-50 p-4 rounded-lg mt-4'>
@@ -351,114 +347,54 @@ const AdminSettings = () => {
               </div>
             )}
 
-            {activeSection === 'security' && (
-              <div>
-                <h2 className='text-2xl font-semibold mb-2'>Cài đặt bảo mật</h2>
-                <p className='text-gray-600 mb-6'>Cấu hình bảo mật và cài đặt phiên làm việc.</p>
-
-                <div className='space-y-6'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <h4 className='font-medium'>Thời gian hết phiên</h4>
-                      <p className='text-sm text-gray-600'>Tự động đăng xuất sau khi không hoạt động (phút)</p>
-                    </div>
-                    <div className='flex items-center gap-3'>
-                      <MdAccessTime className='w-5 h-5 text-gray-500' />
-                      <select
-                        value={settings.sessionTimeout}
-                        onChange={e => handleSessionTimeoutChange(Number(e.target.value))}
-                        className='px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                      >
-                        <option value={15}>15 phút</option>
-                        <option value={30}>30 phút</option>
-                        <option value={60}>1 giờ</option>
-                        <option value={120}>2 giờ</option>
-                        <option value={240}>4 giờ</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
+            {/* Automation Section */}
             {activeSection === 'automation' && (
               <div>
                 <h2 className='text-2xl font-semibold mb-2'>Cài đặt tự động hóa</h2>
                 <p className='text-gray-600 mb-6'>Cấu hình các tính năng tự động và hỗ trợ AI.</p>
 
                 <div className='space-y-6'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <h4 className='font-medium'>Cảnh báo tồn kho thấp</h4>
-                      <p className='text-sm text-gray-600'>Nhận thông báo khi sản phẩm sắp hết hàng (≤10 sản phẩm)</p>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input
-                        type='checkbox'
-                        checked={settings.lowStockAlerts}
-                        onChange={() => handleToggle('lowStockAlerts')}
-                        className='sr-only peer'
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
+                  <ToggleSwitch
+                    id='lowStockAlerts'
+                    checked={settings.lowStockAlerts}
+                    onChange={() => handleToggle('lowStockAlerts')}
+                    title='Cảnh báo tồn kho thấp'
+                    description='Nhận thông báo khi sản phẩm sắp hết hàng (≤10 sản phẩm)'
+                  />
 
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <h4 className='font-medium'>Hỗ trợ Chatbot</h4>
-                      <p className='text-sm text-gray-600'>Bật chatbot AI để hỗ trợ khách hàng</p>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input
-                        type='checkbox'
-                        checked={settings.chatbotSupport}
-                        onChange={() => handleToggle('chatbotSupport')}
-                        className='sr-only peer'
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
+                  <ToggleSwitch
+                    id='chatbotSupport'
+                    checked={settings.chatbotSupport}
+                    onChange={() => handleToggle('chatbotSupport')}
+                    title='Hỗ trợ Chatbot'
+                    description='Bật chatbot AI để hỗ trợ khách hàng'
+                  />
 
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <h4 className='font-medium'>Đề xuất voucher tự động</h4>
-                      <p className='text-sm text-gray-600'>Tự động đề xuất voucher cho khách hàng</p>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input
-                        type='checkbox'
-                        checked={settings.autoVoucherSuggestion}
-                        onChange={() => handleToggle('autoVoucherSuggestion')}
-                        className='sr-only peer'
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
+                  <ToggleSwitch
+                    id='autoVoucherSuggestion'
+                    checked={settings.autoVoucherSuggestion}
+                    onChange={() => handleToggle('autoVoucherSuggestion')}
+                    title='Đề xuất voucher tự động'
+                    description='Tự động đề xuất voucher cho khách hàng'
+                  />
                 </div>
               </div>
             )}
 
+            {/* Reports Section */}
             {activeSection === 'reports' && (
               <div>
                 <h2 className='text-2xl font-semibold mb-2'>Báo cáo thống kê</h2>
                 <p className='text-gray-600 mb-6'>Cấu hình báo cáo thống kê tự động qua Discord.</p>
 
                 <div className='space-y-6'>
-                  <div className='flex items-center justify-between'>
-                    <div>
-                      <h4 className='font-medium'>Báo cáo hằng ngày</h4>
-                      <p className='text-sm text-gray-600'>Gửi báo cáo thống kê kinh doanh qua Discord webhook</p>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input
-                        type='checkbox'
-                        checked={settings.dailyReports}
-                        onChange={() => handleToggle('dailyReports')}
-                        className='sr-only peer'
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
+                  <ToggleSwitch
+                    id='dailyReports'
+                    checked={settings.dailyReports}
+                    onChange={() => handleToggle('dailyReports')}
+                    title='Báo cáo hằng ngày'
+                    description='Gửi báo cáo thống kê kinh doanh qua Discord webhook'
+                  />
 
                   <div className='flex items-center justify-between'>
                     <div>
@@ -473,6 +409,10 @@ const AdminSettings = () => {
                         className='px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                         disabled={!settings.dailyReports}
                       >
+                        <option value={0.033}>Mỗi 2 phút (Test)</option>
+                        <option value={0.083}>Mỗi 5 phút (Test)</option>
+                        <option value={0.167}>Mỗi 10 phút (Test)</option>
+                        <option value={1}>Mỗi 1 giờ</option>
                         <option value={12}>Mỗi 12 giờ</option>
                         <option value={24}>Mỗi 24 giờ</option>
                         <option value={48}>Mỗi 48 giờ</option>

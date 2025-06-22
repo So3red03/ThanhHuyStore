@@ -30,7 +30,6 @@ interface AnalyticsData {
 
 interface ProductAnalytics {
   topViewedProducts: any[];
-  topClickedProducts: any[];
   categoryPerformance: any[];
   period: {
     days: number;
@@ -190,16 +189,56 @@ export const usePromotionAnalytics = (days: number = 7) => {
   return { data, loading, error, refetch: fetchData };
 };
 
-// Utility function to get or create session ID
-const getSessionId = (): string => {
+// Get session timeout from admin settings
+const getSessionTimeout = async (): Promise<number> => {
+  try {
+    const response = await fetch('/api/admin/settings/public');
+    const data = await response.json();
+    return data.sessionTimeout || 30;
+  } catch (error) {
+    return 30; // Default 30 minutes
+  }
+};
+
+// Utility function to get or create session ID with configurable expiry
+const getSessionId = async (): Promise<string> => {
   if (typeof window === 'undefined') return '';
 
-  let sessionId = localStorage.getItem('analytics_session_id') || '';
-  if (!sessionId) {
-    sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-    localStorage.setItem('analytics_session_id', sessionId);
+  const sessionData = localStorage.getItem('analytics_session_data');
+  const now = Date.now();
+  const sessionTimeout = await getSessionTimeout();
+
+  if (sessionData) {
+    try {
+      const { sessionId, timestamp } = JSON.parse(sessionData);
+      // Session expires based on admin settings
+      if (now - timestamp < sessionTimeout * 60 * 1000) {
+        // Update timestamp for activity
+        localStorage.setItem(
+          'analytics_session_data',
+          JSON.stringify({
+            sessionId,
+            timestamp: now
+          })
+        );
+        return sessionId;
+      }
+    } catch (error) {
+      // Invalid session data, create new
+    }
   }
-  return sessionId;
+
+  // Create new session
+  const newSessionId = `session_${now}_${Math.random().toString(36).substring(2, 11)}`;
+  localStorage.setItem(
+    'analytics_session_data',
+    JSON.stringify({
+      sessionId: newSessionId,
+      timestamp: now
+    })
+  );
+
+  return newSessionId;
 };
 
 // Base tracking function
@@ -212,9 +251,10 @@ const trackEvent = async (eventData: {
   referrer?: string;
 }) => {
   try {
+    const sessionId = await getSessionId();
     await axios.post('/api/analytics/track', {
       ...eventData,
-      sessionId: getSessionId(),
+      sessionId,
       path: eventData.path || (typeof window !== 'undefined' ? window.location.pathname : '/'),
       timestamp: new Date().toISOString()
     });

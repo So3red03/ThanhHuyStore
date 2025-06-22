@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useCart } from '../../hooks/useCart';
+import { useHydration } from '../../hooks/useHydration';
 import { MdArrowBack } from 'react-icons/md';
 import Button from '../../components/Button';
 import ItemContent from './ItemContent';
@@ -20,10 +21,14 @@ const CartBuyClient: React.FC<CartBuyClientProps> = ({ currentUser }) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const { cartProducts, cartTotalAmount, handleNextStep, setStep, discountAmount, finalAmount } = useCart();
+  const { isHydrated } = useHydration();
 
   useEffect(() => {
-    setStep(1);
-  }, []);
+    // Chỉ set step = 1 sau khi hydrated và nếu đang ở cart page
+    if (isHydrated && window.location.pathname === '/cart') {
+      setStep(1);
+    }
+  }, [isHydrated, setStep]);
 
   // Ràng buộc
   const handleCheckout = () => {
@@ -39,6 +44,15 @@ const CartBuyClient: React.FC<CartBuyClientProps> = ({ currentUser }) => {
       setIsLoading(false);
     }, 1000);
   };
+
+  // Show loading while hydrating to prevent flash
+  if (!isHydrated) {
+    return (
+      <div className='flex justify-center items-center p-8'>
+        <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600'></div>
+      </div>
+    );
+  }
 
   return !cartProducts || cartProducts.length === 0 ? (
     <div className='flex flex-col items-center'>

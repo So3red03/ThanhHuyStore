@@ -34,6 +34,10 @@ export interface CartStore {
   discountAmount: number;
   finalAmount: number;
 
+  // Hydration state
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
+
   // Actions
   addProduct: (product: CartProductType) => void;
   removeProduct: (product: CartProductType) => void;
@@ -69,6 +73,12 @@ export const useCartStore = create<CartStore>()(
       selectedVoucher: null,
       discountAmount: 0,
       finalAmount: 0,
+
+      // Hydration state
+      _hasHydrated: false,
+      setHasHydrated: (state: boolean) => {
+        set({ _hasHydrated: state });
+      },
 
       // Actions
       addProduct: (product: CartProductType) => {
@@ -243,8 +253,15 @@ export const useCartStore = create<CartStore>()(
         selectedVoucher: state.selectedVoucher,
         paymentIntent: state.paymentIntent
       }),
-      // Handle SSR hydration
-      skipHydration: true
+      // Enable hydration for proper localStorage sync
+      onRehydrateStorage: () => state => {
+        if (state) {
+          // Mark as hydrated
+          state.setHasHydrated(true);
+          // Recalculate totals after hydration
+          setTimeout(() => state.calculateTotals(), 0);
+        }
+      }
     }
   )
 );

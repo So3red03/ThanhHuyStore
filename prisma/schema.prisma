@@ -85,6 +85,10 @@ model Order {
   discountAmount  Float?            @default(0)
   originalAmount  Float?
 
+  // Cancel information
+  cancelReason    String?
+  cancelDate      DateTime?
+
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   products        CartProductType[]
 }
@@ -121,9 +125,6 @@ model Product {
   description      String
   brand            String    @default("Apple")
   price            Float
-  promotionalPrice Float?
-  promotionStart   DateTime?
-  promotionEnd     DateTime?
   categoryId       String    @db.ObjectId
   category         Category  @relation(fields: [categoryId], references: [id], onDelete: NoAction)
   inStock          Int
@@ -134,6 +135,7 @@ model Product {
   images           Image[]
   reviews          Review[]
   notifications    Notification[]
+  productPromotions ProductPromotion[]
 }
 
 model Category {
@@ -390,6 +392,28 @@ model Promotion {
   categoryIds     String[]     @db.ObjectId
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+  productPromotions ProductPromotion[]
+}
+
+model ProductPromotion {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  productId       String       @db.ObjectId
+  promotionId     String       @db.ObjectId
+  promotionalPrice Float
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean      @default(true)
+  priority        Int          @default(0) // Higher number = higher priority
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  product         Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  promotion       Promotion    @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, promotionId])
+  @@index([productId])
+  @@index([promotionId])
+  @@index([startDate, endDate])
 }
 
 model AnalyticsEvent {
@@ -420,4 +444,58 @@ enum EventType {
   SEARCH
   PURCHASE
   ARTICLE_VIEW
+}
+
+model AdminSettings {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Notification settings
+  discordNotifications  Boolean  @default(true)
+  orderNotifications    Boolean  @default(true)
+  emailNotifications    Boolean  @default(true)
+  pushNotifications     Boolean  @default(false)
+
+  // System settings
+  analyticsTracking     Boolean  @default(true)
+  sessionTimeout        Int      @default(30) // minutes
+
+  // Automation settings
+  lowStockAlerts        Boolean  @default(true)
+  chatbotSupport        Boolean  @default(false)
+  autoVoucherSuggestion Boolean  @default(true)
+
+  // Report settings
+  dailyReports          Boolean  @default(true)
+  reportInterval        Int      @default(24) // hours
+
+  // Payment settings - CRITICAL
+  codPayment            Boolean  @default(true)
+  momoPayment           Boolean  @default(false)
+  stripePayment         Boolean  @default(false)
+
+  // Audit fields
+  createdBy             String
+  updatedBy             String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model AdminAuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  action    String   // 'UPDATE_SETTINGS', 'LOGIN', 'CREATE_PRODUCT', etc.
+  userId    String
+  details   String   // JSON string with details
+  createdAt DateTime @default(now())
+}
+
+model ReportLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String   // SCHEDULED, MANUAL, TEST
+  interval  Float    // Report interval in hours
+  success   Boolean  // Whether the report was sent successfully
+  sentAt    DateTime // When the report was sent
+  error     String?  // Error message if failed
+  createdAt DateTime @default(now())
+
+  @@map("report_logs")
 }

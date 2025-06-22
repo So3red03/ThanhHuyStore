@@ -12,7 +12,15 @@ export async function getAllProducts() {
             createdDate: 'desc'
           }
         },
-        category: true
+        category: true,
+        productPromotions: {
+          where: {
+            isActive: true
+          },
+          include: {
+            promotion: true
+          }
+        }
       },
       orderBy: {
         createDate: 'desc'

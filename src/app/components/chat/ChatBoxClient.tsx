@@ -21,7 +21,8 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
   const [messages, setMessages] = useState<MessageType[]>();
   const [chatRoomId, setChatRoomId] = useState<string>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isAiChat, setIsAiChat] = useState(false);
+  const [isAiChat, setIsAiChat] = useState(true); // Mặc định hiển thị AI chat
+  const [chatbotEnabled, setChatbotEnabled] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { register, handleSubmit, setValue } = useForm<FieldValues>();
@@ -37,6 +38,22 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
       setIsChatOpen(true);
     }
   };
+
+  // Check chatbot settings from admin
+  useEffect(() => {
+    const checkChatbotSettings = async () => {
+      try {
+        const response = await fetch('/api/admin/settings/public');
+        const settings = await response.json();
+        setChatbotEnabled(settings.chatbotSupport ?? false);
+      } catch (error) {
+        console.error('Failed to check chatbot settings:', error);
+        setChatbotEnabled(false);
+      }
+    };
+
+    checkChatbotSettings();
+  }, []);
 
   useEffect(() => {
     const getChatRoomId = async () => {
@@ -63,10 +80,11 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
     const handleOpenChatBox = (event: CustomEvent) => {
       setIsButtonHidden(true);
       setIsChatOpen(true);
-      setIsAiChat(false); // Ensure we're in admin chat mode
+      // Giữ nguyên AI chat mode khi mở từ external event
+      // setIsAiChat(false); // Removed - keep default AI chat
 
-      // Set the message if provided
-      if (event.detail?.message) {
+      // Set the message if provided (chỉ áp dụng cho admin chat)
+      if (event.detail?.message && !isAiChat) {
         setValue('message', event.detail.message);
       }
     };
@@ -117,6 +135,11 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
     bottomRef?.current?.scrollIntoView();
   }, [messages]);
 
+  // Don't render if chatbot is disabled
+  if (!chatbotEnabled) {
+    return null;
+  }
+
   return (
     <>
       {/* Toggle Button */}
@@ -137,7 +160,7 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
         >
           <path d='M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z'></path>
         </svg>
-        <span className='ml-2'>Chat tư vấn - Giải đáp mọi thắc mắc</span>
+        <span className='ml-2'>Tư vấn AI - Giải đáp mọi thắc mắc</span>
       </div>
 
       {/* Chat Box */}
@@ -150,7 +173,7 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
         <div className='bg-slate-700 text-white p-4 flex justify-between items-center h-[75px]'>
           <div className='text-sm'>
             <div>ThanhHuy Store</div>
-            <div className='font-light text-slate-100'>Chat với chúng tôi</div>
+            <div className='font-light text-slate-100'>{isAiChat ? 'Tư vấn với AI' : 'Chat với Admin'}</div>
           </div>
           <div className='flex gap-1'>
             <button
@@ -172,20 +195,26 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
                       setIsAiChat(true);
                       setIsMenuOpen(false);
                     }}
-                    className='flex items-center gap-2 w-full px-3 py-2 text-sm text-black hover:bg-gray-100 rounded'
+                    className={`flex items-center gap-2 w-full px-3 py-2 text-sm rounded ${
+                      isAiChat ? 'bg-blue-100 text-blue-700' : 'text-black hover:bg-gray-100'
+                    }`}
                   >
-                    <FaRobot className='text-gray-600' />
+                    <FaRobot className={isAiChat ? 'text-blue-600' : 'text-gray-600'} />
                     <span>Tư vấn với siêu AI</span>
+                    {isAiChat && <span className='ml-auto text-xs'>✓</span>}
                   </button>
                   <button
                     onClick={() => {
                       setIsAiChat(false);
                       setIsMenuOpen(false);
                     }}
-                    className='flex items-center gap-2 w-full px-3 py-2 text-sm text-black hover:bg-gray-100 rounded'
+                    className={`flex items-center gap-2 w-full px-3 py-2 text-sm rounded ${
+                      !isAiChat ? 'bg-blue-100 text-blue-700' : 'text-black hover:bg-gray-100'
+                    }`}
                   >
-                    <FaUser className='text-gray-600' />
+                    <FaUser className={!isAiChat ? 'text-blue-600' : 'text-gray-600'} />
                     <span>Tư vấn với Admin</span>
+                    {!isAiChat && <span className='ml-auto text-xs'>✓</span>}
                   </button>
                 </div>
               </div>

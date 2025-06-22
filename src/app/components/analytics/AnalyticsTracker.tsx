@@ -49,17 +49,23 @@ const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) => {
     const trackProductView = () => {
       if (!pathname) return;
 
-      // Check if we're on a product page
-      const productMatch = pathname.match(/\/product\/([^\/]+)/);
+      // Check if we're on a product page - format: /product/slug-productId
+      const productMatch = pathname.match(/\/product\/(.+)-([a-f0-9]{24})$/);
       if (productMatch) {
-        const productId = productMatch[1];
+        const fullSlug = productMatch[1];
+        const productId = productMatch[2]; // Extract actual MongoDB ObjectId
+
+        console.log('🔍 Tracking product view:', { fullSlug, productId, pathname });
+
         trackEvent({
           eventType: 'PRODUCT_VIEW',
           entityType: 'product',
-          entityId: productId,
+          entityId: productId, // Use actual product ID
           path: pathname,
           metadata: {
-            productSlug: productId,
+            productSlug: fullSlug,
+            productId: productId,
+            fullPath: pathname,
             timestamp: new Date().toISOString()
           }
         });
@@ -102,17 +108,24 @@ const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) => {
 
       if (productLink) {
         const href = productLink.getAttribute('href');
-        const productMatch = href?.match(/\/product\/([^\/]+)/);
+        // Match format: /product/slug-productId
+        const productMatch = href?.match(/\/product\/(.+)-([a-f0-9]{24})$/);
 
         if (productMatch) {
-          const productId = productMatch[1];
+          const fullSlug = productMatch[1];
+          const productId = productMatch[2]; // Extract actual MongoDB ObjectId
+
+          console.log('🖱️ Tracking product click:', { fullSlug, productId, href, clickedFrom: pathname });
+
           trackEvent({
             eventType: 'PRODUCT_CLICK',
             entityType: 'product',
-            entityId: productId,
+            entityId: productId, // Use actual product ID
             path: pathname || '/',
             metadata: {
-              productSlug: productId,
+              productSlug: fullSlug,
+              productId: productId,
+              targetUrl: href,
               clickedFrom: pathname,
               timestamp: new Date().toISOString()
             }

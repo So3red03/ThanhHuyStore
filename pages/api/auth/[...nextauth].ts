@@ -4,6 +4,7 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import prisma from '../../../src/app/libs/prismadb';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcrypt';
+import { getAdminSessionConfig } from '../../../src/app/libs/getAdminSessionConfig';
 
 // Tạo mật khẩu mặc định
 const generateHashedPassword = async (password: string) => {
@@ -61,6 +62,29 @@ export const authOptions: AuthOptions = {
     })
   ],
   callbacks: {
+    async jwt({ token, user, account }) {
+      // Get fresh config from DB
+      const config = await getAdminSessionConfig();
+      const now = Math.floor(Date.now() / 1000);
+
+      if (user && account) {
+        // First login - set initial expiration
+        token.exp = now + config.sessionMaxAge;
+        console.log('JWT - First login, setting exp:', token.exp, 'timeout:', config.sessionMaxAge);
+      } else {
+        // Subsequent requests - check if we need to update expiration based on current settings
+        const timeRemaining = (token.exp as number) - now;
+
+        // If token expires in less than 5 minutes, refresh it with current settings
+        if (timeRemaining < 5 * 60) {
+          token.exp = now + config.sessionMaxAge;
+          console.log('JWT - Refreshing token, new exp:', token.exp, 'timeout:', config.sessionMaxAge);
+        }
+      }
+
+      return token;
+    },
+
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google' && user.email) {
         const existingAccount = await prisma.account.findFirst({
@@ -150,11 +174,10 @@ export const authOptions: AuthOptions = {
       return true;
     },
 
-    async session({ session, token, user }) {
-      if (session.user) {
-        session.user = {
-          ...session.user
-        };
+    async session({ session, token }) {
+      // NextAuth will automatically check token.exp to logout if expired
+      if (token.exp && typeof token.exp === 'number') {
+        session.expires = new Date(token.exp * 1000).toISOString();
       }
       return session;
     }
@@ -167,10 +190,11 @@ export const authOptions: AuthOptions = {
   // Token đc next-auth mặc định lưu vào cookie
   session: {
     strategy: 'jwt',
-    maxAge: 86400 // 2 phút
+    maxAge: 30 * 60, // 30 minutes default (will be overridden by admin settings),
+    updateAge: 10 * 60 // 10 minutes default (will be overridden by admin settings)
   },
   jwt: {
-    maxAge: 86400 // 2 phút
+    maxAge: 30 * 60 // 30 minutes default (will be overridden by admin settings)
   },
   secret: process.env.NEXTAUTH_SECRET
 };

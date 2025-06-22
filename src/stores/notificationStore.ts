@@ -44,9 +44,13 @@ export interface NotificationStore {
 // Store pusher channels outside of store to manage cleanup
 let userChannel: any = null;
 let adminChannel: any = null;
+let currentSubscribedUserId: string | null = null;
 
 // Debounce mechanism to prevent rapid setCurrentUser calls
 let setUserTimeout: NodeJS.Timeout | null = null;
+
+// Track if pusher is connected to prevent multiple connections
+let isPusherConnected = false;
 
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
   // Initial state
@@ -174,56 +178,89 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     }));
   },
 
-  setupPusherSubscription: () => {
+  setupPusherSubscription: async () => {
     const { currentUser } = get();
     if (!currentUser) return;
+
+    // Check if push notifications are enabled in admin settings
+    try {
+      const response = await fetch('/api/admin/settings/public');
+      const settings = await response.json();
+      if (!settings.pushNotifications) {
+        console.log('Push notifications disabled in admin settings');
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to check push notification settings:', error);
+      // Continue with default behavior if settings check fails
+    }
+
+    // Prevent duplicate subscriptions for same user
+    if (currentSubscribedUserId === currentUser.id && isPusherConnected) {
+      return;
+    }
 
     // Cleanup existing subscriptions first
     get().cleanupPusherSubscription();
 
-    // User-specific channel
-    userChannel = pusherClient.subscribe(`user-${currentUser.id}`);
+    try {
+      // User-specific channel
+      userChannel = pusherClient.subscribe(`user-${currentUser.id}`);
+      currentSubscribedUserId = currentUser.id;
+      isPusherConnected = true;
 
-    userChannel.bind('notification', (data: any) => {
-      if (data.type === 'new_notification') {
-        get().addNotification(data.notification);
-      } else if (data.type === 'notification_read') {
-        set(state => ({
-          notifications: state.notifications.map(notif =>
-            notif.id === data.notification.id ? data.notification : notif
-          )
-        }));
-      } else if (data.type === 'all_notifications_read') {
-        set(state => ({
-          notifications: state.notifications.map(notif => ({ ...notif, isRead: true })),
-          unreadCount: 0
-        }));
-      }
-    });
-
-    // Admin channel for admin users
-    if (currentUser.role === 'ADMIN') {
-      adminChannel = pusherClient.subscribe('admin-notifications');
-      adminChannel.bind('notification', (data: any) => {
+      userChannel.bind('notification', (data: any) => {
         if (data.type === 'new_notification') {
           get().addNotification(data.notification);
+        } else if (data.type === 'notification_read') {
+          set(state => ({
+            notifications: state.notifications.map(notif =>
+              notif.id === data.notification.id ? data.notification : notif
+            )
+          }));
+        } else if (data.type === 'all_notifications_read') {
+          set(state => ({
+            notifications: state.notifications.map(notif => ({ ...notif, isRead: true })),
+            unreadCount: 0
+          }));
         }
       });
+
+      // Admin channel for admin users
+      if (currentUser.role === 'ADMIN') {
+        adminChannel = pusherClient.subscribe('admin-notifications');
+        adminChannel.bind('notification', (data: any) => {
+          if (data.type === 'new_notification') {
+            get().addNotification(data.notification);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Pusher subscription error:', error);
+      isPusherConnected = false;
     }
   },
 
   cleanupPusherSubscription: () => {
-    if (userChannel) {
-      const { currentUser } = get();
-      if (currentUser) {
-        pusherClient.unsubscribe(`user-${currentUser.id}`);
+    try {
+      if (userChannel) {
+        if (currentSubscribedUserId) {
+          pusherClient.unsubscribe(`user-${currentSubscribedUserId}`);
+        }
+        userChannel.unbind_all();
+        userChannel = null;
       }
-      userChannel = null;
-    }
 
-    if (adminChannel) {
-      pusherClient.unsubscribe('admin-notifications');
-      adminChannel = null;
+      if (adminChannel) {
+        pusherClient.unsubscribe('admin-notifications');
+        adminChannel.unbind_all();
+        adminChannel = null;
+      }
+
+      currentSubscribedUserId = null;
+      isPusherConnected = false;
+    } catch (error) {
+      console.error('Pusher cleanup error:', error);
     }
   }
 }));

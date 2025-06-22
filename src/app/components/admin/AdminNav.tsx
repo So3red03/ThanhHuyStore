@@ -1,10 +1,9 @@
 'use client';
-import Heading from '../Heading';
 import Button from '../Button';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useNotifications } from '@/app/hooks/useNotifications';
-import { MdAdd, MdNotifications, MdNotificationsNone, MdOutlineChat, MdPublic, MdSearch } from 'react-icons/md';
+import { MdAdd, MdNotifications, MdNotificationsNone, MdOutlineChat, MdSearch } from 'react-icons/md';
 import AddProductModal from '@/app/(admin)/admin/manage-products/AddProductModal';
 import AddBannerModal from '@/app/(admin)/admin/manage-banner/AddBannerModal';
 import { useSidebar } from '@/app/providers/SidebarProvider';
@@ -20,9 +19,7 @@ import { signOut } from 'next-auth/react';
 import AddArticleCateModal from '@/app/(admin)/admin/manage-articlesCategory/AddArticleCateModal';
 import { ArticleCategory, Category } from '@prisma/client';
 import AddProductCateModal from '@/app/(admin)/admin/manage-categories/AddProductCateModal';
-import AddProductChildCate from '@/app/(admin)/admin/manage-childCategories/AddProductChildCateModal';
 import AddProductChildCateModal from '@/app/(admin)/admin/manage-childCategories/AddProductChildCateModal';
-import { getSubCategories } from '@/app/actions/getProductCategories';
 
 const pathTitle: { [key: string]: string } = {
   '/admin': 'Tổng quan',
@@ -43,7 +40,6 @@ const pathTitle: { [key: string]: string } = {
 };
 
 interface AdminNavProps {
-  // notifications: any[];
   currentUser: SafeUser | null | undefined;
   articleCategory: ArticleCategory[];
   parentCategory: any;
@@ -297,54 +293,85 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
                 </span>
               )}
             </div>
-            {/* Hiển thị tin nhắn */}
+            {/* Enhanced Messages Dropdown */}
             <div
-              className={`absolute top-10 right-[-20px] bg-white z-10 shadow-lg rounded-lg w-72 lg:w-80  transition-opacity duration-300 max-h-[470px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent ${
-                isMessagesOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              className={`absolute top-12 right-[-20px] bg-white z-50 shadow-xl rounded-xl w-80 lg:w-96 transition-all duration-300 border border-gray-200 ${
+                isMessagesOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
               }`}
             >
-              <div className='flex justify-between items-center p-3 border-b border-gray-300'>
-                <div className='font-semibold text-lg'>Tin nhắn</div>
-                <span className='bg-slate-600 rounded-full px-2 py-1 text-white font-semibold text-xs select-none'>
-                  {messages.length}
-                </span>
+              {/* Header */}
+              <div className='flex justify-between items-center p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl'>
+                <div className='flex items-center gap-2'>
+                  <MdOutlineChat className='text-blue-600 text-lg' />
+                  <span className='font-semibold text-gray-800'>💬 Tin nhắn</span>
+                </div>
+                <div className='flex items-center gap-2'>
+                  <span className='bg-blue-600 rounded-full px-2.5 py-1 text-white font-semibold text-xs'>
+                    {messages.length}
+                  </span>
+                </div>
               </div>
-              {messages.length === 0 ? (
-                <div className='p-4 text-center text-gray-500'>Không có tin nhắn nào</div>
-              ) : (
-                messages.map((message: any) => (
-                  <div
-                    key={message.id}
-                    className='hover:bg-[#f6f9ff] border-b border-gray-300 flex items-start justify-between p-4 cursor-pointer transition-all duration-300'
-                    onClick={() => handleMessageClick(message)}
-                  >
-                    <div className='flex items-center gap-x-3 w-full'>
-                      <Image
-                        className='rounded-full object-cover'
-                        src={message.sender?.image || '/no-avatar-2.jpg'}
-                        alt={message.sender?.name || 'User'}
-                        width='40'
-                        height='40'
-                      />
-                      <div className='flex-1'>
-                        <div className='text-sm font-medium'>{message.sender?.name || 'Người dùng'}</div>
-                        <div className='text-xs text-gray-500 mt-1 truncate'>{message.body || 'Tin nhắn'}</div>
-                        <div className='text-xs text-gray-400 mt-1'>
-                          {new Date(message.createdAt).toLocaleString('vi-VN')}
+
+              {/* Messages List */}
+              <div className='max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'>
+                {messages.length === 0 ? (
+                  <div className='p-6 text-center'>
+                    <div className='text-gray-400 text-4xl mb-2'>💬</div>
+                    <div className='text-gray-500 font-medium'>Không có tin nhắn nào</div>
+                    <div className='text-gray-400 text-sm mt-1'>Tin nhắn mới sẽ xuất hiện ở đây</div>
+                  </div>
+                ) : (
+                  messages.map((message: any) => (
+                    <div
+                      key={message.id}
+                      className='hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-b border-gray-100 p-4 cursor-pointer transition-all duration-200 group'
+                      onClick={() => handleMessageClick(message)}
+                    >
+                      <div className='flex items-start gap-3'>
+                        <div className='relative'>
+                          <Image
+                            className='rounded-full object-cover ring-2 ring-gray-100 group-hover:ring-blue-200 transition-all duration-200'
+                            src={message.sender?.image || '/no-avatar-2.jpg'}
+                            alt={message.sender?.name || 'User'}
+                            width='44'
+                            height='44'
+                          />
+                          {message.seenIds && !message.seenIds.includes(currentUser?.id) && (
+                            <div className='absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white'></div>
+                          )}
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <div className='flex items-center justify-between mb-1'>
+                            <span className='text-sm font-semibold text-gray-800 truncate'>
+                              {message.sender?.name || 'Người dùng'}
+                            </span>
+                            <span className='text-xs text-gray-400 ml-2 flex-shrink-0'>
+                              {new Date(message.createdAt).toLocaleTimeString('vi-VN', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <div className='text-sm text-gray-600 truncate mb-1'>{message.body || 'Tin nhắn'}</div>
+                          <div className='text-xs text-gray-400'>
+                            {new Date(message.createdAt).toLocaleDateString('vi-VN')}
+                          </div>
                         </div>
                       </div>
-                      {message.seenIds && !message.seenIds.includes(currentUser?.id) && (
-                        <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                      )}
                     </div>
-                  </div>
-                ))
-              )}
-              <div className='flex justify-center py-2'>
+                  ))
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className='p-3 border-t border-gray-100 bg-gray-50 rounded-b-xl'>
                 <Button
-                  label='Tất cả tin nhắn'
-                  custom='!w-[250px] !text-sm !py-1 !px-2'
-                  onClick={() => router.push('/admin/chat')}
+                  label='📱 Xem tất cả tin nhắn'
+                  custom='!w-full !text-sm !py-2.5 !bg-blue-600 !text-white hover:!bg-blue-700 !rounded-lg !font-medium'
+                  onClick={() => {
+                    setIsMessagesOpen(false);
+                    router.push('/admin/chat');
+                  }}
                 />
               </div>
             </div>
@@ -362,42 +389,125 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
               )}
             </div>
 
-            {/* Hiển thị thông báo */}
+            {/* Enhanced Notifications Dropdown */}
             <div
-              className={`absolute top-10 right-[-20px] bg-white z-10 shadow-lg rounded-lg w-72 lg:w-80  transition-opacity duration-300 max-h-[470px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent ${
-                isNotificationsOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              className={`absolute top-12 right-[-20px] bg-white z-50 shadow-xl rounded-xl w-80 lg:w-96 transition-all duration-300 border border-gray-200 ${
+                isNotificationsOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
               }`}
             >
-              <div className='flex justify-between items-center p-3 border-b border-gray-300'>
-                <div className='font-semibold text-lg'>Thông báo</div>
-                <span className='bg-slate-600 rounded-full px-2 py-1 text-white font-semibold text-xs select-none'>
-                  {notifications.length}
-                </span>
+              {/* Header */}
+              <div className='flex justify-between items-center p-4 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-xl'>
+                <div className='flex items-center gap-2'>
+                  <MdNotifications className='text-orange-600 text-lg' />
+                  <span className='font-semibold text-gray-800'>🔔 Thông báo</span>
+                </div>
+                <div className='flex items-center gap-2'>
+                  <span className='bg-orange-600 rounded-full px-2.5 py-1 text-white font-semibold text-xs'>
+                    {notifications.length}
+                  </span>
+                  {unreadCount > 0 && (
+                    <span className='bg-red-500 rounded-full px-2 py-1 text-white font-semibold text-xs'>
+                      {unreadCount} mới
+                    </span>
+                  )}
+                </div>
               </div>
-              {notifications.length === 0 ? (
-                <div className='p-4 text-center text-gray-500'>Không có thông báo nào</div>
-              ) : (
-                notifications.map((notification: any) => (
-                  <div
-                    key={notification.id}
-                    className={`hover:bg-[#f6f9ff] border-b border-gray-300 flex items-start justify-between p-4 cursor-pointer transition-all duration-300 ${
-                      !notification.isRead ? 'bg-blue-50' : ''
-                    }`}
-                    onClick={() => handleNotificationClick(notification.id)}
-                  >
-                    <div className='flex-1'>
-                      <div className='text-sm font-medium'>{notification.title}</div>
-                      <div className='text-xs text-gray-500 mt-1'>{notification.message}</div>
-                      <div className='text-xs text-gray-400 mt-1'>
-                        {new Date(notification.createdAt).toLocaleString('vi-VN')}
+
+              {/* Notifications List */}
+              <div className='max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent'>
+                {notifications.length === 0 ? (
+                  <div className='p-6 text-center'>
+                    <div className='text-gray-400 text-4xl mb-2'>🔔</div>
+                    <div className='text-gray-500 font-medium'>Không có thông báo nào</div>
+                    <div className='text-gray-400 text-sm mt-1'>Thông báo mới sẽ xuất hiện ở đây</div>
+                  </div>
+                ) : (
+                  notifications.map((notification: any) => (
+                    <div
+                      key={notification.id}
+                      className={`hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50 border-b border-gray-100 p-4 cursor-pointer transition-all duration-200 group ${
+                        !notification.isRead
+                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500'
+                          : ''
+                      }`}
+                      onClick={() => handleNotificationClick(notification.id)}
+                    >
+                      <div className='flex items-start gap-3'>
+                        <div className='relative'>
+                          {/* Notification Type Icon */}
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                              notification.type === 'ORDER_PLACED'
+                                ? 'bg-green-500'
+                                : notification.type === 'COMMENT_RECEIVED'
+                                ? 'bg-blue-500'
+                                : notification.type === 'LOW_STOCK'
+                                ? 'bg-red-500'
+                                : notification.type === 'SYSTEM_ALERT'
+                                ? 'bg-orange-500'
+                                : 'bg-gray-500'
+                            }`}
+                          >
+                            {notification.type === 'ORDER_PLACED'
+                              ? '🛒'
+                              : notification.type === 'COMMENT_RECEIVED'
+                              ? '💬'
+                              : notification.type === 'LOW_STOCK'
+                              ? '⚠️'
+                              : notification.type === 'SYSTEM_ALERT'
+                              ? '🔔'
+                              : '📢'}
+                          </div>
+                          {!notification.isRead && (
+                            <div className='absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white'></div>
+                          )}
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <div className='flex items-center justify-between mb-1'>
+                            <span
+                              className={`text-sm font-semibold truncate ${
+                                !notification.isRead ? 'text-blue-800' : 'text-gray-800'
+                              }`}
+                            >
+                              {notification.title}
+                            </span>
+                            <span className='text-xs text-gray-400 ml-2 flex-shrink-0'>
+                              {new Date(notification.createdAt).toLocaleTimeString('vi-VN', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <div className='text-sm text-gray-600 mb-1 line-clamp-2'>{notification.message}</div>
+                          <div className='text-xs text-gray-400'>
+                            {new Date(notification.createdAt).toLocaleDateString('vi-VN')}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    {!notification.isRead && <div className='w-2 h-2 bg-blue-500 rounded-full mt-2'></div>}
-                  </div>
-                ))
-              )}
-              <div className='flex justify-center py-2'>
-                <Button label='Tất cả thông báo' custom='!w-[250px] !text-sm !py-1 !px-2' onClick={() => {}} />
+                  ))
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className='p-3 border-t border-gray-100 bg-gray-50 rounded-b-xl'>
+                <div className='flex gap-2'>
+                  {unreadCount > 0 && (
+                    <Button
+                      label='✅ Đánh dấu đã đọc'
+                      custom='!flex-1 !text-xs !py-2 !bg-green-600 !text-white hover:!bg-green-700 !rounded-lg !font-medium'
+                      onClick={() => markAllAsRead()}
+                    />
+                  )}
+                  <Button
+                    label='📋 Xem tất cả'
+                    custom='!flex-1 !text-xs !py-2 !bg-orange-600 !text-white hover:!bg-orange-700 !rounded-lg !font-medium'
+                    onClick={() => {
+                      setIsNotificationsOpen(false);
+                      // Navigate to notifications page if exists
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -15,6 +15,8 @@ import { Box, Rating, styled, Tab, Tabs } from '@mui/material';
 import 'moment/locale/vi';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import OrderDetails from '@/app/components/OrderDetails';
+import CancelOrderDialog from '@/app/components/CancelOrderDialog';
 
 export const formatDate = (date: any) => {
   if (!date) return 'N/A';
@@ -43,7 +45,8 @@ interface OrdersClientProps {
 
 const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<(Order & { products: CartProductType[] }) | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const router = useRouter();
   const toggleOpen = () => {
     setIsOpen(!isOpen);
@@ -79,6 +82,14 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
     setValue(newValue);
     filterOrders(newValue);
   };
+  // Kiểm tra xem đơn hàng có thể hủy không
+  const canCancelOrder = (order: Order) => {
+    return (
+      order.status === OrderStatus.pending ||
+      (order.status === OrderStatus.confirmed && order.deliveryStatus === DeliveryStatus.not_shipped)
+    );
+  };
+
   // Hàm lọc đơn hàng
   const filterOrders = (tabIndex: number) => {
     switch (tabIndex) {
@@ -88,7 +99,10 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
       case 1: // Chờ xác nhận
         setFilteredOrders(
           orders.filter(
-            order => order.status === OrderStatus.pending || order.deliveryStatus === DeliveryStatus.not_shipped
+            order =>
+              order.status !== OrderStatus.canceled && // Loại trừ đơn hàng đã hủy
+              (order.status === OrderStatus.pending ||
+                (order.status === OrderStatus.confirmed && order.deliveryStatus === DeliveryStatus.not_shipped))
           )
         );
         break;
@@ -133,7 +147,14 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
               <div key={order.id} className='my-4 border border-gray-300 rounded-lg'>
                 <div className='p-4 bg-gray-50'>
                   <div className='flex justify-between items-center mb-2'>
-                    <span className='text-lg font-semibold text-gray-700'>{order.id}</span>
+                    <div className='flex items-center gap-2'>
+                      <span className='text-lg font-semibold text-gray-700'>{order.id}</span>
+                      {order.status === OrderStatus.canceled && (
+                        <span className='text-sm font-medium text-red-600 bg-red-50 px-2 py-1 rounded-md border border-red-200'>
+                          Đã hủy
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <p className='text-sm text-gray-500'>{formatDate(order.createDate)}</p>
@@ -184,15 +205,28 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
                 </div>
 
                 <div className='border-t p-4 border-gray-300 flex justify-between items-center'>
-                  <button
-                    onClick={() => {
-                      setSelectedOrder(order);
-                      toggleOpen();
-                    }}
-                    className='px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-slate-600 hover:text-white hover:boder-slate-600'
-                  >
-                    Thông tin đơn hàng
-                  </button>
+                  <div className='flex gap-3'>
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        toggleOpen();
+                      }}
+                      className='px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-slate-600 hover:text-white hover:boder-slate-600'
+                    >
+                      Thông tin đơn hàng
+                    </button>
+                    {canCancelOrder(order) && (
+                      <button
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setShowCancelDialog(true);
+                        }}
+                        className='px-4 py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-400'
+                      >
+                        Hủy đơn hàng
+                      </button>
+                    )}
+                  </div>
                   <span className='text-md font-semibold'>{formatPrice(order.amount)}</span>
                 </div>
               </div>
@@ -212,124 +246,39 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
           </div>
         )}
       </div>
-      {isOpen && (
+      {isOpen && selectedOrder && currentUser && (
         <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-          <div className='max-w-4xl mx-auto p-3'>
-            {/* Header */}
-            <h1 className='text-2xl font-semibold mb-4'>Chi tiết đơn hàng</h1>
-            <p className='text-gray-700 mb-6'>Xin chào, {currentUser?.name}</p>
-            <p className='text-gray-700 mb-8'>
-              {selectedOrder?.status === 'pending'
-                ? 'Đơn hàng chưa được thanh toán'
-                : selectedOrder?.status === 'confirmed'
-                ? 'Đơn hàng đã được xác nhận'
-                : selectedOrder?.status === 'canceled'
-                ? 'Đơn hàng đã bị hủy'
-                : 'Đơn hàng hoàn thành'}
-            </p>
-
-            {/* Order Info */}
-            <div className='grid grid-cols-4 gap-4 border-b pb-4 mb-8'>
-              <div className='border-r border-gray-300'>
-                <h2 className='font-semibold'>Đơn hàng đã đặt</h2>
-                <p>{formatDate(selectedOrder?.createDate)}</p>
-              </div>
-              <div className='border-r border-gray-300'>
-                <h2 className='font-semibold'>Tình trạng đặt hàng</h2>
-                <p>
-                  {selectedOrder?.deliveryStatus === 'not_shipped'
-                    ? 'Đang chờ'
-                    : selectedOrder?.deliveryStatus === 'in_transit'
-                    ? 'Đang vận chuyển'
-                    : selectedOrder?.deliveryStatus === 'delivered'
-                    ? 'Đã giao'
-                    : 'Đã hoàn trả'}
-                </p>
-              </div>
-              <div className='border-r border-gray-300'>
-                <h2 className='font-semibold'>Trạng thái thanh toán</h2>
-                <p>
-                  {selectedOrder?.status === 'pending'
-                    ? 'Chưa thanh toán'
-                    : selectedOrder?.status === 'confirmed'
-                    ? 'Đã thanh toán'
-                    : selectedOrder?.status === 'canceled'
-                    ? 'Đã hủy'
-                    : 'Đã thanh toán'}
-                </p>
-              </div>
-              <div>
-                <h2 className='font-semibold'>Phương thức thanh toán</h2>
-                <p>
-                  {selectedOrder?.paymentMethod === 'momo' ? (
-                    <Image src='/momo.png' alt='momo' width={24} height={24} />
-                  ) : selectedOrder?.paymentMethod === 'stripe' ? (
-                    <Image src='/stripe-v2-svgrepo-com.svg' alt='stripe' width={24} height={24} />
-                  ) : (
-                    <div className='flex items-center gap-2'>
-                      <Image
-                        src='https://file.hstatic.net/200000636033/file/pay_2d752907ae604f08ad89868b2a5554da.png'
-                        alt='cod'
-                        width={24}
-                        height={24}
-                      />
-                      <span className='text-[16px]'>(COD)</span>
-                    </div>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {/* Products List */}
-            {selectedOrder?.products.map((item: any) => {
-              return (
-                <div className='flex items-center justify-between mb-5' key={item.id}>
-                  <div className='flex items-center space-x-4'>
-                    <Image src={item.selectedImg.images[0]} width={80} height={80} alt={item.name} />
-                    <div>
-                      <h3 className='font-semibold'>{item.name}</h3>
-                      <p className='text-gray-500'>{item.selectedImg.color}</p>
-                    </div>
-                  </div>
-                  <p className='font-semibold'>{formatPrice(item.price * item.quantity)}</p>
-                </div>
-              );
-            })}
-
-            {/* Order Summary */}
-            <div className='border-t pt-4 mt-8'>
-              <div className='flex justify-between'>
-                <p>Tạm tính ({selectedOrder?.products.length} sản phẩm)</p>
-                <p>{formatPrice(selectedOrder?.amount)}</p>
-              </div>
-              <div className='flex justify-between'>
-                <p>Phí ship</p>
-                <p>{formatPrice(0)}</p>
-              </div>
-              <div className='flex justify-between'>
-                <p>Thuế</p>
-                <p>{formatPrice(0)}</p>
-              </div>
-              <div className='flex justify-between'>
-                <p>Giảm giá</p>
-                <p>{formatPrice(0)}</p>
-              </div>
-              <div className='flex justify-between font-semibold text-lg mt-4'>
-                <p>Tổng</p>
-                <p>{formatPrice(selectedOrder?.amount)}</p>
-              </div>
-            </div>
-
-            {/* Shipping Address */}
-            <div className='border-t py-4 mt-8'>
-              <h2 className='font-semibold mb-2'>Địa chỉ giao hàng</h2>
-              <p className='text-gray-700'>Số điện thoại: {selectedOrder?.phoneNumber}</p>
-              <p className='text-gray-700'>
-                Địa chỉ: {`${selectedOrder?.address?.line1 || ''} ${selectedOrder?.address?.city || ''}`}
-              </p>
-            </div>
-          </div>
+          <OrderDetails
+            order={{
+              ...selectedOrder,
+              user: currentUser
+            }}
+            currentUser={currentUser}
+            showCancelButton={true}
+            onOrderCancelled={() => {
+              // Refresh orders list or update state
+              toggleOpen();
+              window.location.reload(); // Simple refresh for now
+            }}
+          />
         </AdminModal>
+      )}
+
+      {/* Cancel Order Dialog */}
+      {showCancelDialog && selectedOrder && currentUser && (
+        <CancelOrderDialog
+          isOpen={showCancelDialog}
+          onClose={() => setShowCancelDialog(false)}
+          order={{
+            ...selectedOrder,
+            user: currentUser
+          }}
+          currentUser={currentUser}
+          onSuccess={() => {
+            setShowCancelDialog(false);
+            window.location.reload(); // Simple refresh for now
+          }}
+        />
       )}
     </>
   );

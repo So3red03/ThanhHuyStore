@@ -163,7 +163,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
           placeholder='VD: Giảm giá sốc cuối năm'
         />
 
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+        <div className='w-full grid grid-cols-1 md:grid-cols-2 gap-4'>
           <Input
             id='discountType'
             label='Loại giảm giá'
@@ -187,7 +187,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
           />
         </div>
 
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+        <div className='w-full grid grid-cols-1 md:grid-cols-2 gap-4'>
           <Input
             id='startDate'
             label='Ngày bắt đầu'
@@ -209,7 +209,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
           />
         </div>
 
-        <div className='flex items-center gap-2 mb-4'>
+        <div className='w-full flex items-center gap-2 mb-4'>
           <input id='applyToAll' type='checkbox' {...register('applyToAll')} disabled={isLoading} className='w-4 h-4' />
           <label htmlFor='applyToAll' className='text-sm'>
             Áp dụng cho toàn bộ website
@@ -218,7 +218,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
 
         {!applyToAll && (
           <>
-            <div className='mb-4'>
+            <div className='mb-4 w-full'>
               <label className='block text-sm font-medium mb-2'>
                 Chọn sản phẩm ({selectedProducts.length} đã chọn)
               </label>
@@ -237,7 +237,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
               </div>
             </div>
 
-            <div className='mb-4'>
+            <div className='mb-4 w-full'>
               <label className='block text-sm font-medium mb-2'>
                 Chọn danh mục ({selectedCategories.length} đã chọn)
               </label>
@@ -268,7 +268,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
         )}
 
         <Button
-          label={isEdit ? 'Cập nhật Promotion' : 'Tạo Promotion'}
+          label={isEdit ? 'Cập nhật khuyến mãi' : 'Tạo khuyến mãi'}
           isLoading={isLoading}
           onClick={handleSubmit(onSubmit)}
         />

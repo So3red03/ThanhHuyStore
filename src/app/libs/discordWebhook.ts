@@ -1,6 +1,6 @@
 import { PromotionSuggestion } from './promotionSuggestionEngine';
 
-const DISCORD_WEBHOOK_URL = process.env.PROMOTION_DISCORD_WEBHOOK || '';
+const DISCORD_ORDER_WEBHOOK_URL = process.env.PROMOTION_DISCORD_WEBHOOK || '';
 
 export interface DiscordEmbed {
   title: string;
@@ -34,7 +34,7 @@ export class DiscordWebhookService {
     try {
       const embeds = this.createPromotionEmbeds(suggestions);
 
-      await fetch(DISCORD_WEBHOOK_URL, {
+      await fetch(DISCORD_ORDER_WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -202,7 +202,7 @@ export class DiscordWebhookService {
   // Gửi thông báo đơn giản
   public async sendSimpleMessage(message: string, isError: boolean = false): Promise<void> {
     try {
-      await fetch(DISCORD_WEBHOOK_URL, {
+      await fetch(DISCORD_ORDER_WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

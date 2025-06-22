@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import { OrderStatus, DeliveryStatus } from '@prisma/client';
 import { NotificationService } from '@/app/libs/notificationService';
+import { sendDiscordNotificationIfEnabled } from '@/app/libs/discordNotificationHelper';
 import crypto from 'crypto';
 import https from 'https';
 import axios from 'axios';
@@ -35,9 +36,6 @@ const validateOrderData = async (products: CartProductType[], currentUser: any) 
           id: true,
           name: true,
           price: true,
-          promotionalPrice: true,
-          promotionStart: true,
-          promotionEnd: true,
           inStock: true,
           category: true
         }
@@ -58,16 +56,8 @@ const validateOrderData = async (products: CartProductType[], currentUser: any) 
       // 3. Validate price integrity (check for price manipulation)
       let expectedPrice = dbProduct.price;
 
-      // Check if product has active promotion
-      if (dbProduct.promotionalPrice && dbProduct.promotionStart && dbProduct.promotionEnd) {
-        const now = new Date();
-        const startDate = new Date(dbProduct.promotionStart);
-        const endDate = new Date(dbProduct.promotionEnd);
-
-        if (now >= startDate && now <= endDate) {
-          expectedPrice = dbProduct.promotionalPrice;
-        }
-      }
+      // Note: Promotion logic removed as promotion fields don't exist in current Product model
+      // TODO: Implement promotion logic when ProductPromotion table is ready
 
       if (Math.abs(product.price - expectedPrice) > 0.01) {
         errors.push(`Price mismatch for ${product.name}. Expected: ${expectedPrice}, Received: ${product.price}`);
@@ -129,7 +119,7 @@ const checkRateLimit = async (userId: string) => {
 // Function để gửi thông báo Discord
 const sendDiscordNotification = async (orderData: any, currentUser: any) => {
   try {
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    const webhookUrl = process.env.DISCORD_ORDER_WEBHOOK_URL;
     if (!webhookUrl) {
       console.error('Discord webhook URL not configured');
       return;
@@ -189,11 +179,8 @@ const sendDiscordNotification = async (orderData: any, currentUser: any) => {
       }
     };
 
-    await axios.post(webhookUrl, {
-      embeds: [embed]
-    });
-
-    console.log('Discord notification sent successfully');
+    // Sử dụng helper function để kiểm tra settings
+    await sendDiscordNotificationIfEnabled(webhookUrl, embed);
   } catch (error) {
     console.error('Error sending Discord notification:', error);
   }
@@ -226,6 +213,41 @@ const updateUserPurchasedCategories = async (userId: string, products: CartProdu
     }
   } catch (error) {
     console.error('Error updating user purchased categories:', error);
+  }
+};
+
+// Function để gửi notifications và email một lần duy nhất
+const sendOrderNotifications = async (orderData: any, currentUser: any, paymentMethod: string) => {
+  try {
+    // 1. Gửi email xác nhận đơn hàng (chỉ 1 lần)
+    await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dõi đơn hàng: ');
+
+    // 2. Gửi thông báo Discord (chỉ 1 lần)
+    await sendDiscordNotification(orderData, currentUser);
+
+    // 3. Cập nhật danh mục đã mua cho user
+    await updateUserPurchasedCategories(currentUser.id, orderData.products);
+
+    // 4. Tạo notification cho admin (chỉ 1 lần)
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN' }
+    });
+
+    for (const admin of admins) {
+      await NotificationService.createNotification({
+        userId: admin.id,
+        orderId: orderData.id,
+        fromUserId: currentUser.id,
+        type: 'ORDER_PLACED',
+        title: `Đơn hàng mới (${paymentMethod.toUpperCase()})`,
+        message: `${currentUser.name} vừa đặt đơn hàng ${paymentMethod.toUpperCase()}`,
+        data: { orderId: orderData.id, paymentMethod }
+      });
+    }
+
+    console.log(`✅ Order notifications sent for ${paymentMethod} order ${orderData.id}`);
+  } catch (error) {
+    console.error('Error sending order notifications:', error);
   }
 };
 
@@ -431,30 +453,8 @@ export async function POST(request: Request): Promise<Response> {
           }
         }
 
-        // Gửi email xác nhận đơn hàng
-        await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dỗi đơn hàng: ');
-
-        // Gửi thông báo Discord
-        await sendDiscordNotification(orderData, currentUser);
-
-        // Cập nhật danh mục đã mua cho user
-        await updateUserPurchasedCategories(currentUser.id, products);
-
-        // Tạo notification cho admin (sẽ gửi cho tất cả admin)
-        const admins = await prisma.user.findMany({
-          where: { role: 'ADMIN' }
-        });
-
-        for (const admin of admins) {
-          await NotificationService.createNotification({
-            userId: admin.id,
-            fromUserId: currentUser.id,
-            type: 'ORDER_PLACED',
-            title: 'Đơn hàng mới',
-            message: `${currentUser.name} vừa đặt đơn hàng mới`,
-            data: { paymentIntentId: payment_intent_id }
-          });
-        }
+        // Chỉ gửi notifications cho Stripe vì các method khác sẽ được xử lý trong webhook/callback
+        // Stripe payment sẽ được confirm trong webhook, không gửi notifications ở đây
 
         return NextResponse.json({ paymentIntent });
       }
@@ -512,30 +512,8 @@ export async function POST(request: Request): Promise<Response> {
           }
         }
 
-        await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dỗi đơn hàng: ');
-
-        // Gửi thông báo Discord
-        await sendDiscordNotification(orderData, currentUser);
-
-        // Cập nhật danh mục đã mua cho user
-        await updateUserPurchasedCategories(currentUser.id, products);
-
-        // Tạo notification cho admin
-        const admins = await prisma.user.findMany({
-          where: { role: 'ADMIN' }
-        });
-
-        for (const admin of admins) {
-          await NotificationService.createNotification({
-            userId: admin.id,
-            orderId: createdOrder.id,
-            fromUserId: currentUser.id,
-            type: 'ORDER_PLACED',
-            title: 'Đơn hàng mới (COD)',
-            message: `${currentUser.name} vừa đặt đơn hàng COD`,
-            data: { orderId: createdOrder.id, paymentMethod: 'cod' }
-          });
-        }
+        // Gửi notifications và email cho COD
+        await sendOrderNotifications(orderData, currentUser, 'cod');
 
         // Tự động tạo PDF và gửi email cho COD
         try {
@@ -609,31 +587,8 @@ export async function POST(request: Request): Promise<Response> {
         }
       }
 
-      // Gửi email xác nhận đơn hàng
-      await sendEmail(currentUser.email, 'Bấm vào link kế bên để theo dõi đơn hàng: ');
-
-      // Gửi thông báo Discord
-      await sendDiscordNotification(orderData, currentUser);
-
-      // Cập nhật danh mục đã mua cho user
-      await updateUserPurchasedCategories(currentUser.id, products);
-
-      // Tạo notification cho admin
-      const admins = await prisma.user.findMany({
-        where: { role: 'ADMIN' }
-      });
-
-      for (const admin of admins) {
-        await NotificationService.createNotification({
-          userId: admin.id,
-          orderId: createdOrder.id,
-          fromUserId: currentUser.id,
-          type: 'ORDER_PLACED',
-          title: 'Đơn hàng mới (MoMo)',
-          message: `${currentUser.name} vừa đặt đơn hàng MoMo`,
-          data: { orderId: createdOrder.id, paymentMethod: 'momo' }
-        });
-      }
+      // Gửi notifications và email cho MoMo
+      await sendOrderNotifications(orderData, currentUser, 'momo');
 
       // Tạo thanh toán momo
       const accessKey = 'F8BBA842ECF85';

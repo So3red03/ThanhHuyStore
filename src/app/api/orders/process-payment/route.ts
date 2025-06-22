@@ -9,18 +9,15 @@ export async function POST(request: NextRequest) {
     const { orderId, paymentIntentId } = await request.json();
 
     if (!orderId || !paymentIntentId) {
-      return NextResponse.json(
-        { error: 'Order ID and Payment Intent ID are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Order ID and Payment Intent ID are required' }, { status: 400 });
     }
 
     // Lấy thông tin đơn hàng
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        user: true,
-      },
+        user: true
+      }
     });
 
     if (!order) {
@@ -41,13 +38,15 @@ export async function POST(request: NextRequest) {
           createDate: order.createDate,
           paymentIntentId: order.paymentIntentId,
           phoneNumber: order.phoneNumber || undefined,
-          address: order.address ? {
-            line1: order.address.line1,
-            line2: order.address.line2 || undefined,
-            city: order.address.city,
-            postal_code: order.address.postal_code,
-            country: order.address.country,
-          } : undefined,
+          address: order.address
+            ? {
+                line1: order.address.line1,
+                line2: order.address.line2 || undefined,
+                city: order.address.city,
+                postal_code: order.address.postal_code,
+                country: order.address.country
+              }
+            : undefined,
           paymentMethod: order.paymentMethod || undefined,
           shippingFee: order.shippingFee || undefined,
           discountAmount: order.discountAmount || undefined,
@@ -55,7 +54,7 @@ export async function POST(request: NextRequest) {
           voucherCode: order.voucherCode || undefined,
           user: {
             name: order.user.name || 'Unknown',
-            email: order.user.email,
+            email: order.user.email
           },
           products: (order.products || []).map((product: any) => ({
             id: product.id,
@@ -63,18 +62,12 @@ export async function POST(request: NextRequest) {
             description: product.description,
             price: product.price,
             quantity: product.quantity,
-            selectedImg: product.selectedImg,
-          })),
+            selectedImg: product.selectedImg
+          }))
         });
 
         // Lưu PDF vào MongoDB
-        const fileId = await MongoService.savePDF(
-          pdfBuffer,
-          orderId,
-          order.paymentIntentId,
-          order.userId,
-          'invoice'
-        );
+        const fileId = await MongoService.savePDF(pdfBuffer, orderId, order.paymentIntentId, order.userId, 'invoice');
 
         pdfFileId = fileId.toString();
 
@@ -102,9 +95,9 @@ export async function POST(request: NextRequest) {
           orderId: order.id,
           paymentIntentId: order.paymentIntentId,
           amount: order.amount,
-          ...(pdfFileId && { pdfFileId }),
-        },
-      },
+          ...(pdfFileId && { pdfFileId })
+        }
+      }
     });
 
     // Cập nhật activity ORDER_CREATED để thêm pdfFileId nếu có
@@ -116,9 +109,9 @@ export async function POST(request: NextRequest) {
             type: 'ORDER_CREATED',
             data: {
               path: ['orderId'],
-              equals: order.id,
-            } as any,
-          },
+              equals: order.id
+            } as any
+          }
         });
 
         if (orderCreatedActivity) {
@@ -127,9 +120,9 @@ export async function POST(request: NextRequest) {
             data: {
               data: {
                 ...(orderCreatedActivity.data as any),
-                pdfFileId,
-              },
-            },
+                pdfFileId
+              }
+            }
           });
         }
       } catch (error) {
@@ -150,9 +143,9 @@ export async function POST(request: NextRequest) {
         products: order.products.map((product: any) => ({
           name: product.name,
           quantity: product.quantity,
-          price: product.price,
+          price: product.price
         })),
-        pdfFileId: pdfFileId || undefined,
+        pdfFileId: pdfFileId || undefined
       });
 
       console.log('Order confirmation email sent successfully');
@@ -161,19 +154,32 @@ export async function POST(request: NextRequest) {
       // Không throw error để không ảnh hưởng đến quá trình thanh toán
     }
 
+    // Gửi notifications (Discord + Admin notifications) - chỉ 1 lần
+    try {
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      await fetch(`${baseUrl}/api/orders/send-notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          paymentIntentId: order.paymentIntentId
+        })
+      });
+      console.log('Order notifications sent successfully');
+    } catch (notificationError) {
+      console.error('Error sending notifications:', notificationError);
+      // Không throw error để không ảnh hưởng đến quá trình thanh toán
+    }
+
     return NextResponse.json({
       message: 'Payment processed successfully',
       orderId,
       pdfFileId,
       activityCreated: true,
-      emailSent: true,
+      emailSent: true
     });
-
   } catch (error) {
     console.error('Error processing payment:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -8,10 +8,7 @@ export async function POST(request: Request) {
     const currentUser = await getCurrentUser();
 
     if (!currentUser || currentUser.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -29,8 +26,8 @@ export async function POST(request: Request) {
       // Generate sample data for the last 30 days
       for (let i = 0; i < count; i++) {
         const daysAgo = Math.floor(Math.random() * 30);
-        const timestamp = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
-        
+        const timestamp = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+
         // Random event type
         const eventTypes = [
           EventType.PAGE_VIEW,
@@ -41,7 +38,7 @@ export async function POST(request: Request) {
           EventType.ARTICLE_VIEW
         ];
         const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-        
+
         // Random user (some anonymous)
         const user = Math.random() > 0.3 ? users[Math.floor(Math.random() * users.length)] : null;
         const sessionId = user ? null : `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -66,7 +63,7 @@ export async function POST(request: Request) {
               };
             }
             break;
-          
+
           case EventType.ARTICLE_VIEW:
             if (articles.length > 0) {
               const article = articles[Math.floor(Math.random() * articles.length)];
@@ -79,7 +76,7 @@ export async function POST(request: Request) {
               };
             }
             break;
-          
+
           case EventType.SEARCH:
             const searchTerms = ['iPhone', 'MacBook', 'iPad', 'Apple Watch', 'AirPods', 'iMac'];
             const searchTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
@@ -89,7 +86,7 @@ export async function POST(request: Request) {
               resultCount: Math.floor(Math.random() * 50) + 1
             };
             break;
-          
+
           case EventType.PURCHASE:
             path = '/checkout';
             metadata = {
@@ -97,7 +94,7 @@ export async function POST(request: Request) {
               currency: 'VND'
             };
             break;
-          
+
           case EventType.PAGE_VIEW:
             const pages = ['/', '/products', '/news', '/about', '/contact'];
             path = pages[Math.floor(Math.random() * pages.length)];
@@ -128,26 +125,22 @@ export async function POST(request: Request) {
         message: `Successfully seeded ${result.count} analytics events`,
         count: result.count
       });
-
     } else if (action === 'clear') {
+      // Clear all analytics events
       const result = await prisma.analyticsEvent.deleteMany({});
+
+      console.log(`🗑️ Cleared ${result.count} analytics events (including mock data)`);
+
       return NextResponse.json({
         message: `Cleared ${result.count} analytics events`,
-        count: result.count
+        count: result.count,
+        success: true
       });
-
     } else {
-      return NextResponse.json(
-        { error: 'Invalid action. Use "seed" or "clear"' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid action. Use "seed" or "clear"' }, { status: 400 });
     }
-
   } catch (error: any) {
     console.error('[ANALYTICS_SEED]', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -13,6 +13,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import RecentlyViewedProducts from '@/app/components/RecentlyViewedProducts';
 import { Product } from '@prisma/client';
+import { useAnalyticsTracker } from '@/app/hooks/useAnalytics';
+
 interface ArticleDetailsProps {
   article: any;
   allProducts: Product[];
@@ -22,6 +24,18 @@ interface ArticleDetailsProps {
 const ArticleDetails: React.FC<ArticleDetailsProps> = ({ article, currentUser, allProducts }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedValue, setSelectedValue] = useState(0);
+  const { trackArticleView } = useAnalyticsTracker();
+
+  // Track article view when component mounts
+  useEffect(() => {
+    if (article?.id) {
+      trackArticleView(article.id, {
+        articleTitle: article.title,
+        category: article.category?.name,
+        author: 'Admin'
+      });
+    }
+  }, [article?.id, trackArticleView]);
 
   const handleClick = (event: any, ratingValue: any) => {
     if (!currentUser) {

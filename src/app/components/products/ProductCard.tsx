@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CartProductType, selectedImgType } from '@/app/(home)/product/[productId]/ProductDetails';
 import Link from 'next/link';
 import { slugConvert } from '../../../../utils/Slug';
+import { useAnalyticsTracker } from '@/app/hooks/useAnalytics';
 
 interface ProductCardProps {
   data: any;
@@ -19,6 +20,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
   // Hàm trả về số reviews trung bình
   // const productRating = data.reviews.reduce((acc: number, item: any) => item.rating + acc, 0) / data.reviews.length;
   // Check color hiện tại và img thay đổi theo color đc select
+  const { trackProductInteraction } = useAnalyticsTracker();
+
   const [cartProduct, setCartProduct] = useState<CartProductType>({
     id: data.id,
     name: data.name,
@@ -30,7 +33,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     inStock: data.inStock
   });
 
-  // Helper functions for tags
+  // Check if product is new (created within last 30 days)
   const isNewProduct = () => {
     const productDate = new Date(data.createDate || data.createdAt || Date.now());
     const thirtyDaysAgo = new Date();
@@ -38,12 +41,42 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     return productDate >= thirtyDaysAgo;
   };
 
+  // Check if product has active promotions and display sale tag
   const isOnSale = () => {
-    if (!data.promotionalPrice || !data.promotionStart || !data.promotionEnd) return false;
+    if (!data.productPromotions || data.productPromotions.length === 0) {
+      return false;
+    }
+
     const now = new Date();
-    const startDate = new Date(data.promotionStart);
-    const endDate = new Date(data.promotionEnd);
-    return now >= startDate && now <= endDate && data.promotionalPrice < data.price;
+    const activePromotion = data.productPromotions.find((promo: any) => {
+      const startDate = new Date(promo.startDate);
+      const endDate = new Date(promo.endDate);
+      return promo.isActive && now >= startDate && now <= endDate && promo.promotionalPrice < data.price;
+    });
+
+    return !!activePromotion;
+  };
+
+  // Get the best promotional price from active promotions
+  const getBestPromotionalPrice = () => {
+    if (!data.productPromotions || data.productPromotions.length === 0) return null;
+
+    const now = new Date();
+    const activePromotions = data.productPromotions.filter((promo: any) => {
+      const startDate = new Date(promo.startDate);
+      const endDate = new Date(promo.endDate);
+      return promo.isActive && now >= startDate && now <= endDate;
+    });
+
+    if (activePromotions.length === 0) return null;
+
+    // Sort by priority (higher first), then by lowest price
+    activePromotions.sort((a: any, b: any) => {
+      if (a.priority !== b.priority) return b.priority - a.priority;
+      return a.promotionalPrice - b.promotionalPrice;
+    });
+
+    return activePromotions[0].promotionalPrice;
   };
 
   const handleColorSelect = useCallback((value: selectedImgType) => {
@@ -74,44 +107,56 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     };
   }, []);
 
-  const saveViewedProduct = useCallback((product: any) => {
-    if (!product) return;
+  const saveViewedProduct = useCallback(
+    (product: any) => {
+      if (!product) return;
 
-    try {
-      // Lưu theo format mới cho RecentlyViewedProducts
-      const viewHistory = JSON.parse(localStorage.getItem('productViewHistory') || '[]');
+      try {
+        // Track product click analytics
+        console.log('🎯 ProductCard: Tracking product click for:', product.id);
+        trackProductInteraction('PRODUCT_CLICK', product.id, {
+          productName: product.name,
+          category: product.category,
+          price: product.price,
+          clickSource: 'ProductCard'
+        });
 
-      const newView = {
-        productId: product.id,
-        category: product.categoryId,
-        brand: product.brand || 'Apple',
-        viewedAt: Date.now()
-      };
+        // Lưu theo format mới cho RecentlyViewedProducts
+        const viewHistory = JSON.parse(localStorage.getItem('productViewHistory') || '[]');
 
-      // Loại bỏ view cũ của cùng sản phẩm
-      const filteredHistory = viewHistory.filter((item: any) => item.productId !== product.id);
+        const newView = {
+          productId: product.id,
+          category: product.categoryId,
+          brand: product.brand || 'Apple',
+          viewedAt: Date.now()
+        };
 
-      // Thêm view mới và giữ tối đa 50 records
-      const updatedHistory = [newView, ...filteredHistory].slice(0, 50);
+        // Loại bỏ view cũ của cùng sản phẩm
+        const filteredHistory = viewHistory.filter((item: any) => item.productId !== product.id);
 
-      localStorage.setItem('productViewHistory', JSON.stringify(updatedHistory));
+        // Thêm view mới và giữ tối đa 50 records
+        const updatedHistory = [newView, ...filteredHistory].slice(0, 50);
 
-      // Vẫn giữ logic cũ cho backward compatibility
-      setViewedProducts(prev => {
-        const updatedViewed = prev?.filter(p => p.id !== product.id) || [];
-        updatedViewed.unshift(product);
+        localStorage.setItem('productViewHistory', JSON.stringify(updatedHistory));
 
-        if (updatedViewed.length > 8) {
-          updatedViewed.pop();
-        }
+        // Vẫn giữ logic cũ cho backward compatibility
+        setViewedProducts(prev => {
+          const updatedViewed = prev?.filter(p => p.id !== product.id) || [];
+          updatedViewed.unshift(product);
 
-        localStorage.setItem('viewedProducts', JSON.stringify(updatedViewed));
-        return updatedViewed;
-      });
-    } catch (error) {
-      console.error('Error saving viewed product:', error);
-    }
-  }, []);
+          if (updatedViewed.length > 8) {
+            updatedViewed.pop();
+          }
+
+          localStorage.setItem('viewedProducts', JSON.stringify(updatedViewed));
+          return updatedViewed;
+        });
+      } catch (error) {
+        console.error('Error saving viewed product:', error);
+      }
+    },
+    [trackProductInteraction]
+  );
 
   return (
     <div
@@ -147,7 +192,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
           </div>
         </div>
         <div className='mt-3 text-base h-11'>{truncateText(data.name)}</div>
-        <div className='font-semibold text-lg mt-2'>{formatPrice(data.price)}</div>
+        <div className='font-semibold text-lg mt-2'>
+          {isOnSale() ? (
+            <div className='flex flex-col items-center gap-1'>
+              <span className='text-red-600'>{formatPrice(getBestPromotionalPrice())}</span>
+              <span className='text-gray-500 line-through text-sm'>{formatPrice(data.price)}</span>
+            </div>
+          ) : (
+            formatPrice(data.price)
+          )}
+        </div>
       </Link>
       <div className='py-4 px-14'>
         <SetColor cartProduct={cartProduct} product={data} handleColorSelect={handleColorSelect} performance={true} />

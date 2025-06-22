@@ -5,13 +5,16 @@ import VoucherDisplay from '../VoucherDisplay';
 import { formatPrice } from '../../../../../utils/formatPrice';
 import Button from '@/app/components/Button';
 import { useCart } from '@/app/hooks/useCart';
+import { useHydration } from '@/app/hooks/useHydration';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { FieldValues, useForm } from 'react-hook-form';
+
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { SafeUser } from '../../../../../types';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
+import { useSettings } from '@/app/hooks/useSettings';
+import SettingsTest from '@/app/components/SettingsTest';
 
 interface CheckoutClientProps {
   currentUser: SafeUser | null | undefined;
@@ -31,17 +34,16 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
     finalAmount,
     selectedVoucher
   } = useCart();
-  const {
-    handleSubmit,
-    formState: { errors }
-  } = useForm<FieldValues>();
+  const { isHydrated } = useHydration();
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheck, setIsCheck] = useState(false);
   const [isStripeCheck, setStripeCheck] = useState(false);
   const [isMomoCheck, setMomoCheck] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const address = cartInfo?.address + ', ' + cartInfo?.ward + ', ' + cartInfo?.district;
+
+  // Settings hook
+  const { getEnabledPaymentMethods, isPaymentMethodEnabled } = useSettings();
 
   let value: any;
   const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,6 +67,16 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
 
     if (!paymentMethod) {
       return toast.error('Vui lòng chọn hình thức thanh toán!');
+    }
+
+    // Kiểm tra phương thức thanh toán có được bật không
+    if (!isPaymentMethodEnabled(paymentMethod)) {
+      return toast.error('Phương thức thanh toán này hiện không khả dụng!');
+    }
+
+    // Kiểm tra có ít nhất 1 phương thức thanh toán được bật
+    if (getEnabledPaymentMethods().length === 0) {
+      return toast.error('Hiện tại không có phương thức thanh toán nào khả dụng. Vui lòng liên hệ quản trị viên!');
     }
 
     // SECURITY: Additional validation before payment
@@ -176,6 +188,15 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
     toggleOpen();
   };
 
+  // Show loading while hydrating to prevent hydration mismatch
+  if (!isHydrated) {
+    return (
+      <div className='flex justify-center items-center p-8'>
+        <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600'></div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className='w-full bg-white p-2 mt-4'>
@@ -222,78 +243,109 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
 
         <div className='p-6 border-b'>
           <h2 className='font-bold mb-2 lg:text-xl text-sm'>Chọn hình thức thanh toán</h2>
-          <div
-            className='flex items-center mt-2'
-            onClick={() => {
-              setIsCheck(false);
-              setStripeCheck(false);
-              setMomoCheck(false);
-            }}
-          >
-            <input type='radio' id='cod' name='payment' value='cod' className='mr-4' onChange={handlePaymentChange} />
-            <label htmlFor='cod' className='flex items-center'>
-              <Image
-                src='https://file.hstatic.net/200000636033/file/pay_2d752907ae604f08ad89868b2a5554da.png'
-                alt='cod'
-                className='mr-2'
-                width={24}
-                height={24}
-              />
-              <span className='lg:text-base text-sm'>Thanh toán khi giao hàng (COD)</span>
-            </label>
-          </div>
-          <div
-            className='flex items-center mt-2'
-            onClick={() => {
-              setIsCheck(false);
-              setMomoCheck(false);
-              setStripeCheck(true);
-            }}
-          >
-            <input
-              type='radio'
-              id='stripe'
-              name='payment'
-              value='stripe'
-              className='mr-4'
-              onChange={handlePaymentChange}
-            />
-            <label htmlFor='stripe' className='flex items-center'>
-              <Image src='/stripe-v2-svgrepo-com.svg' alt='stripe' className='mr-2' width={24} height={24} />
-              <div className='flex gap-1 items-center lg:text-base text-sm'>
-                Thanh toán bằng <span className='text-base lg:text-lg text-indigo-600'> Stripe</span>
-              </div>
-            </label>
-          </div>
-          <div className={`mt-2 ${isStripeCheck ? 'transform translate-y-0' : 'transform translate-y-full hidden'}`}>
-            <p>
-              Chuyển khoản vào tài khoản<span className='text-indigo-600 font-semibold'> Ví Stripe</span> của chúng tôi.
-              Đơn hàng sẽ được xác nhận ngay sau khi chuyển khoản thành công
-            </p>
-          </div>
 
-          <div
-            className='flex items-center mt-2'
-            onClick={() => {
-              setIsCheck(false);
-              setStripeCheck(false);
-              setMomoCheck(true);
-            }}
-          >
-            <input type='radio' id='momo' name='payment' value='momo' className='mr-4' onChange={handlePaymentChange} />
-            <label htmlFor='momo' className='flex items-center'>
-              <Image src='/momo.png' alt='momo' className='mr-2' width={24} height={24} />
-              <div className='flex gap-1 items-center lg:text-base text-sm'>
-                Thanh toán bằng <span className='text-base lg:text-lg text-indigo-600'> Momo</span>
+          {/* COD Payment */}
+          {isPaymentMethodEnabled('cod') && (
+            <div
+              className='flex items-center mt-2'
+              onClick={() => {
+                setStripeCheck(false);
+                setMomoCheck(false);
+              }}
+            >
+              <input type='radio' id='cod' name='payment' value='cod' className='mr-4' onChange={handlePaymentChange} />
+              <label htmlFor='cod' className='flex items-center'>
+                <Image
+                  src='https://file.hstatic.net/200000636033/file/pay_2d752907ae604f08ad89868b2a5554da.png'
+                  alt='cod'
+                  className='mr-2'
+                  width={24}
+                  height={24}
+                />
+                <span className='lg:text-base text-sm'>Thanh toán khi giao hàng (COD)</span>
+              </label>
+            </div>
+          )}
+
+          {/* Stripe Payment */}
+          {isPaymentMethodEnabled('stripe') && (
+            <>
+              <div
+                className='flex items-center mt-2'
+                onClick={() => {
+                  setMomoCheck(false);
+                  setStripeCheck(true);
+                }}
+              >
+                <input
+                  type='radio'
+                  id='stripe'
+                  name='payment'
+                  value='stripe'
+                  className='mr-4'
+                  onChange={handlePaymentChange}
+                />
+                <label htmlFor='stripe' className='flex items-center'>
+                  <Image src='/stripe-v2-svgrepo-com.svg' alt='stripe' className='mr-2' width={24} height={24} />
+                  <div className='flex gap-1 items-center lg:text-base text-sm'>
+                    Thanh toán bằng <span className='text-base lg:text-lg text-indigo-600'> Stripe</span>
+                  </div>
+                </label>
               </div>
-            </label>
-          </div>
-          <div className={`mt-2 ${isMomoCheck ? 'transform translate-y-0' : 'transform translate-y-full hidden'}`}>
-            <p>
-              Chuyển khoản vào tài khoản<span className='text-indigo-600 font-semibold'> Ví Momo</span> của chúng tôi.
-              Đơn hàng sẽ được xác nhận ngay sau khi chuyển khoản thành công
-            </p>
-          </div>
+              <div
+                className={`mt-2 ${isStripeCheck ? 'transform translate-y-0' : 'transform translate-y-full hidden'}`}
+              >
+                <p>
+                  Chuyển khoản vào tài khoản<span className='text-indigo-600 font-semibold'> Ví Stripe</span> của chúng
+                  tôi. Đơn hàng sẽ được xác nhận ngay sau khi chuyển khoản thành công
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* MoMo Payment */}
+          {isPaymentMethodEnabled('momo') && (
+            <>
+              <div
+                className='flex items-center mt-2'
+                onClick={() => {
+                  setStripeCheck(false);
+                  setMomoCheck(true);
+                }}
+              >
+                <input
+                  type='radio'
+                  id='momo'
+                  name='payment'
+                  value='momo'
+                  className='mr-4'
+                  onChange={handlePaymentChange}
+                />
+                <label htmlFor='momo' className='flex items-center'>
+                  <Image src='/momo.png' alt='momo' className='mr-2' width={24} height={24} />
+                  <div className='flex gap-1 items-center lg:text-base text-sm'>
+                    Thanh toán bằng <span className='text-base lg:text-lg text-indigo-600'> Momo</span>
+                  </div>
+                </label>
+              </div>
+              <div className={`mt-2 ${isMomoCheck ? 'transform translate-y-0' : 'transform translate-y-full hidden'}`}>
+                <p>
+                  Chuyển khoản vào tài khoản<span className='text-indigo-600 font-semibold'> Ví Momo</span> của chúng
+                  tôi. Đơn hàng sẽ được xác nhận ngay sau khi chuyển khoản thành công
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* No payment methods enabled warning */}
+          {getEnabledPaymentMethods().length === 0 && (
+            <div className='bg-red-50 border border-red-200 rounded-lg p-4 mt-2'>
+              <p className='text-red-800 text-sm'>
+                ⚠️ Hiện tại không có phương thức thanh toán nào được kích hoạt. Vui lòng liên hệ quản trị viên để được
+                hỗ trợ.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className='flex flex-col mt-5 gap-4'>

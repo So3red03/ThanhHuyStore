@@ -8,24 +8,21 @@ export async function GET(request: Request) {
     const currentUser = await getCurrentUser();
 
     if (!currentUser || currentUser.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '7');
     const limit = parseInt(searchParams.get('limit') || '10');
-    
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // Get top viewed products
+    // Get top viewed products (combining clicks and views)
     const topViewedProducts = await prisma.analyticsEvent.groupBy({
       by: ['entityId'],
       where: {
-        eventType: EventType.PRODUCT_VIEW,
+        eventType: { in: [EventType.PRODUCT_VIEW, EventType.PRODUCT_CLICK] },
         entityType: 'product',
         entityId: { not: null },
         timestamp: {
@@ -68,51 +65,6 @@ export async function GET(request: Request) {
       };
     });
 
-    // Get top clicked products
-    const topClickedProducts = await prisma.analyticsEvent.groupBy({
-      by: ['entityId'],
-      where: {
-        eventType: EventType.PRODUCT_CLICK,
-        entityType: 'product',
-        entityId: { not: null },
-        timestamp: {
-          gte: startDate
-        }
-      },
-      _count: {
-        id: true
-      },
-      orderBy: {
-        _count: {
-          id: 'desc'
-        }
-      },
-      take: limit
-    });
-
-    const clickedProductIds = topClickedProducts.map(p => p.entityId).filter(Boolean) as string[];
-    const clickedProducts = await prisma.product.findMany({
-      where: {
-        id: { in: clickedProductIds }
-      },
-      include: {
-        category: true
-      }
-    });
-
-    const topClickedProductsData = topClickedProducts.map(item => {
-      const product = clickedProducts.find(p => p.id === item.entityId);
-      return {
-        id: item.entityId,
-        name: product?.name || 'Unknown Product',
-        category: product?.category?.name || 'Unknown Category',
-        price: product?.price || 0,
-        image: product?.images?.[0]?.images?.[0] || '',
-        clicks: item._count.id,
-        inStock: product?.inStock || 0
-      };
-    });
-
     // Get category performance
     const categoryPerformance = await prisma.analyticsEvent.groupBy({
       by: ['metadata'],
@@ -130,7 +82,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       topViewedProducts: topProducts,
-      topClickedProducts: topClickedProductsData,
       categoryPerformance,
       period: {
         days,
@@ -138,12 +89,8 @@ export async function GET(request: Request) {
         endDate: new Date().toISOString()
       }
     });
-
   } catch (error: any) {
     console.error('[ANALYTICS_PRODUCTS]', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
