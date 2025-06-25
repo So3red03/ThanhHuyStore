@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PromotionSuggestionEngine } from '../../../libs/promotionSuggestionEngine';
-import { DiscordWebhookService } from '../../../libs/discordWebhook';
+import { PromotionSuggestionEngine } from '../../../libs/promotions/promotionSuggestionEngine';
+import { DiscordWebhookService } from '../../../libs/promotions/discordWebhook';
 import prisma from '../../../libs/prismadb';
 
 // Cron job để chạy phân tích khuyến mãi tự động

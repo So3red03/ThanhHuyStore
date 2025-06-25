@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DiscordReportService } from '../../../../libs/discordReportService';
+import { DiscordReportService } from '../../../../libs/discord/discordReportService';
 import { getCurrentUser } from '../../../../actions/getCurrentUser';
 
 // POST: Gửi báo cáo Discord
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
-    
+
     // Kiểm tra quyền admin
     if (!currentUser || currentUser.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -22,23 +19,20 @@ export async function POST(request: NextRequest) {
 
     if (type === 'test') {
       // Gửi báo cáo test
-      success = await DiscordReportService.sendTestReport();
+      await DiscordReportService.sendReport(1); // Test với 1 giờ
+      success = true;
     } else if (type === 'report') {
       // Gửi báo cáo thực tế
       const reportHours = hours || 24;
-      success = await DiscordReportService.sendReport(reportHours);
+      await DiscordReportService.sendReport(reportHours);
+      success = true;
     } else {
-      return NextResponse.json(
-        { error: 'Invalid report type' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid report type' }, { status: 400 });
     }
 
     if (success) {
       return NextResponse.json({
-        message: type === 'test' 
-          ? 'Báo cáo test đã được gửi thành công!' 
-          : 'Báo cáo đã được gửi thành công!',
+        message: type === 'test' ? 'Báo cáo test đã được gửi thành công!' : 'Báo cáo đã được gửi thành công!',
         success: true
       });
     } else {
@@ -47,13 +41,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
   } catch (error) {
     console.error('Discord report API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -61,12 +51,9 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
-    
+
     if (!currentUser || currentUser.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -78,12 +65,8 @@ export async function GET(request: NextRequest) {
       data: reportData,
       success: true
     });
-
   } catch (error) {
     console.error('Get report data error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

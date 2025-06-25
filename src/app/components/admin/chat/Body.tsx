@@ -60,6 +60,7 @@ const Body: React.FC<BodyProps> = ({ Messages, chatRoomId, className, currentUse
     return () => {
       pusherClient.unsubscribe(chatRoomId);
       pusherClient.unbind('messages:new', messageHandler);
+      pusherClient.unbind('messages:update', updatedMessageHandler);
     };
   }, [chatRoomId]);
 
@@ -95,11 +96,11 @@ const Body: React.FC<BodyProps> = ({ Messages, chatRoomId, className, currentUse
       {isScrolledUp && (
         <button
           onClick={() => bottomRef?.current?.scrollIntoView({ behavior: 'smooth' })}
-          className='inline-flex items-center justify-center whitespace-nowrap text-sm font-medium 
-					focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
-					disabled:opacity-80 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 
-					disabled:text-zinc-600 h-9 w-9 absolute right-8 bottom-4 z-10 animate-in rounded-full border border-zinc-300 
-					bg-zinc-50 text-zinc-500 transition-opacity duration-300 group-data-[theme=dark]:border-zinc-600 
+          className='inline-flex items-center justify-center whitespace-nowrap text-sm font-medium
+					focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none
+					disabled:opacity-80 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50
+					disabled:text-zinc-600 h-9 w-9 absolute right-8 bottom-4 z-10 animate-in rounded-full border border-zinc-300
+					bg-zinc-50 text-zinc-500 transition-opacity duration-300 group-data-[theme=dark]:border-zinc-600
 					group-data-[theme=dark]:bg-zinc-700 group-data-[theme=dark]:text-white opacity-100'
         >
           <svg

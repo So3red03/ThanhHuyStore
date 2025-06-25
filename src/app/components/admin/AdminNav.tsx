@@ -17,7 +17,7 @@ import MenuItem from '../nav/MenuItem';
 import { CiChat1, CiLogout, CiSettings, CiUser } from 'react-icons/ci';
 import { signOut } from 'next-auth/react';
 import AddArticleCateModal from '@/app/(admin)/admin/manage-articlesCategory/AddArticleCateModal';
-import { ArticleCategory, Category } from '@prisma/client';
+import { ArticleCategory } from '@prisma/client';
 import AddProductCateModal from '@/app/(admin)/admin/manage-categories/AddProductCateModal';
 import AddProductChildCateModal from '@/app/(admin)/admin/manage-childCategories/AddProductChildCateModal';
 
@@ -27,6 +27,7 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-products': 'Quản lý sản phẩm',
   '/admin/manage-orders': 'Quản lý đơn hàng',
   '/admin/manage-orders/kanban': 'Kanban Đơn hàng',
+  '/admin/manage-returns': 'Quản lý đổi/trả hàng',
   '/admin/manage-users': 'Quản lý người dùng',
   '/admin/manage-categories': 'Quản lý danh mục cha',
   '/admin/manage-childCategories': 'Quản lý danh mục con',
@@ -36,7 +37,8 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-vouchers': 'Quản lý Voucher',
   '/admin/manage-promotions': 'Quản lý Promotion',
   '/admin/news-dashboard': 'Phân tích',
-  '/admin/settings': 'Cài đặt hệ thống'
+  '/admin/settings': 'Cài đặt hệ thống',
+  '/admin/test-features': '🧪 Test Features'
 };
 
 interface AdminNavProps {
@@ -63,7 +65,15 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
   const [messages, setMessages] = useState<any[]>([]);
 
   // Sử dụng notification hook
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(currentUser || null);
+  const {
+    notifications: rawNotifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead
+  } = useNotifications(currentUser || null);
+
+  // Đảm bảo notifications luôn là array
+  const notifications = Array.isArray(rawNotifications) ? rawNotifications : [];
   // Thêm sản phẩm
   const toggleOpen = () => {
     setIsOpen(!isOpen);
@@ -110,7 +120,9 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
     const fetchMessages = async () => {
       try {
         const response = await axios.get('/api/notifications/messages');
-        setMessages(response.data);
+        // API trả về object với notifications array
+        const messagesData = response.data?.notifications || [];
+        setMessages(Array.isArray(messagesData) ? messagesData : []);
       } catch (error) {
         console.error('Error fetching messages:', error);
         // Set empty array nếu có lỗi
@@ -201,7 +213,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
       <div className='bg-slate-200 sticky top-0 z-40 w-full p-[7px] lg:px-5 rounded-lg flex items-center justify-between shadow-md'>
         <div className='inline-flex w-2/3 gap-2 lg:gap-8 lg:mr-0 items-center'>
           <div className='text-xl lg:text-2xl font-bold whitespace-nowrap'>{title}</div>
-          <button onClick={toggleSidebar}>
+          <button onClick={toggleSidebar} aria-label='Toggle sidebar menu'>
             {/* Icon burger menu */}
             <svg
               xmlns='http://www.w3.org/2000/svg'
@@ -321,7 +333,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
                     <div className='text-gray-400 text-sm mt-1'>Tin nhắn mới sẽ xuất hiện ở đây</div>
                   </div>
                 ) : (
-                  messages.map((message: any) => (
+                  messages?.map((message: any) => (
                     <div
                       key={message.id}
                       className='hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-b border-gray-100 p-4 cursor-pointer transition-all duration-200 group'
@@ -422,7 +434,7 @@ const AdminNav: React.FC<AdminNavProps> = ({ currentUser, articleCategory, paren
                     <div className='text-gray-400 text-sm mt-1'>Thông báo mới sẽ xuất hiện ở đây</div>
                   </div>
                 ) : (
-                  notifications.map((notification: any) => (
+                  notifications?.map((notification: any) => (
                     <div
                       key={notification.id}
                       className={`hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50 border-b border-gray-100 p-4 cursor-pointer transition-all duration-200 group ${

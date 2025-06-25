@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/app/libs/prismadb';
-import { clearSessionConfigCache } from '@/app/libs/getAdminSessionConfig';
+import { clearSessionConfigCache } from '@/app/libs/auth/getAdminSessionConfig';
 
 // Simple auth check - replace with your actual authOptions
 const getCurrentUser = async () => {
@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
           chatbotSupport: false,
           autoVoucherSuggestion: true,
 
-          // Report settings
+          // Report settings - Set to 5 minutes for testing
           dailyReports: true,
-          reportInterval: 24,
+          reportInterval: 0.083, // 5 minutes = 0.083 hours
 
           // Payment settings - CRITICAL
           codPayment: true,

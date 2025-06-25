@@ -6,49 +6,23 @@ import { ChatRoomType, SafeUser } from '../../../../types';
 import NullData from '@/app/components/NullData';
 import ChatList from '@/app/components/admin/chat/ChatList';
 
-import DashboardStats from '@/app/components/admin/DashboardStats';
+import EnhancedDashboardStats from '@/app/components/admin/EnhancedDashboardStats';
 import DashboardCharts from '@/app/components/admin/DashboardCharts';
 import BestSellingProducts from '@/app/components/admin/BestSellingProducts';
 import OrdersTable from '@/app/components/admin/OrdersTable';
 import ReviewsSection from '@/app/components/admin/ReviewsSection';
+import { useEffect as useEffectHook } from 'react';
+import axios from 'axios';
 import { Chip, Button } from '@mui/material';
 import { MdDashboard, MdDateRange, MdAutorenew, MdRefresh } from 'react-icons/md';
 
-type Review = {
-  id: any;
-  userId: any;
-  productId: any;
-  rating: number;
-  comment: any;
-  reply: any;
-  createdDate: any;
-  product: {
-    id: any;
-    name: any;
-    description: any;
-    price: any;
-    category: any;
-    inStock: any;
-    images: any[];
-  };
-  user: {
-    id: any;
-    name: any;
-    email: any;
-    emailVerified: any;
-    image: any;
-    hashedPassword: any;
-    createAt: any;
-    updateAt: any;
-    role: any;
-  };
-};
+// Removed unused Review type
 
 interface AdminDashBoardFormProps {
   orders: (any & { products: any[] })[];
   users: any[];
   totalRevenue: number;
-  columnData: any[];
+  columnData: any[]; // Keep for compatibility but mark as unused
   currentUser: SafeUser | null | undefined;
   reviews: any;
   conversations: ChatRoomType[];
@@ -59,7 +33,7 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
   orders,
   users,
   totalRevenue,
-  columnData,
+  columnData: _columnData, // Prefix with underscore to indicate unused
   currentUser,
   reviews,
   userInSession,
@@ -75,6 +49,105 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
   const [showDateRange, setShowDateRange] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // News and business analytics state
+  const [newsData, setNewsData] = useState<any>(null);
+  const [businessAlerts, setBusinessAlerts] = useState<any[]>([]);
+  const [conversionRate, setConversionRate] = useState(0);
+  const [avgOrderValue, setAvgOrderValue] = useState(0);
+  const [returnRequestsCount, setReturnRequestsCount] = useState(0);
+
+  // Calculate business metrics
+  const calculateBusinessMetrics = (orders: any[]) => {
+    const completedOrders = orders.filter(order => order.status === 'completed');
+    const totalVisitors = users?.length || 1; // Approximate unique visitors
+
+    // Conversion rate: completed orders / total visitors
+    const conversionRate = totalVisitors > 0 ? (completedOrders.length / totalVisitors) * 100 : 0;
+
+    // Average order value
+    const avgOrderValue =
+      completedOrders.length > 0
+        ? completedOrders.reduce((sum, order) => sum + order.amount, 0) / completedOrders.length
+        : 0;
+
+    setConversionRate(conversionRate);
+    setAvgOrderValue(avgOrderValue);
+  };
+
+  // Fetch news analytics data
+  const fetchNewsData = async () => {
+    try {
+      const response = await axios.get('/api/analytics/articles?days=1');
+      const data = response.data;
+
+      // Format data for EnhancedDashboardStats
+      setNewsData({
+        totalViews: data.summary?.totalViews || 0,
+        topArticles: data.topArticles?.slice(0, 3) || [],
+        uniqueReaders: data.summary?.uniqueReaders || 0
+      });
+    } catch (error) {
+      console.error('Error fetching news data:', error);
+      // Set default data if API fails
+      setNewsData({
+        totalViews: 0,
+        topArticles: [],
+        uniqueReaders: 0
+      });
+    }
+  };
+
+  // Fetch business alerts
+  const fetchBusinessAlerts = async () => {
+    try {
+      // Get return requests count
+      const returnResponse = await axios.get('/api/returns/list?status=PENDING');
+      setReturnRequestsCount(returnResponse.data.data?.length || 0);
+
+      // Create alerts array
+      const alerts = [];
+
+      // Low stock alert (mock for now)
+      const lowStockProducts = uniqueProducts?.filter((product: any) => product.inStock < 10) || [];
+      if (lowStockProducts.length > 0) {
+        alerts.push({
+          type: 'warning',
+          message: `${lowStockProducts.length} sản phẩm sắp hết hàng`,
+          count: lowStockProducts.length
+        });
+      }
+
+      // Return requests alert
+      if (returnRequestsCount > 0) {
+        alerts.push({
+          type: 'info',
+          message: `${returnRequestsCount} yêu cầu đổi/trả chờ xử lý`,
+          count: returnRequestsCount
+        });
+      }
+
+      // High value orders today
+      const today = new Date();
+      const todayOrders = filteredOrders.filter(order => {
+        const orderDate = new Date(order.createDate);
+        return orderDate.toDateString() === today.toDateString();
+      });
+      const highValueOrders = todayOrders.filter(order => order.amount > 1000000); // > 1M VND
+
+      if (highValueOrders.length > 0) {
+        alerts.push({
+          type: 'success',
+          message: `${highValueOrders.length} đơn hàng giá trị cao hôm nay`,
+          count: highValueOrders.length
+        });
+      }
+
+      setBusinessAlerts(alerts);
+    } catch (error) {
+      console.error('Error fetching business alerts:', error);
+    }
+  };
 
   // Filter data based on selected period or date range
   const filterDataByPeriod = (period: number) => {
@@ -163,6 +236,18 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
 
     return () => clearInterval(interval);
   }, [autoRefresh, selectedPeriod]);
+
+  // Initialize business metrics and fetch additional data
+  useEffectHook(() => {
+    calculateBusinessMetrics(filteredOrders);
+    fetchNewsData();
+    fetchBusinessAlerts();
+  }, [filteredOrders]);
+
+  // Recalculate metrics when orders change
+  useEffectHook(() => {
+    calculateBusinessMetrics(filteredOrders);
+  }, [filteredOrders, users]);
 
   // Tránh các đơn hàng bị trùng - use filtered orders
   const uniqueProducts = filteredOrders?.reduce((acc: any[], order) => {
@@ -347,10 +432,15 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
       {/* Original Layout - Giữ nguyên như cũ */}
       <div className='w-[78.5vw] flex flex-col xl:flex-row justify-around gap-3 mt-6'>
         <div className='w-full lg:w-2/3'>
-          <DashboardStats
+          <EnhancedDashboardStats
             ordersCount={filteredOrders.length}
             totalRevenue={filteredRevenue}
             clientsCount={filteredClient.length}
+            newsData={newsData}
+            businessAlerts={businessAlerts}
+            conversionRate={conversionRate}
+            avgOrderValue={avgOrderValue}
+            returnRequestsCount={returnRequestsCount}
           />
           <div className='grid grid-cols-1 mt-5'>
             <div className='relative border border-gray-200 rounded-lg p-6'>

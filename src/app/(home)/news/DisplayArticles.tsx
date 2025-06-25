@@ -173,7 +173,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
                   href={`/article/${slugConvert(article.title)}-${article.id}`}
                 >
                   <img
-                    alt={''}
+                    alt={article.title}
                     title={article.title}
                     loading='lazy'
                     width={200}

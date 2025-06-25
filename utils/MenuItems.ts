@@ -14,7 +14,9 @@ import {
   MdSupervisedUserCircle,
   MdLocalOffer,
   MdCardGiftcard,
-  MdOutlineSettings
+  MdOutlineSettings,
+  MdAssignmentReturn,
+  MdBugReport
 } from 'react-icons/md';
 import { BiCategory, BiNews, BiSolidCategory } from 'react-icons/bi';
 import { CiViewList } from 'react-icons/ci';
@@ -96,6 +98,10 @@ export const MenuItems = [
             {
               title: 'Kanban',
               path: '/admin/manage-orders/kanban'
+            },
+            {
+              title: 'Đổi/Trả hàng',
+              path: '/admin/manage-returns'
             }
           ]
         },
@@ -128,6 +134,16 @@ export const MenuItems = [
   },
   {
     title: 'Khác',
-    list: []
+    subItem: {
+      title: 'Khác',
+      icon: MdOutlineSettings,
+      list: [
+        {
+          title: '🧪 Test Features',
+          path: '/admin/test-features',
+          icon: MdBugReport
+        }
+      ]
+    }
   }
 ];

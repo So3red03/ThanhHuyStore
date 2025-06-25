@@ -12,17 +12,26 @@ export const useHydration = () => {
   const cartStore = useCartStore();
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     // Đợi cho đến khi store được hydrated
     const checkHydration = () => {
       if (cartStore._hasHydrated) {
         setIsHydrated(true);
       } else {
         // Retry sau 100ms nếu chưa hydrated
-        setTimeout(checkHydration, 100);
+        timeoutId = setTimeout(checkHydration, 100);
       }
     };
 
     checkHydration();
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [cartStore._hasHydrated]);
 
   return {

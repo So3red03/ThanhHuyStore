@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
-import { NotificationService } from '@/app/libs/notificationService';
+import { NotificationService } from '@/app/libs/notifications/notificationService';
 import prisma from '@/app/libs/prismadb';
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -16,13 +13,13 @@ export async function GET(
 
     const notification = await prisma.notification.findUnique({
       where: {
-        id: params.id,
+        id: params.id
       },
       include: {
         user: true,
         product: true,
-        fromUser: true,
-      },
+        fromUser: true
+      }
     });
 
     if (!notification) {
@@ -32,31 +29,22 @@ export async function GET(
     return NextResponse.json(notification);
   } catch (error) {
     console.error('Error fetching notification:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 // PUT - Đánh dấu notification đã đọc
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const notification = await NotificationService.markAsRead(params.id);
+    const notification = await NotificationService.markAsRead(params.id, currentUser.id);
     return NextResponse.json(notification);
   } catch (error) {
     console.error('Error marking notification as read:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

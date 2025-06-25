@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { OrderStatus } from '@prisma/client';
-import { sendDiscordNotificationIfEnabled } from '@/app/libs/discordNotificationHelper';
+import { sendDiscordNotificationIfEnabled } from '@/app/libs/discord/discordNotificationHelper';
 
 // Function để gửi thông báo Discord với format giống đơn hàng mới
 const sendDiscordNotification = async (orderData: any, currentUser: any, reason: string) => {

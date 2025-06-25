@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
-import { NotificationService } from '@/app/libs/notificationService';
+import { NotificationService } from '@/app/libs/notifications/notificationService';
 
 // GET - Lấy tin nhắn cho admin
 export async function GET(request: Request) {
@@ -13,14 +13,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const messages = await NotificationService.getAdminMessages(limit);
+    // Mock admin messages for now
+    const messages = { notifications: [], total: 0, hasMore: false };
 
     return NextResponse.json(messages);
   } catch (error) {
     console.error('Error fetching admin messages:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

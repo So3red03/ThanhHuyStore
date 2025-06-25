@@ -13,25 +13,28 @@ import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { formatPrice } from '../../../../../utils/formatPrice';
 import 'moment/locale/vi';
 import { SafeUser } from '../../../../../types';
-import Image from 'next/image';
 import OrderDetails from '@/app/components/OrderDetails';
 import NullData from '@/app/components/NullData';
-import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import { FaRegFaceFrown } from 'react-icons/fa6';
 import { FaCheckDouble, FaRegCalendarAlt } from 'react-icons/fa';
 import { MdViewKanban } from 'react-icons/md';
 import { Button } from '@mui/material';
 import Link from 'next/link';
+import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 
 interface ManageOrdersClientProps {
   orders: Order[];
   currentUser: SafeUser | null | undefined;
 }
 
+// Custom tabs - no longer using MUI styled components
+
 const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initialOrders, currentUser }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState(initialOrders);
+  const [filteredOrders, setFilteredOrders] = useState(initialOrders);
+  const [tabValue, setTabValue] = useState(0);
 
   const router = useRouter();
 
@@ -39,23 +42,71 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
     setIsOpen(!isOpen);
   };
 
+  // Custom tabs styling handled via Tailwind classes
+
+  // Filter orders based on tab selection
+  const filterOrdersByTab = (tabIndex: number) => {
+    switch (tabIndex) {
+      case 0: // Tất cả
+        return orders;
+      case 1: // Chờ xác nhận (pending)
+        return orders.filter(order => order.status === OrderStatus.pending);
+      case 2: // Đang chuẩn bị (confirmed + not_shipped)
+        return orders.filter(
+          order =>
+            order.status === OrderStatus.confirmed &&
+            (!order.deliveryStatus || order.deliveryStatus === DeliveryStatus.not_shipped)
+        );
+      case 3: // Đang giao hàng (in_transit)
+        return orders.filter(order => order.deliveryStatus === DeliveryStatus.in_transit);
+      case 4: // Hoàn thành (completed)
+        return orders.filter(order => order.status === OrderStatus.completed);
+      case 5: // Đã hủy (canceled)
+        return orders.filter(order => order.status === OrderStatus.canceled);
+      default:
+        return orders;
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+    const filtered = filterOrdersByTab(newValue);
+    setFilteredOrders(filtered);
+  };
+
+  // Update filtered orders when orders change
+  useEffect(() => {
+    const filtered = filterOrdersByTab(tabValue);
+    setFilteredOrders(filtered);
+  }, [orders, tabValue]);
+
   let rows: any = [];
-  if (orders) {
-    rows = orders.map((order: any) => {
+  if (filteredOrders) {
+    rows = filteredOrders.map((order: any) => {
       return {
         id: order.id,
         name: order.user.name,
         email: order.user.email,
         status: order.status,
-        amount: formatPrice(order.amount),
+        amount: order.amount,
         paymentStatus: order.status,
         paymentMethod: order.paymentMethod,
         deliveryStatus: order.deliveryStatus,
         products: order.products,
-        date: formatDate(order.createDate),
+        date: order.createDate,
         address: order.address,
         phoneNumber: order.phoneNumber,
-        createDate: formatDate(order.createDate)
+        createDate: order.createDate,
+        // Include cancel fields for OrderDetails
+        cancelReason: order.cancelReason,
+        cancelDate: order.cancelDate,
+        // Include shipping fields
+        shippingCode: order.shippingCode,
+        shippingFee: order.shippingFee,
+        originalAmount: order.originalAmount,
+        discountAmount: order.discountAmount,
+        paymentIntentId: order.paymentIntentId
       };
     });
   }
@@ -151,6 +202,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
               icon={MdRemoveRedEye}
               onClick={() => {
                 setSelectedOrder(params.row);
+                console.log(params.row);
                 toggleOpen();
               }}
             />
@@ -219,35 +271,6 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
     }
   };
 
-  const successOrders = orders?.filter(
-    order => order.deliveryStatus === DeliveryStatus.delivered && order.status === OrderStatus.completed
-  ).length;
-  const pendingOrders = orders?.filter(order => order.status === OrderStatus.pending).length;
-  const canceledOrders = orders?.filter(order => order.status === OrderStatus.canceled).length;
-  const confirmedOrders = orders?.filter(order => order.status === OrderStatus.confirmed).length;
-  const stats = [
-    {
-      count: `${pendingOrders}`,
-      description: 'Thanh toán đang chờ',
-      icon: <FaRegCalendarAlt className='text-2xl text-gray-600' />
-    },
-    {
-      count: `${confirmedOrders}`,
-      description: 'Đã xác nhận',
-      icon: <FaCheckDouble className='text-2xl text-gray-600' />
-    },
-    {
-      count: `${successOrders}`,
-      description: 'Hoàn thành',
-      icon: <FaCheckDouble className='text-2xl text-gray-600' />
-    },
-    {
-      count: `${canceledOrders}`,
-      description: 'Thất bại',
-      icon: <FaRegFaceFrown className='text-2xl text-gray-600' />
-    }
-  ];
-
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'ADMIN') {
       router.push('/login');
@@ -260,26 +283,8 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
   return (
     <>
       <div className='w-[78.5vw] m-auto text-xl mt-6'>
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-3 pr-0 border border-r-0 border-gray-200 rounded-lg'>
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className='bg-white p-4 border-r border-r-gray-200 border-b border-b-gray-200 md:border-b-0'
-            >
-              <div className='flex justify-between'>
-                <div className='flex flex-col gap-y-2'>
-                  <div className='text-2xl'>{stat.count}</div>
-                  <p className='text-gray-500 text-[15px]'>{stat.description}</p>
-                </div>
-                <div className='flex items-center justify-center h-12 w-12 rounded-md bg-gray-100 text-slate-700'>
-                  {stat.icon}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className='mb-4 mt-5 flex justify-between items-center'>
-          <h2 className='text-xl font-semibold'>Danh sách đơn hàng</h2>
+        <div className='mb-4 mt-10 flex justify-between items-center'>
+          <div></div>
           <div className='flex items-center gap-3'>
             <Link href='/admin/manage-orders/kanban'>
               <Button
@@ -307,6 +312,138 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
             >
               Làm mới
             </Button>
+          </div>
+        </div>
+        {/* Custom Tabs Filter */}
+        <div className='mb-6'>
+          <div className='bg-white rounded-xl shadow-sm border border-gray-200 p-3'>
+            <div className='flex flex-wrap gap-3 justify-center'>
+              {/* Tab Tất cả */}
+              <button
+                onClick={() => handleTabChange(null as any, 0)}
+                className={`w-40 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-between transform hover:scale-105 ${
+                  tabValue === 0
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-50 hover:text-gray-800 hover:shadow-md'
+                }`}
+              >
+                <span className='hidden sm:inline'>Tất cả</span>
+                <span className='sm:hidden'>All</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-bold min-w-[24px] text-center ${
+                    tabValue === 0 ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600'
+                  }`}
+                >
+                  {orders.length}
+                </span>
+              </button>
+
+              {/* Tab Chờ xác nhận */}
+              <button
+                onClick={() => handleTabChange(null as any, 1)}
+                className={`w-40 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-between transform hover:scale-105 ${
+                  tabValue === 1
+                    ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/30 scale-105'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100 hover:text-purple-600 hover:shadow-md'
+                }`}
+              >
+                <span className='hidden sm:inline'>Chờ xác nhận</span>
+                <span className='sm:hidden'>Pending</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-bold min-w-[24px] text-center ${
+                    tabValue === 1 ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-600'
+                  }`}
+                >
+                  {orders.filter(order => order.status === OrderStatus.pending).length}
+                </span>
+              </button>
+
+              {/* Tab Đang chuẩn bị */}
+              <button
+                onClick={() => handleTabChange(null as any, 2)}
+                className={`w-40 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-between transform hover:scale-105 ${
+                  tabValue === 2
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:text-blue-600 hover:shadow-md'
+                }`}
+              >
+                <span className='hidden sm:inline'>Đang chuẩn bị</span>
+                <span className='sm:hidden'>Preparing</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-bold min-w-[24px] text-center ${
+                    tabValue === 2 ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600'
+                  }`}
+                >
+                  {
+                    orders.filter(
+                      order =>
+                        order.status === OrderStatus.confirmed &&
+                        (!order.deliveryStatus || order.deliveryStatus === DeliveryStatus.not_shipped)
+                    ).length
+                  }
+                </span>
+              </button>
+
+              {/* Tab Đang giao hàng */}
+              <button
+                onClick={() => handleTabChange(null as any, 3)}
+                className={`w-40 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-between transform hover:scale-105 ${
+                  tabValue === 3
+                    ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg shadow-pink-500/30 scale-105'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gradient-to-r hover:from-pink-50 hover:to-pink-100 hover:text-pink-600 hover:shadow-md'
+                }`}
+              >
+                <span className='hidden sm:inline'>Đang giao hàng</span>
+                <span className='sm:hidden'>Shipping</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-bold min-w-[24px] text-center ${
+                    tabValue === 3 ? 'bg-white/20 text-white' : 'bg-pink-100 text-pink-600'
+                  }`}
+                >
+                  {orders.filter(order => order.deliveryStatus === DeliveryStatus.in_transit).length}
+                </span>
+              </button>
+
+              {/* Tab Hoàn thành */}
+              <button
+                onClick={() => handleTabChange(null as any, 4)}
+                className={`w-40 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-between transform hover:scale-105 ${
+                  tabValue === 4
+                    ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/30 scale-105'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 hover:text-green-600 hover:shadow-md'
+                }`}
+              >
+                <span className='hidden sm:inline'>Hoàn thành</span>
+                <span className='sm:hidden'>Done</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-bold min-w-[24px] text-center ${
+                    tabValue === 4 ? 'bg-white/20 text-white' : 'bg-green-100 text-green-600'
+                  }`}
+                >
+                  {orders.filter(order => order.status === OrderStatus.completed).length}
+                </span>
+              </button>
+
+              {/* Tab Hủy bỏ */}
+              <button
+                onClick={() => handleTabChange(null as any, 5)}
+                className={`w-40 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-300 flex items-center justify-between transform hover:scale-105 ${
+                  tabValue === 5
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/30 scale-105'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gradient-to-r hover:from-red-50 hover:to-red-100 hover:text-red-600 hover:shadow-md'
+                }`}
+              >
+                <span className='hidden sm:inline'>Hủy bỏ</span>
+                <span className='sm:hidden'>Cancelled</span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-bold min-w-[24px] text-center ${
+                    tabValue === 5 ? 'bg-white/20 text-white' : 'bg-red-100 text-red-600'
+                  }`}
+                >
+                  {orders.filter(order => order.status === OrderStatus.canceled).length}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
         <div className='h-[600px] w-full'>

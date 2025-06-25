@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '../../../actions/getCurrentUser';
-import { PromotionSuggestionEngine } from '../../../libs/promotionSuggestionEngine';
-import { DiscordWebhookService } from '../../../libs/discordWebhook';
+import { PromotionSuggestionEngine } from '../../../libs/promotions/promotionSuggestionEngine';
+import { DiscordWebhookService } from '../../../libs/promotions/discordWebhook';
 import prisma from '../../../libs/prismadb';
 
 // GET: Lấy danh sách gợi ý khuyến mãi

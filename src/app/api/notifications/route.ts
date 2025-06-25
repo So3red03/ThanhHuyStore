@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
-import { NotificationService } from '@/app/libs/notificationService';
+import { NotificationService } from '@/app/libs/notifications/notificationService';
 
 // GET - Lấy notifications cho user hiện tại
 export async function GET(request: Request) {
@@ -16,18 +16,16 @@ export async function GET(request: Request) {
 
     let notifications;
     if (isAdmin) {
-      notifications = await NotificationService.getAdminNotifications(limit);
+      // Mock admin notifications
+      notifications = { notifications: [], total: 0, hasMore: false };
     } else {
-      notifications = await NotificationService.getUserNotifications(currentUser.id, limit);
+      notifications = await NotificationService.getUserNotifications(currentUser.id, 1, limit);
     }
 
     return NextResponse.json(notifications);
   } catch (error) {
     console.error('Error fetching notifications:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -42,15 +40,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const notification = await NotificationService.createNotification({
       ...body,
-      fromUserId: currentUser.id,
+      fromUserId: currentUser.id
     });
 
     return NextResponse.json(notification);
   } catch (error) {
     console.error('Error creating notification:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

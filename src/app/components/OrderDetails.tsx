@@ -9,6 +9,9 @@ import Image from 'next/image';
 import Button from './Button';
 import { useState } from 'react';
 import CancelOrderDialog from './CancelOrderDialog';
+import ReturnRequestForm from './returns/ReturnRequestForm';
+import ShippingTracker from './shipping/ShippingTracker';
+import { formatDate } from '../(home)/account/orders/OrdersClient';
 
 interface OrderDetailsProps {
   order: Order & {
@@ -27,11 +30,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
   onOrderCancelled
 }) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-
-  const formatDate = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return format(dateObj, 'dd/MM/yyyy HH:mm', { locale: vi });
-  };
+  const [showReturnForm, setShowReturnForm] = useState(false);
 
   const getOrderStatusText = (status: OrderStatus) => {
     switch (status) {
@@ -84,6 +83,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
     return order.status === 'pending' || (order.status === 'confirmed' && order.deliveryStatus === 'not_shipped');
   };
 
+  const canReturnOrder = () => {
+    // Chỉ cho phép đổi/trả đơn hàng đã hoàn thành và trong vòng 7 ngày
+    if (order.status !== 'completed') return false;
+
+    const daysSinceOrder = Math.floor((Date.now() - new Date(order.createDate).getTime()) / (1000 * 60 * 60 * 24));
+
+    return daysSinceOrder <= 7;
+  };
+
   const handleCancelSuccess = () => {
     setShowCancelDialog(false);
     if (onOrderCancelled) {
@@ -111,17 +119,28 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
         )}
 
         {/* Action Buttons */}
-        {showCancelButton && canCancelOrder() && (
-          <div className='flex gap-4 mb-6'>
-            <Button label='Thông tin đơn hàng' onClick={() => {}} outline />
+        <div className='flex gap-4 mb-6'>
+          {showCancelButton && canCancelOrder() && (
+            <>
+              <Button label='Thông tin đơn hàng' onClick={() => {}} outline />
+              <Button
+                label='Hủy đơn hàng'
+                onClick={() => setShowCancelDialog(true)}
+                outline
+                custom='border-red-500 text-red-500 hover:bg-red-50'
+              />
+            </>
+          )}
+
+          {canReturnOrder() && (
             <Button
-              label='Hủy đơn hàng'
-              onClick={() => setShowCancelDialog(true)}
+              label='Đổi/Trả hàng'
+              onClick={() => setShowReturnForm(true)}
               outline
-              custom='border-red-500 text-red-500 hover:bg-red-50'
+              custom='border-orange-500 text-orange-500 hover:bg-orange-50'
             />
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Order Info */}
         <div className='grid grid-cols-4 gap-4 border-b pb-4 mb-8'>
@@ -205,6 +224,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
           <p className='text-gray-700'>Số điện thoại: {order.phoneNumber}</p>
           <p className='text-gray-700'>Địa chỉ: {`${order.address?.line1 || ''} ${order.address?.city || ''}`}</p>
         </div>
+
+        {/* Shipping Tracker */}
+        {(order as any).shippingCode && (
+          <div className='mt-8'>
+            <ShippingTracker orderCode={(order as any).shippingCode} orderId={order.id} showOrderInfo={false} />
+          </div>
+        )}
       </div>
 
       {/* Cancel Order Dialog */}
@@ -215,6 +241,19 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
           order={order}
           currentUser={currentUser}
           onSuccess={handleCancelSuccess}
+        />
+      )}
+
+      {/* Return Request Form */}
+      {showReturnForm && (
+        <ReturnRequestForm
+          orderId={order.id}
+          orderCode={order.paymentIntentId.slice(-6).toUpperCase()}
+          onClose={() => setShowReturnForm(false)}
+          onSuccess={() => {
+            setShowReturnForm(false);
+            // Refresh page or update state
+          }}
         />
       )}
     </>

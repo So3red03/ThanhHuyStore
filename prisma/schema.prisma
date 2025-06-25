@@ -56,6 +56,7 @@ model User {
   activities      Activity[]
   userVouchers    UserVoucher[]
   analyticsEvents AnalyticsEvent[]
+  returnRequests  ReturnRequest[]
 
   chatRoomIds     String[]          @db.ObjectId
   chatRoom        ChatRoom[]        @relation(fields: [chatRoomIds], references: [id])
@@ -89,8 +90,15 @@ model Order {
   cancelReason    String?
   cancelDate      DateTime?
 
+  // Shipping information
+  shippingCode    String?           // Mã vận đơn GHN
+  shippingStatus  String?           // Trạng thái vận chuyển
+  shippingData    Json?             // Dữ liệu từ GHN
+
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voucher         Voucher?          @relation(fields: [voucherId], references: [id])
   products        CartProductType[]
+  returnRequests  ReturnRequest[]
 }
 
 type CartProductType {
@@ -328,6 +336,19 @@ enum DeliveryStatus {
   returned
 }
 
+enum ReturnType {
+  EXCHANGE  // Đổi hàng
+  RETURN    // Trả hàng
+  REFUND    // Hoàn tiền
+}
+
+enum ReturnStatus {
+  PENDING     // Chờ xử lý
+  APPROVED    // Đã duyệt
+  REJECTED    // Từ chối
+  COMPLETED   // Hoàn tất
+}
+
 enum DiscountType {
   PERCENTAGE
   FIXED
@@ -362,6 +383,7 @@ model Voucher {
   updatedAt       DateTime    @updatedAt
 
   userVouchers    UserVoucher[]
+  orders          Order[]
 }
 
 model UserVoucher {
@@ -375,6 +397,33 @@ model UserVoucher {
   voucher   Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
 
   @@unique([userId, voucherId])
+}
+
+model ReturnRequest {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  orderId         String       @db.ObjectId
+  userId          String       @db.ObjectId
+  type            ReturnType
+  reason          String
+  description     String?
+  images          String[]     // Ảnh bằng chứng
+  status          ReturnStatus @default(PENDING)
+  adminNote       String?
+  processedBy     String?      @db.ObjectId
+
+  // Shipping info for return
+  returnShippingCode String?    // Mã vận đơn trả hàng
+  returnShippingFee  Float?     // Phí ship trả hàng
+
+  createdAt       DateTime     @default(now())
+  processedAt     DateTime?
+
+  order           Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
 }
 
 model Promotion {

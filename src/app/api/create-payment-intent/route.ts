@@ -4,8 +4,8 @@ import { CartProductType } from '@/app/(home)/product/[productId]/ProductDetails
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import { OrderStatus, DeliveryStatus } from '@prisma/client';
-import { NotificationService } from '@/app/libs/notificationService';
-import { sendDiscordNotificationIfEnabled } from '@/app/libs/discordNotificationHelper';
+import { NotificationService } from '@/app/libs/notifications/notificationService';
+import { sendDiscordNotificationIfEnabled } from '@/app/libs/discord/discordNotificationHelper';
 import crypto from 'crypto';
 import https from 'https';
 import axios from 'axios';

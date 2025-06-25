@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../libs/prismadb';
-import { NotificationService } from '@/app/libs/notificationService';
-import { sendDiscordNotificationIfEnabled } from '@/app/libs/discordNotificationHelper';
+import { NotificationService } from '@/app/libs/notifications/notificationService';
+import { sendDiscordNotificationIfEnabled } from '@/app/libs/discord/discordNotificationHelper';
 
 const nodemailer = require('nodemailer');
 

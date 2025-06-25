@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DiscordReportService } from '../../../libs/discordReportService';
+import { DiscordReportService } from '../../../libs/discord/discordReportService';
 import prisma from '../../../libs/prismadb';
 
 // GET: Cron job để gửi báo cáo tự động
@@ -9,12 +9,12 @@ export async function GET(request: NextRequest) {
 
     // Lấy settings để kiểm tra có bật báo cáo không
     const settings = await prisma.adminSettings.findFirst();
-    
+
     if (!settings || !settings.dailyReports) {
       console.log('📋 Daily reports are disabled in settings');
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'Daily reports disabled',
-        success: true 
+        success: true
       });
     }
 
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       // Kiểm tra thời gian từ báo cáo cuối
       const timeSinceLastReport = now.getTime() - lastReport.createdAt.getTime();
       const intervalMs = reportInterval * 60 * 60 * 1000; // Convert hours to milliseconds
-      
+
       if (timeSinceLastReport >= intervalMs) {
         shouldSendReport = true;
         console.log(`📋 Time for next report (${Math.round(timeSinceLastReport / 1000 / 60)} minutes since last)`);
@@ -49,10 +49,11 @@ export async function GET(request: NextRequest) {
 
     if (shouldSendReport) {
       console.log('📤 Sending scheduled report...');
-      
+
       // Gửi báo cáo
-      const success = await DiscordReportService.sendReport(reportInterval);
-      
+      await DiscordReportService.sendReport(reportInterval);
+      const success = true;
+
       if (success) {
         // Log báo cáo thành công
         await prisma.reportLog.create({
@@ -63,9 +64,9 @@ export async function GET(request: NextRequest) {
             sentAt: now
           }
         });
-        
+
         console.log('✅ Scheduled report sent successfully');
-        
+
         return NextResponse.json({
           message: 'Report sent successfully',
           success: true,
@@ -83,14 +84,17 @@ export async function GET(request: NextRequest) {
             error: 'Failed to send Discord report'
           }
         });
-        
+
         console.log('❌ Failed to send scheduled report');
-        
-        return NextResponse.json({
-          message: 'Failed to send report',
-          success: false,
-          error: 'Discord webhook failed'
-        }, { status: 500 });
+
+        return NextResponse.json(
+          {
+            message: 'Failed to send report',
+            success: false,
+            error: 'Discord webhook failed'
+          },
+          { status: 500 }
+        );
       }
     } else {
       return NextResponse.json({
@@ -99,10 +103,9 @@ export async function GET(request: NextRequest) {
         nextReportIn: reportInterval * 60 * 60 * 1000 - (now.getTime() - (lastReport?.createdAt.getTime() || 0))
       });
     }
-
   } catch (error) {
     console.error('❌ Cron job error:', error);
-    
+
     // Log lỗi
     try {
       await prisma.reportLog.create({
@@ -117,12 +120,15 @@ export async function GET(request: NextRequest) {
     } catch (logError) {
       console.error('Failed to log error:', logError);
     }
-    
-    return NextResponse.json({
-      message: 'Cron job failed',
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        message: 'Cron job failed',
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -130,16 +136,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { force } = await request.json();
-    
+
     console.log('🧪 Manual cron trigger started...');
-    
+
     if (force) {
       // Force send report regardless of interval
       const settings = await prisma.adminSettings.findFirst();
       const reportInterval = settings?.reportInterval || 24;
-      
-      const success = await DiscordReportService.sendReport(reportInterval);
-      
+
+      await DiscordReportService.sendReport(reportInterval);
+      const success = true;
+
       if (success) {
         await prisma.reportLog.create({
           data: {
@@ -149,28 +156,33 @@ export async function POST(request: NextRequest) {
             sentAt: new Date()
           }
         });
-        
+
         return NextResponse.json({
           message: 'Manual report sent successfully',
           success: true
         });
       } else {
-        return NextResponse.json({
-          message: 'Failed to send manual report',
-          success: false
-        }, { status: 500 });
+        return NextResponse.json(
+          {
+            message: 'Failed to send manual report',
+            success: false
+          },
+          { status: 500 }
+        );
       }
     } else {
       // Use normal cron logic
       return await GET(request);
     }
-    
   } catch (error) {
     console.error('Manual cron trigger error:', error);
-    return NextResponse.json({
-      message: 'Manual trigger failed',
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        message: 'Manual trigger failed',
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
   }
 }

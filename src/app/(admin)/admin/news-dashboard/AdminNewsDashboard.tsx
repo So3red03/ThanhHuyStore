@@ -493,6 +493,111 @@ const NewsDashboard = () => {
         </Card>
       </div>
 
+      {/* Content-Commerce Integration Insights */}
+      <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <CardContent sx={{ p: 3 }}>
+          <div className='flex items-center gap-2 mb-4'>
+            <Typography variant='h6' component='h3' sx={{ fontWeight: 600, color: '#1f2937' }}>
+              🔗 Tích hợp Nội dung - Thương mại
+            </Typography>
+          </div>
+
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+            {/* Content Performance */}
+            <div className='bg-purple-50 p-4 rounded-lg border border-purple-200'>
+              <h4 className='font-semibold text-purple-800 mb-3'>📰 Hiệu quả nội dung</h4>
+              <div className='space-y-2'>
+                <div className='flex justify-between'>
+                  <span className='text-sm text-gray-600'>Tổng lượt đọc:</span>
+                  <span className='font-medium text-purple-600'>
+                    {articleData?.summary?.totalViews?.toLocaleString() || 0}
+                  </span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-sm text-gray-600'>Độc giả duy nhất:</span>
+                  <span className='font-medium text-purple-600'>
+                    {articleData?.summary?.uniqueReaders?.toLocaleString() || 0}
+                  </span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-sm text-gray-600'>Avg. views/reader:</span>
+                  <span className='font-medium text-purple-600'>
+                    {articleData?.summary?.averageViewsPerReader || 0}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Commerce Performance */}
+            <div className='bg-green-50 p-4 rounded-lg border border-green-200'>
+              <h4 className='font-semibold text-green-800 mb-3'>🛒 Hiệu quả bán hàng</h4>
+              <div className='space-y-2'>
+                <div className='flex justify-between'>
+                  <span className='text-sm text-gray-600'>Sản phẩm được xem:</span>
+                  <span className='font-medium text-green-600'>
+                    {(productData as any)?.data?.length?.toLocaleString() || 0}
+                  </span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-sm text-gray-600'>Sản phẩm phổ biến:</span>
+                  <span className='font-medium text-green-600'>
+                    {(productData as any)?.data?.slice(0, 3).length || 0}
+                  </span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-sm text-gray-600'>Avg. views/product:</span>
+                  <span className='font-medium text-green-600'>
+                    {(productData as any)?.data?.length > 0
+                      ? (
+                          (productData as any).data.reduce((sum: number, p: any) => sum + (p.views || 0), 0) /
+                          (productData as any).data.length
+                        ).toFixed(1)
+                      : 0}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Integration Insights */}
+            <div className='bg-blue-50 p-4 rounded-lg border border-blue-200'>
+              <h4 className='font-semibold text-blue-800 mb-3'>💡 Insights tích hợp</h4>
+              <div className='space-y-2'>
+                <div className='flex justify-between'>
+                  <span className='text-sm text-gray-600'>Content → Product:</span>
+                  <span className='font-medium text-blue-600'>
+                    {/* Calculate content to product conversion */}
+                    {(articleData?.summary?.totalViews || 0) > 0 && (productData as any)?.data?.length > 0
+                      ? (((productData as any).data.length / (articleData?.summary?.totalViews || 1)) * 100).toFixed(1)
+                      : 0}
+                    %
+                  </span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-sm text-gray-600'>Engagement rate:</span>
+                  <span className='font-medium text-blue-600'>
+                    {(overviewData?.overview?.uniqueVisitors || 0) > 0
+                      ? (
+                          (overviewData?.overview?.totalEvents || 0) / (overviewData?.overview?.uniqueVisitors || 1)
+                        ).toFixed(1)
+                      : 0}
+                  </span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-sm text-gray-600'>ROI Score:</span>
+                  <span className='font-medium text-blue-600'>
+                    {(overviewData?.overview?.purchases || 0) > 0 && (articleData?.summary?.totalViews || 0) > 0
+                      ? 'High'
+                      : (overviewData?.overview?.purchases || 0) > 0
+                      ? 'Medium'
+                      : 'Growing'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Payment Methods Chart */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         {paymentData && <PaymentMethodChart data={paymentData.data} title='Phương thức thanh toán' />}

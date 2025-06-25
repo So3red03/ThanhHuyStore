@@ -1,4 +1,4 @@
-import prisma from './prismadb';
+import prisma from '../prismadb';
 
 // Cache để tránh query DB quá nhiều
 let cachedConfig: { sessionTimeout: number; timestamp: number } | null = null;
@@ -18,7 +18,7 @@ export async function getAdminSessionConfig(): Promise<{ sessionMaxAge: number }
     });
     const sessionTimeout = settings?.sessionTimeout || 30; // Default 30 minutes
 
-    console.log('getAdminSessionConfig - DB value:', settings?.sessionTimeout, 'final:', sessionTimeout);
+    // console.log('getAdminSessionConfig - DB value:', settings?.sessionTimeout, 'final:', sessionTimeout);
 
     // Update cache
     cachedConfig = {

@@ -4,7 +4,7 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import prisma from '../../../src/app/libs/prismadb';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcrypt';
-import { getAdminSessionConfig } from '../../../src/app/libs/getAdminSessionConfig';
+import { getAdminSessionConfig } from '../../../src/app/libs/auth/getAdminSessionConfig';
 
 // Tạo mật khẩu mặc định
 const generateHashedPassword = async (password: string) => {
@@ -190,11 +190,11 @@ export const authOptions: AuthOptions = {
   // Token đc next-auth mặc định lưu vào cookie
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 60, // 30 minutes default (will be overridden by admin settings),
-    updateAge: 10 * 60 // 10 minutes default (will be overridden by admin settings)
+    maxAge: 3 * 24 * 60 * 60, // 30 minutes default (will be overridden by admin settings),
+    updateAge: 24 * 60 * 60 // 10 minutes default (will be overridden by admin settings)
   },
   jwt: {
-    maxAge: 30 * 60 // 30 minutes default (will be overridden by admin settings)
+    maxAge: 3 * 24 * 60 * 60 // 30 minutes default (will be overridden by admin settings)
   },
   secret: process.env.NEXTAUTH_SECRET
 };
