@@ -100,6 +100,125 @@ const validateOrderData = async (products: CartProductType[], currentUser: any) 
   };
 };
 
+// Atomic voucher validation and reservation
+const validateAndReserveVoucher = async (
+  voucher: any,
+  cartTotal: number,
+  currentUser: any,
+  paymentIntentId: string
+) => {
+  return await prisma.$transaction(async tx => {
+    console.log(`Starting voucher validation for user ${currentUser.id}, voucher ${voucher.id}`);
+
+    // 1. Re-validate voucher with lock
+    const voucherData = await tx.voucher.findUnique({
+      where: { id: voucher.id }
+    });
+
+    if (!voucherData || !voucherData.isActive) {
+      throw new Error('Voucher not valid');
+    }
+
+    const now = new Date();
+    if (voucherData.startDate > now) {
+      throw new Error('Voucher has not started yet');
+    }
+
+    if (voucherData.endDate < now) {
+      throw new Error('Voucher has expired');
+    }
+
+    if (voucherData.quantity <= voucherData.usedCount) {
+      throw new Error('Voucher out of stock');
+    }
+
+    if (voucherData.minOrderValue && cartTotal < voucherData.minOrderValue) {
+      throw new Error(`Minimum order value is ${voucherData.minOrderValue.toLocaleString('vi-VN')} VNĐ`);
+    }
+
+    // 2. Check user usage limit and create reservation atomically
+    // This prevents race conditions by using the unique constraint
+    try {
+      await tx.userVoucher.create({
+        data: {
+          userId: currentUser.id,
+          voucherId: voucher.id,
+          reservedForOrderId: paymentIntentId,
+          reservedAt: new Date()
+        }
+      });
+    } catch (createError) {
+      // If creation fails due to unique constraint, user already has this voucher
+      throw new Error('User has already used this voucher or reached usage limit');
+    }
+
+    // 3. Check if this exceeds the per-user limit (additional safety check)
+    const userUsage = await tx.userVoucher.count({
+      where: { userId: currentUser.id, voucherId: voucher.id }
+    });
+
+    if (userUsage > voucherData.maxUsagePerUser) {
+      // Rollback the creation we just made
+      await tx.userVoucher.deleteMany({
+        where: {
+          userId: currentUser.id,
+          voucherId: voucher.id,
+          reservedForOrderId: paymentIntentId
+        }
+      });
+      throw new Error('User reached usage limit');
+    }
+
+    await tx.voucher.update({
+      where: { id: voucher.id },
+      data: { usedCount: { increment: 1 } }
+    });
+
+    // 4. Calculate discount
+    let discountAmount = 0;
+    if (voucherData.discountType === 'PERCENTAGE') {
+      discountAmount = (cartTotal * voucherData.discountValue) / 100;
+    } else {
+      discountAmount = voucherData.discountValue;
+    }
+
+    console.log(`Voucher reserved successfully: ${discountAmount} VND discount`);
+    return { voucherData, discountAmount };
+  });
+};
+
+// Rollback voucher reservation
+const rollbackVoucherReservation = async (paymentIntentId: string, userId: string) => {
+  try {
+    await prisma.$transaction(async tx => {
+      // Find and remove voucher reservation
+      const voucherReservation = await tx.userVoucher.findFirst({
+        where: {
+          userId: userId,
+          reservedForOrderId: paymentIntentId
+        }
+      });
+
+      if (voucherReservation) {
+        // Remove the reservation
+        await tx.userVoucher.delete({
+          where: { id: voucherReservation.id }
+        });
+
+        // Restore voucher usage count
+        await tx.voucher.update({
+          where: { id: voucherReservation.voucherId },
+          data: { usedCount: { decrement: 1 } }
+        });
+
+        console.log(`Rolled back voucher reservation for payment ${paymentIntentId}`);
+      }
+    });
+  } catch (error) {
+    console.error('Error rolling back voucher reservation:', error);
+  }
+};
+
 // Rate limiting check
 const checkRateLimit = async (userId: string) => {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -184,6 +303,39 @@ const sendDiscordNotification = async (orderData: any, currentUser: any) => {
   } catch (error) {
     console.error('Error sending Discord notification:', error);
   }
+};
+
+// Atomic order creation with inventory reservation
+const createOrderWithInventoryReservation = async (orderData: any, products: any[]) => {
+  return await prisma.$transaction(async tx => {
+    // 1. Lock and validate inventory for all products
+    for (const product of products) {
+      const dbProduct = await tx.product.findUnique({
+        where: { id: product.id },
+        select: { inStock: true, name: true }
+      });
+
+      if (!dbProduct) {
+        throw new Error(`Product ${product.name} not found`);
+      }
+
+      if (dbProduct.inStock < product.quantity) {
+        throw new Error(
+          `Insufficient stock for ${dbProduct.name}. Available: ${dbProduct.inStock}, Requested: ${product.quantity}`
+        );
+      }
+
+      // 2. Reserve inventory atomically
+      await tx.product.update({
+        where: { id: product.id },
+        data: { inStock: { decrement: product.quantity } }
+      });
+    }
+
+    // 3. Create order after successful inventory reservation
+    const order = await tx.order.create({ data: orderData });
+    return order;
+  });
 };
 
 // Function để cập nhật danh mục đã mua của user
@@ -316,31 +468,28 @@ export async function POST(request: Request): Promise<Response> {
   let discountAmount = 0;
   let voucherData = null;
 
+  // Generate consistent payment intent ID early for all payment methods if not provided
+  const generatedPaymentIntentId =
+    payment_intent_id || `${Date.now()}-${currentUser.id}-${Math.random().toString(36).substring(2, 11)}`;
+
   // Handle voucher if provided
   if (voucher) {
     try {
-      // Validate voucher - sử dụng URL tuyệt đối hoặc relative
-      const baseUrl = process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3001}`;
-      const voucherValidation = await fetch(`${baseUrl}/api/voucher/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          voucherId: voucher.id,
-          cartTotal: totalVND
-        })
-      });
+      // Atomic voucher validation and reservation
+      const voucherResult = await validateAndReserveVoucher(voucher, totalVND, currentUser, generatedPaymentIntentId);
 
-      if (voucherValidation.ok) {
-        const validationResult = await voucherValidation.json();
-        discountAmount = validationResult.discountAmount;
-        finalAmount = originalAmount - discountAmount;
-        voucherData = voucher;
-      } else {
-        console.error('Voucher validation failed:', await voucherValidation.text());
-      }
-    } catch (error) {
-      console.error('Error validating voucher:', error);
-      // Tiếp tục xử lý đơn hàng mà không áp dụng voucher
+      discountAmount = voucherResult.discountAmount;
+      finalAmount = originalAmount - discountAmount;
+      voucherData = voucherResult.voucherData;
+    } catch (voucherError) {
+      console.error('Voucher processing failed:', voucherError);
+      return NextResponse.json(
+        {
+          error: 'Voucher error',
+          details: voucherError instanceof Error ? voucherError.message : String(voucherError)
+        },
+        { status: 400 }
+      );
     }
   }
 
@@ -402,69 +551,77 @@ export async function POST(request: Request): Promise<Response> {
         }
 
         orderData.paymentIntentId = paymentIntent.id;
-        // Tạo đơn hàng trong db
-        const createdOrder = await prisma.order.create({
-          data: orderData
-        });
 
-        if (!createdOrder) {
-          return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
-        }
-
-        // Tạo ORDER_CREATED activity
+        // Tạo đơn hàng với atomic inventory reservation
         try {
-          await prisma.activity.create({
-            data: {
-              userId: currentUser.id,
-              type: 'ORDER_CREATED',
-              title: 'Đơn hàng được tạo',
-              description: `Tài khoản vừa tạo đơn hàng #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
-              data: {
-                orderId: createdOrder.id,
-                paymentIntentId: createdOrder.paymentIntentId,
-                amount: createdOrder.amount,
-                paymentMethod: 'stripe',
-                products: products.slice(0, 3).map((product: any) => ({
-                  id: product.id,
-                  name: product.name,
-                  image: product.selectedImg?.images?.[0] || '/placeholder.png'
-                }))
-              }
-            }
-          });
-        } catch (error) {
-          console.error('Error creating ORDER_CREATED activity:', error);
-        }
+          const createdOrder = await createOrderWithInventoryReservation(orderData, products);
 
-        // Record voucher usage if voucher was used
-        if (voucherData) {
+          if (!createdOrder) {
+            return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
+          }
+
+          // Tạo ORDER_CREATED activity
           try {
-            const baseUrl = process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3001}`;
-            await fetch(`${baseUrl}/api/voucher/use`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                voucherId: voucherData.id,
-                orderId: createdOrder.id
-              })
+            await prisma.activity.create({
+              data: {
+                userId: currentUser.id,
+                type: 'ORDER_CREATED',
+                title: 'Đơn hàng được tạo',
+                description: `Tài khoản vừa tạo đơn hàng #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
+                data: {
+                  orderId: createdOrder.id,
+                  paymentIntentId: createdOrder.paymentIntentId,
+                  amount: createdOrder.amount,
+                  paymentMethod: 'stripe',
+                  products: products.slice(0, 3).map((product: any) => ({
+                    id: product.id,
+                    name: product.name,
+                    image: product.selectedImg?.images?.[0] || '/placeholder.png'
+                  }))
+                }
+              }
             });
           } catch (error) {
-            console.error('Error recording voucher usage:', error);
+            console.error('Error creating ORDER_CREATED activity:', error);
           }
+
+          // Voucher usage is now handled atomically in validateAndReserveVoucher
+          // and confirmed in process-payment API
+
+          // Chỉ gửi notifications cho Stripe vì các method khác sẽ được xử lý trong webhook/callback
+          // Stripe payment sẽ được confirm trong webhook, không gửi notifications ở đây
+
+          return NextResponse.json({ paymentIntent });
+        } catch (inventoryError) {
+          console.error('Stripe order creation failed:', inventoryError);
+
+          // Cancel the Stripe payment intent if order creation failed
+          try {
+            await stripe.paymentIntents.cancel(paymentIntent.id);
+          } catch (cancelError) {
+            console.error('Failed to cancel Stripe payment intent:', cancelError);
+          }
+
+          // Rollback voucher reservation if exists
+          if (voucherData) {
+            await rollbackVoucherReservation(paymentIntent.id, currentUser.id);
+          }
+
+          return NextResponse.json(
+            {
+              error: 'Order creation failed',
+              details: inventoryError instanceof Error ? inventoryError.message : String(inventoryError)
+            },
+            { status: 400 }
+          );
         }
-
-        // Chỉ gửi notifications cho Stripe vì các method khác sẽ được xử lý trong webhook/callback
-        // Stripe payment sẽ được confirm trong webhook, không gửi notifications ở đây
-
-        return NextResponse.json({ paymentIntent });
       }
     } else if (paymentMethod === 'cod') {
       try {
-        orderData.paymentIntentId = `${Date.now()}`;
+        orderData.paymentIntentId = generatedPaymentIntentId;
 
-        const createdOrder = await prisma.order.create({
-          data: orderData
-        });
+        // Tạo đơn hàng với atomic inventory reservation
+        const createdOrder = await createOrderWithInventoryReservation(orderData, products);
 
         if (!createdOrder) {
           return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
@@ -495,22 +652,8 @@ export async function POST(request: Request): Promise<Response> {
           console.error('Error creating ORDER_CREATED activity for COD:', error);
         }
 
-        // Record voucher usage if voucher was used
-        if (voucherData) {
-          try {
-            const baseUrl = process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3001}`;
-            await fetch(`${baseUrl}/api/voucher/use`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                voucherId: voucherData.id,
-                orderId: createdOrder.id
-              })
-            });
-          } catch (error) {
-            console.error('Error recording voucher usage:', error);
-          }
-        }
+        // Voucher usage is now handled atomically in validateAndReserveVoucher
+        // and confirmed in process-payment API
 
         // Gửi notifications và email cho COD
         await sendOrderNotifications(orderData, currentUser, 'cod');
@@ -531,147 +674,150 @@ export async function POST(request: Request): Promise<Response> {
         }
 
         return NextResponse.json({ createdOrder });
-      } catch (error) {
-        console.log(error);
-        return NextResponse.json({ error: 'Đã xảy ra lỗi khi xử lý đơn hàng hoặc gửi email.' }, { status: 500 });
+      } catch (inventoryError) {
+        console.error('COD order creation failed:', inventoryError);
+        return NextResponse.json(
+          {
+            error: 'Order creation failed',
+            details: inventoryError instanceof Error ? inventoryError.message : String(inventoryError)
+          },
+          { status: 400 }
+        );
       }
     } else if (paymentMethod === 'momo') {
-      orderData.paymentIntentId = `${Date.now()}`;
-      const createdOrder = await prisma.order.create({
-        data: orderData
-      });
-
-      if (!createdOrder) {
-        return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng trong db.' }, { status: 500 });
-      }
-
-      // Tạo ORDER_CREATED activity cho MoMo
       try {
-        await prisma.activity.create({
-          data: {
-            userId: currentUser.id,
-            type: 'ORDER_CREATED',
-            title: 'Đơn hàng được tạo',
-            description: `Tài khoản vừa tạo đơn hàng MoMo #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
-            data: {
-              orderId: createdOrder.id,
-              paymentIntentId: createdOrder.paymentIntentId,
-              amount: createdOrder.amount,
-              paymentMethod: 'momo',
-              products: products.slice(0, 3).map((product: any) => ({
-                id: product.id,
-                name: product.name,
-                image: product.selectedImg?.images?.[0] || '/placeholder.png'
-              }))
-            }
-          }
-        });
-      } catch (error) {
-        console.error('Error creating ORDER_CREATED activity for MoMo:', error);
-      }
+        orderData.paymentIntentId = generatedPaymentIntentId;
 
-      // Record voucher usage if voucher was used
-      if (voucherData) {
+        // Tạo đơn hàng với atomic inventory reservation
+        const createdOrder = await createOrderWithInventoryReservation(orderData, products);
+
+        if (!createdOrder) {
+          return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng trong db.' }, { status: 500 });
+        }
+
+        // Tạo ORDER_CREATED activity cho MoMo
         try {
-          const baseUrl = process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3001}`;
-          await fetch(`${baseUrl}/api/voucher/use`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              voucherId: voucherData.id,
-              orderId: createdOrder.id
-            })
+          await prisma.activity.create({
+            data: {
+              userId: currentUser.id,
+              type: 'ORDER_CREATED',
+              title: 'Đơn hàng được tạo',
+              description: `Tài khoản vừa tạo đơn hàng MoMo #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
+              data: {
+                orderId: createdOrder.id,
+                paymentIntentId: createdOrder.paymentIntentId,
+                amount: createdOrder.amount,
+                paymentMethod: 'momo',
+                products: products.slice(0, 3).map((product: any) => ({
+                  id: product.id,
+                  name: product.name,
+                  image: product.selectedImg?.images?.[0] || '/placeholder.png'
+                }))
+              }
+            }
           });
         } catch (error) {
-          console.error('Error recording voucher usage:', error);
+          console.error('Error creating ORDER_CREATED activity for MoMo:', error);
         }
+
+        // Voucher usage is now handled atomically in validateAndReserveVoucher
+        // and confirmed in process-payment API
+
+        // Gửi notifications và email cho MoMo
+        await sendOrderNotifications(orderData, currentUser, 'momo');
+
+        // Tạo thanh toán momo
+        const accessKey = 'F8BBA842ECF85';
+        const secretKey = 'K951B6PE1waDMi640xX08PD3vg6EkVlz';
+        const partnerCode = 'MOMO';
+        const partnerName = 'Test';
+        const storeId = 'MomoTestStore';
+        const redirectUrl = 'localhost:3000/cart/orderconfirmation';
+        const ipnUrl = 'localhost:3000/cart/orderconfirmation';
+        const orderInfo = 'pay with MoMo';
+        const requestType = 'payWithMethod';
+        const amount = finalAmount;
+        const orderId = createdOrder.id;
+        const requestId = orderId;
+        const extraData = '';
+        const orderGroupId = '';
+        const autoCapture = true;
+        const lang = 'vi';
+
+        // Tạo raw signature
+        const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
+
+        // Tạo signature sử dụng HMAC SHA256
+        const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+
+        // JSON object gửi đến MoMo endpoint
+        const requestBody = JSON.stringify({
+          partnerCode: partnerCode,
+          partnerName: partnerName,
+          storeId: storeId,
+          requestId: requestId,
+          amount: amount,
+          orderId: orderId,
+          orderInfo: orderInfo,
+          redirectUrl: redirectUrl,
+          ipnUrl: ipnUrl,
+          lang: lang,
+          requestType: requestType,
+          autoCapture: autoCapture,
+          extraData: extraData,
+          orderGroupId: orderGroupId,
+          signature: signature
+        });
+
+        // Tùy chọn của request
+        const options = {
+          hostname: 'test-payment.momo.vn',
+          port: 443,
+          path: '/v2/gateway/api/create',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(requestBody)
+          }
+        };
+
+        // Sử dụng Promises để thực hiện HTTPS request
+        return new Promise((resolve, reject) => {
+          const req = https.request(options, res => {
+            let data = '';
+
+            res.on('data', chunk => {
+              data += chunk;
+            });
+
+            res.on('end', () => {
+              const jsonResponse = JSON.parse(data);
+              if (res.statusCode === 200) {
+                resolve(NextResponse.json({ payUrl: jsonResponse.payUrl, createdOrder: createdOrder }));
+              } else {
+                resolve(NextResponse.json({ error: jsonResponse }, { status: res.statusCode }));
+              }
+            });
+          });
+
+          req.on('error', e => {
+            reject(NextResponse.json({ error: e.message }, { status: 500 }));
+          });
+
+          // Gửi request body
+          req.write(requestBody);
+          req.end();
+        });
+      } catch (inventoryError) {
+        console.error('MoMo order creation failed:', inventoryError);
+        return NextResponse.json(
+          {
+            error: 'Order creation failed',
+            details: inventoryError instanceof Error ? inventoryError.message : String(inventoryError)
+          },
+          { status: 400 }
+        );
       }
-
-      // Gửi notifications và email cho MoMo
-      await sendOrderNotifications(orderData, currentUser, 'momo');
-
-      // Tạo thanh toán momo
-      const accessKey = 'F8BBA842ECF85';
-      const secretKey = 'K951B6PE1waDMi640xX08PD3vg6EkVlz';
-      const partnerCode = 'MOMO';
-      const partnerName = 'Test';
-      const storeId = 'MomoTestStore';
-      const redirectUrl = 'localhost:3000/cart/orderconfirmation';
-      const ipnUrl = 'localhost:3000/cart/orderconfirmation';
-      const orderInfo = 'pay with MoMo';
-      const requestType = 'payWithMethod';
-      const amount = finalAmount;
-      const orderId = createdOrder.id;
-      const requestId = orderId;
-      const extraData = '';
-      const orderGroupId = '';
-      const autoCapture = true;
-      const lang = 'vi';
-
-      // Tạo raw signature
-      const rawSignature = `accessKey=${accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}&requestId=${requestId}&requestType=${requestType}`;
-
-      // Tạo signature sử dụng HMAC SHA256
-      const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
-
-      // JSON object gửi đến MoMo endpoint
-      const requestBody = JSON.stringify({
-        partnerCode: partnerCode,
-        partnerName: partnerName,
-        storeId: storeId,
-        requestId: requestId,
-        amount: amount,
-        orderId: orderId,
-        orderInfo: orderInfo,
-        redirectUrl: redirectUrl,
-        ipnUrl: ipnUrl,
-        lang: lang,
-        requestType: requestType,
-        autoCapture: autoCapture,
-        extraData: extraData,
-        orderGroupId: orderGroupId,
-        signature: signature
-      });
-
-      // Tùy chọn của request
-      const options = {
-        hostname: 'test-payment.momo.vn',
-        port: 443,
-        path: '/v2/gateway/api/create',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(requestBody)
-        }
-      };
-
-      // Sử dụng Promises để thực hiện HTTPS request
-      return new Promise((resolve, reject) => {
-        const req = https.request(options, res => {
-          let data = '';
-
-          res.on('data', chunk => {
-            data += chunk;
-          });
-
-          res.on('end', () => {
-            const jsonResponse = JSON.parse(data);
-            if (res.statusCode === 200) {
-              resolve(NextResponse.json({ payUrl: jsonResponse.payUrl, createdOrder: createdOrder }));
-            } else {
-              resolve(NextResponse.json({ error: jsonResponse }, { status: res.statusCode }));
-            }
-          });
-        });
-
-        req.on('error', e => {
-          reject(NextResponse.json({ error: e.message }, { status: 500 }));
-        });
-
-        // Gửi request body
-        req.write(requestBody);
-        req.end();
-      });
     } else {
       // Đảm bảo trả về một Response nếu không khớp với bất kỳ paymentMethod nào
       return NextResponse.json({ error: 'Lỗi không chọn phương thức thanh toán' }, { status: 400 });

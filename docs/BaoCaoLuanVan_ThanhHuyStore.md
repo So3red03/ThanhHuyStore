@@ -357,10 +357,11 @@ class MongoService {
 
 **Kết quả đạt được:**
 
-- ✅ Tạo PDF hóa đơn chuyên nghiệp
+- ✅ Tạo PDF hóa đơn chuyên nghiệp với PDFKit
 - ✅ Lưu trữ an toàn trong MongoDB GridFS
 - ✅ API endpoints đầy đủ (tạo, lấy, download)
 - ✅ Tích hợp vào activity timeline
+- ✅ **[2025-01-25]** Sửa lỗi PDF generation - chuyển từ text sang binary PDF thực sự
 
 #### 2.2.3. Hệ thống Email với PDF Attachment (100% hoàn thành)
 

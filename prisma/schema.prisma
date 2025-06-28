@@ -387,11 +387,16 @@ model Voucher {
 }
 
 model UserVoucher {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
-  voucherId String   @db.ObjectId
-  usedAt    DateTime?
-  createdAt DateTime @default(now())
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId              String   @db.ObjectId
+  voucherId           String   @db.ObjectId
+  usedAt              DateTime?
+  createdAt           DateTime @default(now())
+
+  // Voucher reservation fields
+  orderId             String?  @db.ObjectId  // Final order ID after payment success
+  reservedForOrderId  String?  // Temporary reservation during checkout
+  reservedAt          DateTime? // When reservation was made
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   voucher   Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)

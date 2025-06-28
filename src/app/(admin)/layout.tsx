@@ -1,5 +1,4 @@
 import '../globals.css';
-import '../styles/nprogress.css';
 import { Toaster } from 'react-hot-toast';
 import { Inter } from 'next/font/google';
 import AdminSideBar from '../components/admin/AdminSideBar';

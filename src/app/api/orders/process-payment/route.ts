@@ -24,6 +24,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
+    // Confirm voucher usage after successful payment
+    if (order.voucherId) {
+      try {
+        await prisma.userVoucher.updateMany({
+          where: {
+            userId: order.userId,
+            voucherId: order.voucherId,
+            reservedForOrderId: order.paymentIntentId
+          },
+          data: {
+            orderId: order.id,
+            reservedForOrderId: null, // Clear reservation
+            usedAt: new Date()
+          }
+        });
+        console.log(`Voucher usage confirmed for order ${order.id}`);
+      } catch (voucherError) {
+        console.error('Error confirming voucher usage:', voucherError);
+        // Don't fail the payment process for voucher confirmation errors
+      }
+    }
+
     // Kiểm tra xem PDF đã tồn tại chưa
     const pdfExists = await MongoService.pdfExists(orderId, 'invoice');
     let pdfFileId: string | null = null;

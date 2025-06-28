@@ -1,5 +1,4 @@
 import '../globals.css';
-import '../styles/nprogress.css';
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 import Navbar from '../components/nav/Navbar';

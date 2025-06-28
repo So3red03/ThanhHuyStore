@@ -255,34 +255,58 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
   }, []);
 
   const filteredClient = users?.filter(user => user.role === 'USER');
-  const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
 
-  const salesWeeklyData = {
-    labels: days,
-    datasets: [
-      {
-        label: 'Sản phẩm',
-        data: [65, 40, 75, 55, 62, 120],
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.2)',
-          'rgba(255, 159, 64, 0.2)',
-          'rgba(255, 205, 86, 0.2)',
-          'rgba(75, 192, 192, 0.2)',
-          'rgba(54, 162, 235, 0.2)',
-          'rgba(153, 102, 255, 0.2)'
-        ],
-        borderColor: [
-          'rgb(255, 99, 132)',
-          'rgb(255, 159, 64)',
-          'rgb(255, 205, 86)',
-          'rgb(75, 192, 192)',
-          'rgb(54, 162, 235)',
-          'rgb(153, 102, 255)'
-        ],
-        borderWidth: 1
-      }
-    ]
+  // Generate real weekly sales data from orders
+  const generateWeeklySalesData = () => {
+    const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+    const salesData = new Array(7).fill(0);
+
+    // Get orders from last 7 days
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
+
+    const weeklyOrders =
+      filteredOrders?.filter(order => new Date(order.createDate) >= lastWeek && order.status === 'completed') || [];
+
+    // Group orders by day of week
+    weeklyOrders.forEach(order => {
+      const orderDate = new Date(order.createDate);
+      const dayOfWeek = orderDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust so Monday = 0
+      salesData[adjustedDay] += order.amount || 0;
+    });
+
+    return {
+      labels: days,
+      datasets: [
+        {
+          label: 'Doanh thu (VNĐ)',
+          data: salesData,
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.2)',
+            'rgba(255, 159, 64, 0.2)',
+            'rgba(255, 205, 86, 0.2)',
+            'rgba(75, 192, 192, 0.2)',
+            'rgba(54, 162, 235, 0.2)',
+            'rgba(153, 102, 255, 0.2)',
+            'rgba(201, 203, 207, 0.2)'
+          ],
+          borderColor: [
+            'rgb(255, 99, 132)',
+            'rgb(255, 159, 64)',
+            'rgb(255, 205, 86)',
+            'rgb(75, 192, 192)',
+            'rgb(54, 162, 235)',
+            'rgb(153, 102, 255)',
+            'rgb(201, 203, 207)'
+          ],
+          borderWidth: 1
+        }
+      ]
+    };
   };
+
+  const salesWeeklyData = generateWeeklySalesData();
 
   // Use filtered data for calculations
   const successOrder = filteredOrders?.filter(

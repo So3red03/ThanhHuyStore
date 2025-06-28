@@ -80,11 +80,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       await MongoService.savePDF(pdfBuffer, orderId, order.paymentIntentId, order.userId, 'invoice');
     }
 
-    // Trả về PDF trực tiếp
+    // Trả về PDF để download
     return new NextResponse(pdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="invoice-${order.paymentIntentId.slice(-6).toUpperCase()}.pdf"`
+        'Content-Disposition': `attachment; filename="invoice-${order.paymentIntentId.slice(-6).toUpperCase()}.pdf"`,
+        'Content-Length': pdfBuffer.length.toString()
       }
     });
   } catch (error) {
