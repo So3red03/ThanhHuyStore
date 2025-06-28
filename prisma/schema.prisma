@@ -140,6 +140,12 @@ model Product {
   createDate       DateTime? @default(now())
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  // Soft delete fields
+  isDeleted        Boolean   @default(false)
+  deletedAt        DateTime?
+  deletedBy        String?
+
   images           Image[]
   reviews          Review[]
   notifications    Notification[]

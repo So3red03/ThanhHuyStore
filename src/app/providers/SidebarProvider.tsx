@@ -10,13 +10,17 @@ const SidebarContext = createContext({
 
 // Updated useSidebar hook - now uses Zustand store
 export const useSidebar = () => {
-  const { isSidebarOpen, toggleSidebar, closeSidebar, openSidebar } = useUIStore();
+  const { isSidebarOpen, isSidebarCollapsed, toggleSidebar, closeSidebar, openSidebar, toggleCollapse, setCollapsed } =
+    useUIStore();
 
   return {
     isOpen: isSidebarOpen,
+    isCollapsed: isSidebarCollapsed,
     toggleSidebar,
     closeSidebar,
-    openSidebar
+    openSidebar,
+    toggleCollapse,
+    setCollapsed
   };
 };
 

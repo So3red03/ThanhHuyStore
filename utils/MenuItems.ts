@@ -25,18 +25,9 @@ export const MenuItems = [
   {
     title: 'Chung',
     dashboardItem: {
-      title: 'Dashboards',
-      icon: MdOutlineHome,
-      list: [
-        {
-          title: 'Bán hàng',
-          path: '/admin'
-        },
-        {
-          title: 'Tin tức',
-          path: '/admin/news-dashboard'
-        }
-      ]
+      title: 'Tổng quan',
+      icon: MdDashboard,
+      path: '/admin'
     }
   },
   {

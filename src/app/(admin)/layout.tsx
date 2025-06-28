@@ -1,26 +1,61 @@
 import '../globals.css';
 import { Toaster } from 'react-hot-toast';
 import { Inter } from 'next/font/google';
-import AdminSideBar from '../components/admin/AdminSideBar';
-import AdminNav from '../components/admin/AdminNav';
 import ClientSessionProvider from '../providers/ClientSessionProvider';
 import { getSession } from 'next-auth/react';
 import { SidebarProvider } from '../providers/SidebarProvider';
 import { getCurrentUser } from '../actions/getCurrentUser';
-import { getArticlesCategory } from '../actions/getArticlesCategory';
-import { getProductCategories, getSubCategories } from '../actions/getProductCategories';
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline, Box } from '@mui/material';
+import { adminTheme } from '../theme/adminTheme';
+import AdminSideBarNew from '../components/admin/AdminSideBarNew';
+import AdminNavNew from '../components/admin/AdminNavNew';
 export const metadata = {
   title: 'ThanhHuy Store - Dashboard',
   description: 'Apple Shop Admin Dashboard'
 };
 const inter = Inter({ subsets: ['latin'] });
 
+// Layout content component that uses sidebar context
+const LayoutContent = ({ children, currentUser }: { children: React.ReactNode; currentUser: any }) => {
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
+      {/* New MUI-based Sidebar */}
+      <AdminSideBarNew />
+
+      {/* Main Content Area */}
+      <Box
+        component='main'
+        sx={{
+          flexGrow: 1,
+          minHeight: '100vh',
+          overflow: 'auto',
+          backgroundColor: 'background.default'
+        }}
+      >
+        {/* New MUI-based Navigation */}
+        <AdminNavNew currentUser={currentUser} />
+
+        {/* Page Content */}
+        <Box
+          sx={{
+            flex: 1,
+            p: { xs: 2, xl: 3 },
+            backgroundColor: 'primary.200', // Same as sidebar
+            minHeight: 'calc(100vh - 80px)', // Account for nav height
+            overflow: 'auto'
+          }}
+        >
+          {children}
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   const currentUser = await getCurrentUser();
-  const articleCategory = await getArticlesCategory();
-  const parentCategory = await getProductCategories();
-  const subCategories = await getSubCategories();
   return (
     <html lang='en'>
       <head>
@@ -39,25 +74,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             }
           }}
         />
-        {/* Lấy toàn bộ thông tin của user theo phiên hiện tại  */}
-        <ClientSessionProvider session={session}>
-          <SidebarProvider>
-            <div className='flex min-h-screen'>
-              <div className='shadow-md xl:w-[37vh] bg-slate-200'>
-                <AdminSideBar />
-              </div>
-              <div className='flex-g-4 p-0 xl:px-5 xl:py-2 w-full'>
-                <AdminNav
-                  currentUser={currentUser}
-                  articleCategory={articleCategory}
-                  parentCategory={parentCategory}
-                  subCategories={subCategories}
-                />
-                {children}
-              </div>
-            </div>
-          </SidebarProvider>
-        </ClientSessionProvider>
+        {/* Professional MUI Theme Provider */}
+        <ThemeProvider theme={adminTheme}>
+          <CssBaseline />
+          {/* Lấy toàn bộ thông tin của user theo phiên hiện tại  */}
+          <ClientSessionProvider session={session}>
+            <SidebarProvider>
+              <LayoutContent currentUser={currentUser}>{children}</LayoutContent>
+            </SidebarProvider>
+          </ClientSessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

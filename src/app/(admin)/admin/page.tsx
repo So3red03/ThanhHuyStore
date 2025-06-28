@@ -1,5 +1,4 @@
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
-import AdminDashBoardForm from './AdminDasboardForm';
 import { getOrders } from '@/app/actions/getOrders';
 import { getSessionUsers, getUsers } from '@/app/actions/getUsers';
 import { getTotalRevenue } from '@/app/actions/getTotalRevenue';
@@ -7,6 +6,11 @@ import getColumnChartData from '@/app/actions/getColumnChartData';
 import { Suspense } from 'react';
 import { getConversations } from '@/app/actions/getConversations';
 import { getReviews } from '@/app/actions/getReviews';
+import DashboardTabs from '@/app/components/admin/DashboardTabs';
+import OverviewTab from '@/app/components/admin/dashboard/OverviewTab';
+import AnalyticsTab from '@/app/components/admin/dashboard/AnalyticsTab';
+import ReportsTab from '@/app/components/admin/dashboard/ReportsTab';
+import NotificationsTab from '@/app/components/admin/dashboard/NotificationsTab';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +23,7 @@ const AdminDashboard = async () => {
   const columnChartData = await getColumnChartData();
   const userInSession = await getSessionUsers();
   const conversations = await getConversations();
+
   return (
     <Suspense
       fallback={
@@ -27,15 +32,23 @@ const AdminDashboard = async () => {
         </div>
       }
     >
-      <AdminDashBoardForm
-        orders={orders}
-        users={users}
-        totalRevenue={totalRevenue}
-        columnData={columnChartData}
-        currentUser={currentUser}
-        reviews={reviews}
-        userInSession={userInSession}
-        conversations={conversations}
+      <DashboardTabs
+        overviewContent={
+          <OverviewTab
+            orders={orders}
+            users={users}
+            totalRevenue={totalRevenue}
+            currentUser={currentUser}
+            reviews={reviews}
+            conversations={conversations}
+            userInSession={userInSession}
+          />
+        }
+        analyticsContent={
+          <AnalyticsTab orders={orders} users={users} totalRevenue={totalRevenue} columnData={columnChartData} />
+        }
+        reportsContent={<ReportsTab orders={orders} users={users} totalRevenue={totalRevenue} />}
+        notificationsContent={<NotificationsTab orders={orders} users={users} />}
       />
     </Suspense>
   );

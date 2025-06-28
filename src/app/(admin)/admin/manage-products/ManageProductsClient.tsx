@@ -7,6 +7,7 @@ import { Product } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { formatPrice } from '../../../../../utils/formatPrice';
 import { MdCached, MdClose, MdDelete, MdDone, MdEdit } from 'react-icons/md';
+// TODO: Add back when soft delete is implemented: MdRestore, MdVisibility
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteObject, getStorage, ref } from 'firebase/storage';
@@ -62,6 +63,8 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<Product>();
   const Icons = { ...SlIcons, ...AiIcons, ...MdIcons, ...TbIcons };
   const [selectedParentCategoryId, setSelectedParentCategoryId] = useState<string | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [deletedProducts, setDeletedProducts] = useState<any[]>([]);
 
   const [text, setText] = useState('');
   // const [images, setImages] = useState<any[] | null>(products.images);
@@ -92,6 +95,36 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     setIsDelete(!isDelete);
   };
 
+  // TODO: Enable when soft delete is implemented
+  // const fetchDeletedProducts = async () => {
+  //   try {
+  //     const response = await axios.get('/api/product/deleted');
+  //     setDeletedProducts(response.data);
+  //   } catch (error) {
+  //     console.error('Error fetching deleted products:', error);
+  //     toast.error('Lỗi khi tải sản phẩm đã xóa');
+  //   }
+  // };
+
+  // const toggleShowDeleted = async () => {
+  //   if (!showDeleted) {
+  //     await fetchDeletedProducts();
+  //   }
+  //   setShowDeleted(!showDeleted);
+  // };
+
+  // const handleRestoreProduct = async (productId: string) => {
+  //   try {
+  //     await axios.patch(`/api/product/${productId}`, { action: 'restore' });
+  //     toast.success('Khôi phục sản phẩm thành công');
+  //     await fetchDeletedProducts(); // Refresh deleted products list
+  //     router.refresh(); // Refresh main products list
+  //   } catch (error) {
+  //     console.error('Error restoring product:', error);
+  //     toast.error('Lỗi khi khôi phục sản phẩm');
+  //   }
+  // };
+
   const onTextChange = (e: any) => {
     const newText = e.htmlValue;
     setText(newText);
@@ -119,12 +152,15 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
   const category = watch('category');
 
+  // For now, just show active products
+  const currentProducts = products || [];
+
   let rows: any = [];
-  if (products) {
-    rows = products.map((product: any) => {
+  if (currentProducts?.length > 0) {
+    rows = currentProducts?.map((product: any) => {
       // Tính điểm đánh giá của mỗi sản phẩm
       const productRating =
-        product.reviews.reduce((acc: number, item: any) => item.rating + acc, 0) / product.reviews.length;
+        product.reviews?.reduce((acc: number, item: any) => item.rating + acc, 0) / (product.reviews?.length || 1) || 0;
       // Tìm tên danh mục cha dựa vào parentId
       const subCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.name;
       const parentCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.parentId;
@@ -138,12 +174,16 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         subCategory: subCategory,
         rating: productRating,
         description: product.description,
-        inStock: product.inStock
+        inStock: product.inStock,
+        isDeleted: product.isDeleted,
+        deletedAt: product.deletedAt,
+        deletedBy: product.deletedBy
       };
     });
   }
 
-  const columns: GridColDef[] = [
+  // Define columns based on view mode
+  const baseColumns: GridColDef[] = [
     {
       field: 'images',
       headerName: 'Ảnh SP',
@@ -206,6 +246,8 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       headerName: '',
       width: 170,
       renderCell: params => {
+        // TODO: Add soft delete actions when implemented
+        // For now, only show active product actions
         return (
           <div className='flex items-center justify-center gap-4 h-full'>
             <ActionBtn
@@ -226,6 +268,29 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       }
     }
   ];
+
+  // TODO: Add deleted info columns when soft delete is implemented
+  // const deletedColumns: GridColDef[] = [
+  //   {
+  //     field: 'deletedAt',
+  //     headerName: 'Ngày xóa',
+  //     width: 150,
+  //     renderCell: params => {
+  //       return params.row.deletedAt ? new Date(params.row.deletedAt).toLocaleDateString('vi-VN') : '';
+  //     }
+  //   },
+  //   {
+  //     field: 'deletedBy',
+  //     headerName: 'Người xóa',
+  //     width: 150,
+  //     renderCell: params => {
+  //       return params.row.deletedBy || '';
+  //     }
+  //   }
+  // ];
+
+  // For now, just use base columns
+  const columns = baseColumns;
 
   // Xác nhận xóa
   const handleConfirmDelete = async () => {
@@ -300,7 +365,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const stats = [
     {
       title: 'Sản phẩm hiện có',
-      count: products.length,
+      count: products?.length,
       icon: <FaRegListAlt className='text-2xl text-gray-600' />,
       changeColor: 'text-green-500',
       bgColor: 'bg-green-100'
@@ -428,7 +493,25 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         <div className='mb-4 mt-5'>
           <SendNewProductEmail products={products} />
         </div>
-        <div className='mb-4 mt-5'></div>
+
+        {/* TODO: Toggle Deleted Products Button - enable after database update */}
+        <div className='mb-4 mt-5 flex justify-between items-center'>
+          <h2 className='text-xl font-semibold text-gray-800'>Danh sách sản phẩm</h2>
+          {/* Temporarily disabled until soft delete is implemented
+          <button
+            onClick={toggleShowDeleted}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              showDeleted ? 'bg-gray-500 hover:bg-gray-600 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'
+            }`}
+          >
+            <div className='flex items-center gap-2'>
+              {showDeleted ? <MdVisibility size={16} /> : <MdDelete size={16} />}
+              {showDeleted ? 'Xem sản phẩm hiện tại' : 'Xem sản phẩm đã xóa'}
+            </div>
+          </button>
+          */}
+        </div>
+
         <div className='h-[600px] w-full'>
           <DataGrid
             rows={rows}

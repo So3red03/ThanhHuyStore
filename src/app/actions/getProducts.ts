@@ -3,17 +3,23 @@ import prisma from '../libs/prismadb';
 export interface IProductParams {
   category?: string | null;
   searchTerm?: string | null;
+  includeDeleted?: boolean;
 }
 
 export async function getProducts(params: IProductParams) {
   try {
-    const { category, searchTerm } = params;
+    const { category, searchTerm, includeDeleted = false } = params;
     let searchString = searchTerm || '';
     let query: any = {};
 
     if (category) {
       query.category = category;
     }
+
+    // TODO: Thêm filter cho soft delete sau khi update database
+    // if (!includeDeleted) {
+    //   query.isDeleted = { not: true };
+    // }
 
     const products = await prisma.product.findMany({
       where: {
@@ -68,6 +74,10 @@ export async function getParentCategoryAndProductsBySlug(parentSlug: string) {
         subcategories: {
           include: {
             products: {
+              // TODO: Add soft delete filter after database update
+              // where: {
+              //   isDeleted: { not: true }
+              // },
               include: {
                 productPromotions: {
                   where: {
@@ -109,7 +119,11 @@ export async function getProductsByCategory(slug: string) {
     }
 
     const products = await prisma.product.findMany({
-      where: { categoryId: category.id },
+      where: {
+        categoryId: category.id
+        // TODO: Add soft delete filter after database update
+        // isDeleted: { not: true }
+      },
       include: {
         productPromotions: {
           where: {

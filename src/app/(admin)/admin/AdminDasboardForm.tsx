@@ -6,15 +6,15 @@ import { ChatRoomType, SafeUser } from '../../../../types';
 import NullData from '@/app/components/NullData';
 import ChatList from '@/app/components/admin/chat/ChatList';
 
-import EnhancedDashboardStats from '@/app/components/admin/EnhancedDashboardStats';
-import DashboardCharts from '@/app/components/admin/DashboardCharts';
 import BestSellingProducts from '@/app/components/admin/BestSellingProducts';
 import OrdersTable from '@/app/components/admin/OrdersTable';
 import ReviewsSection from '@/app/components/admin/ReviewsSection';
 import { useEffect as useEffectHook } from 'react';
 import axios from 'axios';
-import { Chip, Button } from '@mui/material';
+import { Chip, Button, Box } from '@mui/material';
 import { MdDashboard, MdDateRange, MdAutorenew, MdRefresh } from 'react-icons/md';
+import EnhancedDashboardStatsNew from '@/app/components/admin/EnhancedDashboardStatsNew';
+import DashboardChartsNew from '@/app/components/admin/DashboardChartsNew';
 
 // Removed unused Review type
 
@@ -456,7 +456,7 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
       {/* Original Layout - Giữ nguyên như cũ */}
       <div className='w-[78.5vw] flex flex-col xl:flex-row justify-around gap-3 mt-6'>
         <div className='w-full lg:w-2/3'>
-          <EnhancedDashboardStats
+          <EnhancedDashboardStatsNew
             ordersCount={filteredOrders.length}
             totalRevenue={filteredRevenue}
             clientsCount={filteredClient.length}
@@ -466,26 +466,18 @@ const AdminDashBoardForm: React.FC<AdminDashBoardFormProps> = ({
             avgOrderValue={avgOrderValue}
             returnRequestsCount={returnRequestsCount}
           />
-          <div className='grid grid-cols-1 mt-5'>
-            <div className='relative border border-gray-200 rounded-lg p-6'>
-              <h2 className='text-center font-bold text-lg text-gray-500'>Doanh số hằng tuần</h2>
-              <div className='w-full h-auto block mx-auto'>
-                <DashboardCharts salesWeeklyData={salesWeeklyData} type='bar' />
-              </div>
-            </div>
-          </div>
+          <Box sx={{ mt: 3 }}>
+            <DashboardChartsNew salesWeeklyData={salesWeeklyData} type='bar' title='Doanh số hằng tuần' height={400} />
+          </Box>
 
           <BestSellingProducts uniqueProducts={uniqueProducts} />
           <OrdersTable orders={filteredOrders} />
         </div>
 
         <div className='w-full lg:w-1/3 flex flex-col'>
-          <div className='mb-4 rounded-lg border border-gray-200 w-full px-3 py-6 pb-1'>
-            <h2 className='text-center font-bold text-lg text-gray-500'>Doanh số tổng đơn</h2>
-            <div className='w-[40vw] max-w-full h-[25vh] max-h-[500px] block mx-auto'>
-              <DashboardCharts orderPieData={orderPieData} type='pie' />
-            </div>
-          </div>
+          <Box sx={{ mb: 3 }}>
+            <DashboardChartsNew orderPieData={orderPieData} type='pie' title='Doanh số tổng đơn' height={300} />
+          </Box>
           <ReviewsSection reviews={reviews} />
           <div className='rounded-lg border max-h-96 scroll-bar overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent border-gray-200 w-full py-6 flex-1'>
             <h2 className='mb-3 text-gray-500 px-6 font-semibold text-lg'>Tin nhắn</h2>

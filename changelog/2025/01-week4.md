@@ -230,6 +230,128 @@ The system is now significantly more robust and secure. All critical business lo
 
 **Final Status: 100% of critical issues resolved + Dashboard enhanced + PDF working**
 
+## 2025-06-28 - Advanced Dashboard Features & Soft Delete Implementation
+
+### ✅ COMPLETED ENHANCEMENTS
+
+#### 9. Dashboard Tabs Advanced Features
+
+**Status:** ✅ COMPLETED
+**Issue:** Dashboard cần bộ lọc thời gian, button làm mới và layout optimization
+**Solution:** Implement comprehensive dashboard improvements với UX/UI chuyên nghiệp
+
+**Files Modified:**
+
+- `src/app/components/admin/dashboard/OverviewTab.tsx` - Time filter & layout reorganization
+- `src/app/components/admin/dashboard/AnalyticsTab.tsx` - 3-column stats layout & time filter
+- `src/app/components/admin/dashboard/ReportsTab.tsx` - Time filter & Discord reports fix
+- `src/app/(admin)/admin/page.tsx` - Client component với refresh functionality
+
+**Implementation Details:**
+
+**A. Time Filter & Refresh Controls:**
+
+- Added time filter dropdown (24h, 7d, 30d, 90d) cho tất cả tabs
+- Implemented refresh button với loading states
+- Professional MUI Card design với consistent styling
+- Real-time data updates khi thay đổi time filter
+
+**B. Layout Optimization:**
+
+- **OverviewTab**: Di chuyển chart "Doanh số hàng tuần" từ AnalyticsTab
+  - Layout: Doanh số hàng tuần (trái) + Doanh số tổng đơn (phải)
+  - Bottom row: Tin nhắn (trái) + Đánh giá sản phẩm (phải)
+- **AnalyticsTab**: 3-items-per-row layout với custom stats cards
+  - Removed duplicate weekly sales chart
+  - Enhanced với professional icons và color coding
+
+**C. Discord Reports Fix:**
+
+- Fixed API endpoint từ `/api/discord/send-report` thành `/api/admin/reports/discord`
+- Added proper error handling và user feedback
+- Enhanced với time filter integration
+
+#### 10. Soft Delete Implementation for Products
+
+**Status:** ✅ COMPLETED
+**Issue:** Products bị hard delete, không thể khôi phục
+**Solution:** Implement comprehensive soft delete system với restore functionality
+
+**Files Modified:**
+
+- `src/app/api/product/[id]/route.ts` - Soft delete implementation
+- `src/app/api/product/deleted/route.ts` - New API cho deleted products
+- `src/app/actions/getProducts.ts` - Filter soft deleted products
+- `src/app/(admin)/admin/manage-products/ManageProductsClient.tsx` - Soft delete UI
+
+**Implementation Details:**
+
+**A. API Layer:**
+
+- Modified DELETE endpoint để set `isDeleted: true` thay vì xóa record
+- Added PATCH endpoint với action 'restore' để khôi phục products
+- New GET `/api/product/deleted` endpoint để lấy danh sách products đã xóa
+- Enhanced với metadata: `deletedAt`, `deletedBy`
+
+**B. Data Layer:**
+
+- Updated `getProducts()` action để filter `isDeleted: false` by default
+- Added `includeDeleted` parameter cho flexibility
+- Updated all product queries để exclude deleted products
+
+**C. UI/UX Layer:**
+
+- Added toggle button để switch giữa active và deleted products view
+- Enhanced DataGrid với restore action button cho deleted products
+- Added deleted info columns: Ngày xóa, Người xóa
+- Professional styling với clear visual indicators
+
+**D. Business Logic:**
+
+- Soft delete preserves data integrity và audit trail
+- Restore functionality cho phép undo accidental deletions
+- Admin có thể review deleted products trước khi permanent delete
+
+### 🎯 TECHNICAL ACHIEVEMENTS
+
+**Dashboard Enhancements:**
+
+- ✅ Professional time filtering across all dashboard tabs
+- ✅ Real-time refresh functionality với proper loading states
+- ✅ Optimized layout theo UX/UI best practices
+- ✅ Fixed Discord reporting functionality
+- ✅ Enhanced analytics với 3-column responsive layout
+
+**Soft Delete System:**
+
+- ✅ Complete soft delete implementation cho products
+- ✅ Restore functionality với audit trail
+- ✅ Data integrity preservation
+- ✅ Professional admin interface cho deleted items management
+
+**Code Quality:**
+
+- ✅ TypeScript type safety maintained
+- ✅ Consistent error handling patterns
+- ✅ Professional MUI component usage
+- ✅ Responsive design principles applied
+
+### 🚀 BUSINESS IMPACT
+
+**Operational Efficiency:**
+
+- **Dashboard**: Admins có thể filter data theo thời gian và refresh real-time
+- **Product Management**: Safe deletion với khả năng khôi phục
+- **Data Integrity**: Không mất data khi "xóa" products
+- **Audit Trail**: Track được ai xóa gì và khi nào
+
+**User Experience:**
+
+- **Professional Interface**: Dashboard tabs với Material Design
+- **Intuitive Controls**: Time filters và refresh buttons dễ sử dụng
+- **Visual Clarity**: Clear separation giữa active và deleted products
+- **Error Prevention**: Soft delete prevents accidental data loss
+
 ### 🔄 FUTURE ENHANCEMENTS
 
 Remaining non-critical items for future development:
@@ -239,3 +361,5 @@ Remaining non-critical items for future development:
 - Promotion system implementation
 - Real-time inventory updates
 - Advanced security monitoring
+- Permanent delete functionality cho soft deleted products
+- Bulk restore operations

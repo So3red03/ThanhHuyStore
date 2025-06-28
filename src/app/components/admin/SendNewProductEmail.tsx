@@ -4,6 +4,22 @@ import { useState } from 'react';
 import { Product } from '@prisma/client';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import {
+  Card,
+  CardContent,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  Alert,
+  Box,
+  Chip,
+  LinearProgress,
+  Divider
+} from '@mui/material';
+import { MdEmail, MdSend, MdCheckCircle, MdInfo, MdWarning, MdTrendingUp, MdPeople, MdPercent } from 'react-icons/md';
 
 interface SendNewProductEmailProps {
   products: Product[];
@@ -28,7 +44,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products }) =
 
       const result = response.data;
       setLastResult(result);
-      
+
       toast.success(`Đã gửi email thành công cho ${result.sentCount}/${result.totalUsers} người dùng`);
     } catch (error: any) {
       console.error('Error sending emails:', error);
@@ -39,90 +55,179 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products }) =
   };
 
   // Lọc sản phẩm mới (trong 30 ngày gần đây)
-  const recentProducts = products.filter(product => {
-    const productDate = new Date(product.createDate || product.createdAt || Date.now());
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return productDate >= thirtyDaysAgo;
-  }).sort((a, b) => {
-    const dateA = new Date(a.createDate || a.createdAt || Date.now());
-    const dateB = new Date(b.createDate || b.createdAt || Date.now());
-    return dateB.getTime() - dateA.getTime();
-  });
+  const recentProducts = products
+    ?.filter(product => {
+      const productDate = new Date(product.createDate || product.createdAt || Date.now());
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return productDate >= thirtyDaysAgo;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.createDate || a.createdAt || Date.now());
+      const dateB = new Date(b.createDate || b.createdAt || Date.now());
+      return dateB.getTime() - dateA.getTime();
+    });
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4 text-gray-800">
-        📧 Gửi Email Sản Phẩm Mới
-      </h2>
-      
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Chọn sản phẩm mới để gửi email marketing:
-        </label>
-        <select
-          value={selectedProductId}
-          onChange={(e) => setSelectedProductId(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-        >
-          <option value="">-- Chọn sản phẩm --</option>
-          {recentProducts.map((product) => (
-            <option key={product.id} value={product.id}>
-              {product.name} - {new Date(product.createDate || product.createdAt || Date.now()).toLocaleDateString('vi-VN')}
-            </option>
-          ))}
-        </select>
-      </div>
+    <Card sx={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb' }}>
+      <CardContent sx={{ p: 4 }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: '12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <MdEmail size={24} />
+          </Box>
+          <Box>
+            <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937', mb: 0.5 }}>
+              Email Marketing
+            </Typography>
+            <Typography variant='body2' sx={{ color: '#6b7280' }}>
+              Gửi thông báo sản phẩm mới đến khách hàng tiềm năng
+            </Typography>
+          </Box>
+        </Box>
 
-      {selectedProductId && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-md">
-          <p className="text-sm text-blue-700">
-            <strong>Lưu ý:</strong> Email sẽ được gửi đến những khách hàng đã từng mua sản phẩm 
-            trong cùng danh mục với sản phẩm được chọn.
-          </p>
-        </div>
-      )}
+        <Divider sx={{ mb: 3 }} />
 
-      <button
-        onClick={handleSendEmails}
-        disabled={isLoading || !selectedProductId}
-        className={`w-full py-3 px-4 rounded-md font-medium transition-colors ${
-          isLoading || !selectedProductId
-            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            : 'bg-blue-600 text-white hover:bg-blue-700'
-        }`}
-      >
-        {isLoading ? (
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-            Đang gửi email...
-          </div>
-        ) : (
-          'Gửi Email Marketing'
+        {/* Product Selection */}
+        <FormControl fullWidth sx={{ mb: 3 }}>
+          <InputLabel>Chọn sản phẩm mới</InputLabel>
+          <Select
+            value={selectedProductId}
+            label='Chọn sản phẩm mới'
+            onChange={e => setSelectedProductId(e.target.value)}
+            disabled={isLoading}
+            sx={{ borderRadius: '12px' }}
+          >
+            <MenuItem value=''>
+              <em>-- Chọn sản phẩm --</em>
+            </MenuItem>
+            {recentProducts?.map(product => (
+              <MenuItem key={product.id} value={product.id}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                  <Typography sx={{ fontWeight: 500 }}>{product.name}</Typography>
+                  <Chip
+                    label={new Date(product.createDate || product.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                    size='small'
+                    color='primary'
+                    variant='outlined'
+                  />
+                </Box>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Info Alert */}
+        {selectedProductId && (
+          <Alert icon={<MdInfo />} severity='info' sx={{ mb: 3, borderRadius: '12px' }}>
+            <Typography variant='body2'>
+              <strong>Lưu ý:</strong> Email sẽ được gửi đến những khách hàng đã từng mua sản phẩm trong cùng danh mục
+              với sản phẩm được chọn.
+            </Typography>
+          </Alert>
         )}
-      </button>
 
-      {lastResult && (
-        <div className="mt-6 p-4 bg-green-50 rounded-md">
-          <h3 className="font-medium text-green-800 mb-2">Kết quả gửi email:</h3>
-          <div className="text-sm text-green-700">
-            <p><strong>Sản phẩm:</strong> {lastResult.product.name}</p>
-            <p><strong>Danh mục:</strong> {lastResult.product.category}</p>
-            <p><strong>Đã gửi:</strong> {lastResult.sentCount}/{lastResult.totalUsers} email</p>
-            <p><strong>Tỷ lệ thành công:</strong> {((lastResult.sentCount / lastResult.totalUsers) * 100).toFixed(1)}%</p>
-          </div>
-        </div>
-      )}
+        {/* Send Button */}
+        <Button
+          fullWidth
+          variant='contained'
+          size='large'
+          startIcon={isLoading ? null : <MdSend />}
+          onClick={handleSendEmails}
+          disabled={isLoading || !selectedProductId}
+          sx={{
+            py: 2,
+            borderRadius: '12px',
+            backgroundColor: '#3b82f6',
+            '&:hover': { backgroundColor: '#2563eb' },
+            '&:disabled': { backgroundColor: '#e5e7eb', color: '#9ca3af' },
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '16px'
+          }}
+        >
+          {isLoading ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <LinearProgress sx={{ width: 20, height: 2 }} />
+              Đang gửi email...
+            </Box>
+          ) : (
+            'Gửi Email Marketing'
+          )}
+        </Button>
 
-      {recentProducts.length === 0 && (
-        <div className="mt-4 p-4 bg-yellow-50 rounded-md">
-          <p className="text-yellow-700 text-sm">
-            Không có sản phẩm mới nào trong 30 ngày gần đây để gửi email marketing.
-          </p>
-        </div>
-      )}
-    </div>
+        {/* Results */}
+        {lastResult && (
+          <Card sx={{ mt: 3, backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <MdCheckCircle color='#16a34a' size={20} />
+                <Typography variant='h6' sx={{ color: '#16a34a', fontWeight: 600 }}>
+                  Kết quả gửi email
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, mt: 2 }}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
+                    <MdTrendingUp color='#3b82f6' size={16} />
+                    <Typography variant='body2' sx={{ color: '#6b7280', fontWeight: 500 }}>
+                      Sản phẩm
+                    </Typography>
+                  </Box>
+                  <Typography variant='body1' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                    {lastResult.product.name}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ textAlign: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
+                    <MdPeople color='#10b981' size={16} />
+                    <Typography variant='body2' sx={{ color: '#6b7280', fontWeight: 500 }}>
+                      Đã gửi
+                    </Typography>
+                  </Box>
+                  <Typography variant='body1' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                    {lastResult.sentCount}/{lastResult.totalUsers}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ textAlign: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
+                    <MdPercent color='#8b5cf6' size={16} />
+                    <Typography variant='body2' sx={{ color: '#6b7280', fontWeight: 500 }}>
+                      Tỷ lệ thành công
+                    </Typography>
+                  </Box>
+                  <Typography variant='body1' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                    {((lastResult.sentCount / lastResult.totalUsers) * 100).toFixed(1)}%
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* No Products Warning */}
+        {recentProducts?.length === 0 && (
+          <Alert icon={<MdWarning />} severity='warning' sx={{ mt: 3, borderRadius: '12px' }}>
+            <Typography variant='body2'>
+              Không có sản phẩm mới nào trong 30 ngày gần đây để gửi email marketing.
+            </Typography>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

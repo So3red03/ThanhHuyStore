@@ -22,6 +22,9 @@ import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Box, Card, CardContent, Typography, Grid, Button as MuiButton } from '@mui/material';
+import { MdPeople, MdPersonAdd, MdSupervisorAccount, MdTrendingUp } from 'react-icons/md';
+import AddUserModal from '../../../components/admin/AddUserModal';
 
 interface ManageUserClientProps {
   users: User[];
@@ -33,6 +36,18 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
   const [isDelete, setIsDelete] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [addUserModalOpen, setAddUserModalOpen] = useState(false);
+
+  // Calculate statistics
+  const totalUsers = users.length;
+  const adminUsers = users.filter(user => user.role === 'ADMIN').length;
+  const regularUsers = users.filter(user => user.role === 'USER').length;
+  const recentUsers = users.filter(user => {
+    const userDate = new Date(user.createAt);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return userDate >= weekAgo;
+  }).length;
   const {
     register,
     handleSubmit,
@@ -63,6 +78,10 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 
   const toggleDelete = () => {
     setIsDelete(!isDelete);
+  };
+
+  const handleUserAdded = () => {
+    router.refresh(); // Refresh the page to show new user
   };
 
   const handleOpenModal = (user: any) => {
@@ -213,40 +232,40 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
   }
   const stats = [
     {
-      title: 'Session',
-      count: '21,459',
+      title: 'Tổng người dùng',
+      count: totalUsers.toLocaleString(),
       change: '+29%',
-      description: 'Tổng người dùng',
+      description: 'Tổng số người dùng trong hệ thống',
       icon: 'fa fa-user',
-      iconColor: 'text-primary',
-      changeColor: 'text-success'
+      iconColor: 'text-blue-500',
+      changeColor: 'text-green-500'
     },
     {
-      title: 'Paid Users',
-      count: '4,567',
+      title: 'Quản trị viên',
+      count: adminUsers.toLocaleString(),
       change: '+18%',
-      description: 'Last Week Analytics',
+      description: 'Số lượng quản trị viên',
       icon: 'ri-user-add-line',
       iconColor: 'text-red-500',
-      changeColor: 'text-success'
+      changeColor: 'text-green-500'
     },
     {
-      title: 'Active Users',
-      count: '19,860',
+      title: 'Người dùng thường',
+      count: regularUsers.toLocaleString(),
       change: '-14%',
-      description: 'Last Week Analytics',
+      description: 'Số lượng người dùng thường',
       icon: 'ri-user-follow-line',
       iconColor: 'text-green-500',
       changeColor: 'text-red-500'
     },
     {
-      title: 'Pending Users',
-      count: '237',
+      title: 'Người dùng mới',
+      count: recentUsers.toLocaleString(),
       change: '+42%',
-      description: 'Last Week Analytics',
+      description: 'Người dùng đăng ký trong 7 ngày qua',
       icon: 'ri-user-search-line',
       iconColor: 'text-yellow-500',
-      changeColor: 'text-success'
+      changeColor: 'text-green-500'
     }
   ];
   const roles = [
@@ -281,7 +300,28 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
             </div>
           ))}
         </div>
-        <div className='mb-4 mt-5' />
+        {/* Header with Add User Button */}
+        <div className='mb-4 mt-5 flex justify-between items-center'>
+          <h2 className='text-xl font-semibold text-gray-800'>Quản lý người dùng</h2>
+          <MuiButton
+            variant='contained'
+            startIcon={<MdPersonAdd />}
+            onClick={() => setAddUserModalOpen(true)}
+            sx={{
+              backgroundColor: '#3b82f6',
+              '&:hover': { backgroundColor: '#2563eb' },
+              borderRadius: '12px',
+              px: 3,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}
+          >
+            Thêm người dùng
+          </MuiButton>
+        </div>
+
         <div className='h-[600px] w-full'>
           <DataGrid
             rows={rows}
@@ -366,6 +406,9 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
         </AdminModal>
       )}
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
+
+      {/* Add User Modal */}
+      <AddUserModal open={addUserModalOpen} onClose={() => setAddUserModalOpen(false)} onUserAdded={handleUserAdded} />
     </>
   );
 };

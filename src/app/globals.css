@@ -44,6 +44,60 @@
   color: white;
 }
 
+/* Professional AdminSideBar scrollbar - UX/UI Expert Design */
+.admin-sidebar-scrollbar {
+  /* Prevent horizontal overflow */
+  overflow-x: hidden !important;
+  overflow-y: auto;
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-track {
+  background: #f3f4f6; /* gray-100 */
+  border-radius: 2px;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db; /* gray-300 */
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.admin-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af; /* gray-400 */
+}
+
+/* Firefox scrollbar */
+.admin-sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6;
+}
+
+/* Prevent horizontal overflow globally for sidebar */
+.admin-sidebar-container {
+  overflow-x: hidden !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.admin-sidebar-container * {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+}
+
+/* Ensure text doesn't cause overflow */
+.admin-sidebar-text {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+}
+
 /* Custom scrollbar styles for Kanban */
 .scrollbar-thin::-webkit-scrollbar {
   height: 12px;

@@ -3,7 +3,8 @@ import GoogleProvider from 'next-auth/providers/google';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import prisma from '../../../src/app/libs/prismadb';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import bcrypt from 'bcrypt';
+// Dynamic import bcrypt to avoid webpack issues
+const bcrypt = require('bcrypt');
 import { getAdminSessionConfig } from '../../../src/app/libs/auth/getAdminSessionConfig';
 
 // Tạo mật khẩu mặc định
