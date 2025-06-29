@@ -69,7 +69,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Toaster
           toastOptions={{
             style: {
-              background: 'rgb(51 65 85)',
+              background: '#2563eb',
               color: '#fff'
             }
           }}

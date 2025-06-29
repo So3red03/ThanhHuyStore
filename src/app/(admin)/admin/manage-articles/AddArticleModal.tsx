@@ -23,8 +23,7 @@ import {
   Typography,
   IconButton,
   Card,
-  CardContent,
-  Avatar
+  CardContent
 } from '@mui/material';
 import { MdClose, MdArticle, MdImage, MdEdit } from 'react-icons/md';
 
@@ -36,20 +35,30 @@ interface AddArticleModalProps {
   isOpen: boolean;
   toggleOpen: () => void;
   articleCategory: ArticleCategory[];
+  editData?: {
+    id: string;
+    title: string;
+    content: string;
+    image: string;
+    categoryId: string;
+  } | null;
 }
 
-const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, articleCategory }) => {
+const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, articleCategory, editData }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isArticleCreated, setIsArticleCreated] = useState(false);
-  const [articleImage, setArticleImage] = useState<File | null>(null);
+  const [articleImage, setArticleImage] = useState<File | string | null>(null);
   const [text, setText] = useState('');
   const router = useRouter();
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors }
   } = useForm<FieldValues>();
+
+  const isEditMode = !!editData;
 
   // Clear lại sau khi tạo bài viết thành công
   useEffect(() => {
@@ -61,12 +70,32 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
     }
   }, [isArticleCreated, reset]);
 
+  // Populate form khi ở edit mode
+  useEffect(() => {
+    if (editData && isOpen) {
+      setValue('title', editData.title);
+      setValue('categoryId', editData.categoryId);
+      setText(editData.content);
+      setArticleImage(editData.image);
+    } else if (!editData && isOpen) {
+      // Reset form khi ở add mode
+      reset();
+      setText('');
+      setArticleImage(null);
+    }
+  }, [editData, isOpen, setValue, reset]);
+
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
     const handleArticleImageUpload = async () => {
       if (!articleImage) {
         toast.error('Chưa chọn ảnh bài viết');
         return null;
+      }
+
+      // Nếu là string (URL), return luôn (cho edit mode)
+      if (typeof articleImage === 'string') {
+        return articleImage;
       }
 
       toast('Đang thêm bài viết, xin chờ...');
@@ -122,15 +151,19 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
       image: downloadURLImgArticle,
       content: text
     };
-    axios
-      .post('/api/article', articleData)
+
+    const apiCall = isEditMode
+      ? axios.put(`/api/article/${editData?.id}`, articleData)
+      : axios.post('/api/article', articleData);
+
+    apiCall
       .then(() => {
-        toast.success('Thêm bài viết thành công');
+        toast.success(isEditMode ? 'Cập nhật bài viết thành công' : 'Thêm bài viết thành công');
         setIsArticleCreated(true);
         router.refresh();
       })
       .catch(() => {
-        toast.error('Có lỗi khi lưu bài viết');
+        toast.error(isEditMode ? 'Có lỗi khi cập nhật bài viết' : 'Có lỗi khi lưu bài viết');
       })
       .finally(() => {
         setIsLoading(false);
@@ -187,7 +220,7 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
             <MdArticle size={24} />
           </Box>
           <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
-            Thêm Bài Viết Mới
+            {isEditMode ? 'Cập Nhật Bài Viết' : 'Thêm Bài Viết Mới'}
           </Typography>
         </Box>
         <IconButton onClick={toggleOpen} sx={{ color: '#6b7280' }}>
@@ -253,7 +286,7 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                       <Box
                         component='img'
-                        src={URL.createObjectURL(articleImage)}
+                        src={typeof articleImage === 'string' ? articleImage : URL.createObjectURL(articleImage)}
                         alt='Article preview'
                         sx={{
                           width: 120,
@@ -264,7 +297,7 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
                         }}
                       />
                       <Typography variant='body2' sx={{ color: '#6b7280' }}>
-                        {articleImage.name}
+                        {typeof articleImage === 'string' ? 'Ảnh hiện tại' : articleImage.name}
                       </Typography>
                     </Box>
                   ) : (
@@ -333,7 +366,13 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
               ml: 2
             }}
           >
-            {isLoading ? 'Đang tạo...' : 'Tạo bài viết'}
+            {isLoading
+              ? isEditMode
+                ? 'Đang cập nhật...'
+                : 'Đang tạo...'
+              : isEditMode
+              ? 'Cập nhật bài viết'
+              : 'Tạo bài viết'}
           </Button>
         </DialogActions>
       </form>
