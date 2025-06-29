@@ -143,7 +143,6 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
         <Heading title={isEdit ? 'Cập nhật Promotion' : 'Thêm Promotion'} center>
           <></>
         </Heading>
-
         <Input
           id='title'
           label='Tên chiến dịch'
@@ -266,7 +265,6 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
             </label>
           </div>
         )}
-
         <Button
           label={isEdit ? 'Cập nhật khuyến mãi' : 'Tạo khuyến mãi'}
           isLoading={isLoading}

@@ -5,12 +5,38 @@ import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { useCallback, useEffect, useState } from 'react';
 import { getDownloadURL, getStorage, ref, uploadBytesResumable, deleteObject } from 'firebase/storage';
 import firebase from '@/app/libs/firebase';
-import AdminModal from '@/app/components/admin/AdminModal';
-import Button from '@/app/components/Button';
-import Input from '@/app/components/inputs/Input';
-import Heading from '@/app/components/Heading';
-import FormWarp from '@/app/components/FormWrap';
 import { useRouter } from 'next/navigation';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  IconButton,
+  Card,
+  CardContent,
+  Grid,
+  Chip,
+  Switch,
+  FormControlLabel
+} from '@mui/material';
+import {
+  MdClose,
+  MdLocalOffer,
+  MdSave,
+  MdImage,
+  MdPercent,
+  MdAttachMoney,
+  MdCalendarToday,
+  MdShuffle
+} from 'react-icons/md';
 
 interface AddVoucherModalProps {
   isOpen: boolean;
@@ -181,187 +207,323 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
   ];
 
   return (
-    <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-      <FormWarp custom='!pt-1'>
-        <Heading title={isEdit ? 'Cập nhật Voucher' : 'Thêm Voucher'} center>
-          <></>
-        </Heading>
+    <Dialog
+      open={isOpen}
+      onClose={toggleOpen}
+      maxWidth='lg'
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: '16px',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+          maxHeight: '95vh'
+        }
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 2,
+          borderBottom: '1px solid #e5e7eb'
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: '12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <MdLocalOffer size={24} />
+          </Box>
+          <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
+            {isEdit ? 'Cập Nhật Voucher' : 'Thêm Voucher Mới'}
+          </Typography>
+        </Box>
+        <IconButton onClick={toggleOpen} sx={{ color: '#6b7280' }}>
+          <MdClose size={24} />
+        </IconButton>
+      </DialogTitle>
 
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <div className='flex gap-2'>
-            <Input
-              id='code'
-              label='Mã Voucher'
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Basic Info */}
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={8}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                  <TextField
+                    fullWidth
+                    label='Mã Voucher'
+                    {...register('code', { required: 'Vui lòng nhập mã voucher' })}
+                    error={!!errors.code}
+                    helperText={errors.code?.message as string}
+                    disabled={isLoading}
+                    placeholder='VD: SALE50'
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                  />
+                  <Button
+                    variant='outlined'
+                    onClick={generateVoucherCode}
+                    disabled={isLoading}
+                    startIcon={<MdShuffle />}
+                    sx={{
+                      minWidth: 'auto',
+                      height: '56px',
+                      px: 2,
+                      borderColor: '#3b82f6',
+                      color: '#3b82f6',
+                      '&:hover': { borderColor: '#2563eb', backgroundColor: '#eff6ff' },
+                      borderRadius: '12px',
+                      textTransform: 'none',
+                      fontWeight: 600
+                    }}
+                  >
+                    Tạo
+                  </Button>
+                </Box>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Loại Voucher</InputLabel>
+                  <Select
+                    {...register('voucherType', { required: 'Vui lòng chọn loại voucher' })}
+                    label='Loại Voucher'
+                    disabled={isLoading}
+                    error={!!errors.voucherType}
+                    sx={{ borderRadius: '12px' }}
+                  >
+                    {voucherTypeOptions.map(option => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+
+            <TextField
+              fullWidth
+              label='Mô tả'
+              multiline
+              rows={2}
+              {...register('description')}
+              error={!!errors.description}
+              helperText={(errors.description?.message as string) || 'VD: Giảm 50K cho đơn hàng từ 300K'}
               disabled={isLoading}
-              register={register}
-              errors={errors}
-              required
-              placeholder='VD: SALE50'
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
-            <Button label='Tạo mã' small onClick={generateVoucherCode} custom='!h-12 !mt-6 !px-3' />
-          </div>
 
-          <Input
-            id='voucherType'
-            label='Loại Voucher'
-            disabled={isLoading}
-            type='combobox'
-            register={register}
-            errors={errors}
-            options={voucherTypeOptions}
-            required
-          />
-        </div>
-
-        <Input
-          id='description'
-          label='Mô tả'
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          placeholder='VD: Giảm 50K cho đơn hàng từ 300K'
-        />
-
-        <div className='relative w-full p-3 pt-7 outline-none bg-white font-light border-2 rounded-md transition border-slate-300 focus:border-slate-500'>
-          <label className='absolute top-[-0.02rem] text-[16.5px] scale-75 text-slate-400'>Ảnh voucher</label>
-          <div className='flex items-center'>
-            <span className='mr-3 text-sm text-gray-500'>
-              {voucherImage ? (
-                <div className='mt-2'>
-                  {voucherImage instanceof File ? (
-                    <img
-                      src={URL.createObjectURL(voucherImage)}
-                      alt='Voucher preview'
-                      className='mt-2 rounded-md'
-                      style={{ maxWidth: '80px', maxHeight: '80px' }}
-                    />
+            <div className='relative w-full p-3 pt-7 outline-none bg-white font-light border-2 rounded-md transition border-slate-300 focus:border-slate-500'>
+              <label className='absolute top-[-0.02rem] text-[16.5px] scale-75 text-slate-400'>Ảnh voucher</label>
+              <div className='flex items-center'>
+                <span className='mr-3 text-sm text-gray-500'>
+                  {voucherImage ? (
+                    <div className='mt-2'>
+                      {voucherImage instanceof File ? (
+                        <img
+                          src={URL.createObjectURL(voucherImage)}
+                          alt='Voucher preview'
+                          className='mt-2 rounded-md'
+                          style={{ maxWidth: '80px', maxHeight: '80px' }}
+                        />
+                      ) : (
+                        <img
+                          src={voucherImage}
+                          alt='Voucher preview'
+                          className='mt-2 rounded-md'
+                          style={{ maxWidth: '80px', maxHeight: '80px' }}
+                        />
+                      )}
+                    </div>
                   ) : (
-                    <img
-                      src={voucherImage}
-                      alt='Voucher preview'
-                      className='mt-2 rounded-md'
-                      style={{ maxWidth: '80px', maxHeight: '80px' }}
-                    />
+                    'Chưa có file nào được chọn'
                   )}
-                </div>
-              ) : (
-                'Chưa có file nào được chọn'
-              )}
-            </span>
-            <label
-              htmlFor='voucherImage'
-              className='cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition'
-            >
-              {voucherImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
-            </label>
+                </span>
+                <label
+                  htmlFor='voucherImage'
+                  className='cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition'
+                >
+                  {voucherImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
+                </label>
 
-            <input
-              id='voucherImage'
-              type='file'
-              accept='image/*'
-              autoComplete='off'
+                <input
+                  id='voucherImage'
+                  type='file'
+                  accept='image/*'
+                  autoComplete='off'
+                  disabled={isLoading}
+                  onChange={(e: any) => setVoucherImage(e.target.files?.[0] || null)}
+                  className='hidden'
+                />
+              </div>
+            </div>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Loại giảm giá</InputLabel>
+                  <Select
+                    {...register('discountType', { required: 'Vui lòng chọn loại giảm giá' })}
+                    label='Loại giảm giá'
+                    disabled={isLoading}
+                    error={!!errors.discountType}
+                    sx={{ borderRadius: '12px' }}
+                  >
+                    {discountTypeOptions.map(option => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label='Giá trị giảm'
+                  type='number'
+                  {...register('discountValue', { required: 'Vui lòng nhập giá trị giảm' })}
+                  error={!!errors.discountValue}
+                  helperText={errors.discountValue?.message as string}
+                  disabled={isLoading}
+                  placeholder='VD: 50 (cho 50% hoặc 50000 VNĐ)'
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Grid>
+            </Grid>
+
+            <TextField
+              fullWidth
+              label='Giá trị đơn tối thiểu (VNĐ)'
+              type='number'
+              {...register('minOrderValue')}
+              error={!!errors.minOrderValue}
+              helperText={errors.minOrderValue?.message as string}
               disabled={isLoading}
-              onChange={(e: any) => setVoucherImage(e.target.files?.[0] || null)}
-              className='hidden'
+              placeholder='VD: 300000'
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
-          </div>
-        </div>
 
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <Input
-            id='discountType'
-            label='Loại giảm giá'
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label='Số lượng voucher'
+                  type='number'
+                  {...register('quantity', { required: 'Vui lòng nhập số lượng voucher' })}
+                  error={!!errors.quantity}
+                  helperText={errors.quantity?.message as string}
+                  disabled={isLoading}
+                  placeholder='VD: 100'
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label='Số lần dùng/người'
+                  type='number'
+                  {...register('maxUsagePerUser')}
+                  error={!!errors.maxUsagePerUser}
+                  helperText={(errors.maxUsagePerUser?.message as string) || 'VD: 1 (mặc định)'}
+                  disabled={isLoading}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Grid>
+            </Grid>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label='Ngày bắt đầu'
+                  type='datetime-local'
+                  {...register('startDate', { required: 'Vui lòng chọn ngày bắt đầu' })}
+                  error={!!errors.startDate}
+                  helperText={errors.startDate?.message as string}
+                  disabled={isLoading}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label='Ngày kết thúc'
+                  type='datetime-local'
+                  {...register('endDate', { required: 'Vui lòng chọn ngày kết thúc' })}
+                  error={!!errors.endDate}
+                  helperText={errors.endDate?.message as string}
+                  disabled={isLoading}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Grid>
+            </Grid>
+
+            {isEdit && (
+              <div className='flex items-center gap-2'>
+                <input
+                  id='isActive'
+                  type='checkbox'
+                  {...register('isActive')}
+                  disabled={isLoading}
+                  className='w-4 h-4'
+                />
+                <label htmlFor='isActive' className='text-sm'>
+                  Kích hoạt voucher
+                </label>
+              </div>
+            )}
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, borderTop: '1px solid #e5e7eb' }}>
+          <Button
+            onClick={toggleOpen}
             disabled={isLoading}
-            type='combobox'
-            register={register}
-            errors={errors}
-            options={discountTypeOptions}
-            required
-          />
-
-          <Input
-            id='discountValue'
-            label='Giá trị giảm'
+            sx={{
+              color: '#6b7280',
+              borderColor: '#d1d5db',
+              '&:hover': { borderColor: '#9ca3af', backgroundColor: '#f9fafb' },
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3
+            }}
+            variant='outlined'
+          >
+            Hủy
+          </Button>
+          <Button
+            type='submit'
             disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='number'
-            required
-            placeholder='VD: 50 (cho 50% hoặc 50000 VNĐ)'
-          />
-        </div>
-
-        <Input
-          id='minOrderValue'
-          label='Giá trị đơn tối thiểu (VNĐ)'
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          type='number'
-          placeholder='VD: 300000'
-        />
-
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <Input
-            id='quantity'
-            label='Số lượng voucher'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='number'
-            required
-            placeholder='VD: 100'
-          />
-
-          <Input
-            id='maxUsagePerUser'
-            label='Số lần dùng/người'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='number'
-            placeholder='VD: 1 (mặc định)'
-          />
-        </div>
-
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <Input
-            id='startDate'
-            label='Ngày bắt đầu'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='datetime-local'
-            required
-          />
-
-          <Input
-            id='endDate'
-            label='Ngày kết thúc'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='datetime-local'
-            required
-          />
-        </div>
-
-        {isEdit && (
-          <div className='flex items-center gap-2'>
-            <input id='isActive' type='checkbox' {...register('isActive')} disabled={isLoading} className='w-4 h-4' />
-            <label htmlFor='isActive' className='text-sm'>
-              Kích hoạt voucher
-            </label>
-          </div>
-        )}
-
-        <Button
-          label={isEdit ? 'Cập nhật Voucher' : 'Tạo Voucher'}
-          isLoading={isLoading}
-          onClick={handleSubmit(onSubmit)}
-        />
-      </FormWarp>
-    </AdminModal>
+            variant='contained'
+            startIcon={<MdSave />}
+            sx={{
+              backgroundColor: '#3b82f6',
+              '&:hover': { backgroundColor: '#2563eb' },
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3,
+              ml: 2
+            }}
+          >
+            {isLoading ? 'Đang xử lý...' : isEdit ? 'Cập nhật Voucher' : 'Tạo Voucher'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

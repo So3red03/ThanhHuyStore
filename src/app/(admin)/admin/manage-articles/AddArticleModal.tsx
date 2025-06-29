@@ -5,14 +5,28 @@ import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/storage';
 import firebase from '@/app/libs/firebase';
-import AdminModal from '@/app/components/admin/AdminModal';
-import Button from '@/app/components/Button';
-import Input from '@/app/components/inputs/Input';
-import Heading from '@/app/components/Heading';
-import FormWarp from '@/app/components/FormWrap';
 import { useRouter } from 'next/navigation';
 import { Editor } from 'primereact/editor';
 import { ArticleCategory } from '@prisma/client';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  IconButton,
+  Card,
+  CardContent,
+  Avatar
+} from '@mui/material';
+import { MdClose, MdArticle, MdImage, MdEdit } from 'react-icons/md';
 
 export type UploadedBannerType = {
   image: string;
@@ -33,7 +47,6 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
   const {
     register,
     handleSubmit,
-    watch,
     reset,
     formState: { errors }
   } = useForm<FieldValues>();
@@ -134,81 +147,197 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
         value: cate.id // Gửi id khi chọn
       };
     })
-    .filter(option => option !== null); // Loại bỏ giá trị null
+    .filter((option): option is { label: string; value: string } => option !== null); // Loại bỏ giá trị null
 
   return (
-    <>
-      <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-        <FormWarp custom='!pt-1'>
-          <Heading title='Thêm bài viết' center>
-            <></>
-          </Heading>
-          <Input
-            id='title'
-            label='Tên bài viết'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            defaultValue={watch('title')}
-            required
-          />
-          <Editor
-            id='content'
-            value={text}
-            onTextChange={(e: any) => setText(e.htmlValue)}
-            style={{ height: '320px' }}
-            className='bg-white border outline-none peer border-slate-300 rounded-md focus:border-slate-500'
-          />
-          <Input
-            id='categoryId'
-            label='Danh mục'
-            disabled={isLoading}
-            type='combobox'
-            register={register}
-            errors={errors}
-            defaultValue={watch('categoryId')}
-            options={cateOptions}
-            required
-          />
-          <div className='relative w-full p-3 pt-7 outline-none bg-white font-light border-2 rounded-md transition border-slate-300 focus:border-slate-500'>
-            <label className='absolute top-[-0.02rem] text-[16.5px] scale-75 text-slate-400'>Ảnh bài viết</label>
-            <div className='flex items-center'>
-              <span className='mr-3 text-sm text-gray-500'>
-                {articleImage ? (
-                  <div className='mt-2'>
-                    <img
-                      src={URL.createObjectURL(articleImage)}
-                      alt='Banner preview'
-                      className='mt-2 rounded-md'
-                      style={{ maxWidth: '80px', maxHeight: '80px' }}
-                    />
-                  </div>
-                ) : (
-                  'Chưa có file nào được chọn'
-                )}
-              </span>
-              <label
-                htmlFor='image'
-                className=' cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition'
-              >
-                {articleImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
-              </label>
+    <Dialog
+      open={isOpen}
+      onClose={toggleOpen}
+      maxWidth='md'
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: '16px',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+          maxHeight: '95vh'
+        }
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 2,
+          borderBottom: '1px solid #e5e7eb'
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: '12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <MdArticle size={24} />
+          </Box>
+          <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
+            Thêm Bài Viết Mới
+          </Typography>
+        </Box>
+        <IconButton onClick={toggleOpen} sx={{ color: '#6b7280' }}>
+          <MdClose size={24} />
+        </IconButton>
+      </DialogTitle>
 
-              <input
-                id='image'
-                type='file'
-                autoComplete='off'
-                disabled={isLoading}
-                {...register('image')}
-                onChange={(e: any) => setArticleImage(e.target.files?.[0] || null)}
-                className='hidden'
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Title Field */}
+            <TextField
+              fullWidth
+              label='Tên bài viết'
+              {...register('title', { required: 'Vui lòng nhập tên bài viết' })}
+              error={!!errors.title}
+              helperText={errors.title?.message as string}
+              disabled={isLoading}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+            />
+
+            {/* Content Editor */}
+            <Box>
+              <Typography variant='body2' sx={{ mb: 1, color: '#374151', fontWeight: 500 }}>
+                Nội dung bài viết
+              </Typography>
+              <Editor
+                value={text}
+                onTextChange={(e: any) => setText(e.htmlValue)}
+                style={{ height: '320px' }}
+                className='border border-gray-300 rounded-lg'
               />
-            </div>
-          </div>
-          <Button label='Tạo bài viết' isLoading={isLoading} onClick={handleSubmit(onSubmit)} />
-        </FormWarp>
-      </AdminModal>
-    </>
+            </Box>
+
+            {/* Category Field */}
+            <FormControl fullWidth>
+              <InputLabel>Danh mục</InputLabel>
+              <Select
+                {...register('categoryId', { required: 'Vui lòng chọn danh mục' })}
+                label='Danh mục'
+                disabled={isLoading}
+                error={!!errors.categoryId}
+                sx={{ borderRadius: '12px' }}
+              >
+                {cateOptions.map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Image Upload */}
+            <Card sx={{ border: '2px dashed #d1d5db', borderRadius: '12px' }}>
+              <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <MdImage size={48} color='#9ca3af' />
+                  <Typography variant='h6' sx={{ color: '#374151', fontWeight: 600 }}>
+                    Ảnh bài viết
+                  </Typography>
+
+                  {articleImage ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <Box
+                        component='img'
+                        src={URL.createObjectURL(articleImage)}
+                        alt='Article preview'
+                        sx={{
+                          width: 120,
+                          height: 120,
+                          objectFit: 'cover',
+                          borderRadius: '12px',
+                          border: '2px solid #e5e7eb'
+                        }}
+                      />
+                      <Typography variant='body2' sx={{ color: '#6b7280' }}>
+                        {articleImage.name}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Typography variant='body2' sx={{ color: '#6b7280' }}>
+                      Chưa có file nào được chọn
+                    </Typography>
+                  )}
+
+                  <Button
+                    component='label'
+                    variant='contained'
+                    startIcon={<MdImage />}
+                    disabled={isLoading}
+                    sx={{
+                      backgroundColor: '#3b82f6',
+                      '&:hover': { backgroundColor: '#2563eb' },
+                      borderRadius: '12px',
+                      textTransform: 'none',
+                      fontWeight: 600
+                    }}
+                  >
+                    {articleImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
+                    <input
+                      type='file'
+                      hidden
+                      accept='image/*'
+                      {...register('image')}
+                      onChange={(e: any) => setArticleImage(e.target.files?.[0] || null)}
+                    />
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, borderTop: '1px solid #e5e7eb' }}>
+          <Button
+            onClick={toggleOpen}
+            disabled={isLoading}
+            sx={{
+              color: '#6b7280',
+              borderColor: '#d1d5db',
+              '&:hover': { borderColor: '#9ca3af', backgroundColor: '#f9fafb' },
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3
+            }}
+            variant='outlined'
+          >
+            Hủy
+          </Button>
+          <Button
+            type='submit'
+            disabled={isLoading}
+            variant='contained'
+            startIcon={<MdEdit />}
+            sx={{
+              backgroundColor: '#3b82f6',
+              '&:hover': { backgroundColor: '#2563eb' },
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3,
+              ml: 2
+            }}
+          >
+            {isLoading ? 'Đang tạo...' : 'Tạo bài viết'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

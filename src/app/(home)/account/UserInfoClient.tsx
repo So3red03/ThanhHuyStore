@@ -56,7 +56,7 @@ const UserInfoClient: React.FC<UserInfoClientProps> = ({ currentUser }) => {
   // Upload image to Firebase
   const uploadImageToFirebase = async (imageFile: File): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const storage = getStorage();
+      const storage = getStorage(firebase);
       const fileName = new Date().getTime() + '-' + imageFile.name;
       const storageRef = ref(storage, `users/${fileName}`);
       const uploadTask = uploadBytesResumable(storageRef, imageFile);

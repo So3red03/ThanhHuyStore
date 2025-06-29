@@ -29,8 +29,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ isOpen, handleClose, children, 
       slotProps={{
         backdrop: {
           sx: {
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(4px)'
+            backgroundColor: 'rgba(0, 0, 0, 0.5)'
           }
         }
       }}
