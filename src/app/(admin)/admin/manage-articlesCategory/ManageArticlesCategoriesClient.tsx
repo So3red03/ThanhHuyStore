@@ -1,6 +1,5 @@
 'use client';
 
-import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { ArticleCategory } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { MdAdd, MdDelete, MdEdit } from 'react-icons/md';
@@ -13,17 +12,10 @@ import ActionBtn from '@/app/components/ActionBtn';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import Status from '@/app/components/Status';
-import firebase from '../../../libs/firebase';
-import AdminModal from '@/app/components/admin/AdminModal';
-import FormWarp from '@/app/components/FormWrap';
-import Heading from '@/app/components/Heading';
-import Input from '@/app/components/inputs/Input';
-import Button from '@/app/components/Button';
 import 'moment/locale/vi';
 import NullData from '@/app/components/NullData';
 import { formatDateNoTime } from '@/app/(home)/account/orders/OrdersClient';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
-import { generateSlug } from '../../../../../utils/Articles';
 
 const formatDateToInput = (date: Date | string) => {
   const d = new Date(date);
@@ -43,43 +35,30 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
   categoriesData
 }) => {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
   const [isDelete, setIsDelete] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setselectedCategory] = useState<ArticleCategory | null>(null);
   const [addArticleCategoryModalOpen, setAddArticleCategoryModalOpen] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    getValues,
-    formState: { errors }
-  } = useForm<FieldValues>();
-
-  // Hàm cập nhật giá trị id, value: label
-  const setCustomValue = (id: string, value: any) => {
-    setValue(id, value, {
-      shouldValidate: true,
-      shouldDirty: true,
-      shouldTouch: true
-    });
-  };
-
-  const toggleOpen = () => {
-    setIsOpen(!isOpen);
-  };
+  const [editCategoryData, setEditCategoryData] = useState<any>(null);
 
   const toggleDelete = () => {
     setIsDelete(!isDelete);
   };
 
-  const handleOpenModal = (product: any) => {
-    setselectedCategory(product);
-    const fieldsToSet = ['id', 'name', 'slug', 'icon', 'description', 'isActive'];
-    fieldsToSet.forEach(field => setCustomValue(field, product[field]));
-    toggleOpen();
+  const handleOpenModal = (category: any) => {
+    setselectedCategory(category);
+
+    // Prepare edit data for AddArticleCateModal
+    const editData = {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      icon: category.icon,
+      description: category.description,
+      isActive: category.isActive
+    };
+
+    setEditCategoryData(editData);
+    setAddArticleCategoryModalOpen(true);
   };
 
   let rows: any = [];
@@ -178,6 +157,8 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
       });
   };
 
+  // TODO: Remove unused code
+  /*
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
     await axios
@@ -200,12 +181,6 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
       });
   };
 
-  useEffect(() => {
-    if (!currentUser || currentUser.role !== 'ADMIN') {
-      router.push('/login');
-    }
-  }, [currentUser, router]);
-
   const handleSlugUpdate = () => {
     const nameValue = getValues('name'); // Lấy giá trị của input "name"
     if (nameValue) {
@@ -213,6 +188,13 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
       setValue('slug', generatedSlug); // Cập nhật giá trị trong form
     }
   };
+  */
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      router.push('/login');
+    }
+  }, [currentUser, router]);
 
   if (!currentUser || currentUser.role !== 'ADMIN') {
     return <NullData title='Từ chối đăng nhập' />;
@@ -285,79 +267,17 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
           />
         </div>
       </div>
-      {/* Modal cập nhật sản phẩm  */}
-      {isOpen && (
-        <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-          <FormWarp custom='!pt-8'>
-            <Heading title='Cập nhật danh mục' center>
-              <></>
-            </Heading>
-            <Input
-              id='name'
-              label='Tên danh mục'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.name}
-              required
-            />
-            <div className='flex justify-center items-center w-full gap-2'>
-              <Input
-                id='slug'
-                label='Slug'
-                disabled={isLoading}
-                register={register}
-                errors={errors}
-                defaultValue={selectedCategory?.slug}
-                required
-              />
-              <Button
-                label='Đổi'
-                small
-                custom='!gap-1 !w-auto !h-full !text-xs lg:!text-base'
-                icon={MdAdd}
-                onClick={() => handleSlugUpdate()}
-              />
-            </div>
-            <Input
-              id='icon'
-              label='Icon'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.icon}
-              required
-            />
-            <Input
-              id='description'
-              label='Mô tả'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.description}
-              required
-            />
-            {/* <Input
-							id="isActive"
-							label="Trạng thái"
-							disabled={isLoading}
-							type="combobox"
-							register={register}
-							errors={errors}
-							defaultValue={selectedCategory?.isActive}
-							options={['Hoạt động', 'Tạm dừng']}
-							required
-						/> */}
-            <Button label='Lưu danh mục' onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
-          </FormWarp>
-        </AdminModal>
-      )}
+
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
 
-      {/* Add Article Category Modal */}
+      {/* Add/Edit Article Category Modal */}
       <AddArticleCateModal
         isOpen={addArticleCategoryModalOpen}
-        toggleOpen={() => setAddArticleCategoryModalOpen(false)}
+        toggleOpen={() => {
+          setAddArticleCategoryModalOpen(false);
+          setEditCategoryData(null);
+        }}
+        editData={editCategoryData}
       />
     </>
   );

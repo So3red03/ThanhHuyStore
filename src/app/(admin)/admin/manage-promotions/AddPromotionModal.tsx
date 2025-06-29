@@ -2,21 +2,37 @@
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
-import { useCallback, useEffect, useState } from 'react';
-import AdminModal from '@/app/components/admin/AdminModal';
-import Button from '@/app/components/Button';
-import Input from '@/app/components/inputs/Input';
-import Heading from '@/app/components/Heading';
-import FormWarp from '@/app/components/FormWrap';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  IconButton,
+  Card,
+  CardContent,
+  Grid,
+  Chip,
+  Switch,
+  FormControlLabel
+} from '@mui/material';
+import { MdClose, MdLocalOffer, MdSave, MdPercent, MdAttachMoney, MdCalendarToday } from 'react-icons/md';
 
 interface AddPromotionModalProps {
   isOpen: boolean;
   toggleOpen: () => void;
   products: any[];
   categories: any[];
-  promotion?: any;
-  isEdit?: boolean;
+  editData?: any;
 }
 
 const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
@@ -24,14 +40,15 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   toggleOpen,
   products,
   categories,
-  promotion,
-  isEdit = false
+  editData
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isPromotionCreated, setIsPromotionCreated] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const router = useRouter();
+
+  const isEditMode = !!editData;
 
   const {
     register,
@@ -41,19 +58,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     reset,
     formState: { errors }
   } = useForm<FieldValues>({
-    defaultValues:
-      isEdit && promotion
-        ? {
-            title: promotion.title,
-            description: promotion.description,
-            discountType: promotion.discountType,
-            discountValue: promotion.discountValue,
-            startDate: promotion.startDate ? new Date(promotion.startDate).toISOString().slice(0, 16) : '',
-            endDate: promotion.endDate ? new Date(promotion.endDate).toISOString().slice(0, 16) : '',
-            applyToAll: promotion.applyToAll,
-            isActive: promotion.isActive
-          }
-        : {}
+    defaultValues: {}
   });
 
   // Clear form sau khi tạo thành công
@@ -66,13 +71,28 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     }
   }, [isPromotionCreated, reset]);
 
-  // Load existing data for edit
+  // Populate form khi ở edit mode
   useEffect(() => {
-    if (isEdit && promotion) {
-      setSelectedProducts(promotion.productIds || []);
-      setSelectedCategories(promotion.categoryIds || []);
+    if (editData && isOpen) {
+      reset({
+        title: editData.title,
+        description: editData.description,
+        discountType: editData.discountType,
+        discountValue: editData.discountValue,
+        startDate: editData.startDate ? new Date(editData.startDate).toISOString().slice(0, 16) : '',
+        endDate: editData.endDate ? new Date(editData.endDate).toISOString().slice(0, 16) : '',
+        applyToAll: editData.applyToAll,
+        isActive: editData.isActive
+      });
+      setSelectedProducts(editData.productIds || []);
+      setSelectedCategories(editData.categoryIds || []);
+    } else if (!editData && isOpen) {
+      // Reset form khi ở add mode
+      reset({});
+      setSelectedProducts([]);
+      setSelectedCategories([]);
     }
-  }, [isEdit, promotion]);
+  }, [editData, isOpen, reset]);
 
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
@@ -89,8 +109,8 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
         categoryIds: data.applyToAll ? [] : selectedCategories
       };
 
-      if (isEdit && promotion) {
-        await axios.put(`/api/promotion/${promotion.id}`, promotionData);
+      if (isEditMode && editData) {
+        await axios.put(`/api/promotion/${editData.id}`, promotionData);
         toast.success('Cập nhật promotion thành công');
       } else {
         await axios.post('/api/promotion', promotionData);
@@ -138,140 +158,282 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   const applyToAll = watch('applyToAll');
 
   return (
-    <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-      <FormWarp custom='!pt-1'>
-        <Heading title={isEdit ? 'Cập nhật Promotion' : 'Thêm Promotion'} center>
-          <></>
-        </Heading>
-        <Input
-          id='title'
-          label='Tên chiến dịch'
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          required
-          placeholder='VD: Black Friday 2024'
-        />
+    <Dialog
+      open={isOpen}
+      onClose={toggleOpen}
+      maxWidth='md'
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: '16px',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+          maxHeight: '95vh'
+        }
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 2,
+          borderBottom: '1px solid #e5e7eb'
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: '12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <MdLocalOffer size={24} />
+          </Box>
+          <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
+            {isEditMode ? 'Cập Nhật Promotion' : 'Thêm Promotion Mới'}
+          </Typography>
+        </Box>
+        <IconButton onClick={toggleOpen} sx={{ color: '#6b7280' }}>
+          <MdClose size={24} />
+        </IconButton>
+      </DialogTitle>
 
-        <Input
-          id='description'
-          label='Mô tả'
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          placeholder='VD: Giảm giá sốc cuối năm'
-        />
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Title Field */}
+            <TextField
+              fullWidth
+              label='Tên chiến dịch'
+              placeholder='VD: Black Friday 2024'
+              disabled={isLoading}
+              error={!!errors.title}
+              helperText={errors.title?.message as string}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              {...register('title', { required: 'Tên chiến dịch là bắt buộc' })}
+            />
 
-        <div className='w-full grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <Input
-            id='discountType'
-            label='Loại giảm giá'
-            disabled={isLoading}
-            type='combobox'
-            register={register}
-            errors={errors}
-            options={discountTypeOptions}
-            required
-          />
+            {/* Description Field */}
+            <TextField
+              fullWidth
+              label='Mô tả'
+              placeholder='VD: Giảm giá sốc cuối năm'
+              disabled={isLoading}
+              error={!!errors.description}
+              helperText={errors.description?.message as string}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              {...register('description')}
+            />
 
-          <Input
-            id='discountValue'
-            label='Giá trị giảm'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='number'
-            required
-            placeholder='VD: 20 (cho 20% hoặc 20000 VNĐ)'
-          />
-        </div>
+            {/* Discount Type and Value */}
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth error={!!errors.discountType}>
+                  <InputLabel>Loại giảm giá</InputLabel>
+                  <Select
+                    label='Loại giảm giá'
+                    disabled={isLoading}
+                    sx={{ borderRadius: '12px' }}
+                    {...register('discountType', { required: 'Loại giảm giá là bắt buộc' })}
+                  >
+                    {discountTypeOptions.map(option => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {errors.discountType && (
+                    <Typography variant='caption' color='error' sx={{ mt: 1 }}>
+                      {errors.discountType.message as string}
+                    </Typography>
+                  )}
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label='Giá trị giảm'
+                  type='number'
+                  placeholder='VD: 20 (cho 20% hoặc 20000 VNĐ)'
+                  disabled={isLoading}
+                  error={!!errors.discountValue}
+                  helperText={errors.discountValue?.message as string}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                  {...register('discountValue', { required: 'Giá trị giảm là bắt buộc' })}
+                />
+              </Grid>
+            </Grid>
 
-        <div className='w-full grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <Input
-            id='startDate'
-            label='Ngày bắt đầu'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='datetime-local'
-            required
-          />
+            {/* Date Range */}
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label='Ngày bắt đầu'
+                  type='datetime-local'
+                  disabled={isLoading}
+                  error={!!errors.startDate}
+                  helperText={errors.startDate?.message as string}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                  InputLabelProps={{ shrink: true }}
+                  {...register('startDate', { required: 'Ngày bắt đầu là bắt buộc' })}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label='Ngày kết thúc'
+                  type='datetime-local'
+                  disabled={isLoading}
+                  error={!!errors.endDate}
+                  helperText={errors.endDate?.message as string}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                  InputLabelProps={{ shrink: true }}
+                  {...register('endDate', { required: 'Ngày kết thúc là bắt buộc' })}
+                />
+              </Grid>
+            </Grid>
 
-          <Input
-            id='endDate'
-            label='Ngày kết thúc'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type='datetime-local'
-            required
-          />
-        </div>
+            {/* Apply to All Switch */}
+            <Card sx={{ p: 2, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <FormControlLabel
+                control={<Switch disabled={isLoading} {...register('applyToAll')} />}
+                label='Áp dụng cho toàn bộ website'
+                sx={{ '& .MuiFormControlLabel-label': { fontWeight: 500 } }}
+              />
+            </Card>
 
-        <div className='w-full flex items-center gap-2 mb-4'>
-          <input id='applyToAll' type='checkbox' {...register('applyToAll')} disabled={isLoading} className='w-4 h-4' />
-          <label htmlFor='applyToAll' className='text-sm'>
-            Áp dụng cho toàn bộ website
-          </label>
-        </div>
-
-        {!applyToAll && (
-          <>
-            <div className='mb-4 w-full'>
-              <label className='block text-sm font-medium mb-2'>
-                Chọn sản phẩm ({selectedProducts.length} đã chọn)
-              </label>
-              <div className='max-h-40 overflow-y-auto border rounded p-2'>
-                {products?.map(product => (
-                  <div key={product.id} className='flex items-center gap-2 p-1'>
-                    <input
-                      type='checkbox'
-                      checked={selectedProducts.includes(product.id)}
-                      onChange={() => handleProductSelect(product.id)}
-                      className='w-4 h-4'
+            {!applyToAll && (
+              <>
+                {/* Product Selection */}
+                <Card sx={{ p: 3, border: '1px solid #e2e8f0' }}>
+                  <Typography variant='h6' sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    Chọn sản phẩm
+                    <Chip
+                      label={`${selectedProducts.length} đã chọn`}
+                      size='small'
+                      color='primary'
+                      variant='outlined'
                     />
-                    <span className='text-sm'>{product.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  </Typography>
+                  <Box
+                    sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', p: 1 }}
+                  >
+                    {products?.map(product => (
+                      <FormControlLabel
+                        key={product.id}
+                        control={
+                          <input
+                            type='checkbox'
+                            checked={selectedProducts.includes(product.id)}
+                            onChange={() => handleProductSelect(product.id)}
+                            style={{ marginRight: 8 }}
+                          />
+                        }
+                        label={product.name}
+                        sx={{
+                          display: 'flex',
+                          width: '100%',
+                          m: 0,
+                          p: 0.5,
+                          '&:hover': { backgroundColor: '#f8fafc' }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Card>
 
-            <div className='mb-4 w-full'>
-              <label className='block text-sm font-medium mb-2'>
-                Chọn danh mục ({selectedCategories.length} đã chọn)
-              </label>
-              <div className='max-h-40 overflow-y-auto border rounded p-2'>
-                {categories.map(category => (
-                  <div key={category.id} className='flex items-center gap-2 p-1'>
-                    <input
-                      type='checkbox'
-                      checked={selectedCategories.includes(category.id)}
-                      onChange={() => handleCategorySelect(category.id)}
-                      className='w-4 h-4'
+                {/* Category Selection */}
+                <Card sx={{ p: 3, border: '1px solid #e2e8f0' }}>
+                  <Typography variant='h6' sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    Chọn danh mục
+                    <Chip
+                      label={`${selectedCategories.length} đã chọn`}
+                      size='small'
+                      color='primary'
+                      variant='outlined'
                     />
-                    <span className='text-sm'>{category.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
+                  </Typography>
+                  <Box
+                    sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', p: 1 }}
+                  >
+                    {categories?.map(category => (
+                      <FormControlLabel
+                        key={category.id}
+                        control={
+                          <input
+                            type='checkbox'
+                            checked={selectedCategories.includes(category.id)}
+                            onChange={() => handleCategorySelect(category.id)}
+                            style={{ marginRight: 8 }}
+                          />
+                        }
+                        label={category.name}
+                        sx={{
+                          display: 'flex',
+                          width: '100%',
+                          m: 0,
+                          p: 0.5,
+                          '&:hover': { backgroundColor: '#f8fafc' }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Card>
+              </>
+            )}
 
-        {isEdit && (
-          <div className='flex items-center gap-2'>
-            <input id='isActive' type='checkbox' {...register('isActive')} disabled={isLoading} className='w-4 h-4' />
-            <label htmlFor='isActive' className='text-sm'>
-              Kích hoạt promotion
-            </label>
-          </div>
-        )}
-        <Button
-          label={isEdit ? 'Cập nhật khuyến mãi' : 'Tạo khuyến mãi'}
-          isLoading={isLoading}
-          onClick={handleSubmit(onSubmit)}
-        />
-      </FormWarp>
-    </AdminModal>
+            {/* Active Status for Edit Mode */}
+            {isEditMode && (
+              <Card sx={{ p: 2, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <FormControlLabel
+                  control={<Switch disabled={isLoading} {...register('isActive')} />}
+                  label='Kích hoạt promotion'
+                  sx={{ '& .MuiFormControlLabel-label': { fontWeight: 500 } }}
+                />
+              </Card>
+            )}
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, borderTop: '1px solid #e5e7eb' }}>
+          <Button
+            onClick={toggleOpen}
+            variant='outlined'
+            sx={{
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3
+            }}
+          >
+            Hủy
+          </Button>
+          <Button
+            type='submit'
+            variant='contained'
+            disabled={isLoading}
+            startIcon={<MdSave />}
+            sx={{
+              backgroundColor: '#3b82f6',
+              '&:hover': { backgroundColor: '#2563eb' },
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3,
+              ml: 2
+            }}
+          >
+            {isLoading ? 'Đang xử lý...' : isEditMode ? 'Cập nhật Promotion' : 'Tạo Promotion'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

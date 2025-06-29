@@ -34,11 +34,10 @@ const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = 
   subCategories
 }) => {
   const router = useRouter();
+  // TODO: Remove unused code
+  /*
   const [isOpen, setIsOpen] = useState(false);
-  const [isDelete, setIsDelete] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [addChildCategoryModalOpen, setAddChildCategoryModalOpen] = useState(false);
 
   const {
     register,
@@ -60,6 +59,12 @@ const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = 
   const toggleOpen = () => {
     setIsOpen(!isOpen);
   };
+  */
+
+  const [isDelete, setIsDelete] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [addChildCategoryModalOpen, setAddChildCategoryModalOpen] = useState(false);
+  const [editChildCategoryData, setEditChildCategoryData] = useState<any>(null);
 
   const toggleDelete = () => {
     setIsDelete(!isDelete);
@@ -67,9 +72,18 @@ const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = 
 
   const handleOpenModal = (category: any) => {
     setSelectedCategory(category);
-    const fieldsToSet = ['id', 'name', 'slug', 'parentId'];
-    fieldsToSet.forEach(field => setCustomValue(field, category[field]));
-    toggleOpen();
+
+    // Prepare edit data for AddProductChildCateModal
+    const editData = {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      description: category.description || '',
+      parentId: category.parentId
+    };
+
+    setEditChildCategoryData(editData);
+    setAddChildCategoryModalOpen(true);
   };
 
   const cateOptions = parentCategories.map((cate: any) => ({
@@ -147,6 +161,8 @@ const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = 
       });
   };
 
+  // TODO: Remove unused code
+  /*
   const onSubmit: SubmitHandler<FieldValues> = data => {
     console.log(data);
     setIsLoading(true);
@@ -168,6 +184,7 @@ const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = 
         toggleOpen();
       });
   };
+  */
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'ADMIN') {
@@ -247,53 +264,18 @@ const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = 
           />
         </div>
       </div>
-      {/* Modal cập nhật sản phẩm  */}
-      {isOpen && (
-        <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-          <FormWarp custom='!pt-8'>
-            <Heading title='Cập nhật danh mục' center>
-              <></>
-            </Heading>
-            <Input
-              id='name'
-              label='Tên danh mục con'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.name}
-              required
-            />
-            <Input
-              id='slug'
-              label='Slug'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.slug}
-              required
-            />
-            <Input
-              id='parentId'
-              label='Danh mục cha'
-              disabled={isLoading}
-              type='combobox'
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.parentId} // Truyền label (hoặc name) của danh mục
-              options={cateOptions} // Danh sách các danh mục
-              required
-            />
-            <Button label='Lưu bài viết' onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
-          </FormWarp>
-        </AdminModal>
-      )}
+
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
 
-      {/* Add Child Category Modal */}
+      {/* Add/Edit Child Category Modal */}
       <AddProductChildCateModal
         isOpen={addChildCategoryModalOpen}
-        toggleOpen={() => setAddChildCategoryModalOpen(false)}
+        toggleOpen={() => {
+          setAddChildCategoryModalOpen(false);
+          setEditChildCategoryData(null);
+        }}
         parentCategory={parentCategories}
+        editData={editChildCategoryData}
       />
     </>
   );

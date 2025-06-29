@@ -34,7 +34,7 @@ const ManagePromotionsClient: React.FC<ManagePromotionsClientProps> = ({
   const [selectedPromotion, setSelectedPromotion] = useState<any>(null);
   const [isDelete, setIsDelete] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editPromotionData, setEditPromotionData] = useState<any>(null);
 
   // Enhanced search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,13 +50,19 @@ const ManagePromotionsClient: React.FC<ManagePromotionsClientProps> = ({
     setIsAddModalOpen(!isAddModalOpen);
   };
 
+  // TODO: Remove unused code
+  /*
   const toggleEditModal = () => {
     setIsEditModalOpen(!isEditModalOpen);
   };
+  */
 
   const handleOpenEditModal = (promotion: any) => {
     setSelectedPromotion(promotion);
-    toggleEditModal();
+
+    // Prepare edit data for AddPromotionModal
+    setEditPromotionData(promotion);
+    setIsAddModalOpen(true);
   };
 
   const handleDelete = async () => {
@@ -556,21 +562,14 @@ const ManagePromotionsClient: React.FC<ManagePromotionsClientProps> = ({
 
       <AddPromotionModal
         isOpen={isAddModalOpen}
-        toggleOpen={toggleAddModal}
+        toggleOpen={() => {
+          toggleAddModal();
+          setEditPromotionData(null);
+        }}
         products={products}
         categories={categories}
+        editData={editPromotionData}
       />
-
-      {selectedPromotion && (
-        <AddPromotionModal
-          isOpen={isEditModalOpen}
-          toggleOpen={toggleEditModal}
-          products={products}
-          categories={categories}
-          promotion={selectedPromotion}
-          isEdit={true}
-        />
-      )}
     </div>
   );
 };

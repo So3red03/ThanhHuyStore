@@ -38,13 +38,12 @@ interface ManageCategoriesClientProps {
 const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categories, currentUser }) => {
   const Icons = { ...SlIcons, ...AiIcons, ...MdIcons, ...TbIcons };
   const router = useRouter();
+  // TODO: Remove unused code
+  /*
   const storage = getStorage(firebase);
   const [isOpen, setIsOpen] = useState(false);
-  const [isDelete, setIsDelete] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [image, setImage] = useState<File | string | null>(null);
-  const [addCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
 
   const {
     register,
@@ -66,6 +65,12 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
   const toggleOpen = () => {
     setIsOpen(!isOpen);
   };
+  */
+
+  const [isDelete, setIsDelete] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [addCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
+  const [editCategoryData, setEditCategoryData] = useState<any>(null);
 
   const toggleDelete = () => {
     setIsDelete(!isDelete);
@@ -73,9 +78,18 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
 
   const handleOpenModal = (category: any) => {
     setSelectedCategory(category);
-    const fieldsToSet = ['id', 'name', 'slug', 'icon', 'image'];
-    fieldsToSet.forEach(field => setCustomValue(field, category[field]));
-    toggleOpen();
+
+    // Prepare edit data for AddProductCateModal
+    const editData = {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      description: category.description,
+      image: category.image
+    };
+
+    setEditCategoryData(editData);
+    setAddCategoryModalOpen(true);
   };
 
   let rows: any = [];
@@ -133,7 +147,6 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
               icon={MdEdit}
               onClick={() => {
                 handleOpenModal(params.row);
-                setImage(params.row.image);
               }}
             />
             <ActionBtn
@@ -152,11 +165,20 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
   // Xác nhận xóa
   const handleConfirmDelete = async () => {
     if (selectedCategory) {
-      await handleDelete(selectedCategory.id, selectedCategory.image);
+      toast('Đang xóa danh mục, xin chờ...');
+      try {
+        await axios.delete(`/api/category/${selectedCategory.id}`);
+        toast.success('Xóa danh mục thành công');
+        router.refresh();
+      } catch (error) {
+        toast.error('Có lỗi xảy ra khi xóa danh mục');
+      }
     }
     toggleDelete();
   };
 
+  // TODO: Remove unused code
+  /*
   const handleDelete = async (id: string, image: any) => {
     toast('Đang xóa danh mục, xin chờ...');
     const handleImageDelete = async () => {
@@ -275,6 +297,7 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
       throw error;
     }
   };
+  */
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'ADMIN') {
@@ -353,103 +376,18 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
           />
         </div>
       </div>
-      {/* Modal cập nhật sản phẩm  */}
-      {isOpen && (
-        <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-          <FormWarp custom='!pt-8'>
-            <Heading title='Cập nhật danh mục' center>
-              <></>
-            </Heading>
-            <Input
-              id='name'
-              label='Tên danh mục'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.name}
-              required
-            />
-            <Input
-              id='slug'
-              label='Slug'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.slug}
-              required
-            />
-            <Input
-              id='icon'
-              label='Icon'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.icon}
-              required
-            />
-            <Input
-              id='description'
-              label='Mô tả'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedCategory?.description}
-              required
-            />
 
-            <div className='relative w-full p-3 pt-7 outline-none bg-white font-light border-2 rounded-md transition border-slate-300 focus:border-slate-500'>
-              <label className='absolute top-[-0.02rem] text-[16.5px] scale-75 text-slate-400'>Ảnh bài viết</label>
-              <div className='flex items-center'>
-                <span className='mr-3 text-sm text-gray-500'>
-                  {image ? (
-                    <div className='mt-2'>
-                      {image instanceof File ? (
-                        <img
-                          src={URL.createObjectURL(image)}
-                          alt='Banner preview'
-                          className='mt-2 rounded-md'
-                          style={{ maxWidth: '80px', maxHeight: '80px' }}
-                        />
-                      ) : (
-                        <img
-                          src={image} // Nếu image là URL thì sử dụng trực tiếp
-                          alt='Banner preview'
-                          className='mt-2 rounded-md'
-                          style={{ maxWidth: '80px', maxHeight: '80px' }}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    'Chưa có file nào được chọn'
-                  )}
-                </span>
-                <label
-                  htmlFor='image'
-                  className='cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition'
-                >
-                  {image ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
-                </label>
-
-                <input
-                  id='image'
-                  type='file'
-                  autoComplete='off'
-                  disabled={isLoading}
-                  {...register('image')}
-                  onChange={(e: any) => setImage(e.target.files?.[0] || null)}
-                  className='hidden'
-                />
-              </div>
-            </div>
-
-            <Button label='Lưu bài viết' onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
-          </FormWarp>
-        </AdminModal>
-      )}
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
 
-      {/* Add Category Modal */}
-      <AddProductCateModal isOpen={addCategoryModalOpen} toggleOpen={() => setAddCategoryModalOpen(false)} />
+      {/* Add/Edit Category Modal */}
+      <AddProductCateModal
+        isOpen={addCategoryModalOpen}
+        toggleOpen={() => {
+          setAddCategoryModalOpen(false);
+          setEditCategoryData(null);
+        }}
+        editData={editCategoryData}
+      />
     </>
   );
 };

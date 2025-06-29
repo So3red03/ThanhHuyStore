@@ -28,7 +28,7 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
   const [isDelete, setIsDelete] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editVoucherData, setEditVoucherData] = useState<any>(null);
 
   // Enhanced search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,13 +45,19 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
     setIsAddModalOpen(!isAddModalOpen);
   };
 
+  // TODO: Remove unused code
+  /*
   const toggleEditModal = () => {
     setIsEditModalOpen(!isEditModalOpen);
   };
+  */
 
   const handleOpenEditModal = (voucher: any) => {
     setSelectedVoucher(voucher);
-    toggleEditModal();
+
+    // Prepare edit data for AddVoucherModal
+    setEditVoucherData(voucher);
+    setIsAddModalOpen(true);
   };
 
   const handleDelete = async () => {
@@ -600,17 +606,15 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
         {`Bạn có chắc chắn muốn xóa voucher "${selectedVoucher?.code}"? Hành động này không thể hoàn tác.`}
       </ConfirmDialog>
 
-      <AddVoucherModal isOpen={isAddModalOpen} toggleOpen={toggleAddModal} users={users} />
-
-      {selectedVoucher && (
-        <AddVoucherModal
-          isOpen={isEditModalOpen}
-          toggleOpen={toggleEditModal}
-          users={users}
-          voucher={selectedVoucher}
-          isEdit={true}
-        />
-      )}
+      <AddVoucherModal
+        isOpen={isAddModalOpen}
+        toggleOpen={() => {
+          toggleAddModal();
+          setEditVoucherData(null);
+        }}
+        users={users}
+        editData={editVoucherData}
+      />
     </div>
   );
 };

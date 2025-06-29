@@ -41,14 +41,13 @@ interface ManageBannerProps {
 
 const ManageBanner: React.FC<ManageBannerProps> = ({ currentUser, bannerData }) => {
   const router = useRouter();
+  // TODO: Remove unused code
+  /*
   const storage = getStorage(firebase);
   const [isOpen, setIsOpen] = useState(false);
-  const [isDelete, setIsDelete] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedBanner, setselectedBanner] = useState<Banner | null>(null);
   const [bannerImage, setBannerImage] = useState<File | string | null>(null);
   const [bannerResImage, setBannerResImage] = useState<File | string | null>(null);
-  const [addBannerModalOpen, setAddBannerModalOpen] = useState(false);
 
   const {
     register,
@@ -81,24 +80,46 @@ const ManageBanner: React.FC<ManageBannerProps> = ({ currentUser, bannerData }) 
   const toggleOpen = () => {
     setIsOpen(!isOpen);
   };
+  */
+
+  const [isDelete, setIsDelete] = useState(false);
+  const [selectedBanner, setselectedBanner] = useState<Banner | null>(null);
+  const [addBannerModalOpen, setAddBannerModalOpen] = useState(false);
+  const [editBannerData, setEditBannerData] = useState<any>(null);
 
   const toggleDelete = () => {
     setIsDelete(!isDelete);
   };
 
-  const handleOpenModal = (product: any) => {
-    setselectedBanner(product);
-    const fieldsToSet = ['id', 'name', 'description', 'status', 'image', 'imageResponsive'];
-    fieldsToSet.forEach(field => setCustomValue(field, product[field]));
-    toggleOpen();
+  const handleOpenModal = (banner: any) => {
+    setselectedBanner(banner);
+
+    // Prepare edit data for AddBannerModal
+    const editData = {
+      id: banner.id,
+      title: banner.name,
+      description: banner.description,
+      link: banner.link || '',
+      image: banner.image,
+      resImage: banner.imageResponsive,
+      startDate: formatDateToInput(banner.startDate),
+      endDate: formatDateToInput(banner.endDate),
+      isActive: banner.status === 'active'
+    };
+
+    setEditBannerData(editData);
+    setAddBannerModalOpen(true);
   };
 
+  // TODO: Remove unused code
+  /*
   useEffect(() => {
     if (selectedBanner) {
       setCustomValue('startDate', formatDateToInput(selectedBanner.startDate));
       setCustomValue('endDate', formatDateToInput(selectedBanner.endDate));
     }
   }, [selectedBanner]);
+  */
 
   let rows: any = [];
   if (bannerData) {
@@ -182,8 +203,6 @@ const ManageBanner: React.FC<ManageBannerProps> = ({ currentUser, bannerData }) 
               icon={MdEdit}
               onClick={() => {
                 handleOpenModal(params.row);
-                setBannerImage(params.row.image);
-                setBannerResImage(params.row.imageResponsive);
               }}
             />
             <ActionBtn
@@ -199,6 +218,8 @@ const ManageBanner: React.FC<ManageBannerProps> = ({ currentUser, bannerData }) 
     }
   ];
 
+  // TODO: Remove unused code
+  /*
   // Xác nhận xóa
   const handleConfirmDelete = async () => {
     if (selectedBanner) {
@@ -207,7 +228,10 @@ const ManageBanner: React.FC<ManageBannerProps> = ({ currentUser, bannerData }) 
     }
     toggleDelete();
   };
+  */
 
+  // TODO: Remove unused code
+  /*
   const handleDelete = async (id: string, images: any[]) => {
     toast('Đang xóa sản phẩm, xin chờ...');
     const handleImageDelete = async () => {
@@ -255,6 +279,22 @@ const ManageBanner: React.FC<ManageBannerProps> = ({ currentUser, bannerData }) 
         setIsLoading(false);
         toggleOpen();
       });
+  };
+  */
+
+  // Xác nhận xóa
+  const handleConfirmDelete = async () => {
+    if (selectedBanner) {
+      toast('Đang xóa banner, xin chờ...');
+      try {
+        await axios.delete(`/api/banner/${selectedBanner.id}`);
+        toast.success('Xóa banner thành công');
+        router.refresh();
+      } catch (error) {
+        toast.error('Có lỗi xảy ra khi xóa banner');
+      }
+    }
+    toggleDelete();
   };
 
   useEffect(() => {
@@ -334,149 +374,18 @@ const ManageBanner: React.FC<ManageBannerProps> = ({ currentUser, bannerData }) 
           />
         </div>
       </div>
-      {/* Modal cập nhật sản phẩm  */}
-      {isOpen && (
-        <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-          <FormWarp custom='!pt-8'>
-            <Heading title='Cập nhật Banner' center>
-              <></>
-            </Heading>
-            <Input
-              id='name'
-              label='Tên sản phẩm'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedBanner?.name}
-              required
-            />
-            <Input
-              id='description'
-              label='Mô tả'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedBanner?.description}
-              required
-            />
-            <Input
-              id='startDate'
-              label='Từ ngày'
-              type='date'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={watch('startDate') || ' '}
-              required
-            />
-            <Input
-              id='endDate'
-              label='Tới ngày'
-              type='date'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={watch('endDate') || ' '}
-              required
-            />
-            <div className='relative w-full p-3 pt-7 outline-none bg-white font-light border-2 rounded-md transition border-slate-300 focus:border-slate-500'>
-              <label className='absolute top-[-0.02rem] text-[16.5px] scale-75 text-slate-400'>Ảnh banner</label>
-              <div className='flex items-center'>
-                <span className='mr-3 text-sm text-gray-500'>
-                  {bannerImage ? (
-                    <div className='mt-2'>
-                      {/* Kiểm tra nếu bannerImage là đối tượng File */}
-                      {bannerImage instanceof File ? (
-                        <img
-                          src={URL.createObjectURL(bannerImage)}
-                          alt='Banner preview'
-                          className='mt-2 rounded-md'
-                          style={{ maxWidth: '80px', maxHeight: '80px' }}
-                        />
-                      ) : (
-                        <img
-                          src={bannerImage} // Nếu bannerImage là URL thì sử dụng trực tiếp
-                          alt='Banner preview'
-                          className='mt-2 rounded-md'
-                          style={{ maxWidth: '80px', maxHeight: '80px' }}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    'Chưa có file nào được chọn'
-                  )}
-                </span>
-                <label
-                  htmlFor='image'
-                  className='cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition'
-                >
-                  {bannerImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
-                </label>
 
-                <input
-                  id='image'
-                  type='file'
-                  autoComplete='off'
-                  disabled={isLoading}
-                  {...register('image')}
-                  onChange={(e: any) => setBannerImage(e.target.files?.[0] || null)}
-                  className='hidden'
-                />
-              </div>
-            </div>
-            <div className='relative w-full p-3 pt-7 outline-none bg-white font-light border-2 rounded-md transition border-slate-300 focus:border-slate-500'>
-              <label className='absolute top-[-0.02rem] text-[16.5px] scale-75 text-slate-400'>Ảnh banner Res</label>
-              <div className='flex items-center'>
-                <span className='mr-3 text-sm text-gray-500'>
-                  {bannerResImage ? (
-                    <div className='mt-2'>
-                      {/* Kiểm tra nếu bannerResImage là đối tượng File */}
-                      {bannerResImage instanceof File ? (
-                        <img
-                          src={URL.createObjectURL(bannerResImage)}
-                          alt='Banner preview'
-                          className='mt-2 rounded-md'
-                          style={{ maxWidth: '80px', maxHeight: '80px' }}
-                        />
-                      ) : (
-                        <img
-                          src={bannerResImage} // Nếu bannerResImage là URL thì sử dụng trực tiếp
-                          alt='Banner preview'
-                          className='mt-2 rounded-md'
-                          style={{ maxWidth: '80px', maxHeight: '80px' }}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    'Chưa có file nào được chọn'
-                  )}
-                </span>
-                <label
-                  htmlFor='image'
-                  className='cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition'
-                >
-                  {bannerResImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
-                </label>
-
-                <input
-                  id='image'
-                  type='file'
-                  autoComplete='off'
-                  disabled={isLoading}
-                  {...register('image')}
-                  onChange={(e: any) => setBannerResImage(e.target.files?.[0] || null)}
-                  className='hidden'
-                />
-              </div>
-            </div>
-            <Button label='Lưu banner' onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
-          </FormWarp>
-        </AdminModal>
-      )}
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
 
-      {/* Add Banner Modal */}
-      <AddBannerModal isOpen={addBannerModalOpen} toggleOpen={() => setAddBannerModalOpen(false)} />
+      {/* Add/Edit Banner Modal */}
+      <AddBannerModal
+        isOpen={addBannerModalOpen}
+        toggleOpen={() => {
+          setAddBannerModalOpen(false);
+          setEditBannerData(null);
+        }}
+        editData={editBannerData}
+      />
     </>
   );
 };

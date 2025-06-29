@@ -26,13 +26,22 @@ import { MdClose, MdCategory, MdSave, MdRefresh, MdTag, MdImage } from 'react-ic
 interface AddProductCateModalProps {
   isOpen: boolean;
   toggleOpen: () => void;
+  editData?: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    image: string;
+  } | null;
 }
 
-const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggleOpen }) => {
+const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggleOpen, editData }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [image, setImage] = useState<File | null>(null);
+  const [image, setImage] = useState<File | string | null>(null);
   const [isCategoryCreated, setIsCategoryCreated] = useState(false);
   const router = useRouter();
+
+  const isEditMode = !!editData;
   const {
     register,
     handleSubmit,
@@ -56,9 +65,23 @@ const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggl
     }
   }, [isCategoryCreated, reset]);
 
-  const handleCategoryImageUpload = async (image: File | null) => {
+  // Populate form khi ở edit mode
+  useEffect(() => {
+    if (editData && isOpen) {
+      setValue('name', editData.name);
+      setValue('slug', editData.slug);
+      setValue('description', editData.description);
+      setImage(editData.image);
+    } else if (!editData && isOpen) {
+      // Reset form khi ở add mode
+      reset();
+      setImage(null);
+    }
+  }, [editData, isOpen, setValue, reset]);
+
+  const handleCategoryImageUpload = async (image: File | string | null): Promise<string | null> => {
     try {
-      if (image) {
+      if (image && typeof image !== 'string') {
         // Tạo tên file để tránh trùng lặp
         const fileName = new Date().getTime() + '-' + image.name;
 
@@ -95,33 +118,44 @@ const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggl
           );
         });
       }
+      return null;
     } catch (error) {
       console.error(error);
+      return null;
     }
   };
 
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
-    toast('Đang thêm danh mục, xin chờ...');
+    toast(isEditMode ? 'Đang cập nhật danh mục, xin chờ...' : 'Đang thêm danh mục, xin chờ...');
 
     try {
-      // Kiểm tra và upload ảnh danh mục
-      const categoryImageUrl = await handleCategoryImageUpload(image);
+      // Kiểm tra và upload ảnh danh mục (chỉ upload nếu có file mới)
+      let categoryImageUrl: string | null = null;
+      if (image && typeof image !== 'string') {
+        categoryImageUrl = await handleCategoryImageUpload(image);
+      } else if (typeof image === 'string') {
+        categoryImageUrl = image;
+      }
 
       // Cập nhật dữ liệu để gửi lên API
       const categoryData = {
         ...data,
-        image: categoryImageUrl // Đường dẫn ảnh từ Firebase
+        image: categoryImageUrl // Đường dẫn ảnh từ Firebase hoặc URL hiện tại
       };
 
-      // Gửi yêu cầu API để lưu danh mục vào database
-      await axios.post('/api/category', categoryData);
+      // Gửi yêu cầu API để lưu/cập nhật danh mục
+      const apiCall = isEditMode
+        ? axios.put(`/api/category/${editData?.id}`, categoryData)
+        : axios.post('/api/category', categoryData);
 
-      toast.success('Thêm danh mục thành công');
+      await apiCall;
+
+      toast.success(isEditMode ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công');
       setIsCategoryCreated(true);
       router.refresh();
     } catch (error) {
-      toast.error('Có lỗi khi lưu danh mục');
+      toast.error(isEditMode ? 'Có lỗi khi cập nhật danh mục' : 'Có lỗi khi lưu danh mục');
     } finally {
       setIsLoading(false);
       toggleOpen();
@@ -174,7 +208,7 @@ const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggl
             <MdCategory size={24} />
           </Box>
           <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
-            Thêm Danh Mục Sản Phẩm
+            {isEditMode ? 'Cập Nhật Danh Mục Sản Phẩm' : 'Thêm Danh Mục Sản Phẩm'}
           </Typography>
         </Box>
         <IconButton onClick={toggleOpen} sx={{ color: '#6b7280' }}>
@@ -273,7 +307,7 @@ const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggl
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                       <Box
                         component='img'
-                        src={URL.createObjectURL(image)}
+                        src={typeof image === 'string' ? image : URL.createObjectURL(image)}
                         alt='Category preview'
                         sx={{
                           width: 120,
@@ -284,7 +318,7 @@ const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggl
                         }}
                       />
                       <Typography variant='body2' sx={{ color: '#6b7280' }}>
-                        {image.name}
+                        {typeof image === 'string' ? 'Ảnh hiện tại' : image.name}
                       </Typography>
                     </Box>
                   ) : (
@@ -353,7 +387,13 @@ const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggl
               ml: 2
             }}
           >
-            {isLoading ? 'Đang tạo...' : 'Tạo danh mục'}
+            {isLoading
+              ? isEditMode
+                ? 'Đang cập nhật...'
+                : 'Đang tạo...'
+              : isEditMode
+              ? 'Cập nhật danh mục'
+              : 'Tạo danh mục'}
           </Button>
         </DialogActions>
       </form>

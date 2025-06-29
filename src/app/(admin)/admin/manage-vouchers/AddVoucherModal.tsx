@@ -42,16 +42,17 @@ interface AddVoucherModalProps {
   isOpen: boolean;
   toggleOpen: () => void;
   users: any[];
-  voucher?: any;
-  isEdit?: boolean;
+  editData?: any;
 }
 
-const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, users, voucher, isEdit = false }) => {
+const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, users, editData }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isVoucherCreated, setIsVoucherCreated] = useState(false);
   const [voucherImage, setVoucherImage] = useState<File | string | null>(null);
   const router = useRouter();
   const storage = getStorage(firebase);
+
+  const isEditMode = !!editData;
 
   const {
     register,
@@ -61,23 +62,7 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
     reset,
     formState: { errors }
   } = useForm<FieldValues>({
-    defaultValues:
-      isEdit && voucher
-        ? {
-            code: voucher.code,
-            description: voucher.description,
-            image: voucher.image,
-            discountType: voucher.discountType,
-            discountValue: voucher.discountValue,
-            minOrderValue: voucher.minOrderValue,
-            quantity: voucher.quantity,
-            maxUsagePerUser: voucher.maxUsagePerUser,
-            startDate: voucher.startDate ? new Date(voucher.startDate).toISOString().slice(0, 16) : '',
-            endDate: voucher.endDate ? new Date(voucher.endDate).toISOString().slice(0, 16) : '',
-            voucherType: voucher.voucherType,
-            isActive: voucher.isActive
-          }
-        : {}
+    defaultValues: {}
   });
 
   // Clear form sau khi tạo thành công
@@ -89,12 +74,29 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
     }
   }, [isVoucherCreated, reset]);
 
-  // Load existing image for edit
+  // Populate form khi ở edit mode
   useEffect(() => {
-    if (isEdit && voucher && voucher.image) {
-      setVoucherImage(voucher.image);
+    if (editData && isOpen) {
+      reset({
+        code: editData.code,
+        description: editData.description,
+        discountType: editData.discountType,
+        discountValue: editData.discountValue,
+        minOrderValue: editData.minOrderValue,
+        quantity: editData.quantity,
+        maxUsagePerUser: editData.maxUsagePerUser,
+        startDate: editData.startDate ? new Date(editData.startDate).toISOString().slice(0, 16) : '',
+        endDate: editData.endDate ? new Date(editData.endDate).toISOString().slice(0, 16) : '',
+        voucherType: editData.voucherType,
+        isActive: editData.isActive
+      });
+      setVoucherImage(editData.image);
+    } else if (!editData && isOpen) {
+      // Reset form khi ở add mode
+      reset({});
+      setVoucherImage(null);
     }
-  }, [isEdit, voucher]);
+  }, [editData, isOpen, reset]);
 
   // Auto generate voucher code
   const generateVoucherCode = () => {
@@ -153,7 +155,7 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
       // Handle image upload if there's a new image
       if (voucherImage && voucherImage !== data.image && voucherImage instanceof File) {
         // Delete old image if editing
-        if (isEdit && data.image) {
+        if (isEditMode && data.image) {
           await deleteOldImageFromFirebase(data.image);
         }
 
@@ -173,8 +175,8 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
         targetUserIds: data.targetUserIds || []
       };
 
-      if (isEdit && voucher) {
-        await axios.put(`/api/voucher/${voucher.id}`, voucherData);
+      if (isEditMode && editData) {
+        await axios.put(`/api/voucher/${editData.id}`, voucherData);
         toast.success('Cập nhật voucher thành công');
       } else {
         await axios.post('/api/voucher', voucherData);
@@ -244,7 +246,7 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
             <MdLocalOffer size={24} />
           </Box>
           <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
-            {isEdit ? 'Cập Nhật Voucher' : 'Thêm Voucher Mới'}
+            {isEditMode ? 'Cập Nhật Voucher' : 'Thêm Voucher Mới'}
           </Typography>
         </Box>
         <IconButton onClick={toggleOpen} sx={{ color: '#6b7280' }}>
@@ -322,50 +324,70 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
 
-            <div className='relative w-full p-3 pt-7 outline-none bg-white font-light border-2 rounded-md transition border-slate-300 focus:border-slate-500'>
-              <label className='absolute top-[-0.02rem] text-[16.5px] scale-75 text-slate-400'>Ảnh voucher</label>
-              <div className='flex items-center'>
-                <span className='mr-3 text-sm text-gray-500'>
-                  {voucherImage ? (
-                    <div className='mt-2'>
-                      {voucherImage instanceof File ? (
-                        <img
-                          src={URL.createObjectURL(voucherImage)}
-                          alt='Voucher preview'
-                          className='mt-2 rounded-md'
-                          style={{ maxWidth: '80px', maxHeight: '80px' }}
-                        />
-                      ) : (
-                        <img
-                          src={voucherImage}
-                          alt='Voucher preview'
-                          className='mt-2 rounded-md'
-                          style={{ maxWidth: '80px', maxHeight: '80px' }}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    'Chưa có file nào được chọn'
-                  )}
-                </span>
-                <label
-                  htmlFor='voucherImage'
-                  className='cursor-pointer bg-slate-600 text-white px-4 py-1 rounded-md shadow-sm hover:bg-slate-700 transition'
-                >
-                  {voucherImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
-                </label>
+            {/* Voucher Image Upload */}
+            <Card sx={{ p: 3, border: '1px solid #e2e8f0', borderRadius: '16px' }}>
+              <Typography variant='h6' sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <MdImage color='#3b82f6' />
+                Ảnh Voucher
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {voucherImage && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <Box
+                      component='img'
+                      src={typeof voucherImage === 'string' ? voucherImage : URL.createObjectURL(voucherImage)}
+                      alt='Voucher preview'
+                      sx={{
+                        width: '100%',
+                        maxWidth: 200,
+                        height: 'auto',
+                        maxHeight: 150,
+                        objectFit: 'cover',
+                        borderRadius: '12px',
+                        border: '2px solid #e2e8f0',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      }}
+                    />
+                    <Typography variant='body2' sx={{ color: '#6b7280', textAlign: 'center' }}>
+                      {typeof voucherImage === 'string' ? 'Ảnh voucher hiện tại' : voucherImage.name}
+                    </Typography>
+                  </Box>
+                )}
 
-                <input
-                  id='voucherImage'
-                  type='file'
-                  accept='image/*'
-                  autoComplete='off'
-                  disabled={isLoading}
-                  onChange={(e: any) => setVoucherImage(e.target.files?.[0] || null)}
-                  className='hidden'
-                />
-              </div>
-            </div>
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <Button
+                    component='label'
+                    variant='contained'
+                    startIcon={<MdImage />}
+                    disabled={isLoading}
+                    sx={{
+                      backgroundColor: '#10b981',
+                      '&:hover': { backgroundColor: '#059669' },
+                      borderRadius: '12px',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      px: 4,
+                      py: 1.5
+                    }}
+                  >
+                    {voucherImage ? 'Đổi hình ảnh' : 'Chọn hình ảnh'}
+                    <input
+                      type='file'
+                      hidden
+                      accept='image/*'
+                      disabled={isLoading}
+                      onChange={(e: any) => setVoucherImage(e.target.files?.[0] || null)}
+                    />
+                  </Button>
+                </Box>
+
+                {!voucherImage && (
+                  <Typography variant='body2' sx={{ color: '#9ca3af', textAlign: 'center', fontStyle: 'italic' }}>
+                    Chưa có ảnh nào được chọn
+                  </Typography>
+                )}
+              </Box>
+            </Card>
 
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
@@ -470,7 +492,7 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
               </Grid>
             </Grid>
 
-            {isEdit && (
+            {isEditMode && (
               <div className='flex items-center gap-2'>
                 <input
                   id='isActive'
@@ -519,7 +541,7 @@ const AddVoucherModal: React.FC<AddVoucherModalProps> = ({ isOpen, toggleOpen, u
               ml: 2
             }}
           >
-            {isLoading ? 'Đang xử lý...' : isEdit ? 'Cập nhật Voucher' : 'Tạo Voucher'}
+            {isLoading ? 'Đang xử lý...' : isEditMode ? 'Cập nhật Voucher' : 'Tạo Voucher'}
           </Button>
         </DialogActions>
       </form>

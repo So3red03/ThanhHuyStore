@@ -33,14 +33,27 @@ export type UploadedBannerType = {
 interface AddBannerModalProps {
   isOpen: boolean;
   toggleOpen: () => void;
+  editData?: {
+    id: string;
+    title: string;
+    description: string;
+    link: string;
+    image: string;
+    resImage: string;
+    startDate: string;
+    endDate: string;
+    isActive: boolean;
+  } | null;
 }
 
-const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) => {
+const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen, editData }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isBannerCreated, setIsBannerCreated] = useState(false);
-  const [bannerImage, setBannerImage] = useState<File | null>(null);
-  const [bannerResImage, setBannerResImage] = useState<File | null>(null);
+  const [bannerImage, setBannerImage] = useState<File | string | null>(null);
+  const [bannerResImage, setBannerResImage] = useState<File | string | null>(null);
   const router = useRouter();
+
+  const isEditMode = !!editData;
   const {
     register,
     handleSubmit,
@@ -67,6 +80,34 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
       setIsBannerCreated(false);
     }
   }, [isBannerCreated, reset]);
+
+  // Populate form khi ở edit mode
+  useEffect(() => {
+    if (editData && isOpen) {
+      reset({
+        title: editData.title,
+        description: editData.description,
+        link: editData.link,
+        startDate: editData.startDate,
+        endDate: editData.endDate,
+        status: editData.isActive ? 'active' : 'inactive'
+      });
+      setBannerImage(editData.image);
+      setBannerResImage(editData.resImage);
+    } else if (!editData && isOpen) {
+      // Reset form khi ở add mode
+      reset({
+        title: '',
+        description: '',
+        link: '',
+        startDate: '',
+        endDate: '',
+        status: 'active'
+      });
+      setBannerImage(null);
+      setBannerResImage(null);
+    }
+  }, [editData, isOpen, reset]);
 
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
@@ -98,6 +139,16 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
 
         for (const [index, image] of bannerImages.entries()) {
           if (image) {
+            // Nếu là string (URL), sử dụng trực tiếp
+            if (typeof image === 'string') {
+              if (index === 0) {
+                downloadURLBanner = image;
+              } else {
+                downloadURLBannerRes = image;
+              }
+              continue;
+            }
+
             // Tạo tên file để tránh trùng lặp
             const fileName = new Date().getTime() + '-' + image.name;
             // Lấy đối tượng storage
@@ -163,16 +214,19 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
       endDate: new Date(endDate)
     };
 
-    // Gửi yêu cầu API để lưu banner vào database
-    axios
-      .post('/api/banner', bannerData)
+    // Gửi yêu cầu API để lưu/cập nhật banner vào database
+    const apiCall = isEditMode
+      ? axios.put(`/api/banner/${editData?.id}`, bannerData)
+      : axios.post('/api/banner', bannerData);
+
+    apiCall
       .then(() => {
-        toast.success('Thêm banner thành công');
+        toast.success(isEditMode ? 'Cập nhật banner thành công' : 'Thêm banner thành công');
         setIsBannerCreated(true);
         router.refresh();
       })
       .catch(() => {
-        toast.error('Có lỗi khi lưu banner vào db');
+        toast.error(isEditMode ? 'Có lỗi khi cập nhật banner' : 'Có lỗi khi lưu banner vào db');
       })
       .finally(() => {
         setIsLoading(false);
@@ -218,7 +272,7 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
             <MdViewCarousel size={24} />
           </Box>
           <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
-            Thêm Banner Mới
+            {isEditMode ? 'Cập Nhật Banner' : 'Thêm Banner Mới'}
           </Typography>
         </Box>
         <IconButton onClick={toggleOpen} sx={{ color: '#6b7280' }}>
@@ -319,7 +373,7 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                           <Box
                             component='img'
-                            src={URL.createObjectURL(bannerImage)}
+                            src={typeof bannerImage === 'string' ? bannerImage : URL.createObjectURL(bannerImage)}
                             alt='Desktop banner preview'
                             sx={{
                               width: '100%',
@@ -331,7 +385,7 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
                             }}
                           />
                           <Typography variant='body2' sx={{ color: '#6b7280' }}>
-                            {bannerImage.name}
+                            {typeof bannerImage === 'string' ? 'Ảnh desktop hiện tại' : bannerImage.name}
                           </Typography>
                         </Box>
                       ) : (
@@ -381,7 +435,9 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                           <Box
                             component='img'
-                            src={URL.createObjectURL(bannerResImage)}
+                            src={
+                              typeof bannerResImage === 'string' ? bannerResImage : URL.createObjectURL(bannerResImage)
+                            }
                             alt='Mobile banner preview'
                             sx={{
                               width: '100%',
@@ -393,7 +449,7 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
                             }}
                           />
                           <Typography variant='body2' sx={{ color: '#6b7280' }}>
-                            {bannerResImage.name}
+                            {typeof bannerResImage === 'string' ? 'Ảnh mobile hiện tại' : bannerResImage.name}
                           </Typography>
                         </Box>
                       ) : (
@@ -464,7 +520,13 @@ const AddBannerModal: React.FC<AddBannerModalProps> = ({ isOpen, toggleOpen }) =
               ml: 2
             }}
           >
-            {isLoading ? 'Đang tạo...' : 'Tạo banner'}
+            {isLoading
+              ? isEditMode
+                ? 'Đang cập nhật...'
+                : 'Đang tạo...'
+              : isEditMode
+              ? 'Cập nhật banner'
+              : 'Tạo banner'}
           </Button>
         </DialogActions>
       </form>

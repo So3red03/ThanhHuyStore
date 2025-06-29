@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -17,7 +17,7 @@ import {
   IconButton,
   InputAdornment
 } from '@mui/material';
-import { MdClose, MdVisibility, MdVisibilityOff, MdPerson, MdEmail, MdLock, MdAdminPanelSettings } from 'react-icons/md';
+import { MdClose, MdVisibility, MdVisibilityOff, MdPerson } from 'react-icons/md';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -25,9 +25,15 @@ interface AddUserModalProps {
   open: boolean;
   onClose: () => void;
   onUserAdded: () => void;
+  editData?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  } | null;
 }
 
-const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded }) => {
+const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded, editData }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -37,23 +43,64 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const isEditMode = !!editData;
+
+  // Populate form khi ở edit mode
+  useEffect(() => {
+    if (editData && open) {
+      setFormData({
+        name: editData.name,
+        email: editData.email,
+        password: '', // Không hiển thị password cũ
+        role: editData.role
+      });
+    } else if (!editData && open) {
+      // Reset form khi ở add mode
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        role: 'USER'
+      });
+    }
+  }, [editData, open]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.email || !formData.password) {
+
+    if (!formData.name || !formData.email) {
       toast.error('Vui lòng điền đầy đủ thông tin');
       return;
     }
 
-    if (formData.password.length < 6) {
+    // Chỉ validate password cho add mode hoặc khi có password mới trong edit mode
+    if (!isEditMode && !formData.password) {
+      toast.error('Vui lòng nhập mật khẩu');
+      return;
+    }
+
+    if (formData.password && formData.password.length < 6) {
       toast.error('Mật khẩu phải có ít nhất 6 ký tự');
       return;
     }
 
     setLoading(true);
     try {
-      await axios.post('/api/admin/users/create', formData);
-      toast.success('Tạo người dùng thành công');
+      const apiData = {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        ...(formData.password && { password: formData.password }) // Chỉ gửi password nếu có
+      };
+
+      if (isEditMode) {
+        await axios.put(`/api/admin/users/${editData?.id}`, apiData);
+        toast.success('Cập nhật người dùng thành công');
+      } else {
+        await axios.post('/api/admin/users/create', apiData);
+        toast.success('Tạo người dùng thành công');
+      }
+
       onUserAdded();
       handleClose();
     } catch (error: any) {
@@ -70,10 +117,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded 
   };
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={handleClose}
-      maxWidth="sm"
+      maxWidth='sm'
       fullWidth
       PaperProps={{
         sx: {
@@ -82,27 +129,31 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded 
         }
       }}
     >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        pb: 2,
-        borderBottom: '1px solid #e5e7eb'
-      }}>
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 2,
+          borderBottom: '1px solid #e5e7eb'
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{ 
-            p: 1.5, 
-            borderRadius: '12px', 
-            backgroundColor: '#3b82f6', 
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: '12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
             <MdPerson size={24} />
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: '#1f2937' }}>
-            Thêm Người Dùng Mới
+          <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
+            {isEditMode ? 'Cập Nhật Người Dùng' : 'Thêm Người Dùng Mới'}
           </Typography>
         </Box>
         <IconButton onClick={handleClose} sx={{ color: '#6b7280' }}>
@@ -116,55 +167,34 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded 
             {/* Name Field */}
             <TextField
               fullWidth
-              label="Họ và tên"
+              label='Họ và tên'
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <MdPerson color="#6b7280" />
-                  </InputAdornment>
-                )
-              }}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
 
             {/* Email Field */}
             <TextField
               fullWidth
-              label="Email"
-              type="email"
+              label='Email'
+              type='email'
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <MdEmail color="#6b7280" />
-                  </InputAdornment>
-                )
-              }}
+              onChange={e => setFormData({ ...formData, email: e.target.value })}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
 
             {/* Password Field */}
             <TextField
               fullWidth
-              label="Mật khẩu"
+              label='Mật khẩu'
               type={showPassword ? 'text' : 'password'}
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={e => setFormData({ ...formData, password: e.target.value })}
+              helperText={isEditMode ? 'Để trống nếu không muốn thay đổi mật khẩu' : 'Mật khẩu phải có ít nhất 6 ký tự'}
               InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <MdLock color="#6b7280" />
-                  </InputAdornment>
-                ),
                 endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                    >
+                  <InputAdornment position='end'>
+                    <IconButton onClick={() => setShowPassword(!showPassword)} edge='end'>
                       {showPassword ? <MdVisibilityOff /> : <MdVisibility />}
                     </IconButton>
                   </InputAdornment>
@@ -178,17 +208,12 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded 
               <InputLabel>Vai trò</InputLabel>
               <Select
                 value={formData.role}
-                label="Vai trò"
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                startAdornment={
-                  <InputAdornment position="start">
-                    <MdAdminPanelSettings color="#6b7280" />
-                  </InputAdornment>
-                }
+                label='Vai trò'
+                onChange={e => setFormData({ ...formData, role: e.target.value })}
                 sx={{ borderRadius: '12px' }}
               >
-                <MenuItem value="USER">Người dùng</MenuItem>
-                <MenuItem value="ADMIN">Quản trị viên</MenuItem>
+                <MenuItem value='USER'>Người dùng</MenuItem>
+                <MenuItem value='ADMIN'>Quản trị viên</MenuItem>
               </Select>
             </FormControl>
           </Box>
@@ -197,7 +222,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded 
         <DialogActions sx={{ p: 3, pt: 2 }}>
           <Button
             onClick={handleClose}
-            variant="outlined"
+            variant='outlined'
             sx={{
               borderRadius: '12px',
               px: 3,
@@ -209,8 +234,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded 
             Hủy
           </Button>
           <Button
-            type="submit"
-            variant="contained"
+            type='submit'
+            variant='contained'
             disabled={loading}
             sx={{
               borderRadius: '12px',
@@ -222,7 +247,13 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded 
               fontWeight: 600
             }}
           >
-            {loading ? 'Đang tạo...' : 'Tạo người dùng'}
+            {loading
+              ? isEditMode
+                ? 'Đang cập nhật...'
+                : 'Đang tạo...'
+              : isEditMode
+              ? 'Cập nhật người dùng'
+              : 'Tạo người dùng'}
           </Button>
         </DialogActions>
       </form>

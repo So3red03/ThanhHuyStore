@@ -8,12 +8,7 @@ import { useRouter } from 'next/navigation';
 import ActionBtn from '@/app/components/ActionBtn';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import AdminModal from '@/app/components/admin/AdminModal';
-import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
-import Input from '@/app/components/inputs/Input';
-import Button from '@/app/components/Button';
-import FormWarp from '@/app/components/FormWrap';
-import Heading from '@/app/components/Heading';
+
 import 'moment/locale/vi';
 import { SafeUser } from '../../../../../types';
 import NullData from '@/app/components/NullData';
@@ -31,11 +26,10 @@ interface ManageUserClientProps {
 }
 const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser }) => {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
   const [isDelete, setIsDelete] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [addUserModalOpen, setAddUserModalOpen] = useState(false);
+  const [editUserData, setEditUserData] = useState<any>(null);
 
   // Calculate statistics
   const totalUsers = users.length;
@@ -47,33 +41,6 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
     weekAgo.setDate(weekAgo.getDate() - 7);
     return userDate >= weekAgo;
   }).length;
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors }
-  } = useForm<FieldValues>({
-    defaultValues: {
-      id: '',
-      name: '',
-      email: '',
-      newPassword: '',
-      role: ''
-    }
-  });
-
-  // Hàm cập nhật giá trị id, value: label
-  const setCustomValue = (id: string, value: any) => {
-    setValue(id, value, {
-      shouldValidate: true,
-      shouldDirty: true,
-      shouldTouch: true
-    });
-  };
-
-  const toggleOpen = () => {
-    setIsOpen(!isOpen);
-  };
 
   const toggleDelete = () => {
     setIsDelete(!isDelete);
@@ -85,11 +52,17 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 
   const handleOpenModal = (user: any) => {
     setSelectedUser(user);
-    // Cập nhật giá trị lên defaultValues
-    const fieldsToSet = ['id', 'name', 'email', 'role'];
-    fieldsToSet.forEach(field => setCustomValue(field, user[field]));
 
-    toggleOpen();
+    // Prepare edit data for AddUserModal
+    const editData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    };
+
+    setEditUserData(editData);
+    setAddUserModalOpen(true);
   };
 
   let rows: any = [];
@@ -194,32 +167,6 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
       });
   };
 
-  const onSubmit: SubmitHandler<FieldValues> = async data => {
-    setIsLoading(true);
-    axios
-      .put(`/api/user/${data.id}`, {
-        name: data.name,
-        email: data.email,
-        newPassword: data.newPassword,
-        role: data.role
-      })
-      .then(() => {
-        toggleOpen();
-        toast.success('Lưu thông tin thành công');
-        router.refresh();
-      })
-      .catch(error => {
-        toast.error('Có lỗi xảy ra khi cập nhật thông tin');
-        setIsLoading(false);
-        console.error(error);
-      })
-      .finally(() => {
-        setIsLoading(false);
-        toggleOpen();
-        setValue('newPassword', '');
-      });
-  };
-
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'ADMIN') {
       router.push('/login');
@@ -266,10 +213,6 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
       iconColor: 'text-yellow-500',
       changeColor: 'text-green-500'
     }
-  ];
-  const roles = [
-    { label: 'ADMIN', value: Role.ADMIN },
-    { label: 'USER', value: Role.USER }
   ];
 
   return (
@@ -365,58 +308,19 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
           />
         </div>
       </div>
-      {selectedUser && (
-        <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-          <FormWarp custom='!pt-8'>
-            <Heading title='Cập nhật thông tin' center>
-              <></>
-            </Heading>
-            <Input
-              id='name'
-              label='Tên người dùng'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedUser.name}
-              required
-            />
-            <Input
-              id='email'
-              label='Email'
-              disabled={true}
-              register={register}
-              errors={errors}
-              defaultValue={selectedUser.email}
-              required
-            />
-            <Input
-              id='newPassword'
-              label='Mật khẩu mới'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              required
-            />
-            <Input
-              id='role'
-              label='Role'
-              disabled={isLoading}
-              type='combobox'
-              register={register}
-              errors={errors}
-              defaultValue={selectedUser.role}
-              options={roles}
-              required
-            />
 
-            <Button label='Lưu thông tin' onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
-          </FormWarp>
-        </AdminModal>
-      )}
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
 
-      {/* Add User Modal */}
-      <AddUserModal open={addUserModalOpen} onClose={() => setAddUserModalOpen(false)} onUserAdded={handleUserAdded} />
+      {/* Add/Edit User Modal */}
+      <AddUserModal
+        open={addUserModalOpen}
+        onClose={() => {
+          setAddUserModalOpen(false);
+          setEditUserData(null);
+        }}
+        onUserAdded={handleUserAdded}
+        editData={editUserData}
+      />
     </>
   );
 };

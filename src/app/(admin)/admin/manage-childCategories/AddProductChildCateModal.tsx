@@ -33,12 +33,21 @@ interface AddProductChildCateProps {
   isOpen: boolean;
   toggleOpen: () => void;
   parentCategory: Category[];
+  editData?: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    parentId: string;
+  } | null;
 }
 
-const AddProductChildCate: React.FC<AddProductChildCateProps> = ({ isOpen, toggleOpen, parentCategory }) => {
+const AddProductChildCate: React.FC<AddProductChildCateProps> = ({ isOpen, toggleOpen, parentCategory, editData }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCategoryCreated, setIsCategoryCreated] = useState(false);
   const router = useRouter();
+
+  const isEditMode = !!editData;
   const {
     register,
     handleSubmit,
@@ -61,18 +70,34 @@ const AddProductChildCate: React.FC<AddProductChildCateProps> = ({ isOpen, toggl
     }
   }, [isCategoryCreated, reset]);
 
+  // Populate form khi ở edit mode
+  useEffect(() => {
+    if (editData && isOpen) {
+      setValue('name', editData.name);
+      setValue('slug', editData.slug);
+      setValue('description', editData.description);
+      setValue('parentId', editData.parentId);
+    } else if (!editData && isOpen) {
+      // Reset form khi ở add mode
+      reset();
+    }
+  }, [editData, isOpen, setValue, reset]);
+
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
-    toast('Đang thêm danh mục, xin chờ...');
-    axios
-      .post('/api/category', data)
+
+    const apiCall = isEditMode ? axios.put(`/api/category/${editData?.id}`, data) : axios.post('/api/category', data);
+
+    toast(isEditMode ? 'Đang cập nhật danh mục, xin chờ...' : 'Đang thêm danh mục, xin chờ...');
+
+    apiCall
       .then(() => {
-        toast.success('Thêm danh mục thành công');
+        toast.success(isEditMode ? 'Cập nhật danh mục thành công' : 'Thêm danh mục thành công');
         setIsCategoryCreated(true);
         router.refresh();
       })
       .catch(error => {
-        toast.error('Có lỗi khi lưu danh mục');
+        toast.error(isEditMode ? 'Có lỗi khi cập nhật danh mục' : 'Có lỗi khi lưu danh mục');
       })
       .finally(() => {
         setIsLoading(false);
@@ -131,7 +156,7 @@ const AddProductChildCate: React.FC<AddProductChildCateProps> = ({ isOpen, toggl
             <MdCategory size={24} />
           </Box>
           <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
-            Thêm Danh Mục Con
+            {isEditMode ? 'Cập Nhật Danh Mục Con' : 'Thêm Danh Mục Con'}
           </Typography>
         </Box>
         <IconButton onClick={toggleOpen} sx={{ color: '#6b7280' }}>
@@ -237,7 +262,13 @@ const AddProductChildCate: React.FC<AddProductChildCateProps> = ({ isOpen, toggl
               ml: 2
             }}
           >
-            {isLoading ? 'Đang tạo...' : 'Tạo danh mục'}
+            {isLoading
+              ? isEditMode
+                ? 'Đang cập nhật...'
+                : 'Đang tạo...'
+              : isEditMode
+              ? 'Cập nhật danh mục'
+              : 'Tạo danh mục'}
           </Button>
         </DialogActions>
       </form>
