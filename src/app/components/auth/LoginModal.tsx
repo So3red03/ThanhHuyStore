@@ -20,22 +20,22 @@ const LoginModal: React.FC<LoginModalProps> = ({ currentUser }) => {
   const router = useRouter();
   const { switchModal, closeModal } = useAuthModal();
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const {
     register,
     handleSubmit,
     formState: { errors },
-    reset,
-  } = useForm<FieldValues>({ 
-    defaultValues: { email: '', password: '' } 
+    reset
+  } = useForm<FieldValues>({
+    defaultValues: { email: '', password: '' }
   });
 
-  const onSubmit: SubmitHandler<FieldValues> = (data) => {
+  const onSubmit: SubmitHandler<FieldValues> = data => {
     setIsLoading(true);
     signIn('credentials', {
       ...data,
-      redirect: false,
-    }).then((callback) => {
+      redirect: false
+    }).then(callback => {
       if (callback?.ok) {
         router.push('/cart');
         router.refresh();
@@ -58,9 +58,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ currentUser }) => {
   }, [currentUser, closeModal]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
       e.preventDefault();
-      handleSubmit(onSubmit)();
+      const form = e.currentTarget.form;
+      if (form && form.checkValidity()) {
+        handleSubmit(onSubmit)();
+      }
     }
   };
 
@@ -84,66 +87,73 @@ const LoginModal: React.FC<LoginModalProps> = ({ currentUser }) => {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto p-6">
-      <Heading title="Đăng nhập ThanhHuy Store">
-        <></>
-      </Heading>
-      
-      <Button
-        outline
-        label="Đăng nhập với Google"
-        icon={AiOutlineGoogle}
-        onClick={handleGoogleSignIn}
-      />
-      
-      <hr className="bg-slate-300 w-full h-px my-4" />
-      
-      <Input
-        id="email"
-        label="Email"
-        type="email"
-        disabled={isLoading}
-        register={register}
-        errors={errors}
-        required
-      />
-      
-      <Input
-        id="password"
-        label="Mật khẩu"
-        type="password"
-        toggleVisibility={true}
-        disabled={isLoading}
-        register={register}
-        errors={errors}
-        onKeyDown={handleKeyDown}
-        required
-      />
-      
-      <div className="flex justify-end w-full mb-4">
-        <button 
+    <div className='w-full max-w-md mx-auto px-8 py-6'>
+      <div className='mb-8'>
+        <Heading title='Đăng nhập ThanhHuy Store'>
+          <></>
+        </Heading>
+      </div>
+
+      <div className='mb-6'>
+        <Button outline label='Đăng nhập với Google' icon={AiOutlineGoogle} onClick={handleGoogleSignIn} />
+      </div>
+
+      <div className='relative mb-6'>
+        <hr className='bg-slate-300 w-full h-px' />
+        <span className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-sm text-gray-500'>
+          hoặc
+        </span>
+      </div>
+
+      <div className='space-y-5 mb-6'>
+        <Input
+          id='email'
+          label='Email'
+          type='email'
+          disabled={isLoading}
+          register={register}
+          errors={errors}
+          onKeyDown={handleKeyDown}
+          required
+        />
+
+        <Input
+          id='password'
+          label='Mật khẩu'
+          type='password'
+          toggleVisibility={true}
+          disabled={isLoading}
+          register={register}
+          errors={errors}
+          onKeyDown={handleKeyDown}
+          required
+        />
+      </div>
+
+      <div className='flex justify-end mb-6'>
+        <button
           onClick={handleSwitchToPasswordRecovery}
-          className="text-[#0066CC] hover:underline text-sm"
+          className='text-[#0066CC] hover:underline text-sm transition-colors duration-200'
         >
-          Quên mật khẩu ?
+          Quên mật khẩu?
         </button>
       </div>
-      
-      <Button 
-        label="Đăng nhập" 
-        onClick={handleSubmit(onSubmit)} 
-        isLoading={isLoading} 
-      />
-      
-      <p className="text-sm text-center mt-4">
-        Chưa có tài khoản?{' '}
-        <button 
-          onClick={handleSwitchToRegister}
-          className="text-[#0066CC] hover:underline"
-        >
-          Đăng ký
-        </button>
-      </p>
+
+      <div className='mb-6'>
+        <Button label='Đăng nhập' onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
+      </div>
+
+      <div className='text-center'>
+        <p className='text-sm text-gray-600'>
+          Chưa có tài khoản?{' '}
+          <button
+            onClick={handleSwitchToRegister}
+            className='text-[#0066CC] hover:underline font-medium transition-colors duration-200'
+          >
+            Đăng ký ngay
+          </button>
+        </p>
+      </div>
     </div>
   );
 };

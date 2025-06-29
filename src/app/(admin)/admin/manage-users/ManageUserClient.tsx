@@ -23,7 +23,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button as MuiButton } from '@mui/material';
 import { MdPersonAdd } from 'react-icons/md';
-import AddUserModal from '../../../components/admin/AddUserModal';
+import AddUserModal from './AddUserModal';
 
 interface ManageUserClientProps {
   users: User[];
@@ -345,12 +345,21 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
             disableDensitySelector
             disableColumnSelector
             sx={{
+              border: '1px solid #e5e7eb',
+              borderRadius: 2,
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #e5e7eb'
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f8fafc', // slate-50
+                borderBottom: '1px solid #e2e8f0'
+              },
               '& .MuiDataGrid-toolbarContainer': {
                 flexDirection: 'row-reverse',
                 padding: '15px'
               },
-              '& .css-yrdy0g-MuiDataGrid-columnHeaderRow': {
-                backgroundColor: '#F6F7FB !important'
+              '& .MuiDataGrid-columnHeaderRow': {
+                backgroundColor: '#f6f7fb'
               }
             }}
           />

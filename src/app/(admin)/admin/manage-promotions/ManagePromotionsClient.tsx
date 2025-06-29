@@ -528,13 +528,21 @@ const ManagePromotionsClient: React.FC<ManagePromotionsClientProps> = ({
               checkboxSelection
               disableRowSelectionOnClick
               sx={{
-                border: 'none',
+                border: '1px solid #e5e7eb',
+                borderRadius: 2,
                 '& .MuiDataGrid-cell': {
-                  borderColor: '#f3f4f6'
+                  borderBottom: '1px solid #e5e7eb'
                 },
                 '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#f9fafb',
-                  borderColor: '#f3f4f6'
+                  backgroundColor: '#f8fafc', // slate-50
+                  borderBottom: '1px solid #e2e8f0'
+                },
+                '& .MuiDataGrid-toolbarContainer': {
+                  flexDirection: 'row-reverse',
+                  padding: '15px'
+                },
+                '& .MuiDataGrid-columnHeaderRow': {
+                  backgroundColor: '#f6f7fb'
                 }
               }}
             />

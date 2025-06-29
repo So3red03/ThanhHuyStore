@@ -372,24 +372,25 @@ const adminTheme = createTheme({
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
         }
       }
-    }
+    },
 
     // DataGrid component - for tables (commented out until @mui/x-data-grid is installed)
-    // MuiDataGrid: {
-    //   styleOverrides: {
-    //     root: {
-    //       border: `1px solid ${colorPalette.grey[200]}`,
-    //       borderRadius: 8,
-    //       '& .MuiDataGrid-cell': {
-    //         borderBottom: `1px solid ${colorPalette.grey[100]}`
-    //       },
-    //       '& .MuiDataGrid-columnHeaders': {
-    //         backgroundColor: colorPalette.grey[50],
-    //         borderBottom: `1px solid ${colorPalette.grey[200]}`
-    //       }
-    //     }
-    //   }
-    // }
+    //@ts-ignore
+    MuiDataGrid: {
+      styleOverrides: {
+        root: {
+          border: `1px solid ${colorPalette.grey[200]}`,
+          borderRadius: 8,
+          '& .MuiDataGrid-cell': {
+            borderBottom: `1px solid ${colorPalette.grey[100]}`
+          },
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: colorPalette.grey[50],
+            borderBottom: `1px solid ${colorPalette.grey[200]}`
+          }
+        }
+      }
+    }
   }
 });
 

@@ -82,7 +82,7 @@ const AdminSideBarNew = () => {
                 color: 'primary.700',
                 fontSize: {
                   xs: '0.5rem', // nhỏ hơn khi màn hình nhỏ
-                  xl: '1.5rem' // to hơn khi màn hình lớn
+                  xl: '2rem' // to hơn khi màn hình lớn
                 },
                 textAlign: 'center'
               }}

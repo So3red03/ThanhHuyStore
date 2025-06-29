@@ -169,12 +169,18 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
               </FormControl>
 
               <Button
-                variant='outlined'
+                variant='contained'
                 startIcon={<MdRefresh />}
                 onClick={handleRefresh}
-                disabled={isRefreshing}
-                size='small'
-                sx={{ textTransform: 'none' }}
+                size='medium'
+                sx={{
+                  backgroundColor: '#3b82f6',
+                  '&:hover': { backgroundColor: '#2563eb' },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
+                }}
               >
                 {isRefreshing ? 'Đang tải...' : 'Làm mới'}
               </Button>

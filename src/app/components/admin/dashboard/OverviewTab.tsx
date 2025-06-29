@@ -1,8 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Box, Card, CardContent, Typography, Button, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
-import { MdRefresh, MdDateRange } from 'react-icons/md';
+import React, { useState, useMemo } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  TextField,
+  Chip
+} from '@mui/material';
+import { MdRefresh, MdDateRange, MdFilterList } from 'react-icons/md';
 import EnhancedDashboardStats from '../EnhancedDashboardStats';
 import DashboardCharts from '../DashboardCharts';
 import ReviewsSection from '../ReviewsSection';
@@ -46,6 +58,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   // State for time filter
   const [timeFilter, setTimeFilter] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDateRange, setShowDateRange] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Handle refresh function
   const handleRefresh = async () => {
@@ -58,18 +73,87 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
       setIsRefreshing(false);
     }
   };
-  // Filter client users
-  const filteredClient = users?.filter(user => user.role === 'USER') || [];
 
-  // Create pie chart data if not provided
+  // Handle time filter change
+  const handleTimeFilterChange = (value: string) => {
+    setTimeFilter(value);
+    if (value === 'custom') {
+      setShowDateRange(true);
+    } else {
+      setShowDateRange(false);
+      setStartDate('');
+      setEndDate('');
+    }
+  };
+
+  // Filter data based on time selection
+  const filteredData = useMemo(() => {
+    const now = new Date();
+    let filterDate = new Date();
+
+    // Calculate filter date based on selection
+    switch (timeFilter) {
+      case '1d':
+        filterDate.setDate(now.getDate() - 1);
+        break;
+      case '7d':
+        filterDate.setDate(now.getDate() - 7);
+        break;
+      case '30d':
+        filterDate.setDate(now.getDate() - 30);
+        break;
+      case '90d':
+        filterDate.setDate(now.getDate() - 90);
+        break;
+      case 'custom':
+        if (startDate && endDate) {
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+
+          return {
+            orders:
+              orders?.filter(order => {
+                const orderDate = new Date(order.createDate);
+                return orderDate >= start && orderDate <= end;
+              }) || [],
+            users:
+              users?.filter(user => {
+                const userDate = new Date(user.createAt);
+                return userDate >= start && userDate <= end;
+              }) || []
+          };
+        }
+        return { orders: orders || [], users: users || [] };
+      default:
+        return { orders: orders || [], users: users || [] };
+    }
+
+    return {
+      orders:
+        orders?.filter(order => {
+          const orderDate = new Date(order.createDate);
+          return orderDate >= filterDate;
+        }) || [],
+      users:
+        users?.filter(user => {
+          const userDate = new Date(user.createAt);
+          return userDate >= filterDate;
+        }) || []
+    };
+  }, [timeFilter, startDate, endDate, orders, users]);
+
+  // Filter client users
+  const filteredClient = filteredData.users.filter(user => user.role === 'USER') || [];
+
+  // Create pie chart data based on filtered data
   const defaultOrderPieData = orderPieData || {
     labels: ['Đã giao', 'Đang xử lý', 'Đã hủy'],
     datasets: [
       {
         data: [
-          orders?.filter(order => order.deliveryStatus === 'delivered').length || 0,
-          orders?.filter(order => order.deliveryStatus === 'pending').length || 0,
-          orders?.filter(order => order.deliveryStatus === 'cancelled').length || 0
+          filteredData.orders?.filter(order => order.deliveryStatus === 'delivered').length || 0,
+          filteredData.orders?.filter(order => order.deliveryStatus === 'pending').length || 0,
+          filteredData.orders?.filter(order => order.deliveryStatus === 'cancelled').length || 0
         ],
         backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
         borderWidth: 0
@@ -90,24 +174,68 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
               </Typography>
             </div>
 
-            <div className='flex items-center gap-3'>
-              <FormControl size='small' sx={{ minWidth: 120 }}>
+            <div className='flex items-center gap-3 flex-wrap'>
+              <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Thời gian</InputLabel>
-                <Select value={timeFilter} label='Thời gian' onChange={e => setTimeFilter(e.target.value)}>
+                <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
                   <MenuItem value='1d'>24 giờ</MenuItem>
                   <MenuItem value='7d'>7 ngày</MenuItem>
                   <MenuItem value='30d'>30 ngày</MenuItem>
                   <MenuItem value='90d'>90 ngày</MenuItem>
+                  <MenuItem value='custom'>Tùy chọn</MenuItem>
                 </Select>
               </FormControl>
 
+              {/* Date Range Picker */}
+              {showDateRange && (
+                <>
+                  <TextField
+                    type='date'
+                    label='Từ ngày'
+                    size='small'
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ minWidth: 140 }}
+                  />
+                  <TextField
+                    type='date'
+                    label='Đến ngày'
+                    size='small'
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ minWidth: 140 }}
+                  />
+                  {startDate && endDate && (
+                    <Chip
+                      label={`${filteredData.orders.length} đơn hàng`}
+                      color='primary'
+                      size='small'
+                      sx={{
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        fontWeight: 500
+                      }}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Manual Refresh */}
               <Button
-                variant='outlined'
+                variant='contained'
                 startIcon={<MdRefresh />}
                 onClick={handleRefresh}
-                disabled={isRefreshing}
-                size='small'
-                sx={{ textTransform: 'none' }}
+                size='medium'
+                sx={{
+                  backgroundColor: '#3b82f6',
+                  '&:hover': { backgroundColor: '#2563eb' },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
+                }}
               >
                 {isRefreshing ? 'Đang tải...' : 'Làm mới'}
               </Button>
@@ -116,10 +244,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Enhanced Dashboard Stats - Giữ nguyên từ AdminDashBoardForm */}
+      {/* Enhanced Dashboard Stats - Using filtered data */}
       <div className='w-full'>
         <EnhancedDashboardStats
-          ordersCount={orders?.length || 0}
+          ordersCount={filteredData.orders?.length || 0}
           totalRevenue={totalRevenue}
           clientsCount={filteredClient.length}
           newsData={newsData}

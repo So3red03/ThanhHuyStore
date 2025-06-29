@@ -105,7 +105,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, on
             <div className='flex items-center gap-2'>
               <MdDateRange size={20} className='text-blue-600' />
               <Typography variant='h6' component='h3' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                📊 Báo cáo & Xuất dữ liệu
+                Báo cáo & Xuất dữ liệu
               </Typography>
             </div>
 
@@ -121,12 +121,18 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, on
               </FormControl>
 
               <Button
-                variant='outlined'
+                variant='contained'
                 startIcon={<MdRefresh />}
                 onClick={handleRefresh}
-                disabled={isRefreshing}
-                size='small'
-                sx={{ textTransform: 'none' }}
+                size='medium'
+                sx={{
+                  backgroundColor: '#3b82f6',
+                  '&:hover': { backgroundColor: '#2563eb' },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
+                }}
               >
                 {isRefreshing ? 'Đang tải...' : 'Làm mới'}
               </Button>

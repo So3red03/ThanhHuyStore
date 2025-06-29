@@ -1,126 +1,232 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useForm, FieldValues, SubmitHandler } from 'react-hook-form';
-import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  IconButton,
+  InputAdornment
+} from '@mui/material';
+import { MdClose, MdVisibility, MdVisibilityOff, MdPerson, MdEmail, MdLock, MdAdminPanelSettings } from 'react-icons/md';
 import axios from 'axios';
-import AdminModal from '@/app/components/admin/AdminModal';
-import FormWarp from '@/app/components/FormWrap';
-import Heading from '@/app/components/Heading';
-import Input from '@/app/components/inputs/Input';
-import Button from '@/app/components/Button';
+import toast from 'react-hot-toast';
 
 interface AddUserModalProps {
-  isOpen: boolean;
-  toggleOpen: () => void;
+  open: boolean;
+  onClose: () => void;
+  onUserAdded: () => void;
 }
 
-const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, toggleOpen }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<FieldValues>({
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      role: 'USER',
-    },
+const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'USER'
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const onSubmit: SubmitHandler<FieldValues> = async (data) => {
-    setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.email || !formData.password) {
+      toast.error('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
 
+    if (formData.password.length < 6) {
+      toast.error('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    setLoading(true);
     try {
-      const response = await axios.post('/api/register', {
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        role: data.role,
-      });
-
-      if (response.status === 200) {
-        toast.success('Thêm người dùng thành công!');
-        reset();
-        toggleOpen();
-        router.refresh();
-      }
+      await axios.post('/api/admin/users/create', formData);
+      toast.success('Tạo người dùng thành công');
+      onUserAdded();
+      handleClose();
     } catch (error: any) {
-      if (error.response?.status === 400) {
-        toast.error('Email đã tồn tại!');
-      } else {
-        toast.error('Có lỗi xảy ra khi thêm người dùng!');
-      }
+      toast.error(error.response?.data?.error || 'Có lỗi xảy ra');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const roleOptions = [
-    { value: 'USER', label: 'Người dùng' },
-    { value: 'ADMIN', label: 'Quản trị viên' },
-  ];
+  const handleClose = () => {
+    setFormData({ name: '', email: '', password: '', role: 'USER' });
+    setShowPassword(false);
+    onClose();
+  };
 
   return (
-    <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-      <FormWarp custom="!pt-1">
-        <Heading title="Thêm người dùng mới" center>
-          <></>
-        </Heading>
+    <Dialog 
+      open={open} 
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: '16px',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        pb: 2,
+        borderBottom: '1px solid #e5e7eb'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ 
+            p: 1.5, 
+            borderRadius: '12px', 
+            backgroundColor: '#3b82f6', 
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <MdPerson size={24} />
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#1f2937' }}>
+            Thêm Người Dùng Mới
+          </Typography>
+        </Box>
+        <IconButton onClick={handleClose} sx={{ color: '#6b7280' }}>
+          <MdClose size={24} />
+        </IconButton>
+      </DialogTitle>
 
-        <Input
-          id="name"
-          label="Họ và tên"
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          required
-        />
+      <form onSubmit={handleSubmit}>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Name Field */}
+            <TextField
+              fullWidth
+              label="Họ và tên"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <MdPerson color="#6b7280" />
+                  </InputAdornment>
+                )
+              }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+            />
 
-        <Input
-          id="email"
-          label="Email"
-          type="email"
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          required
-        />
+            {/* Email Field */}
+            <TextField
+              fullWidth
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <MdEmail color="#6b7280" />
+                  </InputAdornment>
+                )
+              }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+            />
 
-        <Input
-          id="password"
-          label="Mật khẩu"
-          type="password"
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          required
-        />
+            {/* Password Field */}
+            <TextField
+              fullWidth
+              label="Mật khẩu"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <MdLock color="#6b7280" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                    >
+                      {showPassword ? <MdVisibilityOff /> : <MdVisibility />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+            />
 
-        <Input
-          id="role"
-          label="Vai trò"
-          type="combobox"
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          options={roleOptions}
-          required
-        />
+            {/* Role Field */}
+            <FormControl fullWidth>
+              <InputLabel>Vai trò</InputLabel>
+              <Select
+                value={formData.role}
+                label="Vai trò"
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                startAdornment={
+                  <InputAdornment position="start">
+                    <MdAdminPanelSettings color="#6b7280" />
+                  </InputAdornment>
+                }
+                sx={{ borderRadius: '12px' }}
+              >
+                <MenuItem value="USER">Người dùng</MenuItem>
+                <MenuItem value="ADMIN">Quản trị viên</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
 
-        <Button
-          label="Thêm người dùng"
-          isLoading={isLoading}
-          onClick={handleSubmit(onSubmit)}
-        />
-      </FormWarp>
-    </AdminModal>
+        <DialogActions sx={{ p: 3, pt: 2 }}>
+          <Button
+            onClick={handleClose}
+            variant="outlined"
+            sx={{
+              borderRadius: '12px',
+              px: 3,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 600
+            }}
+          >
+            Hủy
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+            sx={{
+              borderRadius: '12px',
+              px: 3,
+              py: 1.5,
+              backgroundColor: '#3b82f6',
+              '&:hover': { backgroundColor: '#2563eb' },
+              textTransform: 'none',
+              fontWeight: 600
+            }}
+          >
+            {loading ? 'Đang tạo...' : 'Tạo người dùng'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 

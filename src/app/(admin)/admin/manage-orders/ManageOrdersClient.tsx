@@ -470,12 +470,21 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
             disableDensitySelector
             disableColumnSelector
             sx={{
+              border: '1px solid #e2e8f0',
+              borderRadius: 2,
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #e5e7eb'
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f8fafc', // slate-50
+                borderBottom: '1px solid #e2e8f0'
+              },
               '& .MuiDataGrid-toolbarContainer': {
                 flexDirection: 'row-reverse',
                 padding: '15px'
               },
-              '& .css-yrdy0g-MuiDataGrid-columnHeaderRow': {
-                backgroundColor: '#F6F7FB !important'
+              '& .MuiDataGrid-columnHeaderRow': {
+                backgroundColor: '#f6f7fb'
               }
             }}
           />

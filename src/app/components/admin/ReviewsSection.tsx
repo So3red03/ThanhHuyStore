@@ -60,14 +60,14 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
+    setValue
   } = useForm<FieldValues>();
 
   const toggleOpen = () => setIsOpen(!isOpen);
   const toggleUpdateOpen = () => setisUpdateOpen(!isUpdateOpen);
   const toggleDelete = () => setIsDelete(!isDelete);
 
-  const onSubmit: SubmitHandler<FieldValues> = (data) => {
+  const onSubmit: SubmitHandler<FieldValues> = data => {
     if (selectedReview?.reply && !isEditing) {
       toast.error('Bình luận này đã được phản hồi');
       setValue('reply', '');
@@ -77,8 +77,8 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
     setIsLoading(true);
 
     const apiEndpoint = isEditing ? '/api/commentUpdate' : '/api/commentReply';
-    const payload = isEditing 
-      ? { id: selectedReview?.id, edit: data.edit } 
+    const payload = isEditing
+      ? { id: selectedReview?.id, edit: data.edit }
       : { id: selectedReview?.id, reply: data.reply };
 
     axios
@@ -88,7 +88,7 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
         router.refresh();
         setValue(isEditing ? 'edit' : 'reply', '');
       })
-      .catch((error) => {
+      .catch(error => {
         console.error(error);
         toast.error('Có lỗi khi phản hồi');
       })
@@ -107,53 +107,49 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
   const handleDeleteReviews = (id: any) => {
     axios
       .delete(`/api/reviews/${id}`)
-      .then((res) => {
+      .then(res => {
         toast.success('Xóa đánh giá thành công');
         router.refresh();
       })
-      .catch((error) => {
+      .catch(error => {
         toast.error('Có lỗi xảy ra khi xóa');
       });
   };
 
   return (
     <>
-      <div className="mb-4 rounded-lg border border-gray-200 w-full p-6 pr-0 pb-2 flex-1">
-        <h2 className="text-gray-500 mb-4 font-semibold text-lg">Đánh giá sản phẩm gần đây</h2>
-        <div className="h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent">
+      <div className='mb-4 rounded-lg border border-gray-200 w-full p-6 pr-0 pb-2 flex-1'>
+        <h2 className='text-gray-500 mb-4 font-semibold text-lg'>Đánh giá sản phẩm gần đây</h2>
+        <div className='h-[65vh] overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] scrollbar-track-transparent'>
           {reviews?.map((review: any) => (
             <div
               key={review.id}
-              className="flex flex-col items-start my-6 mr-3"
+              className='flex flex-col items-start my-6 mr-3'
               onMouseEnter={() => setHoveredReviewId(review.id)}
               onMouseLeave={() => setHoveredReviewId(null)}
             >
-              <div className="flex items-start gap-3">
-                <div className="relative inline-block rounded-full overflow-hidden h-11 w-11">
-                  <Image alt="Avatar" src="/no-avatar-2.jpg" fill sizes="100%" />
+              <div className='flex items-start gap-3'>
+                <div className='relative inline-block rounded-full overflow-hidden h-11 w-11'>
+                  <Image alt='Avatar' src='/no-avatar-2.jpg' fill sizes='100%' />
                 </div>
                 <div>
                   <Link href={`/product/${review.product.id}`}>
-                    <span className="text-sm">Đánh giá </span>
-                    <span className="font-semibold text-blue-500 text-sm hover:underline">
-                      {review.product.name}
-                    </span>
+                    <span className='text-sm'>Đánh giá </span>
+                    <span className='font-semibold text-blue-500 text-sm hover:underline'>{review.product.name}</span>
                   </Link>
-                  <div className="flex items-center gap-2 my-2">
-                    <span className="text-blue-500 text-sm">{review.user.name}</span>
-                    <span className="text-gray-400 text-xs">
-                      {formatDate(review.createdDate)}
-                    </span>
+                  <div className='flex items-center gap-2 my-2'>
+                    <span className='text-blue-500 text-sm'>{review.user.name}</span>
+                    <span className='text-gray-400 text-xs'>{formatDate(review.createdDate)}</span>
                   </div>
                 </div>
               </div>
-              <div className="w-full">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm mt-1">{review.comment}</p>
+              <div className='w-full'>
+                <div className='flex items-center justify-between'>
+                  <p className='text-sm mt-1'>{review.comment}</p>
                   {review.reply ? (
-                    <p className="text-xs text-gray-500">(Đã phản hồi)</p>
+                    <p className='text-xs text-gray-500'>(Đã phản hồi)</p>
                   ) : (
-                    <p className="text-xs text-gray-500">(Chưa phản hồi)</p>
+                    <p className='text-xs text-gray-500'>(Chưa phản hồi)</p>
                   )}
                 </div>
                 {/* Hover actions */}
@@ -163,7 +159,7 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
                   }`}
                 >
                   <a
-                    className="hover:underline cursor-pointer"
+                    className='hover:underline cursor-pointer'
                     onClick={() => {
                       setselectedReview(review);
                       setIsEditing(false);
@@ -175,8 +171,14 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
                   </a>
                   |
                   <a
-                    className="hover:underline ml-1 cursor-pointer"
+                    className={`hover:underline ml-1 cursor-pointer ${
+                      !review.reply ? 'text-gray-400 cursor-not-allowed' : ''
+                    }`}
                     onClick={() => {
+                      if (!review.reply) {
+                        toast.error('Bạn cần phản hồi trước khi có thể sửa');
+                        return;
+                      }
                       setselectedReview(review);
                       setIsEditing(true);
                       toggleUpdateOpen();
@@ -187,7 +189,7 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
                   </a>
                   |
                   <a
-                    className="hover:underline text-red-600 ml-1 cursor-pointer"
+                    className='hover:underline text-red-600 ml-1 cursor-pointer'
                     onClick={() => {
                       setselectedReview(review);
                       toggleDelete();
@@ -196,15 +198,12 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
                     Xóa{' '}
                   </a>
                   |
-                  <a
-                    href={`/product/${review.product.id}#comment-${review.id}`}
-                    className="hover:underline ml-1"
-                  >
+                  <a href={`/product/${review.product.id}#comment-${review.id}`} className='hover:underline ml-1'>
                     Xem{' '}
                   </a>
                 </div>
               </div>
-              
+
               {/* Reply form */}
               <div
                 className={`transition-transform duration-300 ease-in-out w-full ${
@@ -212,25 +211,25 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
                 }`}
               >
                 {isOpen && selectedReview?.id === review.id && (
-                  <div className="mt-2 p-2 border rounded">
-                    <p className="font-semibold text-sm py-1">Phản hồi bình luận</p>
+                  <div className='mt-2 p-2 border rounded'>
+                    <p className='font-semibold text-sm py-1'>Phản hồi bình luận</p>
                     <textarea
                       {...register('reply', { required: true })}
                       className={`w-full h-24 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 rounded-md p-2 text-sm ${
                         errors.reply ? 'border-red-500' : ''
                       }`}
-                      placeholder="Nhập phản hồi của bạn..."
+                      placeholder='Nhập phản hồi của bạn...'
                     ></textarea>
-                    <div className="flex justify-start mt-2">
+                    <div className='flex justify-start mt-2'>
                       <Button
-                        label="Lưu"
+                        label='Lưu'
                         small
-                        custom="!px-4 !py-1 !text-sm !mr-2 !rounded-md !w-fit "
+                        custom='!px-4 !py-1 !text-sm !mr-2 !rounded-md !w-fit '
                         onClick={handleSubmit(onSubmit)}
                         isLoading={isLoading}
                       />
                       <button
-                        className="bg-gray-300 text-gray-700 px-4 py-1 text-sm rounded-md hover:opacity-80"
+                        className='bg-gray-300 text-gray-700 px-4 py-1 text-sm rounded-md hover:opacity-80'
                         onClick={() => {
                           setIsOpen(false);
                           setselectedReview(null);
@@ -242,7 +241,7 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
                   </div>
                 )}
               </div>
-              
+
               {/* Edit form */}
               <div
                 className={`transition-transform duration-300 ease-in-out w-full ${
@@ -250,26 +249,26 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
                 }`}
               >
                 {isUpdateOpen && selectedReview?.id === review.id && (
-                  <div className="mt-2 p-2 border rounded">
-                    <p className="font-semibold text-sm py-1">Sửa phản hồi</p>
+                  <div className='mt-2 p-2 border rounded'>
+                    <p className='font-semibold text-sm py-1'>Sửa phản hồi</p>
                     <textarea
                       {...register('edit', { required: true })}
                       defaultValue={selectedReview?.reply}
                       className={`w-full h-24 border border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-400 rounded-md p-2 text-sm ${
                         errors.reply ? 'border-red-500' : ''
                       }`}
-                      placeholder="Nhập phản hồi của bạn..."
+                      placeholder='Nhập phản hồi của bạn...'
                     ></textarea>
-                    <div className="flex justify-start mt-2">
+                    <div className='flex justify-start mt-2'>
                       <Button
-                        label="Lưu"
+                        label='Lưu'
                         small
-                        custom="!px-4 !py-1 !text-sm !mr-2 !rounded-md !w-fit "
+                        custom='!px-4 !py-1 !text-sm !mr-2 !rounded-md !w-fit '
                         onClick={handleSubmit(onSubmit)}
                         isLoading={isLoading}
                       />
                       <button
-                        className="bg-gray-300 text-gray-700 px-4 py-1 text-sm rounded-md hover:opacity-80"
+                        className='bg-gray-300 text-gray-700 px-4 py-1 text-sm rounded-md hover:opacity-80'
                         onClick={() => {
                           setisUpdateOpen(false);
                           setselectedReview(null);
@@ -285,14 +284,8 @@ const ReviewsSection: React.FC<ReviewsSectionProps> = ({ reviews }) => {
           ))}
         </div>
       </div>
-      
-      {isDelete && (
-        <ConfirmDialog 
-          isOpen={isDelete} 
-          handleClose={toggleDelete} 
-          onConfirm={handleConfirmDelete} 
-        />
-      )}
+
+      {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
     </>
   );
 };

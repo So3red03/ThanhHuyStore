@@ -282,40 +282,155 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
         onClose={handleNotificationsClose}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        PaperProps={{ sx: { width: 320, maxHeight: 400 } }}
+        PaperProps={{
+          sx: {
+            width: 380,
+            maxHeight: 500,
+            borderRadius: 2,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            border: '1px solid rgba(0,0,0,0.08)'
+          }
+        }}
       >
-        <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Typography variant='h6' fontWeight={600}>
-            🔔 Thông báo
-          </Typography>
-          {unreadCount > 0 && <Chip label={`${unreadCount} mới`} size='small' color='error' />}
-        </Box>
-        {notifications.length === 0 ? (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant='body2' color='text.secondary'>
-              Không có thông báo nào
+        {/* Header */}
+        <Box
+          sx={{
+            p: 3,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white'
+          }}
+        >
+          <Box display='flex' justifyContent='space-between' alignItems='center'>
+            <Typography variant='h6' fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              🔔 Thông báo
             </Typography>
+            {unreadCount > 0 && (
+              <Chip
+                label={`${unreadCount} mới`}
+                size='small'
+                sx={{
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  fontWeight: 600
+                }}
+              />
+            )}
           </Box>
-        ) : (
-          notifications.slice(0, 5).map((notification: any) => (
-            <MenuItem
-              key={notification.id}
-              onClick={() => markAsRead(notification.id)}
-              sx={{
-                borderLeft: !notification.isRead ? '4px solid' : 'none',
-                borderColor: 'primary.main'
-              }}
-            >
-              <Box>
-                <Typography variant='body2' fontWeight={500}>
-                  {notification.title}
-                </Typography>
-                <Typography variant='caption' color='text.secondary'>
-                  {notification.message}
-                </Typography>
+        </Box>
+
+        {/* Content */}
+        <Box sx={{ maxHeight: 350, overflow: 'auto' }}>
+          {notifications.length === 0 ? (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Box
+                sx={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: '50%',
+                  backgroundColor: '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  fontSize: '24px'
+                }}
+              >
+                🔕
               </Box>
-            </MenuItem>
-          ))
+              <Typography variant='body2' color='text.secondary' fontWeight={500}>
+                Không có thông báo nào
+              </Typography>
+              <Typography variant='caption' color='text.secondary'>
+                Các thông báo mới sẽ xuất hiện ở đây
+              </Typography>
+            </Box>
+          ) : (
+            notifications.slice(0, 8).map((notification: any, index: number) => (
+              <MenuItem
+                key={notification.id}
+                onClick={() => markAsRead(notification.id)}
+                sx={{
+                  py: 2,
+                  px: 3,
+                  borderLeft: !notification.isRead ? '4px solid #667eea' : '4px solid transparent',
+                  backgroundColor: !notification.isRead ? 'rgba(102, 126, 234, 0.05)' : 'transparent',
+                  '&:hover': {
+                    backgroundColor: '#64748b',
+                    color: 'white',
+                    '& .MuiTypography-root': {
+                      color: 'white'
+                    }
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                  borderBottom: index < notifications.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none'
+                }}
+              >
+                <Box sx={{ width: '100%' }}>
+                  <Box display='flex' justifyContent='space-between' alignItems='flex-start' mb={0.5}>
+                    <Typography variant='body2' fontWeight={600} sx={{ flex: 1 }}>
+                      {notification.title}
+                    </Typography>
+                    {!notification.isRead && (
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          backgroundColor: '#ef4444',
+                          ml: 1,
+                          flexShrink: 0
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Typography variant='body2' color='text.secondary' sx={{ mb: 1, lineHeight: 1.4 }}>
+                    {notification.message}
+                  </Typography>
+                  <Typography variant='caption' color='text.secondary' sx={{ fontWeight: 500 }}>
+                    {new Date(notification.createdAt).toLocaleString('vi-VN')}
+                  </Typography>
+                </Box>
+              </MenuItem>
+            ))
+          )}
+        </Box>
+
+        {/* Footer */}
+        {notifications.length > 0 && (
+          <Box
+            sx={{
+              p: 2,
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: '#f8fafc'
+            }}
+          >
+            <Box display='flex' justifyContent='space-between' alignItems='center'>
+              <Typography variant='caption' color='text.secondary' sx={{ fontWeight: 500 }}>
+                Hiển thị {Math.min(8, notifications.length)} / {notifications.length}
+              </Typography>
+              <Box display='flex' gap={1}>
+                {unreadCount > 0 && (
+                  <Chip
+                    label='Đánh dấu tất cả đã đọc'
+                    size='small'
+                    onClick={markAllAsRead}
+                    sx={{
+                      fontSize: '0.75rem',
+                      height: 24,
+                      backgroundColor: '#64748b',
+                      color: 'white',
+                      '&:hover': {
+                        backgroundColor: '#475569'
+                      }
+                    }}
+                  />
+                )}
+              </Box>
+            </Box>
+          </Box>
         )}
       </Menu>
 
@@ -326,34 +441,166 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
         onClose={handleMessagesClose}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        PaperProps={{ sx: { width: 320, maxHeight: 400 } }}
+        slotProps={{
+          paper: {
+            sx: {
+              width: 380,
+              maxHeight: 500,
+              borderRadius: 2,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              border: '1px solid rgba(0,0,0,0.08)'
+            }
+          }
+        }}
       >
-        <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Typography variant='h6' fontWeight={600}>
-            💬 Tin nhắn
-          </Typography>
-          <Chip label={`${messages.length}`} size='small' color='primary' />
-        </Box>
-        {messages.length === 0 ? (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant='body2' color='text.secondary'>
-              Không có tin nhắn nào
+        {/* Header */}
+        <Box
+          sx={{
+            p: 3,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: 'white'
+          }}
+        >
+          <Box display='flex' justifyContent='space-between' alignItems='center'>
+            <Typography variant='h6' fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              💬 Tin nhắn
             </Typography>
+            <Chip
+              label={`${messages.length} tin nhắn`}
+              size='small'
+              sx={{
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                fontWeight: 600
+              }}
+            />
           </Box>
-        ) : (
-          messages.slice(0, 5).map((message: any) => (
-            <MenuItem key={message.id} onClick={() => handleMessageClick(message)}>
-              <Avatar src={message.sender?.image || '/no-avatar-2.jpg'} sx={{ width: 32, height: 32, mr: 2 }} />
-              <Box>
-                <Typography variant='body2' fontWeight={500}>
-                  {message.sender?.name || 'Người dùng'}
-                </Typography>
-                <Typography variant='caption' color='text.secondary' noWrap>
-                  {message.body || 'Tin nhắn'}
-                </Typography>
+        </Box>
+
+        {/* Content */}
+        <Box sx={{ maxHeight: 350, overflow: 'auto' }}>
+          {messages.length === 0 ? (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Box
+                sx={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: '50%',
+                  backgroundColor: '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  fontSize: '24px'
+                }}
+              >
+                💬
               </Box>
-            </MenuItem>
-          ))
+              <Typography variant='body2' color='text.secondary' fontWeight={500}>
+                Không có tin nhắn nào
+              </Typography>
+              <Typography variant='caption' color='text.secondary'>
+                Tin nhắn từ khách hàng sẽ xuất hiện ở đây
+              </Typography>
+            </Box>
+          ) : (
+            messages.slice(0, 8).map((message: any, index: number) => (
+              <MenuItem
+                key={message.id}
+                onClick={() => handleMessageClick(message)}
+                sx={{
+                  py: 2,
+                  px: 3,
+                  '&:hover': {
+                    backgroundColor: '#64748b',
+                    color: 'white',
+                    '& .MuiTypography-root': {
+                      color: 'white'
+                    },
+                    '& .MuiAvatar-root': {
+                      transform: 'scale(1.05)'
+                    }
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                  borderBottom: index < messages.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none'
+                }}
+              >
+                <Avatar
+                  src={message.sender?.image || '/no-avatar-2.jpg'}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    mr: 2,
+                    border: '2px solid #e5e7eb',
+                    transition: 'transform 0.2s ease-in-out'
+                  }}
+                />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Box display='flex' justifyContent='space-between' alignItems='flex-start' mb={0.5}>
+                    <Typography variant='body2' fontWeight={600} sx={{ flex: 1 }}>
+                      {message.sender?.name || 'Người dùng'}
+                    </Typography>
+                    <Typography variant='caption' color='text.secondary' sx={{ fontWeight: 500, ml: 1 }}>
+                      {new Date(message.createdAt).toLocaleTimeString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    sx={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      lineHeight: 1.4,
+                      maxWidth: '250px'
+                    }}
+                  >
+                    {message.body || message.image ? message.body || '📷 Hình ảnh' : 'Tin nhắn mới'}
+                  </Typography>
+                </Box>
+              </MenuItem>
+            ))
+          )}
+        </Box>
+
+        {/* Footer */}
+        {messages.length > 0 && (
+          <Box
+            sx={{
+              p: 2,
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: '#f8fafc'
+            }}
+          >
+            <Box display='flex' justifyContent='space-between' alignItems='center'>
+              <Typography variant='caption' color='text.secondary' sx={{ fontWeight: 500 }}>
+                Hiển thị {Math.min(8, messages.length)} / {messages.length}
+              </Typography>
+              <Chip
+                label='Xem tất cả'
+                size='small'
+                onClick={() => {
+                  router.push('/admin/chat');
+                  handleMessagesClose();
+                }}
+                sx={{
+                  fontSize: '0.75rem',
+                  height: 24,
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: '#059669'
+                  }
+                }}
+              />
+            </Box>
+          </Box>
         )}
       </Menu>
     </>
