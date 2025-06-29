@@ -1,8 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FieldErrors, FieldValues, UseFormRegister } from 'react-hook-form';
-import { FaEye, FaEyeSlash } from 'react-icons/fa6';
+import { TextField, FormControl, InputLabel, Select, MenuItem, InputAdornment, IconButton } from '@mui/material';
+import {
+  MdVisibility,
+  MdVisibilityOff,
+  MdPerson,
+  MdEmail,
+  MdLock,
+  MdPhone,
+  MdAttachMoney,
+  MdTitle,
+  MdDescription,
+  MdCategory,
+  MdInventory,
+  MdImage,
+  MdDateRange,
+  MdLink
+} from 'react-icons/md';
 
 interface InputProps {
   id: string;
@@ -26,6 +42,42 @@ interface InputProps {
   title?: string;
 }
 
+// Helper function to get appropriate icon based on field id/type
+const getFieldIcon = (id: string, type?: string) => {
+  // Email fields
+  if (type === 'email' || id.includes('email')) return MdEmail;
+
+  // Password fields
+  if (type === 'password' || id.includes('password')) return MdLock;
+
+  // Phone fields
+  if (type === 'tel' || id.includes('phone')) return MdPhone;
+
+  // Price/Money fields
+  if (id.includes('price') || id.includes('cost') || id.includes('amount')) return MdAttachMoney;
+
+  // Name/Title fields
+  if (id.includes('name') || id.includes('title')) return id.includes('title') ? MdTitle : MdPerson;
+
+  // Description fields
+  if (id.includes('description') || id.includes('content')) return MdDescription;
+
+  // Category fields
+  if (id.includes('category') || id.includes('cate')) return MdCategory;
+
+  // Stock/Inventory fields
+  if (id.includes('stock') || id.includes('quantity')) return MdInventory;
+
+  // Image/URL fields
+  if (id.includes('image') || id.includes('url') || id.includes('link')) return id.includes('image') ? MdImage : MdLink;
+
+  // Date fields
+  if (type === 'date' || id.includes('date') || id.includes('time')) return MdDateRange;
+
+  // Default icon
+  return MdPerson;
+};
+
 const Input: React.FC<InputProps> = ({
   id,
   label,
@@ -37,32 +89,36 @@ const Input: React.FC<InputProps> = ({
   errors,
   defaultValue,
   toggleVisibility,
-  className,
   onKeyDown,
   onInput,
   options,
-  cartInfo,
   onChange,
-  autoComplete,
-  pattern,
-  title
+  autoComplete
 }) => {
-  const [hasValue, setHasValue] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-
-  useEffect(() => {
-    setHasValue(defaultValue !== ''); // Đồng bộ trạng thái
-  }, [defaultValue]);
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setHasValue(event.target.value !== '');
-  };
-  const handleChangeSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setHasValue(event.target.value !== '');
-  };
 
   const handleToggleVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  // Get appropriate icon for the field
+  const FieldIcon = getFieldIcon(id, type);
+
+  // Handle MUI TextField change
+  const handleMuiChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (onChange) onChange(event);
+  };
+
+  // Handle MUI Select change
+  const handleMuiSelectChange = (event: any) => {
+    // Create a synthetic event for react-hook-form
+    const syntheticEvent = {
+      target: {
+        name: id,
+        value: event.target.value
+      }
+    } as React.ChangeEvent<HTMLInputElement>;
+    if (onChange) onChange(syntheticEvent);
   };
 
   // Trả về các ràng buộc dựa trên type
@@ -91,95 +147,114 @@ const Input: React.FC<InputProps> = ({
   };
 
   return (
-    <div className='w-full relative'>
+    <div className='w-full'>
       {type === 'combobox' ? (
-        <>
-          <select
-            id={id}
-            disabled={disabled}
-            {...register(id, { required: true })}
+        <FormControl
+          fullWidth
+          error={!!errors[id]}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '12px',
+              backgroundColor: 'white',
+              '& fieldset': {
+                borderColor: errors[id] ? '#f87171' : '#cbd5e1',
+                borderWidth: '2px'
+              },
+              '&:hover fieldset': {
+                borderColor: errors[id] ? '#f87171' : '#94a3b8'
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: errors[id] ? '#f87171' : '#64748b',
+                borderWidth: '2px'
+              }
+            },
+            '& .MuiInputLabel-root': {
+              color: errors[id] ? '#f87171' : '#64748b',
+              '&.Mui-focused': {
+                color: errors[id] ? '#f87171' : '#64748b'
+              }
+            }
+          }}
+        >
+          <InputLabel>{label}</InputLabel>
+          <Select
+            {...register(id, { required })}
             defaultValue={defaultValue || ''}
-            aria-placeholder={placeholder}
-            className={`peer w-full p-4 pt-6 outline-none bg-white font-light border-2 rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed shadow-sm
-						${errors[id] ? 'border-rose-400' : 'border-slate-300'}
-						${errors[id] ? 'focus:border-rose-400' : 'focus:border-slate-500'}
-						hover:border-slate-400 focus:shadow-md
-						${className}`}
-            onChange={handleChangeSelect}
+            label={label}
+            disabled={disabled}
+            onChange={handleMuiSelectChange}
+            startAdornment={
+              <InputAdornment position='start'>
+                <FieldIcon style={{ color: '#64748b', fontSize: '20px' }} />
+              </InputAdornment>
+            }
           >
             {options?.map(option => (
-              <option key={option.value} value={option.value}>
+              <MenuItem key={option.value} value={option.value}>
                 {option.label}
-              </option>
+              </MenuItem>
             ))}
-          </select>
-          <label
-            htmlFor={id}
-            className={`absolute text-md duration-150 transform top-5 z-10 origin-[0] left-4 peer-focus:scale-75 peer-focus:-translate-y-4
-						${hasValue ? 'scale-75 -translate-y-4' : 'scale-100 translate-y-0'}
-						${errors[id] ? 'text-rose-400' : 'text-slate-400'}`}
-          >
-            {label}
-          </label>
-        </>
+          </Select>
+        </FormControl>
       ) : (
-        <>
-          <input
-            onKeyDown={onKeyDown}
-            onInput={onInput}
-            autoComplete={autoComplete || 'off'}
-            pattern={pattern}
-            title={title}
-            id={id}
-            onFocus={e =>
-              e.target.addEventListener(
-                'wheel',
-                function (e) {
-                  e.preventDefault();
-                },
-                { passive: false }
-              )
+        <TextField
+          fullWidth
+          id={id}
+          label={label}
+          placeholder={placeholder}
+          type={isPasswordVisible && type === 'password' ? 'text' : type}
+          disabled={disabled}
+          defaultValue={defaultValue || ''}
+          error={!!errors[id]}
+          autoComplete={autoComplete || 'off'}
+          onKeyDown={onKeyDown}
+          onInput={onInput}
+          {...register(id, validationRules())}
+          onChange={handleMuiChange}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position='start'>
+                <FieldIcon style={{ color: '#64748b', fontSize: '20px' }} />
+              </InputAdornment>
+            ),
+            endAdornment:
+              toggleVisibility && type === 'password' ? (
+                <InputAdornment position='end'>
+                  <IconButton onClick={handleToggleVisibility} edge='end' sx={{ color: '#64748b' }}>
+                    {isPasswordVisible ? <MdVisibilityOff /> : <MdVisibility />}
+                  </IconButton>
+                </InputAdornment>
+              ) : null
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '12px',
+              backgroundColor: 'white',
+              '& fieldset': {
+                borderColor: errors[id] ? '#f87171' : '#cbd5e1',
+                borderWidth: '2px'
+              },
+              '&:hover fieldset': {
+                borderColor: errors[id] ? '#f87171' : '#94a3b8'
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: errors[id] ? '#f87171' : '#64748b',
+                borderWidth: '2px'
+              }
+            },
+            '& .MuiInputLabel-root': {
+              color: errors[id] ? '#f87171' : '#64748b',
+              '&.Mui-focused': {
+                color: errors[id] ? '#f87171' : '#64748b'
+              }
             }
-            disabled={disabled}
-            defaultValue={defaultValue || ''}
-            {...register(id, validationRules())}
-            placeholder={placeholder}
-            type={isPasswordVisible && type === 'password' ? 'text' : type}
-            onChange={handleChange || onChange}
-            className={`peer w-full p-4 pt-6 outline-none bg-white font-light border-2 rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed shadow-sm
-						${errors[id] ? 'border-rose-400' : 'border-slate-300'}
-						${errors[id] ? 'focus:border-rose-400' : 'focus:border-slate-500'}
-						hover:border-slate-400 focus:shadow-md
-						${className}`}
-          />
-          <label
-            htmlFor={id}
-            className={`absolute text-md duration-150 transform ${
-              cartInfo ? 'top-3' : 'top-5'
-            } z-10 origin-[0] left-4 peer-focus:scale-75 peer-focus:-translate-y-4
-						${hasValue ? 'scale-75 -translate-y-4' : 'scale-100 translate-y-0'}
-						${errors[id] ? 'text-rose-400' : 'text-slate-400'}`}
-          >
-            {label}
-          </label>
-          {toggleVisibility && type === 'password' && (
-            <div
-              className='absolute right-4 top-6 cursor-pointer text-slate-400 text-lg'
-              onClick={handleToggleVisibility}
-            >
-              {isPasswordVisible ? <FaEyeSlash /> : <FaEye />}
-            </div>
-          )}
-          {errors[id] && (
-            <p className='text-rose-400 text-sm mt-1'>
-              {type === 'email' && 'Email không hợp lệ'}
-              {type === 'password' && 'Mật khẩu phải trên 6 kí tự'}
-              {type === 'name' && 'Tài khoản không được bỏ trống'}
-              {(type === 'tel' || id === 'phone') && 'Số điện thoại không hợp lệ'}
-              {!type && required && 'Trường này không được bỏ trống'}
-            </p>
-          )}
-        </>
+          }}
+        />
+      )}
+
+      {/* Error Message */}
+      {errors[id] && (
+        <p className='text-rose-500 text-sm mt-1 ml-1'>{(errors[id]?.message as string) || `${label} là bắt buộc`}</p>
       )}
     </div>
   );

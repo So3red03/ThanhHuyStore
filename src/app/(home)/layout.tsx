@@ -12,6 +12,8 @@ import ClientSessionProvider from '../providers/ClientSessionProvider';
 import { getCurrentUser } from '../actions/getCurrentUser';
 import AnalyticsTracker from '../components/analytics/AnalyticsTracker';
 import NProgressProvider from '../components/NProgressProvider';
+import { AuthModalProvider } from '../components/auth/AuthModalProvider';
+import AuthModal from '../components/auth/AuthModal';
 
 const poppins = Poppins({ subsets: ['latin'], weight: ['400', '700'] });
 
@@ -45,16 +47,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <ClientSessionProvider session={session}>
           <CartProvider>
-            <AnalyticsTracker>
-              <NProgressProvider />
-              <div className='flex flex-col min-h-screen'>
-                <Navbar />
-                <main className='flex-grow'>{children}</main>
-                <Footer />
-                <ZaloChatBtn />
-                <ChatBoxClient currentUser={currentUser} />
-              </div>
-            </AnalyticsTracker>
+            <AuthModalProvider>
+              <AnalyticsTracker>
+                <NProgressProvider />
+                <div className='flex flex-col min-h-screen'>
+                  <Navbar />
+                  <main className='flex-grow'>{children}</main>
+                  <Footer />
+                  <ZaloChatBtn />
+                  <ChatBoxClient currentUser={currentUser} />
+                  <AuthModal currentUser={currentUser} />
+                </div>
+              </AnalyticsTracker>
+            </AuthModalProvider>
           </CartProvider>
         </ClientSessionProvider>
       </body>
