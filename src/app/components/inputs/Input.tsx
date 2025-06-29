@@ -100,9 +100,10 @@ const Input: React.FC<InputProps> = ({
             {...register(id, { required: true })}
             defaultValue={defaultValue || ''}
             aria-placeholder={placeholder}
-            className={`peer w-full p-4 pt-6 outline-none bg-white font-light border-2 rounded-md transition disabled:opacity-70 disabled:cursor-not-allowed
+            className={`peer w-full p-4 pt-6 outline-none bg-white font-light border-2 rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed shadow-sm
 						${errors[id] ? 'border-rose-400' : 'border-slate-300'}
 						${errors[id] ? 'focus:border-rose-400' : 'focus:border-slate-500'}
+						hover:border-slate-400 focus:shadow-md
 						${className}`}
             onChange={handleChangeSelect}
           >
@@ -145,9 +146,10 @@ const Input: React.FC<InputProps> = ({
             placeholder={placeholder}
             type={isPasswordVisible && type === 'password' ? 'text' : type}
             onChange={handleChange || onChange}
-            className={`peer w-full p-4 pt-6 outline-none bg-white font-light border-2 rounded-md transition disabled:opacity-70 disabled:cursor-not-allowed
+            className={`peer w-full p-4 pt-6 outline-none bg-white font-light border-2 rounded-lg transition disabled:opacity-70 disabled:cursor-not-allowed shadow-sm
 						${errors[id] ? 'border-rose-400' : 'border-slate-300'}
 						${errors[id] ? 'focus:border-rose-400' : 'focus:border-slate-500'}
+						hover:border-slate-400 focus:shadow-md
 						${className}`}
           />
           <label

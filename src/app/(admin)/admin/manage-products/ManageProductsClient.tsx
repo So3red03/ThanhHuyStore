@@ -33,7 +33,9 @@ import SendNewProductEmail from '@/app/components/admin/SendNewProductEmail';
 import Image from 'next/image';
 import { Editor } from 'primereact/editor';
 import { ImageType } from './AddProductModal';
-import { Rating } from '@mui/material';
+import AddProductModal from './AddProductModal';
+import { Rating, Button as MuiButton } from '@mui/material';
+import { MdAdd } from 'react-icons/md';
 import { FaDollarSign, FaRegBuilding, FaRegEnvelope, FaRegListAlt, FaRegWindowMaximize } from 'react-icons/fa';
 import * as SlIcons from 'react-icons/sl';
 import * as AiIcons from 'react-icons/ai';
@@ -65,6 +67,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [selectedParentCategoryId, setSelectedParentCategoryId] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
   const [deletedProducts, setDeletedProducts] = useState<any[]>([]);
+  const [addProductModalOpen, setAddProductModalOpen] = useState(false);
 
   const [text, setText] = useState('');
   // const [images, setImages] = useState<any[] | null>(products.images);
@@ -494,22 +497,26 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
           <SendNewProductEmail products={products} />
         </div>
 
-        {/* TODO: Toggle Deleted Products Button - enable after database update */}
+        {/* Header with Add Product Button */}
         <div className='mb-4 mt-5 flex justify-between items-center'>
           <h2 className='text-xl font-semibold text-gray-800'>Danh sách sản phẩm</h2>
-          {/* Temporarily disabled until soft delete is implemented
-          <button
-            onClick={toggleShowDeleted}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              showDeleted ? 'bg-gray-500 hover:bg-gray-600 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'
-            }`}
+          <MuiButton
+            variant='contained'
+            startIcon={<MdAdd />}
+            onClick={() => setAddProductModalOpen(true)}
+            sx={{
+              backgroundColor: '#3b82f6',
+              '&:hover': { backgroundColor: '#2563eb' },
+              borderRadius: '12px',
+              px: 3,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}
           >
-            <div className='flex items-center gap-2'>
-              {showDeleted ? <MdVisibility size={16} /> : <MdDelete size={16} />}
-              {showDeleted ? 'Xem sản phẩm hiện tại' : 'Xem sản phẩm đã xóa'}
-            </div>
-          </button>
-          */}
+            Thêm sản phẩm
+          </MuiButton>
         </div>
 
         <div className='h-[600px] w-full'>
@@ -652,6 +659,14 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         </AdminModal>
       )}
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
+
+      {/* Add Product Modal */}
+      <AddProductModal
+        isOpen={addProductModalOpen}
+        toggleOpen={() => setAddProductModalOpen(false)}
+        subCategories={subCategories}
+        parentCategories={parentCategories}
+      />
     </>
   );
 };

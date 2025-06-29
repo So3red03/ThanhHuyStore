@@ -13,7 +13,9 @@ import { useEffect, useState } from 'react';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import ActionBtn from '@/app/components/ActionBtn';
-import { MdDelete, MdEdit } from 'react-icons/md';
+import { MdDelete, MdEdit, MdAdd } from 'react-icons/md';
+import { Button as MuiButton } from '@mui/material';
+import AddProductChildCateModal from './AddProductChildCateModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Category } from '@prisma/client';
@@ -21,239 +23,271 @@ import { generateSlug } from '../../../../../utils/Articles';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 
 interface ManageChildCategoriesClientProps {
-	parentCategories: any;
-	currentUser: SafeUser | null | undefined;
-	subCategories: any;
+  parentCategories: any;
+  currentUser: SafeUser | null | undefined;
+  subCategories: any;
 }
 
-const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = ({ parentCategories, currentUser, subCategories }) => {
-	const router = useRouter();
-	const [isOpen, setIsOpen] = useState(false);
-	const [isDelete, setIsDelete] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
-	const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = ({
+  parentCategories,
+  currentUser,
+  subCategories
+}) => {
+  const router = useRouter();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDelete, setIsDelete] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [addChildCategoryModalOpen, setAddChildCategoryModalOpen] = useState(false);
 
-	const {
-		register,
-		handleSubmit,
-		setValue,
-		watch,
-		formState: { errors }
-	} = useForm<FieldValues>();
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors }
+  } = useForm<FieldValues>();
 
-	// Hàm cập nhật giá trị id, value: label
-	const setCustomValue = (id: string, value: any) => {
-		setValue(id, value, {
-			shouldValidate: true,
-			shouldDirty: true,
-			shouldTouch: true
-		});
-	};
+  // Hàm cập nhật giá trị id, value: label
+  const setCustomValue = (id: string, value: any) => {
+    setValue(id, value, {
+      shouldValidate: true,
+      shouldDirty: true,
+      shouldTouch: true
+    });
+  };
 
-	const toggleOpen = () => {
-		setIsOpen(!isOpen);
-	};
+  const toggleOpen = () => {
+    setIsOpen(!isOpen);
+  };
 
-	const toggleDelete = () => {
-		setIsDelete(!isDelete);
-	};
+  const toggleDelete = () => {
+    setIsDelete(!isDelete);
+  };
 
-	const handleOpenModal = (category: any) => {
-		setSelectedCategory(category);
-		const fieldsToSet = ['id', 'name', 'slug', 'parentId'];
-		fieldsToSet.forEach(field => setCustomValue(field, category[field]));
-		toggleOpen();
-	};
+  const handleOpenModal = (category: any) => {
+    setSelectedCategory(category);
+    const fieldsToSet = ['id', 'name', 'slug', 'parentId'];
+    fieldsToSet.forEach(field => setCustomValue(field, category[field]));
+    toggleOpen();
+  };
 
-	const cateOptions = parentCategories.map((cate: any) => ({
-		label: cate.name,
-		value: cate.id,
-	}));
+  const cateOptions = parentCategories.map((cate: any) => ({
+    label: cate.name,
+    value: cate.id
+  }));
 
-	let rows: any = [];
-	if (subCategories) {
-		rows = subCategories.map((category: any) => {	
-		// Tìm tên danh mục cha dựa vào parentId
-		const parentCategory = parentCategories.find(
-		(parent: any) => parent.id === category.parentId)?.name || "Không có"; 
-			return {
-				id: category.id,
-				name: category.name,
-				slug: category.slug,
-				parentCategory,
-				parentId: category.parentId,
-				createdAt: formatDate(category.createdAt)
-			};
-		});
-	}
+  let rows: any = [];
+  if (subCategories) {
+    rows = subCategories.map((category: any) => {
+      // Tìm tên danh mục cha dựa vào parentId
+      const parentCategory =
+        parentCategories.find((parent: any) => parent.id === category.parentId)?.name || 'Không có';
+      return {
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        parentCategory,
+        parentId: category.parentId,
+        createdAt: formatDate(category.createdAt)
+      };
+    });
+  }
 
-	const columns: GridColDef[] = [
-		{ field: 'name', headerName: 'Tên danh mục', width: 190 },
-		{ field: 'slug', headerName: 'Slug', width: 190 },
-		{ field: 'parentCategory', headerName: 'Danh mục cha', width: 150 },
-		{ field: 'createdAt', headerName: 'Ngày tạo', width: 230 },
-		{
-			field: 'action',
-			headerName: '',
-			width: 200,
-			renderCell: params => {
-				return (
-					<div className="flex items-center justify-center gap-4 h-full">
-						<ActionBtn
-							icon={MdEdit}
-							onClick={() => {
-								handleOpenModal(params.row);
-							}}
-						/>
-						<ActionBtn
-							icon={MdDelete}
-							onClick={() => {
-								setSelectedCategory(params.row);
-								toggleDelete();
-							}}
-						/>
-					</div>
-				);
-			}
-		}
-	];
+  const columns: GridColDef[] = [
+    { field: 'name', headerName: 'Tên danh mục', width: 190 },
+    { field: 'slug', headerName: 'Slug', width: 190 },
+    { field: 'parentCategory', headerName: 'Danh mục cha', width: 150 },
+    { field: 'createdAt', headerName: 'Ngày tạo', width: 230 },
+    {
+      field: 'action',
+      headerName: '',
+      width: 200,
+      renderCell: params => {
+        return (
+          <div className='flex items-center justify-center gap-4 h-full'>
+            <ActionBtn
+              icon={MdEdit}
+              onClick={() => {
+                handleOpenModal(params.row);
+              }}
+            />
+            <ActionBtn
+              icon={MdDelete}
+              onClick={() => {
+                setSelectedCategory(params.row);
+                toggleDelete();
+              }}
+            />
+          </div>
+        );
+      }
+    }
+  ];
 
-	// Xác nhận xóa
-	const handleConfirmDelete = async () => {
-		if (selectedCategory) {
-			await handleDelete(selectedCategory.id);
-		}
-		toggleDelete();
-	};
+  // Xác nhận xóa
+  const handleConfirmDelete = async () => {
+    if (selectedCategory) {
+      await handleDelete(selectedCategory.id);
+    }
+    toggleDelete();
+  };
 
-	const handleDelete = async (id: string) => {
-		toast('Đang xóa danh mục, xin chờ...');
-		await axios
-			.delete(`/api/category/${id}`)
-			.then((res) => {
-				toast.success('Xóa danh mục thành công');
-				router.refresh();
-			})
-			.catch((error) => {
-				toast.error('Có lỗi xảy ra khi xóa danh mục');
-				console.error(error);
-			});
-	};
+  const handleDelete = async (id: string) => {
+    toast('Đang xóa danh mục, xin chờ...');
+    await axios
+      .delete(`/api/category/${id}`)
+      .then(res => {
+        toast.success('Xóa danh mục thành công');
+        router.refresh();
+      })
+      .catch(error => {
+        toast.error('Có lỗi xảy ra khi xóa danh mục');
+        console.error(error);
+      });
+  };
 
-	const onSubmit: SubmitHandler<FieldValues> = (data) => {
-		console.log(data);
-		setIsLoading(true);
-		 axios
-			.put(`/api/category/${data.id}`, {
-				name: data.name,
-				parentId: data.parentId,
-				slug: data.slug,
-			})
-			.then(() => {
-				toast.success('Cập nhật thành công');
-				router.refresh();
-			})
-			.catch((error) => {
-				toast.error('Có lỗi khi cập nhật');
-			})
-			.finally(() => {
-				setIsLoading(false);
-				toggleOpen();
-			});
-	};
+  const onSubmit: SubmitHandler<FieldValues> = data => {
+    console.log(data);
+    setIsLoading(true);
+    axios
+      .put(`/api/category/${data.id}`, {
+        name: data.name,
+        parentId: data.parentId,
+        slug: data.slug
+      })
+      .then(() => {
+        toast.success('Cập nhật thành công');
+        router.refresh();
+      })
+      .catch(error => {
+        toast.error('Có lỗi khi cập nhật');
+      })
+      .finally(() => {
+        setIsLoading(false);
+        toggleOpen();
+      });
+  };
 
-	useEffect(() => {
-		if (!currentUser || currentUser.role !== 'ADMIN') {
-			router.push('/login');
-		}
-	}, [currentUser, router]);
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      router.push('/login');
+    }
+  }, [currentUser, router]);
 
-	if (!currentUser || currentUser.role !== 'ADMIN') {
-		return <NullData title="Từ chối đăng nhập" />;
-	}
+  if (!currentUser || currentUser.role !== 'ADMIN') {
+    return <NullData title='Từ chối đăng nhập' />;
+  }
 
-	return (
-		<>
-			<div className="w-[78.5vw] m-auto text-xl">
-				<div className="mb-4 mt-5"></div>
-				<div className="h-[600px] w-full">
-					<DataGrid
-						rows={rows}
-						columns={columns}
-						className="py-5"
-						initialState={{
-							pagination: {
-								paginationModel: { page: 0, pageSize: 10 },
-							},
-						}}
-						slots={{ toolbar: GridToolbar }}
-						slotProps={{
-							toolbar: {
-								showQuickFilter: true,
-								quickFilterProps: { debounceMs: 500 },
-							},
-						}}
-						pageSizeOptions={[10, 20, 30]}
-						checkboxSelection
-						disableRowSelectionOnClick
-						disableColumnFilter
-						disableDensitySelector
-						disableColumnSelector
-						sx={{
-							'& .MuiDataGrid-toolbarContainer': {
-								flexDirection: 'row-reverse',
-								padding: '15px',
-							},
-							'& .css-yrdy0g-MuiDataGrid-columnHeaderRow': {
-								backgroundColor: '#F6F7FB !important',
-							},
-						}}
-					/>
-				</div>
-			</div>
-			{/* Modal cập nhật sản phẩm  */}
-			{isOpen && (
-				<AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-					<FormWarp custom="!pt-8">
-						<Heading title="Cập nhật danh mục" center>
-							<></>
-						</Heading>
-						<Input
-							id="name"
-							label="Tên danh mục con"
-							disabled={isLoading}
-							register={register}
-							errors={errors}
-							defaultValue={selectedCategory?.name}
-							required
-						/>
-						<Input
-							id="slug"
-							label="Slug"
-							disabled={isLoading}
-							register={register}
-							errors={errors}
-							defaultValue={selectedCategory?.slug}
-							required
-						/>
-						<Input
-							id="parentId"
-							label="Danh mục cha"
-							disabled={isLoading}
-							type="combobox"
-							register={register}
-							errors={errors}
-							defaultValue={selectedCategory?.parentId} // Truyền label (hoặc name) của danh mục
-							options={cateOptions} // Danh sách các danh mục
-							required
-						/>
-						<Button label="Lưu bài viết" onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
-					</FormWarp>
-				</AdminModal>
-			)}
-			{isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
-		</>
-	);
+  return (
+    <>
+      <div className='w-[78.5vw] m-auto text-xl'>
+        {/* Header with Add Child Category Button */}
+        <div className='mb-4 mt-5 flex justify-between items-center'>
+          <h2 className='text-xl font-semibold text-gray-800'>Quản lý danh mục con</h2>
+          <MuiButton
+            variant='contained'
+            startIcon={<MdAdd />}
+            onClick={() => setAddChildCategoryModalOpen(true)}
+            sx={{
+              backgroundColor: '#3b82f6',
+              '&:hover': { backgroundColor: '#2563eb' },
+              borderRadius: '12px',
+              px: 3,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}
+          >
+            Thêm danh mục con
+          </MuiButton>
+        </div>
+        <div className='h-[600px] w-full'>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            className='py-5'
+            initialState={{
+              pagination: {
+                paginationModel: { page: 0, pageSize: 10 }
+              }
+            }}
+            slots={{ toolbar: GridToolbar }}
+            slotProps={{
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 500 }
+              }
+            }}
+            pageSizeOptions={[10, 20, 30]}
+            checkboxSelection
+            disableRowSelectionOnClick
+            disableColumnFilter
+            disableDensitySelector
+            disableColumnSelector
+            sx={{
+              '& .MuiDataGrid-toolbarContainer': {
+                flexDirection: 'row-reverse',
+                padding: '15px'
+              },
+              '& .css-yrdy0g-MuiDataGrid-columnHeaderRow': {
+                backgroundColor: '#F6F7FB !important'
+              }
+            }}
+          />
+        </div>
+      </div>
+      {/* Modal cập nhật sản phẩm  */}
+      {isOpen && (
+        <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
+          <FormWarp custom='!pt-8'>
+            <Heading title='Cập nhật danh mục' center>
+              <></>
+            </Heading>
+            <Input
+              id='name'
+              label='Tên danh mục con'
+              disabled={isLoading}
+              register={register}
+              errors={errors}
+              defaultValue={selectedCategory?.name}
+              required
+            />
+            <Input
+              id='slug'
+              label='Slug'
+              disabled={isLoading}
+              register={register}
+              errors={errors}
+              defaultValue={selectedCategory?.slug}
+              required
+            />
+            <Input
+              id='parentId'
+              label='Danh mục cha'
+              disabled={isLoading}
+              type='combobox'
+              register={register}
+              errors={errors}
+              defaultValue={selectedCategory?.parentId} // Truyền label (hoặc name) của danh mục
+              options={cateOptions} // Danh sách các danh mục
+              required
+            />
+            <Button label='Lưu bài viết' onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
+          </FormWarp>
+        </AdminModal>
+      )}
+      {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
+
+      {/* Add Child Category Modal */}
+      <AddProductChildCateModal
+        isOpen={addChildCategoryModalOpen}
+        toggleOpen={() => setAddChildCategoryModalOpen(false)}
+        parentCategory={parentCategories}
+      />
+    </>
+  );
 };
 
 export default ManageChildCategoriesClient;

@@ -3,12 +3,11 @@
 import { Role, User } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { MdDelete, MdEdit, MdRemoveRedEye } from 'react-icons/md';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ActionBtn from '@/app/components/ActionBtn';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import moment from 'moment';
 import AdminModal from '@/app/components/admin/AdminModal';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import Input from '@/app/components/inputs/Input';
@@ -22,8 +21,8 @@ import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Box, Card, CardContent, Typography, Grid, Button as MuiButton } from '@mui/material';
-import { MdPeople, MdPersonAdd, MdSupervisorAccount, MdTrendingUp } from 'react-icons/md';
+import { Button as MuiButton } from '@mui/material';
+import { MdPersonAdd } from 'react-icons/md';
 import AddUserModal from '../../../components/admin/AddUserModal';
 
 interface ManageUserClientProps {
@@ -181,11 +180,11 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
   };
 
   const handleDelete = async (id: string) => {
-    await toast('Đang xóa tài khoản, xin chờ...');
+    toast('Đang xóa tài khoản, xin chờ...');
 
     axios
       .delete(`/api/user/${id}`)
-      .then(res => {
+      .then(() => {
         toast.success('Xóa tài khoản thành công');
         router.refresh();
       })
@@ -204,7 +203,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
         newPassword: data.newPassword,
         role: data.role
       })
-      .then(res => {
+      .then(() => {
         toggleOpen();
         toast.success('Lưu thông tin thành công');
         router.refresh();

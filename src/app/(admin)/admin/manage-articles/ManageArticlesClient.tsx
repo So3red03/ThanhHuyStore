@@ -2,7 +2,9 @@
 
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
-import { MdDelete, MdEdit } from 'react-icons/md';
+import { MdDelete, MdEdit, MdAdd } from 'react-icons/md';
+import { Button as MuiButton } from '@mui/material';
+import AddArticleModal from './AddArticleModal';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SafeUser } from '../../../../../types';
@@ -52,6 +54,7 @@ const ManageArticlesClient: React.FC<ManageArticlesClientProps> = ({ currentUser
   const [articleImage, setArticleImage] = useState<File | string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedArticle, setselectedArticle] = useState<Article | null>(null);
+  const [addArticleModalOpen, setAddArticleModalOpen] = useState(false);
 
   const {
     register,
@@ -323,6 +326,14 @@ const ManageArticlesClient: React.FC<ManageArticlesClientProps> = ({ currentUser
     return { label: category.category.name, value: category.categoryId };
   });
 
+  // Extract unique categories for AddArticleModal
+  const articleCategories = Array.from(new Set(articleData.map((article: any) => article.categoryId)))
+    .map(id => {
+      const article = articleData.find((article: any) => article.categoryId === id);
+      return article?.category;
+    })
+    .filter(Boolean);
+
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'ADMIN') {
       router.push('/login');
@@ -336,7 +347,27 @@ const ManageArticlesClient: React.FC<ManageArticlesClientProps> = ({ currentUser
   return (
     <>
       <div className='w-[78.5vw] m-auto text-xl'>
-        <div className='mb-4 mt-5'></div>
+        {/* Header with Add Article Button */}
+        <div className='mb-4 mt-5 flex justify-between items-center'>
+          <h2 className='text-xl font-semibold text-gray-800'>Quản lý bài viết</h2>
+          <MuiButton
+            variant='contained'
+            startIcon={<MdAdd />}
+            onClick={() => setAddArticleModalOpen(true)}
+            sx={{
+              backgroundColor: '#3b82f6',
+              '&:hover': { backgroundColor: '#2563eb' },
+              borderRadius: '12px',
+              px: 3,
+              py: 1.5,
+              textTransform: 'none',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}
+          >
+            Thêm bài viết
+          </MuiButton>
+        </div>
         <div className='h-[600px] w-full'>
           <DataGrid
             rows={rows}
@@ -460,6 +491,13 @@ const ManageArticlesClient: React.FC<ManageArticlesClientProps> = ({ currentUser
         </AdminModal>
       )}
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
+
+      {/* Add Article Modal */}
+      <AddArticleModal
+        isOpen={addArticleModalOpen}
+        toggleOpen={() => setAddArticleModalOpen(false)}
+        articleCategory={articleCategories}
+      />
     </>
   );
 };

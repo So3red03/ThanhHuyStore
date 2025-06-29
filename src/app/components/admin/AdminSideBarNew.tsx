@@ -1,19 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Drawer,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Collapse,
-  Typography,
-  Box,
-  Divider,
-  IconButton
-} from '@mui/material';
-import { MdLogout, MdExpandLess, MdExpandMore, MdOutlineSettings, MdChevronLeft, MdChevronRight } from 'react-icons/md';
+import { Drawer, List, ListItemButton, ListItemIcon, ListItemText, Collapse, Typography, Box } from '@mui/material';
+import { MdLogout, MdExpandLess, MdExpandMore, MdOutlineSettings } from 'react-icons/md';
 import { MenuItems } from '../../../../utils/MenuItems';
 import { signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -30,7 +19,7 @@ const AdminSideBarNew = () => {
   const [openChildItems, setOpenChildItems] = useState<Record<string, boolean>>({});
   const router = useRouter();
   const pathname = usePathname();
-  const { toggleSidebar, isOpen, isCollapsed, toggleCollapse } = useSidebar();
+  const { toggleSidebar, isOpen, isCollapsed } = useSidebar();
 
   const handleSetting = () => {
     router.push('/admin/settings');
@@ -187,19 +176,27 @@ const AdminSideBarNew = () => {
                     justifyContent: isCollapsed ? 'center' : 'flex-start',
                     px: isCollapsed ? 1 : 2,
                     '&:hover': {
-                      backgroundColor: 'rgba(59, 130, 246, 0.1)', // Consistent blue hover
+                      backgroundColor: '#64748b', // slate-500
+                      color: 'white',
                       '& .MuiListItemIcon-root': {
-                        color: '#3b82f6'
+                        color: 'white'
                       },
                       '& .MuiListItemText-primary': {
-                        color: '#3b82f6'
+                        color: 'white'
                       }
                     },
                     '&.Mui-selected': {
-                      backgroundColor: '#3b82f6',
+                      backgroundColor: '#64748b', // slate-500
                       color: 'white',
+                      '& .MuiListItemIcon-root': {
+                        color: 'white'
+                      },
+                      '& .MuiListItemText-primary': {
+                        color: 'white'
+                      },
                       '&:hover': {
-                        backgroundColor: '#2563eb'
+                        backgroundColor: '#64748b', // slate-500
+                        color: 'white'
                       }
                     }
                   }}
@@ -239,12 +236,13 @@ const AdminSideBarNew = () => {
                       borderRadius: 3,
                       width: '100%',
                       '&:hover': {
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)', // Consistent blue hover
+                        backgroundColor: '#64748b', // slate-500
+                        color: 'white',
                         '& .MuiListItemIcon-root': {
-                          color: '#3b82f6'
+                          color: 'white'
                         },
                         '& .MuiListItemText-primary': {
-                          color: '#3b82f6'
+                          color: 'white'
                         }
                       }
                     }}
@@ -292,12 +290,27 @@ const AdminSideBarNew = () => {
                               borderRadius: 3,
                               cursor: 'pointer',
                               '&:hover': {
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)', // Consistent blue hover
+                                backgroundColor: '#64748b', // slate-500
+                                color: 'white',
                                 '& .MuiListItemIcon-root': {
-                                  color: '#3b82f6'
+                                  color: 'white'
                                 },
                                 '& .MuiListItemText-primary': {
-                                  color: '#3b82f6'
+                                  color: 'white'
+                                }
+                              },
+                              '&.Mui-selected': {
+                                backgroundColor: '#64748b', // slate-500
+                                color: 'white',
+                                '& .MuiListItemIcon-root': {
+                                  color: 'white'
+                                },
+                                '& .MuiListItemText-primary': {
+                                  color: 'white'
+                                },
+                                '&:hover': {
+                                  backgroundColor: '#64748b', // slate-500
+                                  color: 'white'
                                 }
                               }
                             }}
@@ -348,7 +361,28 @@ const AdminSideBarNew = () => {
                                     component={Link}
                                     href={child.path || '#'}
                                     selected={pathname === child.path}
-                                    sx={{ mx: 1, borderRadius: 3 }}
+                                    sx={{
+                                      mx: 1,
+                                      borderRadius: 3,
+                                      '&:hover': {
+                                        backgroundColor: '#64748b', // slate-500
+                                        color: 'white',
+                                        '& .MuiListItemText-primary': {
+                                          color: 'white'
+                                        }
+                                      },
+                                      '&.Mui-selected': {
+                                        backgroundColor: '#64748b', // slate-500
+                                        color: 'white',
+                                        '& .MuiListItemText-primary': {
+                                          color: 'white'
+                                        },
+                                        '&:hover': {
+                                          backgroundColor: '#64748b', // slate-500
+                                          color: 'white'
+                                        }
+                                      }
+                                    }}
                                   >
                                     <ListItemText
                                       primary={child.title}
@@ -382,9 +416,10 @@ const AdminSideBarNew = () => {
                     px: 1,
                     position: 'relative',
                     '&:hover': {
-                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      backgroundColor: '#64748b', // slate-500
+                      color: 'white',
                       '& .MuiListItemIcon-root': {
-                        color: '#3b82f6'
+                        color: 'white'
                       }
                     }
                   }}
@@ -434,7 +469,17 @@ const AdminSideBarNew = () => {
               mx: 1,
               borderRadius: 3,
               justifyContent: isCollapsed ? 'center' : 'flex-start',
-              px: isCollapsed ? 1 : 2
+              px: isCollapsed ? 1 : 2,
+              '&:hover': {
+                backgroundColor: '#64748b', // slate-500
+                color: 'white',
+                '& .MuiListItemIcon-root': {
+                  color: 'white'
+                },
+                '& .MuiListItemText-primary': {
+                  color: 'white'
+                }
+              }
             }}
             title={isCollapsed ? 'Cài đặt' : undefined}
           >
@@ -467,7 +512,17 @@ const AdminSideBarNew = () => {
               mx: 1,
               borderRadius: 3,
               justifyContent: isCollapsed ? 'center' : 'flex-start',
-              px: isCollapsed ? 1 : 2
+              px: isCollapsed ? 1 : 2,
+              '&:hover': {
+                backgroundColor: '#64748b', // slate-500
+                color: 'white',
+                '& .MuiListItemIcon-root': {
+                  color: 'white'
+                },
+                '& .MuiListItemText-primary': {
+                  color: 'white'
+                }
+              }
             }}
             title={isCollapsed ? 'Đăng xuất' : undefined}
           >

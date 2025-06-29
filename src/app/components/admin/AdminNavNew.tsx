@@ -18,24 +18,13 @@ import {
   ListItemIcon,
   ListItemText
 } from '@mui/material';
-import {
-  MdAdd,
-  MdNotifications,
-  MdOutlineChat,
-  MdSearch,
-  MdMenu,
-  MdSettings,
-  MdLogout,
-  MdPerson
-} from 'react-icons/md';
+import { MdNotifications, MdOutlineChat, MdSearch, MdMenu, MdSettings, MdLogout, MdPerson } from 'react-icons/md';
 import { usePathname, useRouter } from 'next/navigation';
 import { useNotifications } from '@/app/hooks/useNotifications';
 import { useSidebar } from '@/app/providers/SidebarProvider';
 import { signOut } from 'next-auth/react';
 import { SafeUser } from '../../../../types';
-import { ArticleCategory } from '@prisma/client';
 import axios from 'axios';
-import AdminButton from '@/app/components/ui/AdminButton';
 
 // Path titles mapping
 const pathTitle: { [key: string]: string } = {
@@ -153,24 +142,6 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
     handleMessagesClose();
   };
 
-  // Get add button for current page
-  const getAddButton = () => {
-    switch (pathname) {
-      case '/admin/manage-products':
-        return <AdminButton label='Thêm sản phẩm' icon={MdAdd} size='small' variant='outlined' color='primary' />;
-      case '/admin/manage-banner':
-        return <AdminButton label='Thêm slider' icon={MdAdd} size='small' variant='outlined' color='primary' />;
-      case '/admin/manage-articles':
-        return <AdminButton label='Thêm bài viết' icon={MdAdd} size='small' variant='outlined' color='primary' />;
-      case '/admin/manage-articlesCategory':
-      case '/admin/manage-categories':
-      case '/admin/manage-childCategories':
-        return <AdminButton label='Thêm danh mục' icon={MdAdd} size='small' variant='outlined' color='primary' />;
-      default:
-        return null;
-    }
-  };
-
   return (
     <>
       <AppBar
@@ -179,7 +150,7 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
         sx={{
           zIndex: 30,
           borderRadius: 2,
-          mx: { xs: 0, xl: 2 },
+          mx: { xs: 0, xl: 1 },
           my: { xs: 0, xl: 1 },
           width: { xs: '100%', xl: 'calc(100% - 16px)' }
         }}
@@ -187,6 +158,7 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
         <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, lg: 3 } }}>
           {/* Left Section */}
           <Box display='flex' alignItems='center' gap={2}>
+            {/* Mobile Menu Button */}
             <IconButton
               edge='start'
               color='inherit'
@@ -197,11 +169,24 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
               <MdMenu />
             </IconButton>
 
+            {/* Desktop Hamburger Menu Button */}
+            <IconButton
+              color='inherit'
+              aria-label='collapse sidebar'
+              onClick={toggleCollapse}
+              sx={{
+                display: { xs: 'none', xl: 'flex' },
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+            >
+              <MdMenu />
+            </IconButton>
+
             <Typography variant='h5' component='h1' fontWeight={700} sx={{ display: { xs: 'none', sm: 'block' } }}>
               {title}
             </Typography>
-
-            {getAddButton()}
           </Box>
 
           {/* Right Section */}

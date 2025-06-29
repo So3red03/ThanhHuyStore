@@ -1,6 +1,5 @@
 'use client';
 
-import { MdLogout } from 'react-icons/md';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import AccountSideBarItem from './AccountSideBarItem';
