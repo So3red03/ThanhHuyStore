@@ -650,7 +650,7 @@ model ProductVariant {
   attributes Json     // {"color": "silver", "storage": "512gb", "ram": "16gb"}
   price      Float
   stock      Int      @default(0)
-  images     String[] // Array of image URLs
+  images     Image[]  // Array of image objects with color/colorCode/images
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
