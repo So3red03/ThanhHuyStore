@@ -5,22 +5,40 @@ import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { Editor } from 'primereact/editor';
-import AdminModal from '@/app/components/admin/AdminModal';
-import Button from '@/app/components/Button';
 import { colors } from '../../../../../utils/Color';
 import SelectColor from '@/app/components/inputs/SelectColor';
-import FormWarp from '@/app/components/FormWrap';
 import CategoryInput from '@/app/components/inputs/CategoryInput';
 import { categories } from '../../../../../utils/Categories';
 import CheckBox from '@/app/components/inputs/CheckBox';
 import Input from '@/app/components/inputs/Input';
-import Heading from '@/app/components/Heading';
 import axios from 'axios';
 import firebase from '@/app/libs/firebase';
 import * as SlIcons from 'react-icons/sl';
 import * as AiIcons from 'react-icons/ai';
 import * as TbIcons from 'react-icons/tb';
 import * as MdIcons from 'react-icons/md';
+
+// Import MUI components for new design
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button as MuiButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
+  IconButton,
+  Card,
+  CardContent,
+  Grid,
+  Divider
+} from '@mui/material';
+import { MdClose, MdInventory, MdSave } from 'react-icons/md';
 
 // Import variant system components
 import {
@@ -378,209 +396,341 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen, s
   };
 
   return (
-    <AdminModal isOpen={isOpen} handleClose={handleModalClose}>
-      <FormWarp custom='!pt-1'>
-        <Heading title='Thêm sản phẩm' center>
-          <></>
-        </Heading>
-
-        {/* Product Type Selector */}
-        <div className='mb-6'>
-          <ProductTypeSelector selectedType={productType} onChange={handleProductTypeChange} disabled={isLoading} />
-        </div>
-
-        <Input
-          id='name'
-          label='Tên sản phẩm'
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          defaultValue={watch('name')}
-          required
-        />
-
-        {/* Simple Product Fields */}
-        {productType === ProductType.SIMPLE && (
-          <>
-            <Input
-              id='price'
-              label='Giá bán'
-              type='number'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={watch('price')}
-              required
-            />
-            <Input
-              id='inStock'
-              label='Tồn kho'
-              type='number'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={watch('inStock')}
-              required
-            />
-          </>
-        )}
-
-        {/* Variant Product Fields */}
-        {productType === ProductType.VARIANT && (
-          <div>
-            <Input
-              id='price'
-              label='Giá cơ sở (đ)'
-              type='number'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={watch('price')}
-              required
-            />
-            <p className='text-sm text-gray-600 mt-1'>Giá cơ sở sẽ được điều chỉnh theo từng biến thể</p>
-          </div>
-        )}
-        <div className='flex justify-center items-center w-full gap-2'>
-          <Input
-            id='promotionalPrice'
-            label='Giá khuyến mãi'
-            type='number'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            defaultValue={watch('promotionalPrice')}
-          />
-          <span
-            className='hover:text-blue-500 text-gray-500 underline hover:cursor-pointer text-xs'
-            onClick={() => {
-              setIsCheckCalender(!isCheckCalender);
+    <Dialog
+      open={isOpen}
+      onClose={handleModalClose}
+      maxWidth='lg'
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: '16px',
+          maxHeight: '90vh'
+        }
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          pb: 2,
+          borderBottom: '1px solid #e5e7eb'
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: '12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
-            {!isCheckCalender ? 'Schedule' : 'Cancel'}
-          </span>
-        </div>
-        {isCheckCalender && (
-          <>
-            <Input
-              id='promotionStart'
-              label='Từ ngày'
-              type='date'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={watch('promotionStart') || ' '}
-            />
-            <Input
-              id='promotionEnd'
-              label='Tới ngày'
-              type='date'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={watch('promotionEnd') || ' '}
-            />
-          </>
-        )}
-        <Editor
-          {...register('description')}
-          value={text}
-          onTextChange={(e: any) => setText(e.htmlValue)}
-          style={{ height: '320px' }}
-          className='bg-white border outline-none peer border-slate-300 rounded-md focus:border-slate-500'
-        />
-        <div className='w-full font-medium'>
-          <div className='mb-2 font-semibold'>Chọn danh mục sản phẩm</div>
-          <div className='grid !grid-cols-1 sm:!grid-cols-2 md:!grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto'>
-            {parentCategories.map((item: any) => {
-              return (
-                <div key={item.id}>
-                  <CategoryInput
-                    onClick={() => {
-                      setSelectedParentCategoryId(item.id); // Cập nhật ID danh mục cha đã chọn
-                      setCustomValue('parentCategories', item.id); // Lưu vào form
-                    }}
-                    selected={parentCategory === item.id} // So sánh ID của danh mục cha đã chọn với item.id
-                    label={item.name}
-                    icon={Icons[item.icon as keyof typeof Icons]} // Truyền IconType vào prop
+            <MdInventory size={24} />
+          </Box>
+          <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
+            Thêm Sản Phẩm Mới
+          </Typography>
+        </Box>
+        <IconButton onClick={handleModalClose} sx={{ color: '#6b7280' }}>
+          <MdClose size={24} />
+        </IconButton>
+      </DialogTitle>
+
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogContent sx={{ pt: 3 }}>
+          {/* Product Type Selector */}
+          <Box sx={{ mb: 3 }}>
+            <ProductTypeSelector selectedType={productType} onChange={handleProductTypeChange} disabled={isLoading} />
+          </Box>
+
+          <Grid container spacing={3}>
+            {/* Left Column - Product Details */}
+            <Grid item xs={12} md={6}>
+              <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                <Typography variant='h6' sx={{ fontWeight: 600, mb: 3, color: '#1f2937' }}>
+                  Chi tiết sản phẩm
+                </Typography>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* Product Name */}
+                  <Input
+                    id='name'
+                    label='Tên sản phẩm'
+                    disabled={isLoading}
+                    register={register}
+                    errors={errors}
+                    defaultValue={watch('name')}
+                    required
                   />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <Input
-          id='categoryId'
-          label='Danh mục con'
-          disabled={isLoading}
-          type='combobox'
-          register={register}
-          errors={errors}
-          defaultValue={watch('categoryId') || ''}
-          options={filteredSubCategories.map((subCategory: any) => ({
-            label: subCategory.name,
-            value: subCategory.id
-          }))} // Hiển thị các danh mục con đã lọc
-          required
-        />
-        <div className='w-full flex flex-col flex-wrap gap-4'>
-          <div>
-            <div className='font-bold'>Chọn màu và hình ảnh của sản phẩm</div>
-            <div className='text-sm'>
-              Cần có hình ảnh thích hợp dựa trên màu đã chọn nếu không lựa chọn không hợp lệ
-            </div>
-          </div>
-          <div className='grid grid-cols-2 gap-3'>
-            {colors.map(item => {
-              return (
-                <SelectColor
-                  key={item.color}
-                  item={item}
-                  addImageToState={addImageToState}
-                  removeImageToState={removeImageToState}
-                  isProductCreated={isProductCreated}
-                />
-              );
-            })}
-          </div>
-        </div>
 
-        {/* Variant System Components */}
-        {productType === ProductType.VARIANT && (
-          <div className='w-full space-y-6 mt-6'>
-            {/* Attribute Manager */}
-            <div className='border rounded-lg p-4'>
-              <h3 className='text-lg font-semibold mb-4'>Cấu hình thuộc tính</h3>
-              <AttributeManager
-                productId={undefined} // Will be set after product creation
-                attributes={attributes}
-                onAttributesChange={setAttributes}
-              />
-            </div>
+                  {/* Simple Product Fields */}
+                  {productType === ProductType.SIMPLE && (
+                    <>
+                      <Input
+                        id='price'
+                        label='Giá bán'
+                        type='number'
+                        disabled={isLoading}
+                        register={register}
+                        errors={errors}
+                        defaultValue={watch('price')}
+                        required
+                      />
+                      <Input
+                        id='inStock'
+                        label='Tồn kho'
+                        type='number'
+                        disabled={isLoading}
+                        register={register}
+                        errors={errors}
+                        defaultValue={watch('inStock')}
+                        required
+                      />
+                    </>
+                  )}
 
-            {/* Variant Matrix */}
-            {attributes.length > 0 && (
-              <div className='border rounded-lg p-4'>
-                <h3 className='text-lg font-semibold mb-4'>Quản lý biến thể</h3>
-                <VariantMatrix
-                  productId={''} // Will be set after product creation
-                  attributes={attributes}
-                  variants={variants}
-                  onVariantsChange={setVariants}
-                  basePrice={parseFloat(watch('price') || '0')}
-                />
-              </div>
-            )}
-          </div>
-        )}
+                  {/* Variant Product Fields */}
+                  {productType === ProductType.VARIANT && (
+                    <Box>
+                      <Input
+                        id='price'
+                        label='Giá cơ sở (đ)'
+                        type='number'
+                        disabled={isLoading}
+                        register={register}
+                        errors={errors}
+                        defaultValue={watch('price')}
+                        required
+                      />
+                      <Typography variant='body2' sx={{ mt: 1, color: '#6b7280', fontSize: '0.875rem' }}>
+                        Giá cơ sở sẽ được điều chỉnh theo từng biến thể
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Card>
+            </Grid>
 
-        <Button
-          label={productType === ProductType.VARIANT ? 'Lưu sản phẩm biến thể' : 'Lưu sản phẩm'}
-          isLoading={isLoading}
-          onClick={handleSubmit(onSubmit)}
-        />
-      </FormWarp>
-    </AdminModal>
+            {/* Right Column - Pricing & Categories */}
+            <Grid item xs={12} md={6}>
+              <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                <Typography variant='h6' sx={{ fontWeight: 600, mb: 3, color: '#1f2937' }}>
+                  Giá cả & Danh mục
+                </Typography>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* Promotional Pricing */}
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+                    <Input
+                      id='promotionalPrice'
+                      label='Giá khuyến mãi'
+                      type='number'
+                      disabled={isLoading}
+                      register={register}
+                      errors={errors}
+                      defaultValue={watch('promotionalPrice')}
+                    />
+                    <Typography
+                      variant='body2'
+                      sx={{
+                        color: '#6b7280',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        mb: 1,
+                        '&:hover': {
+                          color: '#3b82f6'
+                        }
+                      }}
+                      onClick={() => {
+                        setIsCheckCalender(!isCheckCalender);
+                      }}
+                    >
+                      {!isCheckCalender ? 'Đặt lịch' : 'Hủy'}
+                    </Typography>
+                  </Box>
+                  {isCheckCalender && (
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Input
+                        id='promotionStart'
+                        label='Từ ngày'
+                        type='date'
+                        disabled={isLoading}
+                        register={register}
+                        errors={errors}
+                        defaultValue={watch('promotionStart') || ' '}
+                      />
+                      <Input
+                        id='promotionEnd'
+                        label='Tới ngày'
+                        type='date'
+                        disabled={isLoading}
+                        register={register}
+                        errors={errors}
+                        defaultValue={watch('promotionEnd') || ' '}
+                      />
+                    </Box>
+                  )}
+
+                  {/* Description */}
+                  <Box>
+                    <Typography variant='body2' sx={{ mb: 1, color: '#374151', fontWeight: 500 }}>
+                      Mô tả sản phẩm
+                    </Typography>
+                    <Editor
+                      {...register('description')}
+                      value={text}
+                      onTextChange={(e: any) => setText(e.htmlValue)}
+                      style={{ height: '200px' }}
+                      className='bg-white border outline-none peer border-slate-300 rounded-md focus:border-slate-500'
+                    />
+                  </Box>
+
+                  {/* Parent Categories */}
+                  <Box>
+                    <Typography variant='body2' sx={{ mb: 2, color: '#374151', fontWeight: 500 }}>
+                      Chọn danh mục sản phẩm
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+                        gap: 2,
+                        maxHeight: '200px',
+                        overflowY: 'auto'
+                      }}
+                    >
+                      {parentCategories.map((item: any) => (
+                        <Box key={item.id}>
+                          <CategoryInput
+                            onClick={() => {
+                              setSelectedParentCategoryId(item.id);
+                              setCustomValue('parentCategories', item.id);
+                            }}
+                            selected={parentCategory === item.id}
+                            label={item.name}
+                            icon={Icons[item.icon as keyof typeof Icons]}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+
+                  {/* Sub Categories */}
+                  <Input
+                    id='categoryId'
+                    label='Danh mục con'
+                    disabled={isLoading}
+                    type='combobox'
+                    register={register}
+                    errors={errors}
+                    defaultValue={watch('categoryId') || ''}
+                    options={filteredSubCategories.map((subCategory: any) => ({
+                      label: subCategory.name,
+                      value: subCategory.id
+                    }))}
+                    required
+                  />
+                </Box>
+              </Card>
+            </Grid>
+          </Grid>
+          {/* Image Selection Section */}
+          <Box sx={{ mt: 4 }}>
+            <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+              <Typography variant='h6' sx={{ fontWeight: 600, mb: 2, color: '#1f2937' }}>
+                Chọn màu và hình ảnh của sản phẩm
+              </Typography>
+              <Typography variant='body2' sx={{ mb: 3, color: '#6b7280' }}>
+                Cần có hình ảnh thích hợp dựa trên màu đã chọn nếu không lựa chọn không hợp lệ
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                  gap: 2
+                }}
+              >
+                {colors.map(item => (
+                  <SelectColor
+                    key={item.color}
+                    item={item}
+                    addImageToState={addImageToState}
+                    removeImageToState={removeImageToState}
+                    isProductCreated={isProductCreated}
+                  />
+                ))}
+              </Box>
+            </Card>
+          </Box>
+
+          {/* Variant System Components */}
+          {productType === ProductType.VARIANT && (
+            <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Attribute Manager */}
+              <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                <Typography variant='h6' sx={{ fontWeight: 600, mb: 3, color: '#1f2937' }}>
+                  Cấu hình thuộc tính
+                </Typography>
+                <AttributeManager productId={undefined} attributes={attributes} onAttributesChange={setAttributes} />
+              </Card>
+
+              {/* Variant Matrix */}
+              {attributes.length > 0 && (
+                <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                  <Typography variant='h6' sx={{ fontWeight: 600, mb: 3, color: '#1f2937' }}>
+                    Quản lý biến thể
+                  </Typography>
+                  <VariantMatrix
+                    productId={''}
+                    attributes={attributes}
+                    variants={variants}
+                    onVariantsChange={setVariants}
+                    basePrice={parseFloat(watch('price') || '0')}
+                  />
+                </Card>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, borderTop: '1px solid #e5e7eb' }}>
+          <MuiButton
+            variant='outlined'
+            onClick={handleModalClose}
+            disabled={isLoading}
+            sx={{
+              borderColor: '#d1d5db',
+              color: '#6b7280',
+              '&:hover': {
+                borderColor: '#9ca3af',
+                backgroundColor: '#f9fafb'
+              }
+            }}
+          >
+            Hủy
+          </MuiButton>
+          <MuiButton
+            type='submit'
+            variant='contained'
+            disabled={isLoading}
+            startIcon={<MdSave />}
+            sx={{
+              backgroundColor: '#3b82f6',
+              '&:hover': {
+                backgroundColor: '#2563eb'
+              }
+            }}
+          >
+            {isLoading ? 'Đang lưu...' : productType === ProductType.VARIANT ? 'Lưu sản phẩm biến thể' : 'Lưu sản phẩm'}
+          </MuiButton>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 
