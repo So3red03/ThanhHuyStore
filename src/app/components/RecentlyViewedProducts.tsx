@@ -52,7 +52,7 @@ const RecentlyViewedProducts: React.FC<RecentlyViewedProductsProps> = ({
 
         // Lọc sản phẩm từ allProducts
         const recentProducts = allProducts.filter(
-          product => recentProductIds.includes(product.id) && product.inStock > 0
+          product => recentProductIds.includes(product.id) && (product.inStock ?? 0) > 0
         );
 
         // Sắp xếp theo thứ tự trong viewHistory

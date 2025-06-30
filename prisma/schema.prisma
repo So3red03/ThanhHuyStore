@@ -111,6 +111,10 @@ type CartProductType {
   quantity    Int
   price       Float
   inStock     Int
+
+  // Variant support
+  variantId   String?  // ID of selected variant
+  attributes  Json?    // Selected attributes: {"color": "silver", "storage": "512gb"}
 }
 
 type Image {
@@ -128,21 +132,26 @@ type Address {
 }
 
 model Product {
-  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
   name             String
   description      String
-  brand            String    @default("Apple")
-  price            Float
-  categoryId       String    @db.ObjectId
-  category         Category  @relation(fields: [categoryId], references: [id], onDelete: NoAction)
-  inStock          Int
-  priority         Int       @default(0) // 0: normal, 1-10: priority levels
-  createDate       DateTime? @default(now())
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  brand            String      @default("Apple")
+
+  // Product type and pricing
+  productType      ProductType @default(SIMPLE)
+  price            Float?      // For simple products
+  basePrice        Float?      // Base price for variant products
+
+  categoryId       String      @db.ObjectId
+  category         Category    @relation(fields: [categoryId], references: [id], onDelete: NoAction)
+  inStock          Int?        // For simple products
+  priority         Int         @default(0) // 0: normal, 1-10: priority levels
+  createDate       DateTime?   @default(now())
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   // Soft delete fields
-  isDeleted        Boolean   @default(false)
+  isDeleted        Boolean     @default(false)
   deletedAt        DateTime?
   deletedBy        String?
 
@@ -150,6 +159,10 @@ model Product {
   reviews          Review[]
   notifications    Notification[]
   productPromotions ProductPromotion[]
+
+  // Variant system relationships
+  productAttributes ProductAttribute[]
+  variants         ProductVariant[]
 }
 
 model Category {
@@ -506,6 +519,28 @@ enum EventType {
   ARTICLE_VIEW
 }
 
+// Product Variant System Enums
+enum ProductType {
+  SIMPLE
+  VARIANT
+}
+
+enum AttributeType {
+  TEXT
+  COLOR
+  NUMBER
+  SELECT
+}
+
+enum DisplayType {
+  BUTTON
+  DROPDOWN
+  COLOR_SWATCH
+  TEXT_INPUT
+  RADIO
+  CHECKBOX
+}
+
 model AdminSettings {
   id                    String   @id @default(auto()) @map("_id") @db.ObjectId
 
@@ -558,4 +593,71 @@ model ReportLog {
   createdAt DateTime @default(now())
 
   @@map("report_logs")
+}
+
+// Product Variant System Models (Simplified)
+
+// Product-specific attributes (like WooCommerce product attributes)
+model ProductAttribute {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  productId    String      @db.ObjectId
+  name         String      // "color", "storage", "ram" (product-specific)
+  label        String      // "Màu sắc", "Dung lượng", "RAM"
+  type         AttributeType
+  displayType  DisplayType @default(BUTTON)
+  isRequired   Boolean     @default(true)
+  isVariation  Boolean     @default(true) // Used for variation or just info
+  position     Int         @default(0)
+  description  String?     // Optional description
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relationships
+  product Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  values  AttributeValue[]
+
+  @@index([productId])
+  @@index([name])
+}
+
+// Attribute values (product-specific only)
+model AttributeValue {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  attributeId     String           @db.ObjectId
+  value           String           // "silver", "128gb", "16gb"
+  label           String           // "Bạc", "128GB", "16GB"
+  description     String?          // Detailed description
+  colorCode       String?          // For COLOR type: "#C0C0C0"
+  imageUrl        String?          // Optional image for value
+  priceAdjustment Float            @default(0) // Price modifier: +/- amount
+  position        Int              @default(0) // Sort order
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relationships
+  attribute ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@index([attributeId])
+  @@index([value])
+}
+
+// Product variants
+model ProductVariant {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId  String   @db.ObjectId
+  sku        String   @unique
+  attributes Json     // {"color": "silver", "storage": "512gb", "ram": "16gb"}
+  price      Float
+  stock      Int      @default(0)
+  images     String[] // Array of image URLs
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relationships
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([isActive])
 }

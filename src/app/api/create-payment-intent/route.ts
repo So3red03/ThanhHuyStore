@@ -47,7 +47,7 @@ const validateOrderData = async (products: CartProductType[], currentUser: any) 
       }
 
       // 2. Validate stock availability
-      if (dbProduct.inStock < product.quantity) {
+      if ((dbProduct.inStock ?? 0) < product.quantity) {
         errors.push(
           `Insufficient stock for ${product.name}. Available: ${dbProduct.inStock}, Requested: ${product.quantity}`
         );
@@ -59,7 +59,7 @@ const validateOrderData = async (products: CartProductType[], currentUser: any) 
       // Note: Promotion logic removed as promotion fields don't exist in current Product model
       // TODO: Implement promotion logic when ProductPromotion table is ready
 
-      if (Math.abs(product.price - expectedPrice) > 0.01) {
+      if (Math.abs(product.price - (expectedPrice ?? 0)) > 0.01) {
         errors.push(`Price mismatch for ${product.name}. Expected: ${expectedPrice}, Received: ${product.price}`);
       }
 
@@ -319,7 +319,7 @@ const createOrderWithInventoryReservation = async (orderData: any, products: any
         throw new Error(`Product ${product.name} not found`);
       }
 
-      if (dbProduct.inStock < product.quantity) {
+      if ((dbProduct.inStock ?? 0) < product.quantity) {
         throw new Error(
           `Insufficient stock for ${dbProduct.name}. Available: ${dbProduct.inStock}, Requested: ${product.quantity}`
         );

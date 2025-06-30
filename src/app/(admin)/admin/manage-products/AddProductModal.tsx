@@ -22,6 +22,17 @@ import * as AiIcons from 'react-icons/ai';
 import * as TbIcons from 'react-icons/tb';
 import * as MdIcons from 'react-icons/md';
 
+// Import variant system components
+import {
+  ProductTypeSelector,
+  AttributeManager,
+  VariantMatrix,
+  ProductType,
+  ProductAttribute,
+  ProductVariant,
+  VariantProduct
+} from '@/app/components/admin/product-variant';
+
 export type ImageType = {
   color: string;
   colorCode: string;
@@ -41,6 +52,11 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen, s
   const [images, setImages] = useState<ImageType[]>([]);
   const [isProductCreated, setIsProductCreated] = useState(false);
   const [isCheckCalender, setIsCheckCalender] = useState(false);
+
+  // Variant system state
+  const [productType, setProductType] = useState<ProductType>(ProductType.SIMPLE);
+  const [attributes, setAttributes] = useState<ProductAttribute[]>([]);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
   const {
     register,
     handleSubmit,
@@ -144,6 +160,28 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen, s
     });
   }, []);
 
+  // Reset variant data when switching product types
+  const handleProductTypeChange = useCallback((newType: ProductType) => {
+    setProductType(newType);
+    if (newType === ProductType.SIMPLE) {
+      setAttributes([]);
+      setVariants([]);
+    }
+  }, []);
+
+  // Reset all form data when modal closes
+  const handleModalClose = useCallback(() => {
+    reset();
+    setText('');
+    setImages([]);
+    setProductType(ProductType.SIMPLE);
+    setAttributes([]);
+    setVariants([]);
+    setIsProductCreated(false);
+    setIsCheckCalender(false);
+    toggleOpen();
+  }, [reset, toggleOpen]);
+
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     console.log(data);
 
@@ -175,6 +213,29 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen, s
       toast.error('Danh mục chưa được chọn');
       setIsLoading(false);
       return;
+    }
+
+    // Variant-specific validation
+    if (productType === ProductType.VARIANT) {
+      if (attributes.length === 0) {
+        toast.error('Sản phẩm biến thể cần có ít nhất một thuộc tính');
+        setIsLoading(false);
+        return;
+      }
+
+      if (variants.length === 0) {
+        toast.error('Sản phẩm biến thể cần có ít nhất một biến thể');
+        setIsLoading(false);
+        return;
+      }
+
+      // Validate that all variants have valid data
+      const invalidVariants = variants.filter(v => !v.sku || v.price <= 0);
+      if (invalidVariants.length > 0) {
+        toast.error('Tất cả biến thể phải có SKU và giá hợp lệ');
+        setIsLoading(false);
+        return;
+      }
     }
 
     if (!data.images || data.images.length === 0) {
@@ -237,37 +298,97 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen, s
 
     // Gọi hàm upload ảnh
     await handleImageUploads();
-    const productData = {
-      ...data,
-      images: uploadedImages, // Sử dụng uploadedImages ở đây
-      promotionalPrice: data.promotionalPrice,
-      promotionStart: new Date(data.promotionStart),
-      promotionEnd: new Date(data.promotionEnd),
-      description: text
-    };
-    // Gọi api
-    axios
-      .post('/api/product', productData)
-      .then(() => {
-        toast.success('Thêm sản phẩm thành công');
-        setIsProductCreated(true);
-        router.refresh();
-      })
-      .catch(error => {
-        toast.error('Có lỗi khi lưu product vào db');
-      })
-      .finally(() => {
-        setIsLoading(false);
-        toggleOpen();
-      });
+
+    // Prepare data based on product type
+    if (productType === ProductType.SIMPLE) {
+      // Simple product - use existing logic
+      const productData = {
+        ...data,
+        images: uploadedImages,
+        promotionalPrice: data.promotionalPrice,
+        promotionStart: new Date(data.promotionStart),
+        promotionEnd: new Date(data.promotionEnd),
+        description: text
+      };
+
+      axios
+        .post('/api/product', productData)
+        .then(() => {
+          toast.success('Thêm sản phẩm thành công');
+          setIsProductCreated(true);
+          router.refresh();
+        })
+        .catch(error => {
+          toast.error('Có lỗi khi lưu product vào db');
+        })
+        .finally(() => {
+          setIsLoading(false);
+          handleModalClose();
+        });
+    } else {
+      // Variant product - use variant API
+      const variantProductData = {
+        name: data.name,
+        description: text,
+        basePrice: parseFloat(data.price || '0'),
+        categoryId: data.categoryId,
+        images: uploadedImages.map(img => img.images).flat(), // Flatten all images
+        attributes: attributes.map(attr => ({
+          name: attr.name,
+          label: attr.label,
+          type: attr.type,
+          displayType: attr.displayType,
+          isRequired: attr.isRequired,
+          isVariation: attr.isVariation,
+          description: attr.description,
+          values: attr.values.map(val => ({
+            value: val.value,
+            label: val.label,
+            description: val.description,
+            colorCode: val.colorCode,
+            imageUrl: val.imageUrl,
+            priceAdjustment: val.priceAdjustment
+          }))
+        })),
+        variants: variants.map(variant => ({
+          sku: variant.sku,
+          attributes: variant.attributes,
+          price: variant.price,
+          stock: variant.stock,
+          images: variant.images
+        }))
+      };
+
+      axios
+        .post('/api/variants/products', variantProductData)
+        .then(() => {
+          toast.success('Thêm sản phẩm biến thể thành công');
+          setIsProductCreated(true);
+          router.refresh();
+        })
+        .catch(error => {
+          console.error('Variant product creation error:', error);
+          toast.error('Có lỗi khi tạo sản phẩm biến thể');
+        })
+        .finally(() => {
+          setIsLoading(false);
+          handleModalClose();
+        });
+    }
   };
 
   return (
-    <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
+    <AdminModal isOpen={isOpen} handleClose={handleModalClose}>
       <FormWarp custom='!pt-1'>
         <Heading title='Thêm sản phẩm' center>
           <></>
         </Heading>
+
+        {/* Product Type Selector */}
+        <div className='mb-6'>
+          <ProductTypeSelector selectedType={productType} onChange={handleProductTypeChange} disabled={isLoading} />
+        </div>
+
         <Input
           id='name'
           label='Tên sản phẩm'
@@ -277,26 +398,49 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen, s
           defaultValue={watch('name')}
           required
         />
-        <Input
-          id='price'
-          label='Giá bán'
-          type='number'
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          defaultValue={watch('price')}
-          required
-        />
-        <Input
-          id='inStock'
-          label='Tồn kho'
-          type='number'
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          defaultValue={watch('inStock')}
-          required
-        />
+
+        {/* Simple Product Fields */}
+        {productType === ProductType.SIMPLE && (
+          <>
+            <Input
+              id='price'
+              label='Giá bán'
+              type='number'
+              disabled={isLoading}
+              register={register}
+              errors={errors}
+              defaultValue={watch('price')}
+              required
+            />
+            <Input
+              id='inStock'
+              label='Tồn kho'
+              type='number'
+              disabled={isLoading}
+              register={register}
+              errors={errors}
+              defaultValue={watch('inStock')}
+              required
+            />
+          </>
+        )}
+
+        {/* Variant Product Fields */}
+        {productType === ProductType.VARIANT && (
+          <div>
+            <Input
+              id='price'
+              label='Giá cơ sở (đ)'
+              type='number'
+              disabled={isLoading}
+              register={register}
+              errors={errors}
+              defaultValue={watch('price')}
+              required
+            />
+            <p className='text-sm text-gray-600 mt-1'>Giá cơ sở sẽ được điều chỉnh theo từng biến thể</p>
+          </div>
+        )}
         <div className='flex justify-center items-center w-full gap-2'>
           <Input
             id='promotionalPrice'
@@ -400,7 +544,41 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, toggleOpen, s
             })}
           </div>
         </div>
-        <Button label='Lưu sản phẩm' isLoading={isLoading} onClick={handleSubmit(onSubmit)} />
+
+        {/* Variant System Components */}
+        {productType === ProductType.VARIANT && (
+          <div className='w-full space-y-6 mt-6'>
+            {/* Attribute Manager */}
+            <div className='border rounded-lg p-4'>
+              <h3 className='text-lg font-semibold mb-4'>Cấu hình thuộc tính</h3>
+              <AttributeManager
+                productId={undefined} // Will be set after product creation
+                attributes={attributes}
+                onAttributesChange={setAttributes}
+              />
+            </div>
+
+            {/* Variant Matrix */}
+            {attributes.length > 0 && (
+              <div className='border rounded-lg p-4'>
+                <h3 className='text-lg font-semibold mb-4'>Quản lý biến thể</h3>
+                <VariantMatrix
+                  productId={''} // Will be set after product creation
+                  attributes={attributes}
+                  variants={variants}
+                  onVariantsChange={setVariants}
+                  basePrice={parseFloat(watch('price') || '0')}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        <Button
+          label={productType === ProductType.VARIANT ? 'Lưu sản phẩm biến thể' : 'Lưu sản phẩm'}
+          isLoading={isLoading}
+          onClick={handleSubmit(onSubmit)}
+        />
       </FormWarp>
     </AdminModal>
   );

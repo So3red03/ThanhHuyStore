@@ -94,11 +94,11 @@ export class PromotionSuggestionEngine {
 
         // Tính discount đề xuất dựa trên tồn kho và thời gian
         let suggestedDiscount = 10; // Base discount
-        if (product.inStock > 100) suggestedDiscount += 5;
+        if ((product.inStock ?? 0) > 100) suggestedDiscount += 5;
         if (daysWithoutSale > 30) suggestedDiscount += 10;
         if (daysWithoutSale > 60) suggestedDiscount += 5;
 
-        const priority = this.calculatePriority(product.inStock, daysWithoutSale);
+        const priority = this.calculatePriority(product.inStock ?? 0, daysWithoutSale);
 
         suggestions.push({
           id: `high-stock-${product.id}`,
@@ -112,7 +112,7 @@ export class PromotionSuggestionEngine {
             productName: product.name,
             categoryId: product.categoryId,
             categoryName: 'Category Name', // Mock data
-            currentStock: product.inStock,
+            currentStock: product.inStock ?? undefined,
             daysWithoutSale,
             suggestedDiscount,
             reasoning: [
@@ -147,7 +147,7 @@ export class PromotionSuggestionEngine {
       });
 
       // Mock data cho low sales products
-      const lowSalesProducts = products.filter(product => product.inStock > 10);
+      const lowSalesProducts = products.filter(product => (product.inStock ?? 0) > 10);
 
       for (const product of lowSalesProducts.slice(0, 8)) {
         const salesCount = Math.floor(Math.random() * 5); // Mock sales count 0-4
@@ -165,7 +165,7 @@ export class PromotionSuggestionEngine {
             productName: product.name,
             categoryId: product.categoryId,
             categoryName: 'Category Name', // Mock data
-            currentStock: product.inStock,
+            currentStock: product.inStock ?? undefined,
             suggestedDiscount,
             reasoning: [
               `Chỉ có ${salesCount} đơn hàng trong 30 ngày`,

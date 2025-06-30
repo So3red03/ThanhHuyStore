@@ -54,10 +54,10 @@ export async function POST(request: Request) {
         let promotionalPrice;
 
         if (discountType === 'PERCENTAGE') {
-          promotionalPrice = product.price * (1 - parseFloat(discountValue) / 100);
+          promotionalPrice = (product.price ?? 0) * (1 - parseFloat(discountValue) / 100);
         } else {
           // FIXED discount
-          promotionalPrice = product.price - parseFloat(discountValue);
+          promotionalPrice = (product.price ?? 0) - parseFloat(discountValue);
         }
 
         // Ensure promotional price is not negative
@@ -98,10 +98,10 @@ export async function POST(request: Request) {
         let promotionalPrice;
 
         if (discountType === 'PERCENTAGE') {
-          promotionalPrice = product.price * (1 - parseFloat(discountValue) / 100);
+          promotionalPrice = (product.price ?? 0) * (1 - parseFloat(discountValue) / 100);
         } else {
           // FIXED discount
-          promotionalPrice = product.price - parseFloat(discountValue);
+          promotionalPrice = (product.price ?? 0) - parseFloat(discountValue);
         }
 
         // Ensure promotional price is not negative

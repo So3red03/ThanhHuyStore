@@ -90,7 +90,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
           // Kiểm tra nếu categoryId có trong danh sách categories quan tâm
           return interestedCategories.has(productCategoryId) || interestedBrands.has(product.brand || 'Apple');
         })
-        .filter(product => product.inStock > 0) // Chỉ sản phẩm còn hàng
+        .filter(product => (product.inStock ?? 0) > 0) // Chỉ sản phẩm còn hàng
         .sort((a, b) => {
           // Ưu tiên sản phẩm mới
           const dateA = new Date(a.createDate || a.createdAt);
@@ -109,8 +109,8 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   // Lấy sản phẩm tồn kho thấp (cho người dùng chưa đăng nhập)
   const getLowStockProducts = (): Product[] => {
     const lowStockProducts = allProducts
-      .filter(product => product.inStock > 0 && product.inStock <= 10) // Tồn kho <= 10
-      .sort((a, b) => a.inStock - b.inStock) // Sắp xếp theo tồn kho tăng dần
+      .filter(product => (product.inStock ?? 0) > 0 && (product.inStock ?? 0) <= 10) // Tồn kho <= 10
+      .sort((a, b) => (a.inStock ?? 0) - (b.inStock ?? 0)) // Sắp xếp theo tồn kho tăng dần
       .slice(0, 8);
 
     // Nếu không có sản phẩm tồn kho thấp, lấy sản phẩm ngẫu nhiên
@@ -119,7 +119,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
   // Lấy sản phẩm ngẫu nhiên (fallback)
   const getRandomProducts = (): Product[] => {
-    const availableProducts = allProducts.filter(product => product.inStock > 0);
+    const availableProducts = allProducts.filter(product => (product.inStock ?? 0) > 0);
     const shuffled = [...availableProducts].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, 8);
   };
