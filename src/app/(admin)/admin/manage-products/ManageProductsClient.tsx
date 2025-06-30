@@ -33,7 +33,6 @@ import SendNewProductEmail from '@/app/components/admin/SendNewProductEmail';
 import Image from 'next/image';
 import { Editor } from 'primereact/editor';
 import { ImageType } from './AddProductModal';
-import AddProductModal from './AddProductModal';
 import { Rating, Button as MuiButton } from '@mui/material';
 import { MdAdd } from 'react-icons/md';
 import { FaDollarSign, FaRegBuilding, FaRegEnvelope, FaRegListAlt, FaRegWindowMaximize } from 'react-icons/fa';
@@ -43,6 +42,7 @@ import * as TbIcons from 'react-icons/tb';
 import * as MdIcons from 'react-icons/md';
 import Link from 'next/link';
 import { slugConvert } from '../../../../../utils/Slug';
+import AddProductModalNew from './AddProductModalNew';
 
 interface ManageProductsClientProps {
   products: any;
@@ -670,12 +670,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
 
       {/* Add Product Modal */}
-      <AddProductModal
-        isOpen={addProductModalOpen}
-        toggleOpen={() => setAddProductModalOpen(false)}
-        subCategories={subCategories}
-        parentCategories={parentCategories}
-      />
+      <AddProductModalNew isOpen={addProductModalOpen} onClose={() => setAddProductModalOpen(false)} />
     </>
   );
 };
