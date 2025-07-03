@@ -45,18 +45,59 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 // }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const currentUser = await getCurrentUser();
+  try {
+    const currentUser = await getCurrentUser();
 
-  if (!currentUser || currentUser.role !== 'ADMIN') {
-    return NextResponse.error();
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    console.log('PUT request body:', body); // Debug log
+
+    const { name, description, price, basePrice, inStock, categoryId, images = [], productType = 'SIMPLE' } = body;
+
+    // Validation
+    if (!name || !description || !categoryId) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Check if product exists
+    const existingProduct = await prisma.product.findUnique({
+      where: { id: params.id }
+    });
+
+    if (!existingProduct) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      name,
+      description,
+      categoryId,
+      productType,
+      images: images || []
+    };
+
+    // Handle pricing based on product type
+    if (productType === 'SIMPLE') {
+      updateData.price = parseFloat(price) || 0;
+      updateData.inStock = parseInt(inStock) || 0;
+    } else if (productType === 'VARIANT') {
+      updateData.basePrice = parseFloat(basePrice) || parseFloat(price) || 0;
+      // For variant products, stock is managed at variant level
+      updateData.inStock = 0;
+    }
+
+    const product = await prisma.product.update({
+      where: { id: params.id },
+      data: updateData
+    });
+
+    return NextResponse.json(product);
+  } catch (error) {
+    console.error('Error updating product:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  const body = await request.json();
-  const { name, description, price, inStock, categoryId } = body;
-
-  const product = await prisma.product.update({
-    where: { id: params.id },
-    data: { name, description, price, inStock, categoryId }
-  });
-  return NextResponse.json(product);
 }

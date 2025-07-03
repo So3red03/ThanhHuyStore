@@ -12,7 +12,10 @@ import AdminSideBarNew from '../components/admin/AdminSideBarNew';
 import AdminNavNew from '../components/admin/AdminNavNew';
 export const metadata = {
   title: 'ThanhHuy Store - Dashboard',
-  description: 'Apple Shop Admin Dashboard'
+  description: 'Apple Shop Admin Dashboard',
+  icons: {
+    icon: '/favicon.svg' // Đường dẫn tới favicon
+  }
 };
 const inter = Inter({ subsets: ['latin'] });
 

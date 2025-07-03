@@ -1,5 +1,41 @@
 # Changelog - January 2025 Week 4
 
+## 2025-01-02 - TypeScript Error Fixes & Product Modal API Issues
+
+### ✅ TypeScript Compilation Fixes
+
+- **Fixed TypeScript compilation errors in `firebase-product-storage.ts`**
+  - Installed `uuid` and `@types/uuid` packages to resolve module declaration error
+  - Fixed Firebase Storage parameter naming conflict (`storage` → `storageSize`)
+  - Removed unused `productId` parameters from upload functions
+  - Updated function calls in `AddProductModalNew.tsx` to match new signatures
+  - All TypeScript compilation errors resolved successfully
+
+### ✅ Product Modal API & Category Issues
+
+- **Fixed 500 Internal Server Error**: Changed API endpoint from `/api/products` to `/api/product` (singular)
+- **Fixed subcategory dropdown not populating**:
+  - Removed incorrect API call to `/api/categories` (non-existent endpoint)
+  - Fixed category initialization to use props from parent component
+  - Added fallback API call to `/api/category` with proper error handling
+  - Added GET endpoint to `/api/category/route.ts` for category fetching
+- **Code cleanup**: Removed debug console.log statements and unused parameters
+- **Build verification**: Confirmed successful build with no TypeScript errors
+
+### ✅ Product Edit Mode Image Management
+
+- **Fixed PUT API endpoint**: Enhanced `/api/product/[id]/route.ts` to handle all product fields including images and productType
+- **Fixed image handling in edit mode**:
+  - Added proper separation between existing images and new images
+  - Users can now delete existing images (e.g., from 5 images to 4 images)
+  - Users can add new images while keeping existing ones
+  - Existing images are preserved and displayed separately from new uploads
+- **Enhanced UI for image management**:
+  - Separate display sections for "Hình ảnh hiện có" and "Hình ảnh mới"
+  - Individual delete buttons for each existing image
+  - Proper state management for both existing and new images
+- **Improved error handling**: Added validation and proper error responses in PUT endpoint
+
 ## 2025-01-30 - WordPress-Style Product Modal Layout
 
 ### ✅ Major UI/UX Improvements

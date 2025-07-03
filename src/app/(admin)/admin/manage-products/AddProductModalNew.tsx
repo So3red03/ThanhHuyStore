@@ -4,6 +4,14 @@ import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Editor } from 'primereact/editor';
 import axios from 'axios';
+import { useVariants } from '@/app/hooks/useVariants';
+import {
+  uploadProductImages,
+  validateImageFiles,
+  deleteProductImages,
+  ProductImageUpload,
+  ProductImageResult
+} from '@/app/utils/firebase-product-storage';
 import * as SlIcons from 'react-icons/sl';
 import * as AiIcons from 'react-icons/ai';
 import * as TbIcons from 'react-icons/tb';
@@ -48,6 +56,11 @@ export type ImageType = {
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
+  subCategories?: any[];
+  parentCategories?: any[];
+  initialData?: any;
+  onSuccess?: () => void;
+  mode?: 'add' | 'edit';
 }
 
 // Custom TabPanel component
@@ -73,20 +86,33 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) => {
+const AddProductModal: React.FC<AddProductModalProps> = ({
+  isOpen,
+  onClose,
+  subCategories: propSubCategories = [],
+  parentCategories: propParentCategories = [],
+  initialData = null,
+  onSuccess,
+  mode = 'add'
+}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [text, setText] = useState('');
   const [images, setImages] = useState<ImageType[]>([]);
   const [productType, setProductType] = useState<ProductType>(ProductType.SIMPLE);
-  const [parentCategories, setParentCategories] = useState<any[]>([]);
-  const [subCategories, setSubCategories] = useState<any[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedImageResults, setUploadedImageResults] = useState<ProductImageResult[]>([]);
+  const [parentCategories, setParentCategories] = useState<any[]>(propParentCategories);
+  const [subCategories, setSubCategories] = useState<any[]>(propSubCategories);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<string>('');
   const [filteredSubCategories, setFilteredSubCategories] = useState<any[]>([]);
 
   // Icons object for categories
   const Icons = { ...SlIcons, ...AiIcons, ...MdIcons, ...TbIcons };
   const [tabValue, setTabValue] = useState(0);
   const [attributes, setAttributes] = useState<ProductAttribute[]>([]);
+  const [existingImages, setExistingImages] = useState<any[]>([]);
   const [variations, setVariations] = useState<VariationCombination[]>([]);
 
   const {
@@ -97,11 +123,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
     formState: { errors }
   } = useForm<FieldValues>({
     defaultValues: {
-      name: '',
-      description: '',
-      category: '',
-      price: '',
-      inStock: '',
+      name: initialData?.name || '',
+      description: initialData?.description || '',
+      category: initialData?.categoryId || '',
+      price: initialData?.price || '',
+      basePrice: initialData?.basePrice || '',
+      inStock: initialData?.inStock || '',
       images: null
     }
   });
@@ -117,48 +144,106 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
     [setValue]
   );
 
-  // Fetch categories
+  // Initialize categories from props or fetch from API as fallback
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await axios.get('/api/categories');
-        const allCategories = response.data;
+    if (propParentCategories && propParentCategories.length > 0) {
+      setParentCategories(propParentCategories);
+    }
+    if (propSubCategories && propSubCategories.length > 0) {
+      setSubCategories(propSubCategories);
+    }
 
-        // Tách parent và sub categories
-        const parents = allCategories.filter((cat: any) => !cat.parentId);
-        const subs = allCategories.filter((cat: any) => cat.parentId);
+    // Fallback: fetch from API if props are empty
+    if (
+      (!propParentCategories || propParentCategories.length === 0) &&
+      (!propSubCategories || propSubCategories.length === 0) &&
+      isOpen
+    ) {
+      const fetchCategories = async () => {
+        try {
+          const response = await axios.get('/api/category');
+          const allCategories = response.data;
 
-        setParentCategories(parents);
-        setSubCategories(subs);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        // Fallback to hardcoded categories if API fails
-        const fallbackCategories = [
-          { id: '1', name: 'iPhone', icon: 'SlScreenSmartphone' },
-          { id: '2', name: 'iPad', icon: 'SlScreenTablet' },
-          { id: '3', name: 'Mac', icon: 'SlScreenDesktop' },
-          { id: '4', name: 'Apple Watch', icon: 'TbDeviceWatch' },
-          { id: '5', name: 'AirPods', icon: 'AiOutlineAudio' },
-          { id: '6', name: 'Phụ kiện', icon: 'MdOutlinePhoneIphone' }
-        ];
-        setParentCategories(fallbackCategories);
-      }
-    };
+          // Tách parent và sub categories
+          const parents = allCategories.filter((cat: any) => !cat.parentId);
+          const subs = allCategories.filter((cat: any) => cat.parentId);
 
-    if (isOpen) {
+          setParentCategories(parents);
+          setSubCategories(subs);
+        } catch (error) {
+          console.error('Error fetching categories:', error);
+        }
+      };
       fetchCategories();
     }
-  }, [isOpen]);
+  }, [propParentCategories, propSubCategories, isOpen]);
+
+  // Initialize form with initialData
+  useEffect(() => {
+    if (initialData && mode === 'edit') {
+      console.log('Initializing edit form with data:', initialData);
+      console.log('Available subCategories:', subCategories);
+
+      // Set form values
+      setValue('name', initialData.name);
+      setValue('description', initialData.description);
+      setValue('price', initialData.price);
+      setValue('basePrice', initialData.basePrice);
+      setValue('inStock', initialData.inStock);
+      setValue('categoryId', initialData.categoryId);
+
+      // Set product type
+      setProductType(initialData.productType || ProductType.SIMPLE);
+
+      // Find parent category from subcategory
+      const subCategory = subCategories.find((sub: any) => sub.id === initialData.categoryId);
+      const parentCategoryId = subCategory?.parentId || '';
+
+      console.log('Found subcategory:', subCategory);
+      console.log('Parent category ID:', parentCategoryId);
+
+      // Set parent and subcategory
+      setSelectedParentId(parentCategoryId);
+      setSelectedSubCategoryId(initialData.categoryId || '');
+      setValue('parentCategories', parentCategoryId);
+
+      // Set existing images for edit mode
+      if (initialData.images && initialData.images.length > 0) {
+        console.log('Setting existing images:', initialData.images);
+        setExistingImages(initialData.images);
+        // Clear new images state for edit mode
+        setImages([]);
+      }
+    }
+  }, [initialData, mode, setValue, subCategories]);
 
   // Filter subcategories based on selected parent
   useEffect(() => {
     if (selectedParentId) {
       const filtered = subCategories.filter((subCat: any) => subCat.parentId === selectedParentId);
       setFilteredSubCategories(filtered);
+      // Reset subcategory selection when parent changes (only for add mode)
+      if (mode === 'add') {
+        setSelectedSubCategoryId('');
+      }
     } else {
       setFilteredSubCategories([]);
+      if (mode === 'add') {
+        setSelectedSubCategoryId('');
+      }
     }
-  }, [selectedParentId, subCategories]);
+  }, [selectedParentId, subCategories, mode]);
+
+  // Initialize filtered subcategories on mount for edit mode
+  useEffect(() => {
+    if (mode === 'edit' && initialData && subCategories.length > 0) {
+      const subCategory = subCategories.find((sub: any) => sub.id === initialData.categoryId);
+      if (subCategory && subCategory.parentId) {
+        const filtered = subCategories.filter((subCat: any) => subCat.parentId === subCategory.parentId);
+        setFilteredSubCategories(filtered);
+      }
+    }
+  }, [mode, initialData, subCategories]);
 
   const handleProductTypeChange = (newType: ProductType) => {
     setProductType(newType);
@@ -168,13 +253,68 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
     try {
-      console.log('Form data:', data);
-      toast.success('Sản phẩm đã được tạo thành công!');
+      console.log('Submitting form data:', data);
+      console.log('Current images:', images);
+      console.log('Mode:', mode);
+
+      let finalImages = [];
+
+      if (mode === 'edit') {
+        // For edit mode, handle both existing and new images
+
+        // Check if user has added new images (File objects in images state)
+        const hasNewImages = images.some(img => img.image && img.image.length > 0);
+
+        if (hasNewImages) {
+          // Upload new images to Firebase
+          const uploadedImages = await uploadImagesToFirebase(data.name);
+          const newImageObjects = uploadedImages.map(result => ({
+            color: 'default',
+            colorCode: '#000000',
+            images: [result.downloadURL]
+          }));
+
+          // Combine existing images with new uploaded images
+          finalImages = [...existingImages, ...newImageObjects];
+        } else {
+          // No new images, keep existing images
+          finalImages = existingImages;
+        }
+      } else {
+        // For add mode, upload new images to Firebase
+        if (images.length > 0) {
+          const uploadedImages = await uploadImagesToFirebase(data.name);
+          finalImages = uploadedImages.map(result => ({
+            color: 'default',
+            colorCode: '#000000',
+            images: [result.downloadURL]
+          }));
+        }
+      }
+
+      const submitData = {
+        ...data,
+        productType,
+        categoryId: selectedSubCategoryId, // Use the selected subcategory
+        images: finalImages
+      };
+
+      if (mode === 'edit' && initialData?.id) {
+        // Update product - use the correct API endpoint
+        await axios.put(`/api/product/${initialData.id}`, submitData);
+        toast.success('Sản phẩm đã được cập nhật thành công!');
+      } else {
+        // Create product
+        await axios.post('/api/product', submitData);
+        toast.success('Sản phẩm đã được tạo thành công!');
+      }
+
       reset();
+      onSuccess?.();
       onClose();
     } catch (error) {
-      console.error('Error creating product:', error);
-      toast.error('Có lỗi xảy ra khi tạo sản phẩm');
+      console.error('Error saving product:', error);
+      toast.error(mode === 'edit' ? 'Có lỗi xảy ra khi cập nhật sản phẩm' : 'Có lỗi xảy ra khi tạo sản phẩm');
     } finally {
       setIsLoading(false);
     }
@@ -182,20 +322,61 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
 
   // Image upload handlers
   const handleImageUpload = useCallback((files: FileList) => {
-    const newImages: ImageType[] = [];
+    const fileArray = Array.from(files);
 
-    Array.from(files).forEach(file => {
-      if (file.type.startsWith('image/')) {
-        newImages.push({
-          color: 'default',
-          colorCode: '#000000',
-          image: [file]
-        });
-      }
-    });
+    // Validate files
+    const validation = validateImageFiles(fileArray);
+    if (!validation.isValid) {
+      validation.errors.forEach(error => toast.error(error));
+      return;
+    }
+
+    const newImages: ImageType[] = fileArray
+      .filter(file => file.type.startsWith('image/'))
+      .map(file => ({
+        color: 'default',
+        colorCode: '#000000',
+        image: [file]
+      }));
 
     setImages(prev => [...prev, ...newImages]);
   }, []);
+
+  // Upload images to Firebase
+  const uploadImagesToFirebase = async (productName: string): Promise<ProductImageResult[]> => {
+    if (images.length === 0) return [];
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const imageUploads: ProductImageUpload[] = [];
+
+      images.forEach((img, index) => {
+        if (img.image && img.image.length > 0) {
+          img.image.forEach((file, fileIndex) => {
+            imageUploads.push({
+              file,
+              filename: `image-${index}-${fileIndex}.${file.name.split('.').pop()}`
+            });
+          });
+        }
+      });
+
+      const results = await uploadProductImages(productName, imageUploads, (progress: number) =>
+        setUploadProgress(progress)
+      );
+
+      setUploadedImageResults(results);
+      return results;
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast.error('Có lỗi xảy ra khi tải lên hình ảnh');
+      throw error;
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleImageDrop = useCallback(
     (e: React.DragEvent) => {
@@ -218,10 +399,40 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
     [handleImageUpload]
   );
 
+  // Delete uploaded images from Firebase
+  const deleteUploadedImages = async () => {
+    if (uploadedImageResults.length > 0) {
+      try {
+        const imagePaths = uploadedImageResults.map(result => result.path);
+        await deleteProductImages(imagePaths);
+        setUploadedImageResults([]);
+      } catch (error) {
+        console.error('Error deleting uploaded images:', error);
+      }
+    }
+  };
+
+  const handleClose = async () => {
+    // Clean up uploaded images if user cancels
+    if (mode === 'add' && uploadedImageResults.length > 0) {
+      await deleteUploadedImages();
+    }
+
+    reset();
+    setImages([]);
+    setExistingImages([]);
+    setUploadedImageResults([]);
+    setSelectedParentId('');
+    setSelectedSubCategoryId('');
+    setUploadProgress(0);
+    setIsUploading(false);
+    onClose();
+  };
+
   return (
     <Dialog
       open={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth='xl'
       fullWidth
       sx={{
@@ -244,7 +455,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
           }}
         >
           <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937' }}>
-            Thêm sản phẩm mới
+            {mode === 'edit' ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}
           </Typography>
           <IconButton onClick={onClose} sx={{ color: '#6b7280' }}>
             <MdClose size={24} />
@@ -370,16 +581,78 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
                   </Typography>
                 </Box>
 
-                {/* Display uploaded images */}
+                {/* Display existing images (for edit mode) */}
+                {mode === 'edit' && existingImages.length > 0 && (
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant='body2' sx={{ mb: 2, color: '#374151', fontWeight: 500 }}>
+                      Hình ảnh hiện có ({existingImages.length})
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      {existingImages.map((imgGroup: any, groupIndex: number) =>
+                        imgGroup.images?.map((imgUrl: string, imgIndex: number) => (
+                          <Box
+                            key={`existing-${groupIndex}-${imgIndex}`}
+                            sx={{
+                              width: 80,
+                              height: 80,
+                              borderRadius: '8px',
+                              overflow: 'hidden',
+                              border: '1px solid #e5e7eb',
+                              position: 'relative'
+                            }}
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={`Existing ${groupIndex + 1}-${imgIndex + 1}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                            <IconButton
+                              size='small'
+                              onClick={() => {
+                                // Remove image from existing images
+                                setExistingImages(prev => {
+                                  const newImages = [...prev];
+                                  newImages[groupIndex].images = newImages[groupIndex].images.filter(
+                                    (_: string, i: number) => i !== imgIndex
+                                  );
+                                  // Remove group if no images left
+                                  return newImages.filter(group => group.images.length > 0);
+                                });
+                              }}
+                              sx={{
+                                position: 'absolute',
+                                top: 2,
+                                right: 2,
+                                backgroundColor: 'rgba(0,0,0,0.5)',
+                                color: 'white',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(0,0,0,0.7)'
+                                }
+                              }}
+                            >
+                              <MdClose size={16} />
+                            </IconButton>
+                          </Box>
+                        ))
+                      )}
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Display new uploaded images */}
                 {images.length > 0 && (
                   <Box sx={{ mt: 3 }}>
                     <Typography variant='body2' sx={{ mb: 2, color: '#374151', fontWeight: 500 }}>
-                      Hình ảnh đã tải lên ({images.length})
+                      Hình ảnh mới ({images.length})
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       {images.map((img, index) => (
                         <Box
-                          key={index}
+                          key={`new-${index}`}
                           sx={{
                             width: 80,
                             height: 80,
@@ -391,7 +664,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
                         >
                           <img
                             src={img.image?.[0] ? URL.createObjectURL(img.image[0]) : ''}
-                            alt={`Upload ${index + 1}`}
+                            alt={`New Upload ${index + 1}`}
                             style={{
                               width: '100%',
                               height: '100%',
@@ -471,8 +744,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
                   <FormControl fullWidth disabled={!selectedParentId}>
                     <InputLabel>Danh mục con</InputLabel>
                     <Select
-                      value={selectedParentId ? '' : ''}
-                      onChange={e => setCustomValue('categoryId', e.target.value)}
+                      value={selectedSubCategoryId}
+                      onChange={e => {
+                        const value = e.target.value;
+                        setSelectedSubCategoryId(value);
+                        setCustomValue('categoryId', value);
+                      }}
                       label='Danh mục con'
                       disabled={isLoading || !selectedParentId}
                       error={!!errors.categoryId}
@@ -703,6 +980,48 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
                       <MuiButton
                         variant='outlined'
                         size='small'
+                        onClick={() => {
+                          // Regenerate variations from attributes
+                          if (attributes.length > 0) {
+                            const selectedAttrs = attributes.filter(attr => attr.values.length > 0);
+                            if (selectedAttrs.length > 0) {
+                              // Generate new variations
+                              const combinations: any[] = [];
+                              const generateCombinations = (
+                                attrIndex: number,
+                                currentCombination: Record<string, string>
+                              ) => {
+                                if (attrIndex === selectedAttrs.length) {
+                                  const id = Object.values(currentCombination).join('-');
+                                  combinations.push({
+                                    id,
+                                    attributes: { ...currentCombination },
+                                    isActive: true,
+                                    price: 0,
+                                    stock: 0,
+                                    sku: `SKU-${Object.values(currentCombination).join('-').toUpperCase()}`,
+                                    images: []
+                                  });
+                                  return;
+                                }
+                                const currentAttr = selectedAttrs[attrIndex];
+                                currentAttr.values.forEach(value => {
+                                  generateCombinations(attrIndex + 1, {
+                                    ...currentCombination,
+                                    [currentAttr.slug]: value.value
+                                  });
+                                });
+                              };
+                              generateCombinations(0, {});
+                              setVariations(combinations);
+                              toast.success(`Đã tạo lại ${combinations.length} biến thể!`);
+                            } else {
+                              toast.error('Vui lòng tạo thuộc tính trước khi tạo biến thể');
+                            }
+                          } else {
+                            toast.error('Vui lòng tạo thuộc tính trước khi tạo biến thể');
+                          }
+                        }}
                         sx={{
                           borderColor: '#3b82f6',
                           color: '#3b82f6',
@@ -714,6 +1033,20 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
                       <MuiButton
                         variant='contained'
                         size='small'
+                        onClick={() => {
+                          // Add a new manual variant
+                          const newVariant = {
+                            id: `manual-${Date.now()}`,
+                            attributes: { manual: 'Biến thể thủ công' },
+                            isActive: true,
+                            price: 0,
+                            stock: 0,
+                            sku: `SKU-MANUAL-${Date.now()}`,
+                            images: []
+                          };
+                          setVariations([...variations, newVariant]);
+                          toast.success('Đã thêm biến thể thủ công!');
+                        }}
                         sx={{
                           backgroundColor: '#10b981',
                           '&:hover': { backgroundColor: '#059669' }
@@ -803,7 +1136,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
 
         <DialogActions sx={{ p: 3, borderTop: '1px solid #e5e7eb' }}>
           <MuiButton
-            onClick={onClose}
+            onClick={handleClose}
             variant='outlined'
             sx={{
               borderColor: '#d1d5db',
@@ -819,7 +1152,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
           <MuiButton
             type='submit'
             variant='contained'
-            disabled={isLoading}
+            disabled={isLoading || isUploading}
             startIcon={<MdSave />}
             sx={{
               backgroundColor: '#3b82f6',
@@ -828,7 +1161,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) =>
               }
             }}
           >
-            {isLoading ? 'Đang tạo...' : 'Tạo sản phẩm'}
+            {isUploading
+              ? `Đang tải ảnh... ${uploadProgress}%`
+              : isLoading
+              ? mode === 'edit'
+                ? 'Đang cập nhật...'
+                : 'Đang tạo...'
+              : mode === 'edit'
+              ? 'Cập nhật sản phẩm'
+              : 'Tạo sản phẩm'}
           </MuiButton>
         </DialogActions>
       </form>

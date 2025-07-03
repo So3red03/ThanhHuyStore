@@ -41,13 +41,38 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
   };
 
   const handleSave = () => {
-    onUpdate(variant.id, editData);
+    // Convert selected images to URLs if needed
+    const updatedData = {
+      ...editData,
+      images: editData.images // These should already be URLs from handleImageUpload
+    };
+    onUpdate(variant.id, updatedData);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setEditData(variant);
     setIsEditing(false);
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const newImages = Array.from(files);
+      // Create temporary URLs for preview
+      const imageUrls = newImages.map(file => URL.createObjectURL(file));
+      setEditData(prev => ({
+        ...prev,
+        images: [...prev.images, ...imageUrls]
+      }));
+    }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setEditData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, index) => index !== indexToRemove)
+    }));
   };
 
   const getAttributeDisplay = () => {
@@ -157,6 +182,8 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
                   Hình ảnh biến thể
                 </Typography>
                 <Box
+                  component='label'
+                  htmlFor={`image-upload-${variant.id}`}
                   sx={{
                     width: '150px',
                     height: '150px',
@@ -174,11 +201,75 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
                     }
                   }}
                 >
+                  <input
+                    type='file'
+                    multiple
+                    accept='image/*'
+                    onChange={handleImageUpload}
+                    style={{ display: 'none' }}
+                    id={`image-upload-${variant.id}`}
+                  />
                   <MdUpload size={24} color='#9ca3af' />
                   <Typography variant='caption' sx={{ color: '#6b7280', mt: 1, textAlign: 'center' }}>
-                    Chọn hình ảnh
+                    Chọn nhiều hình ảnh
                   </Typography>
                 </Box>
+
+                {/* Display selected images */}
+                {editData.images.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant='caption' sx={{ color: '#6b7280', mb: 1, display: 'block' }}>
+                      Đã chọn {editData.images.length} hình ảnh
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {editData.images.map((img, index) => (
+                        <Box
+                          key={index}
+                          sx={{
+                            position: 'relative',
+                            width: 60,
+                            height: 60,
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            border: '1px solid #e5e7eb'
+                          }}
+                        >
+                          <img
+                            src={img}
+                            alt={`Variant ${index + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                          {/* Delete button */}
+                          <Box
+                            onClick={() => handleRemoveImage(index)}
+                            sx={{
+                              position: 'absolute',
+                              top: 2,
+                              right: 2,
+                              width: 16,
+                              height: 16,
+                              borderRadius: '50%',
+                              backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              '&:hover': {
+                                backgroundColor: '#dc2626'
+                              }
+                            }}
+                          >
+                            <Typography sx={{ color: 'white', fontSize: '10px', fontWeight: 'bold' }}>×</Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
               </Box>
 
               {/* Right Side - Form Fields */}

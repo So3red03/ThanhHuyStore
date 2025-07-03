@@ -43,6 +43,7 @@ import * as MdIcons from 'react-icons/md';
 import Link from 'next/link';
 import { slugConvert } from '../../../../../utils/Slug';
 import AddProductModalNew from './AddProductModalNew';
+import EditProductModal from './EditProductModal';
 
 interface ManageProductsClientProps {
   products: any;
@@ -62,12 +63,15 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isDelete, setIsDelete] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product>();
   const Icons = { ...SlIcons, ...AiIcons, ...MdIcons, ...TbIcons };
   const [selectedParentCategoryId, setSelectedParentCategoryId] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
   const [deletedProducts, setDeletedProducts] = useState<any[]>([]);
   const [addProductModalOpen, setAddProductModalOpen] = useState(false);
+  const [editProductModalOpen, setEditProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const [text, setText] = useState('');
   // const [images, setImages] = useState<any[] | null>(products.images);
@@ -135,17 +139,8 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   };
 
   const handleOpenModal = (product: any) => {
-    setSelectedProduct(product);
-    // Cập nhật giá trị danh mục cha và con vào form
-    setValue('parentCategories', product.parentId);
-    setSelectedParentCategoryId(product.parentId); // Để lọc danh mục con dựa vào danh mục cha
-    setValue('categoryId', product.categoryId);
-
-    // Các trường khác của sản phẩm
-    const fieldsToSet = ['id', 'name', 'price', 'description', 'inStock', 'images'];
-    fieldsToSet.forEach(field => setCustomValue(field, product[field]));
-
-    toggleOpen();
+    setEditingProduct(product);
+    setEditProductModalOpen(true);
   };
 
   // Lọc danh mục con dựa trên ID danh mục cha
@@ -298,9 +293,17 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   // Xác nhận xóa
   const handleConfirmDelete = async () => {
     if (selectedProduct) {
-      await handleDelete(selectedProduct.id, selectedProduct.images);
+      setIsDeleting(true);
+      try {
+        await handleDelete(selectedProduct.id, selectedProduct.images);
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        toast.error('Có lỗi xảy ra khi xóa sản phẩm');
+      } finally {
+        setIsDeleting(false);
+        toggleDelete();
+      }
     }
-    toggleDelete();
   };
 
   const handleDelete = async (id: string, images: { color: string; colorCode: string; images: string[] }[]) => {
@@ -667,10 +670,37 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
           </FormWarp>
         </AdminModal>
       )}
-      {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
+      {isDelete && (
+        <ConfirmDialog
+          isOpen={isDelete}
+          handleClose={toggleDelete}
+          onConfirm={handleConfirmDelete}
+          isLoading={isDeleting}
+          loadingText='Đang xóa sản phẩm...'
+        />
+      )}
 
       {/* Add Product Modal */}
-      <AddProductModalNew isOpen={addProductModalOpen} onClose={() => setAddProductModalOpen(false)} />
+      <AddProductModalNew
+        isOpen={addProductModalOpen}
+        onClose={() => setAddProductModalOpen(false)}
+        subCategories={subCategories}
+        parentCategories={parentCategories}
+        onSuccess={() => router.refresh()}
+      />
+
+      {/* Edit Product Modal */}
+      <EditProductModal
+        isOpen={editProductModalOpen}
+        onClose={() => {
+          setEditProductModalOpen(false);
+          setEditingProduct(null);
+        }}
+        product={editingProduct}
+        subCategories={subCategories}
+        parentCategories={parentCategories}
+        onProductUpdated={() => router.refresh()}
+      />
     </>
   );
 };
