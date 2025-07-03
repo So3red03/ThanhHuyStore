@@ -43,7 +43,13 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
   useEffect(() => {
     const checkChatbotSettings = async () => {
       try {
-        const response = await fetch('/api/admin/settings/public');
+        // Add cache busting with timestamp
+        const response = await fetch(`/api/admin/settings/public?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         const settings = await response.json();
         setChatbotEnabled(settings.chatbotSupport ?? false);
       } catch (error) {
@@ -53,6 +59,10 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
     };
 
     checkChatbotSettings();
+
+    // Poll for settings changes every 30 seconds in production
+    const interval = setInterval(checkChatbotSettings, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {

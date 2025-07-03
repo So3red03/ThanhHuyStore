@@ -3,6 +3,10 @@ import { getServerSession } from 'next-auth';
 import prisma from '@/app/libs/prismadb';
 import { clearSessionConfigCache } from '@/app/libs/auth/getAdminSessionConfig';
 
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 // Simple auth check - replace with your actual authOptions
 const getCurrentUser = async () => {
   try {
@@ -67,10 +71,19 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      settings,
-      success: true
-    });
+    return NextResponse.json(
+      {
+        settings,
+        success: true
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0'
+        }
+      }
+    );
   } catch (error) {
     console.error('Get admin settings error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -182,11 +195,20 @@ export async function PUT(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({
-      settings,
-      success: true,
-      message: 'Cài đặt đã được cập nhật thành công'
-    });
+    return NextResponse.json(
+      {
+        settings,
+        success: true,
+        message: 'Cài đặt đã được cập nhật thành công'
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0'
+        }
+      }
+    );
   } catch (error) {
     console.error('Update admin settings error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

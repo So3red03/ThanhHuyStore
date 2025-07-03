@@ -46,7 +46,12 @@ export const useSettings = () => {
       try {
         // Luôn thử fetch từ API trước (database là source of truth)
         try {
-          const response = await fetch('/api/settings');
+          const response = await fetch(`/api/settings?t=${Date.now()}`, {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache'
+            }
+          });
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.settings) {
