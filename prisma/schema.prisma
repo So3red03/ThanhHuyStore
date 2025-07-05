@@ -661,3 +661,31 @@ model ProductVariant {
   @@index([productId])
   @@index([isActive])
 }
+
+// Audit Log Model for Security and Compliance
+model AuditLog {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventType    String   // AuditEventType enum values
+  severity     String   // AuditSeverity enum values
+  userId       String?  @db.ObjectId
+  userEmail    String?
+  userRole     String?
+  ipAddress    String?
+  userAgent    String?
+  description  String
+  metadata     Json     @default("{}")
+  resourceId   String?
+  resourceType String?
+  oldValue     Json?
+  newValue     Json?
+  timestamp    DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  // Indexes for efficient querying
+  @@index([eventType])
+  @@index([severity])
+  @@index([userId])
+  @@index([timestamp])
+  @@index([resourceId])
+  @@index([resourceType])
+}

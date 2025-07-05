@@ -43,7 +43,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ currentUser }) => {
     <Dialog
       open={isOpen}
       onClose={handleClose}
-      maxWidth="sm"
+      maxWidth='sm'
       fullWidth
       PaperProps={{
         sx: {
@@ -52,14 +52,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ currentUser }) => {
           maxWidth: '500px',
           margin: '16px',
           backgroundColor: '#ffffff',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        },
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+        }
       }}
       BackdropProps={{
         sx: {
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(4px)',
-        },
+          backgroundColor: 'transparent',
+          backdropFilter: 'none'
+        }
       }}
       TransitionComponent={Fade}
       transitionDuration={300}
@@ -70,19 +70,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ currentUser }) => {
           padding: 0,
           position: 'relative',
           '&::-webkit-scrollbar': {
-            width: '6px',
+            width: '6px'
           },
           '&::-webkit-scrollbar-track': {
             background: '#f1f1f1',
-            borderRadius: '3px',
+            borderRadius: '3px'
           },
           '&::-webkit-scrollbar-thumb': {
             background: '#c1c1c1',
-            borderRadius: '3px',
+            borderRadius: '3px'
           },
           '&::-webkit-scrollbar-thumb:hover': {
-            background: '#a8a8a8',
-          },
+            background: '#a8a8a8'
+          }
         }}
       >
         {/* Close Button */}
@@ -97,26 +97,18 @@ const AuthModal: React.FC<AuthModalProps> = ({ currentUser }) => {
             color: '#64748b',
             '&:hover': {
               backgroundColor: 'rgba(255, 255, 255, 1)',
-              color: '#475569',
+              color: '#475569'
             },
             width: 40,
-            height: 40,
+            height: 40
           }}
         >
           <MdClose size={20} />
         </IconButton>
 
         {/* Modal Content with Slide Transition */}
-        <Slide
-          direction="up"
-          in={isOpen && modalType !== null}
-          timeout={200}
-          mountOnEnter
-          unmountOnExit
-        >
-          <div>
-            {renderModalContent()}
-          </div>
+        <Slide direction='up' in={isOpen && modalType !== null} timeout={200} mountOnEnter unmountOnExit>
+          <div>{renderModalContent()}</div>
         </Slide>
       </DialogContent>
     </Dialog>
