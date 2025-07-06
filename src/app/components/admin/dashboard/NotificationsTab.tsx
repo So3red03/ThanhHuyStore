@@ -11,7 +11,6 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Grid,
   Table,
   TableBody,
   TableCell,
@@ -57,7 +56,7 @@ interface NotificationsTabProps {
   users: any[];
 }
 
-const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) => {
+const NotificationsTab: React.FC<NotificationsTabProps> = () => {
   // State for audit logs
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -158,13 +157,15 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) =>
     }
   };
 
-  const handleClearTestData = async () => {
+  const handleClearAllTestData = async () => {
     try {
+      // Clear both test data and view logs
       await axios.post('/api/admin/audit-logs', { action: 'clearTestData' });
-      toast.success('🗑️ Test data cleared successfully!');
+      await axios.post('/api/admin/audit-logs', { action: 'clearViewLogs' });
+      toast.success('🗑️ All test data & view logs cleared successfully!');
       fetchAuditLogs();
     } catch (error) {
-      toast.error('❌ Error clearing test data');
+      toast.error('❌ Error clearing data');
     }
   };
 
@@ -198,9 +199,6 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) =>
     <Box>
       {/* Header */}
       <div className='mb-6'>
-        <Typography variant='h4' fontWeight={700} gutterBottom>
-          🔐 Security Audit Trail
-        </Typography>
         <Typography variant='body1' color='text.secondary'>
           Theo dõi và phân tích các hoạt động bảo mật trong hệ thống
         </Typography>
@@ -216,10 +214,10 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) =>
             </Typography>
           </div>
 
-          <Grid container spacing={3}>
-            {/* Time Filter */}
-            <Grid item xs={12} md={3}>
-              <FormControl fullWidth size='small'>
+          <div className='flex items-center justify-between'>
+            {/* Left side filters */}
+            <div className='flex items-center gap-3'>
+              <FormControl size='small' sx={{ minWidth: 120 }}>
                 <InputLabel>Thời gian</InputLabel>
                 <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
                   {timeFilterOptions.map(option => (
@@ -229,11 +227,8 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) =>
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
 
-            {/* Event Type Filter */}
-            <Grid item xs={12} md={3}>
-              <FormControl fullWidth size='small'>
+              <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Loại sự kiện</InputLabel>
                 <Select value={eventTypeFilter} label='Loại sự kiện' onChange={e => setEventTypeFilter(e.target.value)}>
                   {eventTypeOptions.map(option => (
@@ -243,11 +238,8 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) =>
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
 
-            {/* Severity Filter */}
-            <Grid item xs={12} md={3}>
-              <FormControl fullWidth size='small'>
+              <FormControl size='small' sx={{ minWidth: 120 }}>
                 <InputLabel>Mức độ</InputLabel>
                 <Select value={severityFilter} label='Mức độ' onChange={e => setSeverityFilter(e.target.value)}>
                   {severityOptions.map(option => (
@@ -257,56 +249,50 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) =>
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
+            </div>
 
-            {/* Refresh Button */}
-            <Grid item xs={12} md={3}>
-              <Button
-                variant='contained'
-                startIcon={<MdRefresh />}
-                onClick={fetchAuditLogs}
-                fullWidth
-                size='medium'
-                sx={{
-                  backgroundColor: '#3b82f6',
-                  '&:hover': { backgroundColor: '#2563eb' },
-                  borderRadius: '8px',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  height: '40px'
-                }}
-              >
-                Làm mới
-              </Button>
-            </Grid>
-          </Grid>
+            {/* Right side refresh button */}
+            <Button
+              variant='contained'
+              startIcon={<MdRefresh />}
+              onClick={fetchAuditLogs}
+              size='medium'
+              disabled={loading}
+              sx={{
+                backgroundColor: '#3b82f6',
+                '&:hover': { backgroundColor: '#2563eb' },
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
+              }}
+            >
+              {loading ? 'Đang tải...' : 'Làm mới'}
+            </Button>
+          </div>
 
           {/* Custom Date Range */}
           {showDateRange && (
-            <Grid container spacing={2} sx={{ mt: 2 }}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  type='date'
-                  label='Từ ngày'
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  fullWidth
-                  size='small'
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  type='date'
-                  label='Đến ngày'
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  fullWidth
-                  size='small'
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-            </Grid>
+            <div className='flex items-center gap-3 mt-4'>
+              <TextField
+                type='date'
+                label='Từ ngày'
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                size='small'
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: 150 }}
+              />
+              <TextField
+                type='date'
+                label='Đến ngày'
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                size='small'
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: 150 }}
+              />
+            </div>
           )}
         </CardContent>
       </Card>
@@ -394,7 +380,7 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) =>
       </Card>
 
       {/* Test Controls */}
-      <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+      {/* <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant='h6' fontWeight={600} gutterBottom sx={{ color: '#1f2937' }}>
             🧪 Test Data Controls
@@ -419,14 +405,14 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) =>
 
             <Button
               variant='contained'
-              onClick={handleClearTestData}
+              onClick={handleClearAllTestData}
               sx={{
                 textTransform: 'none',
                 backgroundColor: '#ef4444',
                 '&:hover': { backgroundColor: '#dc2626' }
               }}
             >
-              🗑️ Clear Test Data
+              🗑️ Clear All Test Data
             </Button>
           </div>
 
@@ -434,7 +420,7 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ orders, users }) =>
             Sử dụng các nút này để tạo dữ liệu test cho audit trail hoặc xóa dữ liệu test đã tạo.
           </Typography>
         </CardContent>
-      </Card>
+      </Card> */}
     </Box>
   );
 };

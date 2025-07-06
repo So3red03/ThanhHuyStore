@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { NextResponse } from 'next/server';
+import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
 /**
  * GET: Fetch all variant products with their attributes and variants
@@ -197,6 +198,29 @@ export async function POST(request: Request) {
         attributes: createdAttributes,
         variants: createdVariants
       };
+    });
+
+    // 🎯 AUDIT LOG: Variant Product Created
+    await AuditLogger.log({
+      eventType: AuditEventType.PRODUCT_CREATED,
+      severity: AuditSeverity.MEDIUM,
+      userId: currentUser.id,
+      userEmail: currentUser.email!,
+      userRole: 'ADMIN',
+      ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      description: `Tạo sản phẩm variant: ${name}`,
+      details: {
+        productName: name,
+        productType: 'VARIANT',
+        basePrice: parseFloat(basePrice),
+        attributesCount: result.attributes.length,
+        variantsCount: result.variants.length,
+        brand,
+        categoryId
+      },
+      resourceId: result.product.id,
+      resourceType: 'Product'
     });
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '../../libs/prismadb';
 import { NextResponse } from 'next/server';
+import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
 export async function POST(request: Request) {
   const currentUser = await getCurrentUser();
@@ -119,6 +120,31 @@ export async function POST(request: Request) {
         });
       }
     }
+
+    // 🎯 AUDIT LOG: Promotion Created
+    await AuditLogger.log({
+      eventType: AuditEventType.PROMOTION_CREATED,
+      severity: AuditSeverity.MEDIUM,
+      userId: currentUser.id,
+      userEmail: currentUser.email!,
+      userRole: 'ADMIN',
+      ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      description: `Tạo khuyến mãi: ${title}`,
+      details: {
+        promotionTitle: title,
+        discountType,
+        discountValue: parseFloat(discountValue),
+        maxDiscount: maxDiscount ? parseFloat(maxDiscount) : null,
+        applyToAll: applyToAll || false,
+        productsCount: productIds?.length || 0,
+        categoriesCount: categoryIds?.length || 0,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate)
+      },
+      resourceId: promotion.id,
+      resourceType: 'Promotion'
+    });
 
     return NextResponse.json(promotion);
   } catch (error) {

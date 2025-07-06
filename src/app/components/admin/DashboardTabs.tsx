@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Box, Tabs, Tab, Typography, Paper, useTheme, alpha } from '@mui/material';
-import { MdDashboard, MdAnalytics, MdAssessment, MdNotifications } from 'react-icons/md';
+import { MdDashboard, MdAnalytics, MdAssessment, MdNotifications, MdHistory } from 'react-icons/md';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -70,8 +70,8 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
       content: reportsContent
     },
     {
-      label: 'Thông báo',
-      icon: <MdNotifications size={20} />,
+      label: 'Nhật ký',
+      icon: <MdHistory size={20} />,
       content: notificationsContent
     }
   ];

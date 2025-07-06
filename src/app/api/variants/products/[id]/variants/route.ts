@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { NextResponse } from 'next/server';
+import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
 interface IParams {
   id: string;
@@ -177,6 +178,17 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
           return NextResponse.json({ error: 'Stock adjustment or new stock is required' }, { status: 400 });
         }
 
+        // Get variants before update for audit logging
+        const variantsBeforeUpdate = await prisma.productVariant.findMany({
+          where: {
+            id: { in: variantIds },
+            productId: params.id
+          },
+          include: {
+            product: { select: { name: true } }
+          }
+        });
+
         if (data.newStock !== undefined) {
           // Set specific stock
           result = await prisma.productVariant.updateMany({
@@ -185,6 +197,37 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
               productId: params.id
             },
             data: { stock: parseInt(data.newStock) }
+          });
+
+          // 🎯 AUDIT LOG: Bulk Variant Stock Set
+          await AuditLogger.log({
+            eventType: AuditEventType.INVENTORY_UPDATED,
+            severity: AuditSeverity.MEDIUM, // MEDIUM for bulk variant updates
+            userId: currentUser.id,
+            userEmail: currentUser.email!,
+            userRole: currentUser.role || 'ADMIN',
+            ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+            userAgent: request.headers.get('user-agent') || 'unknown',
+            description: `Cập nhật tồn kho variants: ${variantsBeforeUpdate[0]?.product.name}`,
+            details: {
+              productId: params.id,
+              productName: variantsBeforeUpdate[0]?.product.name,
+              updateMethod: 'bulk_variant_stock_set',
+              variantCount: variantIds.length,
+              newStock: parseInt(data.newStock),
+              variantDetails: variantsBeforeUpdate.map(v => ({
+                variantId: v.id,
+                sku: v.sku,
+                oldStock: v.stock,
+                newStock: parseInt(data.newStock),
+                stockChange: parseInt(data.newStock) - v.stock
+              })),
+              endpoint: '/api/variants/products/[id]/variants',
+              riskLevel: 'MEDIUM',
+              businessContext: 'Bulk variant stock management'
+            },
+            resourceId: params.id,
+            resourceType: 'Product'
           });
         } else {
           // Apply stock adjustment
@@ -196,14 +239,49 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
             }
           });
 
+          const variantUpdates = [];
           for (const variant of variants) {
+            const oldStock = variant.stock;
             const newStock = Math.max(0, variant.stock + adjustment);
             await prisma.productVariant.update({
               where: { id: variant.id },
               data: { stock: newStock }
             });
+            variantUpdates.push({
+              variantId: variant.id,
+              sku: variant.sku,
+              oldStock,
+              newStock,
+              stockChange: newStock - oldStock
+            });
           }
           result = { count: variants.length };
+
+          // 🎯 AUDIT LOG: Bulk Variant Stock Adjustment
+          await AuditLogger.log({
+            eventType: AuditEventType.INVENTORY_UPDATED,
+            severity: AuditSeverity.MEDIUM, // MEDIUM for bulk variant adjustments
+            userId: currentUser.id,
+            userEmail: currentUser.email!,
+            userRole: currentUser.role || 'ADMIN',
+            ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+            userAgent: request.headers.get('user-agent') || 'unknown',
+            description: `Điều chỉnh tồn kho variants: ${variantsBeforeUpdate[0]?.product.name}`,
+            details: {
+              productId: params.id,
+              productName: variantsBeforeUpdate[0]?.product.name,
+              updateMethod: 'bulk_variant_stock_adjustment',
+              variantCount: variantIds.length,
+              stockAdjustment: adjustment,
+              variantDetails: variantUpdates,
+              endpoint: '/api/variants/products/[id]/variants',
+              riskLevel: 'MEDIUM',
+              businessContext: 'Bulk variant stock adjustment',
+              securityNote: adjustment < 0 ? 'Stock reduction - monitor for accuracy' : 'Stock increase'
+            },
+            resourceId: params.id,
+            resourceType: 'Product'
+          });
         }
         break;
 

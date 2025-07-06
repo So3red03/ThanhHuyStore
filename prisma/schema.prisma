@@ -575,13 +575,7 @@ model AdminSettings {
   updatedAt             DateTime @updatedAt
 }
 
-model AdminAuditLog {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  action    String   // 'UPDATE_SETTINGS', 'LOGIN', 'CREATE_PRODUCT', etc.
-  userId    String
-  details   String   // JSON string with details
-  createdAt DateTime @default(now())
-}
+
 
 model ReportLog {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -662,27 +656,42 @@ model ProductVariant {
   @@index([isActive])
 }
 
-// Audit Log Model for Security and Compliance
+// Enhanced Audit Log Model (migrated from AdminAuditLog + new Security features)
 model AuditLog {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  eventType    String   // AuditEventType enum values
-  severity     String   // AuditSeverity enum values
+
+  // Enhanced fields (backward compatible with AdminAuditLog)
+  eventType    String   // 'ADMIN_LOGIN', 'UPDATE_SETTINGS', 'PAYMENT_SUCCESS', etc.
+  category     String   @default("ADMIN") // 'ADMIN', 'SECURITY', 'BUSINESS', 'SYSTEM'
+  severity     String   @default("MEDIUM") // 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
+
+  // User info (enhanced from AdminAuditLog.userId)
   userId       String?  @db.ObjectId
   userEmail    String?
   userRole     String?
+
+  // Request info (new security features)
   ipAddress    String?
   userAgent    String?
+
+  // Event details (enhanced from AdminAuditLog.details)
   description  String
-  metadata     Json     @default("{}")
+  details      Json     @default("{}")  // Backward compatible với AdminAuditLog string details
+  metadata     Json     @default("{}")  // Additional metadata
+
+  // Resource info (new)
   resourceId   String?
   resourceType String?
   oldValue     Json?
   newValue     Json?
+
+  // Timestamps (compatible with AdminAuditLog.createdAt)
   timestamp    DateTime @default(now())
   createdAt    DateTime @default(now())
 
   // Indexes for efficient querying
   @@index([eventType])
+  @@index([category])
   @@index([severity])
   @@index([userId])
   @@index([timestamp])

@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const eventType = searchParams.get('eventType');
+    const category = searchParams.get('category');
     const severity = searchParams.get('severity');
     const userId = searchParams.get('userId');
     const startDate = searchParams.get('startDate');
@@ -26,6 +27,10 @@ export async function GET(request: Request) {
 
     if (eventType && eventType !== 'all') {
       where.eventType = eventType;
+    }
+
+    if (category && category !== 'all') {
+      where.category = category;
     }
 
     if (severity && severity !== 'all') {
@@ -61,21 +66,11 @@ export async function GET(request: Request) {
       where,
       orderBy: { timestamp: 'desc' },
       skip: (page - 1) * limit,
-      take: limit,
+      take: limit
     });
 
-    // Log this admin action
-    await AuditLogger.logAdminAction(
-      AuditEventType.ADMIN_LOGIN,
-      currentUser.id,
-      currentUser.email!,
-      `Admin viewed audit logs - Page ${page}`,
-      {
-        filters: { eventType, severity, userId, startDate, endDate, resourceType },
-        resultCount: auditLogs.length
-      },
-      AuditLogger.getClientIP(request)
-    );
+    // Note: We don't log "viewed audit logs" as it's not a critical action
+    // Only log important admin actions like CRUD operations
 
     return NextResponse.json({
       auditLogs,
@@ -87,13 +82,9 @@ export async function GET(request: Request) {
         hasPrev: page > 1
       }
     });
-
   } catch (error) {
     console.error('Error fetching audit logs:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -144,7 +135,7 @@ export async function POST(request: Request) {
         {
           eventType: AuditEventType.PAYMENT_SUCCESS,
           severity: AuditSeverity.MEDIUM,
-          userId: 'test-user-456',
+          userId: '507f1f77bcf86cd799439011',
           userEmail: 'customer@example.com',
           userRole: 'USER',
           description: 'Payment processed successfully via Stripe',
@@ -155,12 +146,12 @@ export async function POST(request: Request) {
         {
           eventType: AuditEventType.SUSPICIOUS_ORDER,
           severity: AuditSeverity.CRITICAL,
-          userId: 'suspicious-user-999',
+          userId: '507f1f77bcf86cd799439012',
           userEmail: 'suspicious@example.com',
           description: 'Suspicious order detected - unusual quantity and price',
           resourceId: 'order-suspicious-001',
           resourceType: 'ORDER',
-          metadata: { 
+          metadata: {
             suspiciousFactors: ['high_quantity', 'price_manipulation'],
             orderValue: 50000000,
             normalValue: 500000
@@ -184,7 +175,7 @@ export async function POST(request: Request) {
           severity: AuditSeverity.HIGH,
           description: 'Rate limit exceeded for payment attempts',
           ipAddress: '10.0.0.1',
-          metadata: { 
+          metadata: {
             endpoint: '/api/create-payment-intent',
             attempts: 15,
             timeWindow: '1 minute'
@@ -209,21 +200,12 @@ export async function POST(request: Request) {
         });
       }
 
-      // Log this admin action
-      await AuditLogger.logAdminAction(
-        AuditEventType.ADMIN_LOGIN,
-        currentUser.id,
-        currentUser.email!,
-        'Admin generated test audit data',
-        { testEventsCount: testEvents.length },
-        AuditLogger.getClientIP(request)
-      );
+      // Note: Test data generation is not logged as it's for development/testing
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'Test audit data generated successfully',
         eventsCreated: testEvents.length
       });
-
     } else if (action === 'clearTestData') {
       // Clear test audit data (keep only real events)
       const result = await prisma.auditLog.deleteMany({
@@ -237,30 +219,29 @@ export async function POST(request: Request) {
           ]
         }
       });
+      // Note: Test data clearing is not logged as it's for development/testing
 
-      // Log this admin action
-      await AuditLogger.logAdminAction(
-        AuditEventType.ADMIN_LOGIN,
-        currentUser.id,
-        currentUser.email!,
-        'Admin cleared test audit data',
-        { deletedCount: result.count },
-        AuditLogger.getClientIP(request)
-      );
-
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'Test audit data cleared successfully',
+        deletedCount: result.count
+      });
+    } else if (action === 'clearViewLogs') {
+      // Clear old "Admin viewed" logs that are not needed
+      const result = await prisma.auditLog.deleteMany({
+        where: {
+          description: { contains: 'Admin viewed' }
+        }
+      });
+
+      return NextResponse.json({
+        message: 'View logs cleared successfully',
         deletedCount: result.count
       });
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-
   } catch (error) {
     console.error('Error in audit logs POST:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

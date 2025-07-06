@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '../../libs/prismadb';
 import { NextResponse } from 'next/server';
+import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
 export async function POST(request: Request) {
   const currentUser = await getCurrentUser();
@@ -42,6 +43,30 @@ export async function POST(request: Request) {
         targetUserIds: targetUserIds || []
       }
     });
+
+    // 🎯 AUDIT LOG: Voucher Created
+    await AuditLogger.log({
+      eventType: AuditEventType.VOUCHER_CREATED,
+      severity: AuditSeverity.LOW,
+      userId: currentUser.id,
+      userEmail: currentUser.email!,
+      userRole: 'ADMIN',
+      ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      description: `Tạo voucher: ${code}`,
+      details: {
+        voucherCode: code,
+        discountType,
+        discountValue: parseFloat(discountValue),
+        quantity: parseInt(quantity),
+        voucherType,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate)
+      },
+      resourceId: voucher.id,
+      resourceType: 'Voucher'
+    });
+
     return NextResponse.json(voucher);
   } catch (error) {
     console.error('Error creating voucher:', error);

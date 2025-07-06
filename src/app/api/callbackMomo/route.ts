@@ -2,6 +2,7 @@ import prisma from '../../libs/prismadb';
 import { NextResponse } from 'next/server';
 import { OrderStatus } from '@prisma/client';
 import { MoMoSecurity } from '@/app/utils/momoSecurity';
+import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
 export async function POST(req: any) {
   try {
@@ -107,7 +108,35 @@ export async function POST(req: any) {
         where: { id: orderId },
         data: {
           status: OrderStatus.completed
+        },
+        include: {
+          user: true
         }
+      });
+
+      // 🎯 AUDIT LOG: MoMo Payment Success
+      await AuditLogger.log({
+        eventType: AuditEventType.PAYMENT_SUCCESS,
+        severity: AuditSeverity.HIGH, // HIGH because payment success is critical business event
+        userId: updatedOrder.user.id,
+        userEmail: updatedOrder.user.email!,
+        userRole: updatedOrder.user.role || 'USER',
+        ipAddress: clientIP,
+        userAgent: 'momo-callback',
+        description: `Thanh toán MoMo thành công: ${updatedOrder.amount.toLocaleString()} VND`,
+        details: {
+          orderId,
+          requestId,
+          paymentMethod: 'momo',
+          amount: updatedOrder.amount,
+          resultCode: 0,
+          customerEmail: updatedOrder.user.email,
+          customerName: updatedOrder.user.name,
+          callbackEvent: 'payment_success',
+          processedAt: new Date()
+        },
+        resourceId: updatedOrder.id,
+        resourceType: 'Order'
       });
 
       // Tự động tạo PDF và gửi email
@@ -145,13 +174,42 @@ export async function POST(req: any) {
 
       // Update order status to failed and rollback inventory/vouchers
       try {
-        await prisma.order.update({
+        const failedOrder = await prisma.order.update({
           where: { id: orderId },
           data: {
             status: OrderStatus.canceled,
             cancelReason: `MoMo payment failed - Result code: ${resultCode}`,
             cancelDate: new Date()
+          },
+          include: {
+            user: true
           }
+        });
+
+        // 🎯 AUDIT LOG: MoMo Payment Failed
+        await AuditLogger.log({
+          eventType: AuditEventType.PAYMENT_FAILED,
+          severity: AuditSeverity.HIGH, // HIGH because payment failure affects business
+          userId: failedOrder.user.id,
+          userEmail: failedOrder.user.email!,
+          userRole: failedOrder.user.role || 'USER',
+          ipAddress: clientIP,
+          userAgent: 'momo-callback',
+          description: `Thanh toán MoMo thất bại: ${failedOrder.amount.toLocaleString()} VND`,
+          details: {
+            orderId,
+            requestId,
+            paymentMethod: 'momo',
+            amount: failedOrder.amount,
+            resultCode,
+            failureReason: `MoMo payment failed - Result code: ${resultCode}`,
+            customerEmail: failedOrder.user.email,
+            customerName: failedOrder.user.name,
+            callbackEvent: 'payment_failed',
+            processedAt: new Date()
+          },
+          resourceId: failedOrder.id,
+          resourceType: 'Order'
         });
 
         // Trigger inventory and voucher rollback

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import bcrypt from 'bcrypt';
+import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
 export async function POST(request: Request) {
   try {
@@ -48,6 +49,27 @@ export async function POST(request: Request) {
         createAt: true,
         emailVerified: true
       }
+    });
+
+    // 🎯 AUDIT LOG: User Created by Admin
+    await AuditLogger.log({
+      eventType: AuditEventType.USER_CREATED,
+      severity: AuditSeverity.MEDIUM,
+      userId: currentUser.id,
+      userEmail: currentUser.email!,
+      userRole: 'ADMIN',
+      ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      description: `Tạo người dùng: ${name} (${email})`,
+      details: {
+        newUserName: name,
+        newUserEmail: email,
+        newUserRole: role,
+        emailVerified: true,
+        createdByAdmin: true
+      },
+      resourceId: user.id,
+      resourceType: 'User'
     });
 
     return NextResponse.json({

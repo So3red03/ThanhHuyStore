@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { OrderStatus } from '@prisma/client';
 import { sendDiscordNotificationIfEnabled } from '@/app/libs/discord/discordNotificationHelper';
+import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
 // Function để gửi thông báo Discord với format giống đơn hàng mới
 const sendDiscordNotification = async (orderData: any, currentUser: any, reason: string) => {
@@ -148,6 +149,40 @@ export async function POST(request: NextRequest) {
 
     // Gửi thông báo Discord (chỉ khi user tự hủy đơn hàng)
     await sendDiscordNotification(updatedOrder, currentUser, reason);
+
+    // 🎯 AUDIT LOG: Order Cancelled by User
+    await AuditLogger.log({
+      eventType: AuditEventType.ORDER_CANCELLED,
+      severity: AuditSeverity.HIGH, // HIGH because cancellation affects business metrics
+      userId: currentUser.id,
+      userEmail: currentUser.email!,
+      userRole: currentUser.role || 'USER',
+      ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      description: `Khách hàng hủy đơn hàng: ${updatedOrder.id}`,
+      details: {
+        orderId: updatedOrder.id,
+        customerEmail: updatedOrder.user.email,
+        customerName: updatedOrder.user.name,
+        orderAmount: updatedOrder.amount,
+        cancelReason: reason,
+        cancelledBy: 'USER',
+        paymentMethod: updatedOrder.paymentMethod,
+        orderDate: updatedOrder.createDate,
+        cancelDate: updatedOrder.cancelDate,
+        productsCount: updatedOrder.products?.length || 0
+      },
+      resourceId: updatedOrder.id,
+      resourceType: 'Order',
+      oldValue: {
+        status: 'confirmed', // Assuming it was confirmed before cancellation
+        cancelReason: null
+      },
+      newValue: {
+        status: OrderStatus.canceled,
+        cancelReason: reason
+      }
+    });
 
     return NextResponse.json({
       success: true,

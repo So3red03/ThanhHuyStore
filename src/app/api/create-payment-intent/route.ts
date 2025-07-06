@@ -9,6 +9,7 @@ import { sendDiscordNotificationIfEnabled } from '@/app/libs/discord/discordNoti
 import crypto from 'crypto';
 import https from 'https';
 import axios from 'axios';
+import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 const nodemailer = require('nodemailer');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
@@ -585,6 +586,35 @@ export async function POST(request: Request): Promise<Response> {
             console.error('Error creating ORDER_CREATED activity:', error);
           }
 
+          // 🎯 AUDIT LOG: Stripe Payment Intent Created
+          await AuditLogger.log({
+            eventType: AuditEventType.PAYMENT_INTENT_CREATED,
+            severity: AuditSeverity.HIGH, // HIGH because payment creation is critical
+            userId: currentUser.id,
+            userEmail: currentUser.email!,
+            userRole: currentUser.role || 'USER',
+            ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+            userAgent: request.headers.get('user-agent') || 'unknown',
+            description: `Tạo thanh toán Stripe: ${finalAmount.toLocaleString()} VND`,
+            details: {
+              paymentIntentId: paymentIntent.id,
+              orderId: createdOrder.id,
+              paymentMethod: 'stripe',
+              amount: finalAmount,
+              originalAmount: originalAmount,
+              discountAmount: discountAmount,
+              shippingFee: shippingFee,
+              voucherCode: voucherData?.code || null,
+              productsCount: products.length,
+              customerEmail: currentUser.email,
+              customerName: currentUser.name,
+              phoneNumber: phoneNumber,
+              address: address
+            },
+            resourceId: createdOrder.id,
+            resourceType: 'Order'
+          });
+
           // Voucher usage is now handled atomically in validateAndReserveVoucher
           // and confirmed in process-payment API
 
@@ -651,6 +681,35 @@ export async function POST(request: Request): Promise<Response> {
         } catch (error) {
           console.error('Error creating ORDER_CREATED activity for COD:', error);
         }
+
+        // 🎯 AUDIT LOG: COD Order Created
+        await AuditLogger.log({
+          eventType: AuditEventType.ORDER_CREATED,
+          severity: AuditSeverity.MEDIUM, // MEDIUM for COD (less risk than online payment)
+          userId: currentUser.id,
+          userEmail: currentUser.email!,
+          userRole: currentUser.role || 'USER',
+          ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown',
+          description: `Tạo đơn hàng COD: ${finalAmount.toLocaleString()} VND`,
+          details: {
+            orderId: createdOrder.id,
+            paymentIntentId: generatedPaymentIntentId,
+            paymentMethod: 'cod',
+            amount: finalAmount,
+            originalAmount: originalAmount,
+            discountAmount: discountAmount,
+            shippingFee: shippingFee,
+            voucherCode: voucherData?.code || null,
+            productsCount: products.length,
+            customerEmail: currentUser.email,
+            customerName: currentUser.name,
+            phoneNumber: phoneNumber,
+            address: address
+          },
+          resourceId: createdOrder.id,
+          resourceType: 'Order'
+        });
 
         // Voucher usage is now handled atomically in validateAndReserveVoucher
         // and confirmed in process-payment API
@@ -719,6 +778,35 @@ export async function POST(request: Request): Promise<Response> {
         } catch (error) {
           console.error('Error creating ORDER_CREATED activity for MoMo:', error);
         }
+
+        // 🎯 AUDIT LOG: MoMo Order Created
+        await AuditLogger.log({
+          eventType: AuditEventType.PAYMENT_INTENT_CREATED,
+          severity: AuditSeverity.HIGH, // HIGH because MoMo payment creation is critical
+          userId: currentUser.id,
+          userEmail: currentUser.email!,
+          userRole: currentUser.role || 'USER',
+          ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown',
+          description: `Tạo thanh toán MoMo: ${finalAmount.toLocaleString()} VND`,
+          details: {
+            orderId: createdOrder.id,
+            paymentIntentId: generatedPaymentIntentId,
+            paymentMethod: 'momo',
+            amount: finalAmount,
+            originalAmount: originalAmount,
+            discountAmount: discountAmount,
+            shippingFee: shippingFee,
+            voucherCode: voucherData?.code || null,
+            productsCount: products.length,
+            customerEmail: currentUser.email,
+            customerName: currentUser.name,
+            phoneNumber: phoneNumber,
+            address: address
+          },
+          resourceId: createdOrder.id,
+          resourceType: 'Order'
+        });
 
         // Voucher usage is now handled atomically in validateAndReserveVoucher
         // and confirmed in process-payment API

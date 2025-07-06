@@ -181,18 +181,23 @@ export async function PUT(request: NextRequest) {
     // Clear session config cache when settings are updated
     clearSessionConfigCache();
 
-    // Log audit trail
-    await prisma.adminAuditLog.create({
-      data: {
-        action: 'UPDATE_SETTINGS',
-        userId: currentUser.email,
-        details: JSON.stringify({
-          changedFields: Object.keys(body),
-          timestamp: new Date(),
-          userAgent: request.headers.get('user-agent'),
-          ip: request.headers.get('x-forwarded-for') || 'unknown'
-        })
-      }
+    // 🎯 AUDIT LOG: Admin Settings Updated
+    const { AuditLogger, AuditEventType, AuditSeverity } = await import('@/app/utils/auditLogger');
+    await AuditLogger.log({
+      eventType: AuditEventType.ADMIN_SETTINGS_UPDATED,
+      severity: AuditSeverity.MEDIUM,
+      userId: currentUser.id,
+      userEmail: currentUser.email!,
+      userRole: 'ADMIN',
+      ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      description: 'Cập nhật cài đặt hệ thống',
+      details: {
+        changedFields: Object.keys(body),
+        changes: body,
+        timestamp: new Date()
+      },
+      resourceType: 'Settings'
     });
 
     return NextResponse.json(

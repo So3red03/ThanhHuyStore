@@ -122,15 +122,13 @@ const PasswordResetClient: React.FC<PasswordResetClientProps> = ({ token }) => {
   if (!isValidToken) {
     return (
       <FormWrap>
-        <div className='mb-8 gap-3'>
-          <div className='flex items-center justify-center '>
-            <MdError className='mx-auto text-5xl text-red-500 mb-4' />
-            <Heading title='Link không hợp lệ'>
-              <></>
-            </Heading>
-          </div>
+        <div className='mb-8 gap-3 flex flex-col items-center'>
+          <MdError className='text-5xl text-red-500 mb-2' />
+          <Heading title='Link không hợp lệ'>
+            <></>
+          </Heading>
           <div className='mt-6 space-y-4'>
-            <p className='text-gray-600'>Link khôi phục mật khẩu không hợp lệ hoặc đã hết hạn.</p>
+            <p className='text-gray-600 text-center'>Link khôi phục mật khẩu không hợp lệ hoặc đã hết hạn.</p>
             <p className='text-sm text-gray-500'>
               Vui lòng yêu cầu link khôi phục mới hoặc liên hệ hỗ trợ nếu vấn đề vẫn tiếp tục.
             </p>
@@ -168,13 +166,13 @@ const PasswordResetClient: React.FC<PasswordResetClientProps> = ({ token }) => {
   return (
     <FormWrap>
       <div className='w-full max-w-md mx-auto'>
-        <div className='flex items-center justify-center mb-8 gap-3'>
-          <MdLock className='mx-auto text-5xl text-blue-600 mb-4' />
+        <div className='flex flex-col items-center mb-8'>
+          <MdLock className='text-5xl text-blue-600 mb-3' />
           <Heading title='Đặt lại mật khẩu'>
             <></>
           </Heading>
         </div>
-        <p className='text-gray-600 text-sm mt-4'>Vui lòng nhập mật khẩu mới cho tài khoản của bạn</p>
+        <p className='text-gray-600 text-sm mt-3 mb-6 text-center'>Vui lòng nhập mật khẩu mới cho tài khoản của bạn</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className='space-y-6'>
           <div>

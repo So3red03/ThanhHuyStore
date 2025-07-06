@@ -6,6 +6,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 // Dynamic import bcrypt to avoid webpack issues
 const bcrypt = require('bcrypt');
 import { getAdminSessionConfig } from '../../../src/app/libs/auth/getAdminSessionConfig';
+import { AuditLogger, AuditEventType, AuditSeverity } from '../../../src/app/utils/auditLogger';
 
 // Tạo mật khẩu mặc định
 const generateHashedPassword = async (password: string) => {
@@ -32,25 +33,120 @@ export const authOptions: AuthOptions = {
           type: 'password'
         }
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
+        const clientIP = req?.headers?.['x-forwarded-for'] || req?.headers?.['x-real-ip'] || 'unknown';
+        const userAgent = req?.headers?.['user-agent'] || 'unknown';
+
         // Verify that password been retrieved from Login form
         if (!credentials?.email || !credentials?.password) {
+          // 🚨 AUDIT LOG: Missing Credentials
+          await AuditLogger.log({
+            eventType: AuditEventType.FAILED_LOGIN_ATTEMPT,
+            severity: AuditSeverity.MEDIUM,
+            userId: 'anonymous',
+            userEmail: credentials?.email || 'unknown',
+            userRole: 'UNKNOWN',
+            ipAddress: clientIP,
+            userAgent: userAgent,
+            description: `Đăng nhập thất bại: thiếu thông tin đăng nhập`,
+            details: {
+              reason: 'missing_credentials',
+              email: credentials?.email || null,
+              hasPassword: !!credentials?.password,
+              timestamp: new Date(),
+              riskLevel: 'LOW'
+            },
+            resourceId: 'anonymous',
+            resourceType: 'Authentication'
+          });
           throw new Error('Email hoặc mật khẩu không chính xác');
         }
+
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email
           }
         });
+
         // Verify the exsisting in db
         if (!user || !user.hashedPassword) {
+          // 🚨 AUDIT LOG: User Not Found
+          await AuditLogger.log({
+            eventType: AuditEventType.FAILED_LOGIN_ATTEMPT,
+            severity: AuditSeverity.HIGH, // HIGH because could be account enumeration attack
+            userId: 'anonymous',
+            userEmail: credentials.email,
+            userRole: 'UNKNOWN',
+            ipAddress: clientIP,
+            userAgent: userAgent,
+            description: `Đăng nhập thất bại: tài khoản không tồn tại`,
+            details: {
+              reason: 'user_not_found',
+              email: credentials.email,
+              userExists: !!user,
+              hasHashedPassword: !!user?.hashedPassword,
+              timestamp: new Date(),
+              riskLevel: 'HIGH', // Potential account enumeration
+              securityNote: 'Possible account enumeration attempt'
+            },
+            resourceId: 'anonymous',
+            resourceType: 'Authentication'
+          });
           throw new Error('Email hoặc mật khẩu không chính xác');
         }
+
         // Comparing the password user entered and hashed password in db
         const isCorrectPassword = await bcrypt.compare(credentials.password, user.hashedPassword);
         if (!isCorrectPassword) {
+          // 🚨 AUDIT LOG: Wrong Password
+          await AuditLogger.log({
+            eventType: AuditEventType.FAILED_LOGIN_ATTEMPT,
+            severity: AuditSeverity.HIGH, // HIGH because could be brute force attack
+            userId: user.id,
+            userEmail: user.email!,
+            userRole: user.role || 'USER',
+            ipAddress: clientIP,
+            userAgent: userAgent,
+            description: `Đăng nhập thất bại: mật khẩu sai`,
+            details: {
+              reason: 'wrong_password',
+              email: user.email,
+              userId: user.id,
+              userName: user.name,
+              userRole: user.role,
+              lastLogin: user.lastLogin,
+              timestamp: new Date(),
+              riskLevel: 'HIGH', // Potential brute force
+              securityNote: 'Monitor for repeated failed attempts from same IP/user'
+            },
+            resourceId: user.id,
+            resourceType: 'User'
+          });
           throw new Error('Email hoặc mật khẩu không chính xác');
         }
+
+        // 🎯 AUDIT LOG: Successful Login
+        await AuditLogger.log({
+          eventType: AuditEventType.USER_LOGIN_SUCCESS,
+          severity: AuditSeverity.LOW, // LOW for successful login
+          userId: user.id,
+          userEmail: user.email!,
+          userRole: user.role || 'USER',
+          ipAddress: clientIP,
+          userAgent: userAgent,
+          description: `Đăng nhập thành công`,
+          details: {
+            email: user.email,
+            userId: user.id,
+            userName: user.name,
+            userRole: user.role,
+            lastLogin: user.lastLogin,
+            timestamp: new Date(),
+            loginMethod: 'credentials'
+          },
+          resourceId: user.id,
+          resourceType: 'User'
+        });
 
         // Update lastLogin
         await prisma.user.update({
