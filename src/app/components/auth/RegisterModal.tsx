@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { AiOutlineGoogle } from 'react-icons/ai';
@@ -18,7 +17,6 @@ interface RegisterModalProps {
 }
 
 const RegisterModal: React.FC<RegisterModalProps> = ({ currentUser }) => {
-  const router = useRouter();
   const { switchModal, closeModal } = useAuthModal();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,27 +34,31 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ currentUser }) => {
 
     axios
       .post('/api/user', data)
-      .then(() => {
-        toast.success('Tài khoản đăng kí thành công');
-        // Đăng nhập bằng phương thức xác thực credentials với dữ liệu vừa đăng ký.
-        signIn('credentials', {
-          email: data.email,
-          password: data.password,
-          redirect: false
-        }).then(callback => {
-          if (callback?.ok) {
-            router.push('/cart');
-            router.refresh();
-            toast.success('Đăng nhập thành công');
-            closeModal();
-            reset();
+      .then(response => {
+        const responseData = response.data;
+
+        if (responseData.requiresVerification) {
+          // Hiển thị thông báo về email verification
+          toast.success(responseData.message);
+
+          if (responseData.emailError) {
+            toast.error('Có lỗi khi gửi email xác thực. Bạn có thể yêu cầu gửi lại.');
           }
-          if (callback?.error) {
-            toast.error(callback.error);
-          }
-        });
+
+          // Chuyển sang modal verification thay vì đăng nhập
+          switchModal('emailVerification');
+          reset();
+        } else {
+          // Fallback cho trường hợp cũ (nếu có)
+          toast.success('Tài khoản đăng kí thành công');
+          closeModal();
+          reset();
+        }
       })
-      .catch(() => toast.error('Email này đã được đăng kí!'))
+      .catch(error => {
+        const errorMessage = error.response?.data?.message || 'Email này đã được đăng kí!';
+        toast.error(errorMessage);
+      })
       .finally(() => setIsLoading(false));
   };
 
@@ -69,10 +71,8 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ currentUser }) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
       e.preventDefault();
-      const form = e.currentTarget.form;
-      if (form && form.checkValidity()) {
-        handleSubmit(onSubmit)();
-      }
+      // Trigger form submission when Enter is pressed on password field
+      handleSubmit(onSubmit)();
     }
   };
 
@@ -111,24 +111,22 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ currentUser }) => {
 
       <div className='space-y-5 mb-6'>
         <Input
+          id='name'
+          label='Họ và tên'
+          type='name'
+          disabled={isLoading}
+          register={register}
+          errors={errors}
+          required
+        />
+
+        <Input
           id='email'
           label='Email'
           type='email'
           disabled={isLoading}
           register={register}
           errors={errors}
-          onKeyDown={handleKeyDown}
-          required
-        />
-
-        <Input
-          id='name'
-          label='Tài khoản'
-          type='name'
-          disabled={isLoading}
-          register={register}
-          errors={errors}
-          onKeyDown={handleKeyDown}
           required
         />
 

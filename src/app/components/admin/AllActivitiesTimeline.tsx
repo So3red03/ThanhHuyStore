@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ActivityItem } from './ActivityTimeline';
-import { ActivityTracker } from './ActivityTracker';
+// ActivityTracker class removed - now using AuditLog API directly
 import { formatPrice } from '../../../../utils/formatPrice';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -22,10 +22,23 @@ const AllActivitiesTimeline: React.FC<AllActivitiesTimelineProps> = ({ limit = 5
   useEffect(() => {
     const fetchActivities = async () => {
       try {
-        const tracker = ActivityTracker.getInstance();
-        const allActivities = await tracker.getAllActivities(limit);
-        setActivities(allActivities);
-        setFilteredActivities(allActivities);
+        // 🚀 NEW: Fetch from AuditLog instead of Activity table
+        const response = await fetch(`/api/audit-logs?category=BUSINESS&limit=${limit}`);
+        const data = await response.json();
+
+        // Transform AuditLog format → ActivityItem format
+        const auditActivities =
+          data.auditLogs?.map((log: any) => ({
+            id: log.id,
+            type: mapEventTypeToActivityType(log.eventType),
+            title: log.details?.title || log.description,
+            description: log.description,
+            timestamp: new Date(log.timestamp),
+            data: log.details?.uiData || {}
+          })) || [];
+
+        setActivities(auditActivities);
+        setFilteredActivities(auditActivities);
       } catch (error) {
         console.error('Error fetching activities:', error);
         setActivities([]);
@@ -35,6 +48,29 @@ const AllActivitiesTimeline: React.FC<AllActivitiesTimelineProps> = ({ limit = 5
 
     fetchActivities();
   }, [limit]);
+
+  // Map AuditLog eventType to ActivityItem type
+  const mapEventTypeToActivityType = (eventType: string): string => {
+    const mapping: Record<string, string> = {
+      // Phase 1 & 2
+      PROFILE_UPDATED: 'profile_updated',
+      PASSWORD_CHANGED: 'password_changed',
+      PRODUCT_REVIEWED: 'comment_review',
+      ORDER_CREATED: 'order_created',
+      ORDER_STATUS_CHANGED: 'order_updated',
+      ORDER_CANCELLED: 'order_cancelled',
+      PAYMENT_SUCCESS: 'payment_success',
+
+      // Phase 3: Complex Events
+      USER_REGISTRATION: 'user_registration',
+      USER_LOGIN: 'user_login',
+      CART_UPDATED: 'cart_updated',
+      WISHLIST_UPDATED: 'wishlist_updated',
+      NEWSLETTER_SUBSCRIBED: 'newsletter_subscribed',
+      SEARCH_PERFORMED: 'search_performed'
+    };
+    return mapping[eventType] || eventType.toLowerCase();
+  };
 
   useEffect(() => {
     let filtered = activities;
@@ -136,10 +172,17 @@ const AllActivitiesTimeline: React.FC<AllActivitiesTimelineProps> = ({ limit = 5
 
   const clearAllActivities = async () => {
     try {
-      const tracker = ActivityTracker.getInstance();
-      await tracker.clearActivities();
-      setActivities([]);
-      setFilteredActivities([]);
+      // 🚀 NEW: Clear AuditLog activities instead of Activity
+      const response = await fetch('/api/audit-logs/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: 'BUSINESS' })
+      });
+
+      if (response.ok) {
+        setActivities([]);
+        setFilteredActivities([]);
+      }
     } catch (error) {
       console.error('Error clearing activities:', error);
     }

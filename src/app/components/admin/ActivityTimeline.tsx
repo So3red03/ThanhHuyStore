@@ -21,11 +21,19 @@ export interface ActivityItem {
     | 'comment_review'
     | 'profile_updated'
     | 'password_changed'
-    | 'email_changed';
+    | 'email_changed'
+    // Phase 3: Complex Events
+    | 'user_registration'
+    | 'user_login'
+    | 'cart_updated'
+    | 'wishlist_updated'
+    | 'newsletter_subscribed'
+    | 'search_performed';
   title: string;
   description?: string;
   timestamp: Date;
   data?: {
+    // Existing fields
     userId?: string;
     orderId?: string;
     productName?: string;
@@ -39,6 +47,22 @@ export interface ActivityItem {
       name: string;
       image: string;
     }>;
+
+    // Phase 3: New fields
+    registrationMethod?: 'email' | 'google' | 'facebook';
+    loginMethod?: 'email' | 'google' | 'facebook';
+    deviceInfo?: string;
+    action?: 'add' | 'remove' | 'update';
+    quantity?: number;
+    productId?: string;
+    productImage?: string;
+    searchQuery?: string;
+    resultsCount?: number;
+    filters?: Record<string, any>;
+    email?: string;
+    source?: string;
+    hasComment?: boolean;
+    comment?: string;
   };
 }
 
@@ -54,6 +78,7 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
 
   const getActivityIcon = (type: string) => {
     switch (type) {
+      // Phase 1 & 2 Events
       case 'order_created':
         return '🛒';
       case 'order_updated':
@@ -68,8 +93,21 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
         return '📝';
       case 'password_changed':
         return '🔐';
-      case 'email_changed':
+
+      // Phase 3: Complex Events
+      case 'user_registration':
+        return '🎉';
+      case 'user_login':
+        return '🔑';
+      case 'cart_updated':
+        return '🛍️';
+      case 'wishlist_updated':
+        return '❤️';
+      case 'newsletter_subscribed':
         return '📧';
+      case 'search_performed':
+        return '🔍';
+
       default:
         return '📋';
     }
@@ -188,6 +226,69 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
                 <span className='ml-2 text-sm text-gray-600'>({activity.data?.rating}/5)</span>
               </div>
             )}
+          </div>
+        );
+
+      // Phase 3: Complex Events UI
+      case 'user_registration':
+        return (
+          <div>
+            <p className='text-gray-500 mb-2'>{activity.description}</p>
+            {activity.data?.registrationMethod && (
+              <div className='flex items-center'>
+                <span className='text-xs bg-green-100 text-green-800 px-2 py-1 rounded'>
+                  {activity.data.registrationMethod}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'user_login':
+        return (
+          <div>
+            <p className='text-gray-500 mb-2'>{activity.description}</p>
+            {activity.data?.deviceInfo && <p className='text-xs text-gray-400'>Thiết bị: {activity.data.deviceInfo}</p>}
+          </div>
+        );
+
+      case 'cart_updated':
+        return (
+          <div>
+            <p className='text-gray-500 mb-2'>{activity.description}</p>
+            {activity.data?.quantity && <p className='text-xs text-gray-600'>Số lượng: {activity.data.quantity}</p>}
+          </div>
+        );
+
+      case 'wishlist_updated':
+        return (
+          <div>
+            <p className='text-gray-500 mb-2'>{activity.description}</p>
+            {activity.data?.productImage && (
+              <img
+                src={activity.data.productImage}
+                alt={activity.data?.productName || 'Product'}
+                className='w-12 h-12 rounded object-cover'
+              />
+            )}
+          </div>
+        );
+
+      case 'search_performed':
+        return (
+          <div>
+            <p className='text-gray-500 mb-2'>{activity.description}</p>
+            {activity.data?.resultsCount !== undefined && (
+              <p className='text-xs text-gray-600'>Kết quả: {activity.data.resultsCount} sản phẩm</p>
+            )}
+          </div>
+        );
+
+      case 'newsletter_subscribed':
+        return (
+          <div>
+            <p className='text-gray-500 mb-2'>{activity.description}</p>
+            <span className='text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded'>📧 Newsletter</span>
           </div>
         );
 

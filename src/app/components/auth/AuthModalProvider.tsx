@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export type AuthModalType = 'login' | 'register' | 'passwordRecovery' | null;
+export type AuthModalType = 'login' | 'register' | 'passwordRecovery' | 'emailVerification' | null;
 
 interface AuthModalContextType {
   isOpen: boolean;
@@ -43,14 +43,10 @@ export const AuthModalProvider: React.FC<AuthModalProviderProps> = ({ children }
     modalType,
     openModal,
     closeModal,
-    switchModal,
+    switchModal
   };
 
-  return (
-    <AuthModalContext.Provider value={value}>
-      {children}
-    </AuthModalContext.Provider>
-  );
+  return <AuthModalContext.Provider value={value}>{children}</AuthModalContext.Provider>;
 };
 
 export const useAuthModal = () => {

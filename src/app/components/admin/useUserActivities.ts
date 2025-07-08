@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ActivityItem } from './ActivityTimeline';
 import { Order, Review, User } from '@prisma/client';
-import { ActivityTracker } from './ActivityTracker';
+// ActivityTracker class removed - now using AuditLog API directly
 
 interface UseUserActivitiesProps {
   user: User & {
@@ -23,19 +23,29 @@ export const useUserActivities = ({ user }: UseUserActivitiesProps) => {
     const fetchActivities = async () => {
       setLoading(true);
       try {
-        const tracker = ActivityTracker.getInstance();
+        // 🚀 NEW: Fetch from AuditLog instead of Activity table
+        const response = await fetch(`/api/audit-logs?userId=${user.id}&category=BUSINESS&limit=20`);
+        const data = await response.json();
 
-        // Lấy activities từ API
-        const apiActivities = await tracker.getUserActivities(user.id, 20);
+        // Transform AuditLog format → ActivityItem format
+        const auditActivities =
+          data.auditLogs?.map((log: any) => ({
+            id: log.id,
+            type: mapEventTypeToActivityType(log.eventType),
+            title: log.details?.title || log.description,
+            description: log.description,
+            timestamp: new Date(log.timestamp),
+            data: log.details?.uiData || {}
+          })) || [];
 
-        // Generate activities từ database data
+        // Generate activities từ database data (keep existing logic)
         const generatedActivities = generateActivitiesFromUserData();
 
         // Combine và remove duplicates
-        const allActivities = [...apiActivities, ...generatedActivities];
-        const uniqueActivities = allActivities.reduce((acc, current) => {
+        const allActivities: ActivityItem[] = [...auditActivities, ...generatedActivities];
+        const uniqueActivities = allActivities.reduce((acc: ActivityItem[], current: ActivityItem) => {
           const exists = acc.find(
-            item =>
+            (item: ActivityItem) =>
               item.type === current.type &&
               item.data?.orderId === current.data?.orderId &&
               Math.abs(item.timestamp.getTime() - current.timestamp.getTime()) < 60000 // Within 1 minute
@@ -56,6 +66,29 @@ export const useUserActivities = ({ user }: UseUserActivitiesProps) => {
       } finally {
         setLoading(false);
       }
+    };
+
+    // Map AuditLog eventType to ActivityItem type
+    const mapEventTypeToActivityType = (eventType: string): string => {
+      const mapping: Record<string, string> = {
+        // Phase 1 & 2
+        PROFILE_UPDATED: 'profile_updated',
+        PASSWORD_CHANGED: 'password_changed',
+        PRODUCT_REVIEWED: 'comment_review',
+        ORDER_CREATED: 'order_created',
+        ORDER_STATUS_CHANGED: 'order_updated',
+        ORDER_CANCELLED: 'order_cancelled',
+        PAYMENT_SUCCESS: 'payment_success',
+
+        // Phase 3: Complex Events
+        USER_REGISTRATION: 'user_registration',
+        USER_LOGIN: 'user_login',
+        CART_UPDATED: 'cart_updated',
+        WISHLIST_UPDATED: 'wishlist_updated',
+        NEWSLETTER_SUBSCRIBED: 'newsletter_subscribed',
+        SEARCH_PERFORMED: 'search_performed'
+      };
+      return mapping[eventType] || eventType.toLowerCase();
     };
 
     const generateActivitiesFromUserData = (): ActivityItem[] => {

@@ -188,7 +188,7 @@ export async function POST(request: Request) {
         <body>
           <div class="container">
             <div class="header">
-              <h1>🔐 Khôi phục mật khẩu</h1>
+              <h1>Khôi phục mật khẩu</h1>
               <p>ThanhHuy Store - Hệ thống bảo mật</p>
             </div>
 

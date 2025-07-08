@@ -20,7 +20,9 @@ import {
   Paper,
   Chip,
   Pagination,
-  TextField
+  TextField,
+  Input,
+  InputAdornment
 } from '@mui/material';
 import {
   MdRefresh,
@@ -30,7 +32,8 @@ import {
   MdShoppingCart,
   MdPayment,
   MdBugReport,
-  MdDataUsage
+  MdDataUsage,
+  MdSearch
 } from 'react-icons/md';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -81,6 +84,8 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
   const eventTypeOptions = [
     { label: 'Tất cả', value: 'all' },
     { label: 'Đăng nhập Admin', value: 'ADMIN_LOGIN' },
+    { label: 'Đăng nhập USER', value: 'USER_LOGIN_SUCCESS' },
+    { label: 'Đăng ký tài khoản mới', value: 'USER_CREATED' },
     { label: 'Thay đổi đơn hàng', value: 'ORDER_STATUS_CHANGED' },
     { label: 'Thanh toán thành công', value: 'PAYMENT_SUCCESS' },
     { label: 'Thanh toán thất bại', value: 'PAYMENT_FAILED' },
@@ -195,6 +200,18 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
     return <MdDataUsage />;
   };
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredAuditLogs, setFilteredAuditLogs] = useState(auditLogs);
+
+  useEffect(() => {
+    const filteredLogs = auditLogs.filter(log => {
+      return (
+        log.eventType.includes(searchTerm) || log.severity.includes(searchTerm) || log.description.includes(searchTerm)
+      );
+    });
+    setFilteredAuditLogs(filteredLogs);
+  }, [searchTerm, auditLogs]);
+
   return (
     <Box>
       {/* Header */}
@@ -227,7 +244,6 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
                   ))}
                 </Select>
               </FormControl>
-
               <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Loại sự kiện</InputLabel>
                 <Select value={eventTypeFilter} label='Loại sự kiện' onChange={e => setEventTypeFilter(e.target.value)}>
@@ -238,7 +254,6 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
                   ))}
                 </Select>
               </FormControl>
-
               <FormControl size='small' sx={{ minWidth: 120 }}>
                 <InputLabel>Mức độ</InputLabel>
                 <Select value={severityFilter} label='Mức độ' onChange={e => setSeverityFilter(e.target.value)}>
@@ -249,6 +264,21 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
                   ))}
                 </Select>
               </FormControl>
+              <FormControl sx={{ width: '30%', marginRight: 2 }}>
+                <InputLabel id='search-label'>Tìm kiếm</InputLabel>
+                <Input
+                  id='search-input'
+                  type='search'
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  startAdornment={
+                    <InputAdornment position='start'>
+                      <MdSearch />
+                    </InputAdornment>
+                  }
+                />
+              </FormControl>
+              // ...
             </div>
 
             {/* Right side refresh button */}

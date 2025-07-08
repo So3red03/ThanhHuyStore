@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import GHNService from '@/app/services/ghnService';
+import { AuditLogger } from '@/app/utils/auditLogger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -84,22 +85,12 @@ export async function POST(request: NextRequest) {
     //   }
     // });
 
-    // Create activity log
-    await prisma.activity.create({
-      data: {
-        userId: order.userId,
-        type: 'ORDER_UPDATED',
-        title: 'Đơn hàng đã được tạo vận đơn',
-        description: `Đơn hàng #${order.paymentIntentId.slice(-6).toUpperCase()} đã được tạo vận đơn GHN: ${
-          ghnResponse.data.order_code
-        }`,
-        data: {
-          orderId: order.id,
-          shippingCode: ghnResponse.data.order_code,
-          totalFee: ghnResponse.data.total_fee,
-          expectedDelivery: ghnResponse.data.expected_delivery_time
-        }
-      }
+    // 🚀 MIGRATED: Track shipping order creation with AuditLogger
+    await AuditLogger.trackOrderUpdated(order.userId, order.id, {
+      status: 'Đã tạo vận đơn',
+      shippingCode: ghnResponse.data.order_code,
+      totalFee: ghnResponse.data.total_fee,
+      expectedDelivery: ghnResponse.data.expected_delivery_time
     });
 
     return NextResponse.json({

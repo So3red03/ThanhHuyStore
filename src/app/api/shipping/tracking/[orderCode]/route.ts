@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import GHNService from '@/app/services/ghnService';
+import { AuditLogger } from '@/app/utils/auditLogger';
 
 export async function GET(request: NextRequest, { params }: { params: { orderCode: string } }) {
   try {
@@ -204,22 +205,11 @@ export async function POST(request: NextRequest, { params }: { params: { orderCo
     //   }
     // });
 
-    // Create activity log
-    await prisma.activity.create({
-      data: {
-        userId: order.userId,
-        type: 'ORDER_UPDATED',
-        title: 'Cập nhật trạng thái vận chuyển',
-        description: `Đơn hàng #${order.paymentIntentId.slice(-6).toUpperCase()} - ${
-          webhookData.Description || webhookData.Status
-        }`,
-        data: {
-          orderId: order.id,
-          shippingCode: orderCode,
-          webhookData,
-          systemStatus
-        }
-      }
+    // 🚀 MIGRATED: Track shipping status update with AuditLogger
+    await AuditLogger.trackOrderUpdated(order.userId, order.id, {
+      status: webhookData.Description || webhookData.Status,
+      shippingCode: orderCode,
+      systemStatus
     });
 
     return NextResponse.json({

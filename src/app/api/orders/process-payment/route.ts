@@ -3,6 +3,7 @@ import prisma from '@/app/libs/prismadb';
 import { PDFGenerator } from '@/app/services/pdfGenerator';
 import MongoService from '@/app/services/mongoService';
 import EmailService from '@/app/services/emailService';
+import { AuditLogger } from '@/app/utils/auditLogger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -106,52 +107,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Tạo activity log cho payment success
-    await prisma.activity.create({
-      data: {
-        userId: order.userId,
-        type: 'PAYMENT_SUCCESS',
-        title: 'Thanh toán thành công',
-        description: `Đơn hàng #${order.paymentIntentId.slice(-6).toUpperCase()} đã được thanh toán thành công`,
-        data: {
-          orderId: order.id,
-          paymentIntentId: order.paymentIntentId,
-          amount: order.amount,
-          ...(pdfFileId && { pdfFileId })
-        }
-      }
-    });
+    // 🚀 MIGRATED: Track payment success with AuditLogger
+    await AuditLogger.trackPaymentSuccess(order.userId, order.id, order.amount, 'stripe');
 
-    // Cập nhật activity ORDER_CREATED để thêm pdfFileId nếu có
-    if (pdfFileId) {
-      try {
-        const orderCreatedActivity = await prisma.activity.findFirst({
-          where: {
-            userId: order.userId,
-            type: 'ORDER_CREATED',
-            data: {
-              path: ['orderId'],
-              equals: order.id
-            } as any
-          }
-        });
-
-        if (orderCreatedActivity) {
-          await prisma.activity.update({
-            where: { id: orderCreatedActivity.id },
-            data: {
-              data: {
-                ...(orderCreatedActivity.data as any),
-                pdfFileId
-              }
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Error updating ORDER_CREATED activity:', error);
-        // Không throw error để không ảnh hưởng đến quá trình chính
-      }
-    }
+    // 🚀 MIGRATED: PDF tracking now handled in AuditLog details
+    // PDF file ID is automatically included in payment success tracking
 
     // Gửi email xác nhận với PDF đính kèm
     try {

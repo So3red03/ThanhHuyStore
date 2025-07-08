@@ -561,29 +561,19 @@ export async function POST(request: Request): Promise<Response> {
             return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
           }
 
-          // Tạo ORDER_CREATED activity
+          // 🚀 MIGRATED: Track order creation with AuditLogger
           try {
-            await prisma.activity.create({
-              data: {
-                userId: currentUser.id,
-                type: 'ORDER_CREATED',
-                title: 'Đơn hàng được tạo',
-                description: `Tài khoản vừa tạo đơn hàng #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
-                data: {
-                  orderId: createdOrder.id,
-                  paymentIntentId: createdOrder.paymentIntentId,
-                  amount: createdOrder.amount,
-                  paymentMethod: 'stripe',
-                  products: products.slice(0, 3).map((product: any) => ({
-                    id: product.id,
-                    name: product.name,
-                    image: product.selectedImg?.images?.[0] || '/placeholder.png'
-                  }))
-                }
-              }
-            });
+            await AuditLogger.trackOrderCreated(
+              currentUser.id,
+              createdOrder.id,
+              products.slice(0, 3).map((product: any) => ({
+                id: product.id,
+                name: product.name,
+                image: product.selectedImg?.images?.[0] || '/placeholder.png'
+              }))
+            );
           } catch (error) {
-            console.error('Error creating ORDER_CREATED activity:', error);
+            console.error('Error tracking ORDER_CREATED:', error);
           }
 
           // 🎯 AUDIT LOG: Stripe Payment Intent Created
@@ -657,29 +647,19 @@ export async function POST(request: Request): Promise<Response> {
           return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng.' }, { status: 500 });
         }
 
-        // Tạo ORDER_CREATED activity cho COD
+        // 🚀 MIGRATED: Track COD order creation with AuditLogger
         try {
-          await prisma.activity.create({
-            data: {
-              userId: currentUser.id,
-              type: 'ORDER_CREATED',
-              title: 'Đơn hàng được tạo',
-              description: `Tài khoản vừa tạo đơn hàng COD #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
-              data: {
-                orderId: createdOrder.id,
-                paymentIntentId: createdOrder.paymentIntentId,
-                amount: createdOrder.amount,
-                paymentMethod: 'cod',
-                products: products.slice(0, 3).map((product: any) => ({
-                  id: product.id,
-                  name: product.name,
-                  image: product.selectedImg?.images?.[0] || '/placeholder.png'
-                }))
-              }
-            }
-          });
+          await AuditLogger.trackOrderCreated(
+            currentUser.id,
+            createdOrder.id,
+            products.slice(0, 3).map((product: any) => ({
+              id: product.id,
+              name: product.name,
+              image: product.selectedImg?.images?.[0] || '/placeholder.png'
+            }))
+          );
         } catch (error) {
-          console.error('Error creating ORDER_CREATED activity for COD:', error);
+          console.error('Error tracking ORDER_CREATED for COD:', error);
         }
 
         // 🎯 AUDIT LOG: COD Order Created
@@ -754,29 +734,19 @@ export async function POST(request: Request): Promise<Response> {
           return NextResponse.json({ error: 'Lỗi khi tạo đơn hàng trong db.' }, { status: 500 });
         }
 
-        // Tạo ORDER_CREATED activity cho MoMo
+        // 🚀 MIGRATED: Track MoMo order creation with AuditLogger
         try {
-          await prisma.activity.create({
-            data: {
-              userId: currentUser.id,
-              type: 'ORDER_CREATED',
-              title: 'Đơn hàng được tạo',
-              description: `Tài khoản vừa tạo đơn hàng MoMo #${createdOrder.paymentIntentId.slice(-6).toUpperCase()}`,
-              data: {
-                orderId: createdOrder.id,
-                paymentIntentId: createdOrder.paymentIntentId,
-                amount: createdOrder.amount,
-                paymentMethod: 'momo',
-                products: products.slice(0, 3).map((product: any) => ({
-                  id: product.id,
-                  name: product.name,
-                  image: product.selectedImg?.images?.[0] || '/placeholder.png'
-                }))
-              }
-            }
-          });
+          await AuditLogger.trackOrderCreated(
+            currentUser.id,
+            createdOrder.id,
+            products.slice(0, 3).map((product: any) => ({
+              id: product.id,
+              name: product.name,
+              image: product.selectedImg?.images?.[0] || '/placeholder.png'
+            }))
+          );
         } catch (error) {
-          console.error('Error creating ORDER_CREATED activity for MoMo:', error);
+          console.error('Error tracking ORDER_CREATED for MoMo:', error);
         }
 
         // 🎯 AUDIT LOG: MoMo Order Created

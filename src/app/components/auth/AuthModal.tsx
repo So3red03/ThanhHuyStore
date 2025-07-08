@@ -8,6 +8,7 @@ import { useAuthModal } from './useAuthModal';
 import LoginModal from './LoginModal';
 import RegisterModal from './RegisterModal';
 import PasswordRecoveryModal from './PasswordRecoveryModal';
+import EmailVerificationModal from './EmailVerificationModal';
 
 interface AuthModalProps {
   currentUser: SafeUser | null | undefined;
@@ -34,6 +35,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ currentUser }) => {
         return <RegisterModal currentUser={currentUser} />;
       case 'passwordRecovery':
         return <PasswordRecoveryModal />;
+      case 'emailVerification':
+        return <EmailVerificationModal currentUser={currentUser} />;
       default:
         return null;
     }

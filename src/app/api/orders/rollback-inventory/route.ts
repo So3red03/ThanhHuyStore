@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { OrderStatus } from '@prisma/client';
+import { AuditLogger } from '@/app/utils/auditLogger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,24 +94,9 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      // Create activity log
-      await tx.activity.create({
-        data: {
-          userId: order.userId,
-          type: 'ORDER_CANCELLED',
-          title: 'Đơn hàng bị hủy',
-          description: `Đơn hàng #${order.paymentIntentId.slice(-6).toUpperCase()} đã bị hủy, khôi phục tồn kho${
-            voucherReservation ? ' và voucher' : ''
-          }`,
-          data: {
-            orderId: order.id,
-            paymentIntentId: order.paymentIntentId,
-            reason: reason || 'Payment failed - inventory restored',
-            restoredProducts: order.products,
-            voucherRolledBack: !!voucherReservation
-          }
-        }
-      });
+      // 🚀 MIGRATED: Track order cancellation with AuditLogger
+      // Note: This runs outside transaction since AuditLogger has its own transaction
+      await AuditLogger.trackOrderCancelled(order.userId, order.id, reason || 'Payment failed - inventory restored');
     });
 
     console.log(`Successfully rolled back inventory for order ${orderId}`);

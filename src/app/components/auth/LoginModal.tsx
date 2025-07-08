@@ -44,7 +44,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ currentUser }) => {
         reset();
       }
       if (callback?.error) {
-        toast.error('Email hoặc mật khẩu không chính xác');
+        if (callback.error === 'EMAIL_NOT_VERIFIED') {
+          toast.error('Email chưa được xác thực. Vui lòng kiểm tra email và xác thực tài khoản.');
+          switchModal('emailVerification');
+        } else {
+          toast.error('Email hoặc mật khẩu không chính xác');
+        }
         setIsLoading(false);
         router.refresh();
       }
@@ -60,10 +65,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ currentUser }) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
       e.preventDefault();
-      const form = e.currentTarget.form;
-      if (form && form.checkValidity()) {
-        handleSubmit(onSubmit)();
-      }
+      // Trigger form submission when Enter is pressed on password field
+      handleSubmit(onSubmit)();
     }
   };
 
@@ -113,7 +116,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ currentUser }) => {
           disabled={isLoading}
           register={register}
           errors={errors}
-          onKeyDown={handleKeyDown}
           required
         />
 

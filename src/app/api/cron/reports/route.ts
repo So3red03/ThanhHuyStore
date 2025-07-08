@@ -7,10 +7,29 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔄 Cron job started - Checking for scheduled reports...');
 
-    // Lấy settings để kiểm tra có bật báo cáo không
-    const settings = await prisma.adminSettings.findFirst();
+    // Lấy settings hoặc tạo default settings
+    let settings = await prisma.adminSettings.findFirst();
 
-    if (!settings || !settings.dailyReports) {
+    if (!settings) {
+      // Tạo default settings với báo cáo mỗi phút cho testing
+      console.log('🔧 Creating default admin settings...');
+      settings = await prisma.adminSettings.create({
+        data: {
+          dailyReports: true,
+          reportInterval: 1, // 1 giờ default, sẽ override thành phút bên dưới
+          discordNotifications: true,
+          orderNotifications: true,
+          emailNotifications: true,
+          analyticsTracking: true,
+          lowStockAlerts: true,
+          autoVoucherSuggestion: true,
+          createdBy: 'SYSTEM',
+          updatedBy: 'SYSTEM'
+        }
+      });
+    }
+
+    if (!settings.dailyReports) {
       console.log('📋 Daily reports are disabled in settings');
       return NextResponse.json({
         message: 'Daily reports disabled',
@@ -18,8 +37,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const reportInterval = settings.reportInterval; // hours
-    console.log(`📊 Report interval: ${reportInterval} hours`);
+    // 🧪 TESTING: Override để gửi báo cáo mỗi phút thay vì theo settings
+    const reportIntervalMinutes = 1; // 1 phút cho testing
+    const reportInterval = reportIntervalMinutes / 60; // Convert to hours
+    console.log(`📊 Report interval: ${reportInterval} hours (${reportIntervalMinutes} minutes) - TESTING MODE`);
 
     // Kiểm tra báo cáo cuối cùng
     const lastReport = await prisma.reportLog.findFirst({
@@ -141,8 +162,7 @@ export async function POST(request: NextRequest) {
 
     if (force) {
       // Force send report regardless of interval
-      const settings = await prisma.adminSettings.findFirst();
-      const reportInterval = settings?.reportInterval || 24;
+      const reportInterval = 1 / 60; // 1 phút cho testing
 
       await DiscordReportService.sendReport(reportInterval);
       const success = true;

@@ -125,6 +125,35 @@ export const authOptions: AuthOptions = {
           throw new Error('Email hoặc mật khẩu không chính xác');
         }
 
+        // Check if email is verified
+        if (!user.emailVerified) {
+          // 🚨 AUDIT LOG: Email Not Verified
+          await AuditLogger.log({
+            eventType: AuditEventType.FAILED_LOGIN_ATTEMPT,
+            severity: AuditSeverity.MEDIUM,
+            userId: user.id,
+            userEmail: user.email!,
+            userRole: user.role || 'USER',
+            ipAddress: clientIP,
+            userAgent: userAgent,
+            description: `Đăng nhập thất bại: email chưa được xác thực`,
+            details: {
+              reason: 'email_not_verified',
+              email: user.email,
+              userId: user.id,
+              userName: user.name,
+              userRole: user.role,
+              emailVerified: user.emailVerified,
+              timestamp: new Date(),
+              riskLevel: 'MEDIUM',
+              securityNote: 'User needs to verify email before login'
+            },
+            resourceId: user.id,
+            resourceType: 'User'
+          });
+          throw new Error('EMAIL_NOT_VERIFIED');
+        }
+
         // 🎯 AUDIT LOG: Successful Login
         await AuditLogger.log({
           eventType: AuditEventType.USER_LOGIN_SUCCESS,
@@ -208,10 +237,13 @@ export const authOptions: AuthOptions = {
             }
           });
 
-          // Update lastLogin for existing user
+          // Update lastLogin for existing user and ensure email is verified for Google users
           await prisma.user.update({
             where: { email: user.email },
-            data: { lastLogin: new Date() }
+            data: {
+              lastLogin: new Date(),
+              emailVerified: true // Google users have verified emails
+            }
           });
         } else {
           // Trường hợp chưa có tài khoản (link với user đã tạo thủ công để tạo tk)
@@ -245,7 +277,8 @@ export const authOptions: AuthOptions = {
                 name: profile?.name || null,
                 email: user.email,
                 image: profile?.image || null,
-                hashedPassword: await generateHashedPassword('default-password')
+                hashedPassword: await generateHashedPassword('default-password'),
+                emailVerified: true // Google users have verified emails
               }
             });
 
