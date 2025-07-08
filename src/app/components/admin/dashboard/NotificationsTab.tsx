@@ -21,7 +21,6 @@ import {
   Chip,
   Pagination,
   TextField,
-  Input,
   InputAdornment
 } from '@mui/material';
 import {
@@ -231,54 +230,60 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
             </Typography>
           </div>
 
-          <div className='flex items-center justify-between'>
-            {/* Left side filters */}
-            <div className='flex items-center gap-3'>
-              <FormControl size='small' sx={{ minWidth: 120 }}>
-                <InputLabel>Thời gian</InputLabel>
-                <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
-                  {timeFilterOptions.map(option => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl size='small' sx={{ minWidth: 140 }}>
-                <InputLabel>Loại sự kiện</InputLabel>
-                <Select value={eventTypeFilter} label='Loại sự kiện' onChange={e => setEventTypeFilter(e.target.value)}>
-                  {eventTypeOptions.map(option => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl size='small' sx={{ minWidth: 120 }}>
-                <InputLabel>Mức độ</InputLabel>
-                <Select value={severityFilter} label='Mức độ' onChange={e => setSeverityFilter(e.target.value)}>
-                  {severityOptions.map(option => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl sx={{ width: '30%', marginRight: 2 }}>
-                <InputLabel id='search-label'>Tìm kiếm</InputLabel>
-                <Input
-                  id='search-input'
-                  type='search'
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  startAdornment={
+          {/* Top row - Search and Refresh */}
+          <div className='flex items-center justify-between mb-4'>
+            {/* Enhanced Search Bar */}
+            <div className='flex items-center gap-3 flex-1 max-w-md'>
+              <TextField
+                placeholder='Tìm kiếm theo sự kiện, mức độ, mô tả...'
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                size='small'
+                fullWidth
+                InputProps={{
+                  startAdornment: (
                     <InputAdornment position='start'>
-                      <MdSearch />
+                      <MdSearch className='text-gray-400' size={20} />
                     </InputAdornment>
+                  ),
+                  sx: {
+                    borderRadius: '10px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    '&:hover': {
+                      backgroundColor: '#f1f5f9',
+                      borderColor: '#cbd5e1'
+                    },
+                    '&.Mui-focused': {
+                      backgroundColor: '#ffffff',
+                      borderColor: '#3b82f6',
+                      boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                    }
                   }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { border: 'none' },
+                    '&:hover fieldset': { border: 'none' },
+                    '&.Mui-focused fieldset': { border: 'none' }
+                  }
+                }}
+              />
+              {searchTerm && (
+                <Chip
+                  label={`${filteredAuditLogs.length} kết quả`}
+                  size='small'
+                  color='primary'
+                  variant='outlined'
+                  sx={{
+                    borderRadius: '6px',
+                    fontWeight: 500,
+                    backgroundColor: '#eff6ff',
+                    borderColor: '#3b82f6',
+                    color: '#1d4ed8'
+                  }}
                 />
-              </FormControl>
-              // ...
+              )}
             </div>
 
             {/* Right side refresh button */}
@@ -294,11 +299,65 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
                 borderRadius: '8px',
                 textTransform: 'none',
                 fontWeight: 600,
-                boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
+                boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)',
+                minWidth: '120px'
               }}
             >
               {loading ? 'Đang tải...' : 'Làm mới'}
             </Button>
+          </div>
+
+          {/* Bottom row - Filters */}
+          <div className='flex items-center gap-3'>
+            <FormControl size='small' sx={{ minWidth: 120 }}>
+              <InputLabel>Thời gian</InputLabel>
+              <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
+                {timeFilterOptions.map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size='small' sx={{ minWidth: 140 }}>
+              <InputLabel>Loại sự kiện</InputLabel>
+              <Select value={eventTypeFilter} label='Loại sự kiện' onChange={e => setEventTypeFilter(e.target.value)}>
+                {eventTypeOptions.map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size='small' sx={{ minWidth: 120 }}>
+              <InputLabel>Mức độ</InputLabel>
+              <Select value={severityFilter} label='Mức độ' onChange={e => setSeverityFilter(e.target.value)}>
+                {severityOptions.map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Active filters indicator */}
+            <div className='flex items-center gap-2 ml-auto'>
+              {(eventTypeFilter !== 'all' || severityFilter !== 'all' || timeFilter !== '7d') && (
+                <Chip
+                  label='Đang lọc'
+                  size='small'
+                  color='warning'
+                  variant='outlined'
+                  sx={{
+                    borderRadius: '6px',
+                    fontWeight: 500,
+                    backgroundColor: '#fef3c7',
+                    borderColor: '#f59e0b',
+                    color: '#92400e'
+                  }}
+                />
+              )}
+            </div>
           </div>
 
           {/* Custom Date Range */}

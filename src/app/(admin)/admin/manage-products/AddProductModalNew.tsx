@@ -292,12 +292,143 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         }
       }
 
-      const submitData = {
-        ...data,
+      // Validation: Check required fields
+      if (!selectedSubCategoryId || selectedSubCategoryId.trim() === '') {
+        toast.error('Vui lòng chọn danh mục con cho sản phẩm');
+        setIsLoading(false);
+        return;
+      }
+
+      // Name validation - only required for Simple products
+      if (productType === ProductType.SIMPLE && (!data.name || data.name.trim() === '')) {
+        toast.error('Vui lòng nhập tên sản phẩm');
+        setIsLoading(false);
+        return;
+      }
+
+      // Different validation for Simple vs Variant products
+      if (productType === ProductType.SIMPLE) {
+        // Simple products need price, stock, and images
+        if (!data.price || data.price.toString().trim() === '' || parseFloat(data.price) <= 0) {
+          toast.error('Vui lòng nhập giá sản phẩm hợp lệ (> 0)');
+          setIsLoading(false);
+          return;
+        }
+
+        if (
+          data.inStock === undefined ||
+          data.inStock === null ||
+          data.inStock.toString().trim() === '' ||
+          parseInt(data.inStock) < 0
+        ) {
+          toast.error('Vui lòng nhập số lượng tồn kho hợp lệ (>= 0)');
+          setIsLoading(false);
+          return;
+        }
+
+        // For simple products, images are recommended but not required
+        if (finalImages.length === 0 && mode === 'add') {
+          const confirmWithoutImages = window.confirm(
+            'Bạn chưa thêm hình ảnh cho sản phẩm. Bạn có muốn tiếp tục không?'
+          );
+          if (!confirmWithoutImages) {
+            setIsLoading(false);
+            return;
+          }
+        }
+      } else if (productType === ProductType.VARIANT) {
+        // Variant products only need basic info, price/stock/images will be set in variants
+        if (variations.length === 0) {
+          toast.error('Vui lòng tạo ít nhất một biến thể cho sản phẩm');
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if all variations have required data
+        const invalidVariations = variations.filter(v => {
+          return (
+            !v.price ||
+            v.price <= 0 ||
+            v.stock === undefined ||
+            v.stock === null ||
+            v.stock < 0 ||
+            !v.attributes ||
+            Object.keys(v.attributes).length === 0
+          );
+        });
+
+        if (invalidVariations.length > 0) {
+          toast.error('Vui lòng điền đầy đủ giá (> 0), số lượng (>= 0) và thuộc tính cho tất cả biến thể');
+          setIsLoading(false);
+          return;
+        }
+
+        // Check for duplicate SKUs
+        const skus = variations.map((v, index) => v.sku || `VAR-${index + 1}`);
+        const duplicateSkus = skus.filter((sku, index) => skus.indexOf(sku) !== index);
+        if (duplicateSkus.length > 0) {
+          toast.error(`SKU trùng lặp trong biến thể: ${duplicateSkus.join(', ')}`);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Debug images
+      console.log('Images state:', images);
+      console.log('Images length:', images.length);
+      console.log('Final images:', finalImages);
+
+      // Prepare submit data based on product type
+      let submitData: any = {
         productType,
-        categoryId: selectedSubCategoryId, // Use the selected subcategory
-        images: finalImages
+        categoryId: selectedSubCategoryId
       };
+
+      if (productType === ProductType.SIMPLE) {
+        // Simple products need name and description
+        submitData.name = data.name;
+        submitData.description = data.description || '';
+      } else if (productType === ProductType.VARIANT) {
+        // Variant products: name will be generated from category + variations
+        // Use category name as base name for now
+        const categoryName = filteredSubCategories.find(cat => cat.id === selectedSubCategoryId)?.name || 'Sản phẩm';
+        submitData.name = categoryName;
+        submitData.description = data.description || '';
+      }
+
+      if (productType === ProductType.SIMPLE) {
+        // Simple products include price, stock, and images in main product
+        submitData = {
+          ...submitData,
+          price: parseFloat(data.price),
+          basePrice: data.basePrice ? parseFloat(data.basePrice) : parseFloat(data.price),
+          inStock: parseInt(data.inStock),
+          images: finalImages
+        };
+      } else if (productType === ProductType.VARIANT) {
+        // Variant products include variations data
+        submitData = {
+          ...submitData,
+          // For variant products, main product doesn't have price/stock
+          price: 0, // Will be calculated from variants
+          basePrice: 0,
+          inStock: 0, // Will be calculated from variants
+          images: finalImages, // Main product images (optional)
+          variations: variations.map(v => ({
+            attributes: v.attributes,
+            price: v.price,
+            stock: v.stock,
+            sku: v.sku || '',
+            images: v.images || [],
+            isActive: v.isActive
+          })),
+          attributes: attributes
+        };
+      }
+
+      console.log('Submit data before sending:', submitData);
+      console.log('Product type:', productType);
+      console.log('Variations:', variations);
 
       if (mode === 'edit' && initialData?.id) {
         // Update product - use the correct API endpoint
@@ -322,10 +453,13 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
   // Image upload handlers
   const handleImageUpload = useCallback((files: FileList) => {
+    console.log('handleImageUpload called with files:', files);
     const fileArray = Array.from(files);
+    console.log('File array:', fileArray);
 
     // Validate files
     const validation = validateImageFiles(fileArray);
+    console.log('Validation result:', validation);
     if (!validation.isValid) {
       validation.errors.forEach(error => toast.error(error));
       return;
@@ -339,7 +473,13 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         image: [file]
       }));
 
-    setImages(prev => [...prev, ...newImages]);
+    console.log('New images to add:', newImages);
+    setImages(prev => {
+      const updated = [...prev, ...newImages];
+      console.log('Updated images state:', updated);
+      return updated;
+    });
+    toast.success(`Đã thêm ${newImages.length} hình ảnh`);
   }, []);
 
   // Upload images to Firebase
@@ -391,9 +531,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
   const handleImageSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      console.log('handleImageSelect called');
       const files = e.target.files;
+      console.log('Selected files:', files);
       if (files && files.length > 0) {
+        console.log('Calling handleImageUpload with', files.length, 'files');
         handleImageUpload(files);
+      } else {
+        console.log('No files selected');
       }
     },
     [handleImageUpload]
@@ -472,16 +617,34 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {/* Product Name */}
-                  <TextField
-                    fullWidth
-                    label='Tên sản phẩm'
-                    {...register('name', { required: 'Vui lòng nhập tên sản phẩm' })}
-                    error={!!errors.name}
-                    helperText={errors.name?.message as string}
-                    disabled={isLoading}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                  />
+                  {/* Product Name - Only for Simple products */}
+                  {productType === ProductType.SIMPLE && (
+                    <TextField
+                      fullWidth
+                      label='Tên sản phẩm *'
+                      {...register('name', { required: 'Vui lòng nhập tên sản phẩm' })}
+                      error={!!errors.name}
+                      helperText={errors.name?.message as string}
+                      disabled={isLoading}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                    />
+                  )}
+
+                  {/* Info for Variant products */}
+                  {productType === ProductType.VARIANT && (
+                    <Box
+                      sx={{
+                        p: 2,
+                        backgroundColor: '#f0f9ff',
+                        border: '1px solid #0ea5e9',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <Typography variant='body2' sx={{ color: '#0369a1', fontWeight: 500 }}>
+                        💡 Tên sản phẩm sẽ được tạo tự động từ danh mục và các biến thể
+                      </Typography>
+                    </Box>
+                  )}
 
                   {/* Description */}
                   <Box>
@@ -741,8 +904,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                   </FormControl>
 
                   {/* Sub Category */}
-                  <FormControl fullWidth disabled={!selectedParentId}>
-                    <InputLabel>Danh mục con</InputLabel>
+                  <FormControl fullWidth disabled={!selectedParentId} required>
+                    <InputLabel>Danh mục con *</InputLabel>
                     <Select
                       value={selectedSubCategoryId}
                       onChange={e => {
@@ -750,10 +913,19 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                         setSelectedSubCategoryId(value);
                         setCustomValue('categoryId', value);
                       }}
-                      label='Danh mục con'
+                      label='Danh mục con *'
                       disabled={isLoading || !selectedParentId}
-                      error={!!errors.categoryId}
-                      sx={{ borderRadius: '8px' }}
+                      error={!!errors.categoryId || (!selectedSubCategoryId && !!selectedParentId)}
+                      sx={{
+                        borderRadius: '8px',
+                        '& .MuiOutlinedInput-root': {
+                          '&.Mui-error': {
+                            '& fieldset': {
+                              borderColor: '#ef4444'
+                            }
+                          }
+                        }
+                      }}
                     >
                       {filteredSubCategories.length > 0 ? (
                         filteredSubCategories.map((category: any) => (
@@ -767,9 +939,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                         </MenuItem>
                       )}
                     </Select>
-                    {errors.categoryId && (
+                    {(errors.categoryId || (!selectedSubCategoryId && selectedParentId)) && (
                       <Typography variant='caption' sx={{ color: '#ef4444', mt: 1 }}>
-                        {errors.categoryId?.message as string}
+                        {(errors.categoryId?.message as string) || 'Vui lòng chọn danh mục con'}
+                      </Typography>
+                    )}
+                    {!selectedParentId && (
+                      <Typography variant='caption' sx={{ color: '#6b7280', mt: 1 }}>
+                        Chọn danh mục chính trước để hiển thị danh mục con
                       </Typography>
                     )}
                   </FormControl>
@@ -942,16 +1119,27 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                     Thông tin chung
                   </Typography>
 
-                  <TextField
-                    fullWidth
-                    label='Giá cơ sở (VNĐ)'
-                    type='number'
-                    {...register('basePrice', { required: 'Vui lòng nhập giá cơ sở' })}
-                    error={!!errors.basePrice}
-                    helperText={(errors.basePrice?.message as string) || 'Giá cơ sở cho các biến thể'}
-                    disabled={isLoading}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                  />
+                  <Box
+                    sx={{
+                      p: 3,
+                      backgroundColor: '#f0f9ff',
+                      border: '1px solid #0ea5e9',
+                      borderRadius: '8px'
+                    }}
+                  >
+                    <Typography variant='h6' sx={{ color: '#0369a1', fontWeight: 600, mb: 1 }}>
+                      📊 Sản phẩm biến thể
+                    </Typography>
+                    <Typography variant='body2' sx={{ color: '#0369a1' }}>
+                      • Giá và số lượng sẽ được thiết lập riêng cho từng biến thể
+                    </Typography>
+                    <Typography variant='body2' sx={{ color: '#0369a1' }}>
+                      • Chuyển sang tab &quot;Thuộc tính&quot; để tạo các thuộc tính sản phẩm
+                    </Typography>
+                    <Typography variant='body2' sx={{ color: '#0369a1' }}>
+                      • Sau đó chuyển sang tab &quot;Biến thể&quot; để thiết lập giá và số lượng
+                    </Typography>
+                  </Box>
                 </Box>
               )}
             </TabPanel>
