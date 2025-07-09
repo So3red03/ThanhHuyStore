@@ -4,13 +4,15 @@ import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Editor } from 'primereact/editor';
 import axios from 'axios';
-import { useVariants } from '@/app/hooks/useVariants';
+
 import {
   uploadProductImages,
+  uploadMultipleVariants,
   validateImageFiles,
   deleteProductImages,
   ProductImageUpload,
-  ProductImageResult
+  ProductImageResult,
+  VariantImageUpload
 } from '@/app/utils/firebase-product-storage';
 import * as SlIcons from 'react-icons/sl';
 import * as AiIcons from 'react-icons/ai';
@@ -181,8 +183,11 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   // Initialize form with initialData
   useEffect(() => {
     if (initialData && mode === 'edit') {
-      console.log('Initializing edit form with data:', initialData);
-      console.log('Available subCategories:', subCategories);
+      console.log('🔧 Initializing edit form with data:', initialData);
+      console.log('📂 Available subCategories:', subCategories);
+      console.log('🖼️ Initial images:', initialData.images);
+      console.log('🔄 Initial variants:', initialData.variants);
+      console.log('🏷️ Initial productAttributes:', initialData.productAttributes);
 
       // Set form values
       setValue('name', initialData.name);
@@ -191,6 +196,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       setValue('basePrice', initialData.basePrice);
       setValue('inStock', initialData.inStock);
       setValue('categoryId', initialData.categoryId);
+
+      // Set description text for Editor
+      setText(initialData.description || '');
 
       // Set product type
       setProductType(initialData.productType || ProductType.SIMPLE);
@@ -213,6 +221,57 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         setExistingImages(initialData.images);
         // Clear new images state for edit mode
         setImages([]);
+      }
+
+      // Load variants and attributes for variant products
+      if (initialData.productType === 'VARIANT') {
+        console.log('Loading variant product data:', {
+          variants: initialData.variants,
+          productAttributes: initialData.productAttributes
+        });
+
+        // Load variants
+        if (initialData.variants && initialData.variants.length > 0) {
+          const loadedVariations = initialData.variants.map((variant: any) => {
+            console.log('Processing variant:', variant);
+            console.log('Variant images:', variant.images);
+
+            return {
+              id: variant.id,
+              name: variant.name || `Variant ${variant.id}`,
+              attributes: variant.attributes || {},
+              price: variant.price || 0,
+              salePrice: variant.salePrice || 0,
+              stock: variant.stock || 0,
+              sku: variant.sku || '',
+              images: variant.images || [],
+              enabled: variant.isActive !== false,
+              isActive: variant.isActive !== false
+            };
+          });
+          console.log('Loaded variations:', loadedVariations);
+          setVariations(loadedVariations);
+        }
+
+        // Load product attributes
+        if (initialData.productAttributes && initialData.productAttributes.length > 0) {
+          const loadedAttributes = initialData.productAttributes.map((attr: any) => ({
+            id: attr.id,
+            name: attr.name,
+            slug: attr.name.toLowerCase().replace(/\s+/g, '-'), // Proper slug generation
+            label: attr.label || attr.name,
+            type: attr.type || 'SELECT',
+            isUsedForVariations: attr.isVariation !== false, // Add this required field
+            values: (attr.values || []).map((val: any) => ({
+              id: val.id,
+              value: val.value,
+              label: val.label || val.value,
+              position: val.position || 0
+            }))
+          }));
+          console.log('Loaded attributes:', loadedAttributes);
+          setAttributes(loadedAttributes);
+        }
       }
     }
   }, [initialData, mode, setValue, subCategories]);
@@ -299,8 +358,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         return;
       }
 
-      // Name validation - only required for Simple products
-      if (productType === ProductType.SIMPLE && (!data.name || data.name.trim() === '')) {
+      // Name validation - required for both Simple and Variant products
+      if (!data.name || data.name.trim() === '') {
         toast.error('Vui lòng nhập tên sản phẩm');
         setIsLoading(false);
         return;
@@ -373,28 +432,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         }
       }
 
-      // Debug images
-      console.log('Images state:', images);
-      console.log('Images length:', images.length);
-      console.log('Final images:', finalImages);
-
       // Prepare submit data based on product type
       let submitData: any = {
         productType,
         categoryId: selectedSubCategoryId
       };
 
-      if (productType === ProductType.SIMPLE) {
-        // Simple products need name and description
-        submitData.name = data.name;
-        submitData.description = data.description || '';
-      } else if (productType === ProductType.VARIANT) {
-        // Variant products: name will be generated from category + variations
-        // Use category name as base name for now
-        const categoryName = filteredSubCategories.find(cat => cat.id === selectedSubCategoryId)?.name || 'Sản phẩm';
-        submitData.name = categoryName;
-        submitData.description = data.description || '';
-      }
+      // Both Simple and Variant products use user-entered name
+      submitData.name = data.name;
+      submitData.description = data.description || '';
 
       if (productType === ProductType.SIMPLE) {
         // Simple products include price, stock, and images in main product
@@ -406,7 +452,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           images: finalImages
         };
       } else if (productType === ProductType.VARIANT) {
-        // Variant products include variations data
+        // For variant products, upload images to Firebase with proper folder structure
+        const uploadedVariations = await uploadVariantImagesToFirebase(submitData.name, variations);
+
         submitData = {
           ...submitData,
           // For variant products, main product doesn't have price/stock
@@ -414,14 +462,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           basePrice: 0,
           inStock: 0, // Will be calculated from variants
           images: finalImages, // Main product images (optional)
-          variations: variations.map(v => ({
-            attributes: v.attributes,
-            price: v.price,
-            stock: v.stock,
-            sku: v.sku || '',
-            images: v.images || [],
-            isActive: v.isActive
-          })),
+          variations: uploadedVariations,
           attributes: attributes
         };
       }
@@ -432,10 +473,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
       if (mode === 'edit' && initialData?.id) {
         // Update product - use the correct API endpoint
+        console.log('Updating product with data:', submitData);
         await axios.put(`/api/product/${initialData.id}`, submitData);
         toast.success('Sản phẩm đã được cập nhật thành công!');
       } else {
         // Create product
+        console.log('Creating product with data:', submitData);
         await axios.post('/api/product', submitData);
         toast.success('Sản phẩm đã được tạo thành công!');
       }
@@ -512,6 +555,76 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     } catch (error) {
       console.error('Error uploading images:', error);
       toast.error('Có lỗi xảy ra khi tải lên hình ảnh');
+      throw error;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Upload variant images to Firebase with proper folder structure
+  const uploadVariantImagesToFirebase = async (productName: string, variations: any[]): Promise<any[]> => {
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadedVariations = [];
+
+      for (let i = 0; i < variations.length; i++) {
+        const variation = variations[i];
+
+        // Check if variation has valid File objects to upload
+        if (
+          variation.images &&
+          variation.images.length > 0 &&
+          variation.images.every((file: File) => file instanceof File)
+        ) {
+          // Convert File objects to VariantImageUpload format
+          const variantData: VariantImageUpload = {
+            color: variation.attributes?.color || variation.attributes?.['màu-sắc'] || 'default',
+            storage: variation.attributes?.storage || variation.attributes?.['dung-lượng'],
+            ram: variation.attributes?.ram || variation.attributes?.['bộ-nhớ'],
+            images: variation.images.map((file: File) => ({
+              file,
+              filename: file?.name ? `${Date.now()}-${file.name}` : undefined
+            }))
+          };
+
+          // Upload images to Firebase
+          const uploadResult = await uploadMultipleVariants(productName, [variantData], (_, progress) => {
+            setUploadProgress(Math.round(((i + 1) / variations.length) * progress));
+          });
+
+          // Update variation with uploaded image URLs
+          const firebaseImageUrls = uploadResult[0].images.map(img => img.downloadURL);
+
+          uploadedVariations.push({
+            attributes: variation.attributes,
+            price: variation.price,
+            stock: variation.stock,
+            sku: variation.sku || '',
+            images: firebaseImageUrls,
+            isActive: variation.isActive
+          });
+        } else {
+          // No new images to upload, keep existing images
+          console.log('🔄 Keeping existing images for variation:', variation.attributes);
+          console.log('🖼️ Existing images:', variation.images);
+
+          uploadedVariations.push({
+            attributes: variation.attributes,
+            price: variation.price,
+            stock: variation.stock,
+            sku: variation.sku || '',
+            images: variation.images || [], // Keep existing images instead of empty array
+            isActive: variation.isActive
+          });
+        }
+      }
+
+      return uploadedVariations;
+    } catch (error) {
+      console.error('Error uploading variant images:', error);
+      toast.error('Có lỗi xảy ra khi tải lên hình ảnh biến thể. Không thể tạo sản phẩm.');
       throw error;
     } finally {
       setIsUploading(false);
@@ -617,34 +730,16 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {/* Product Name - Only for Simple products */}
-                  {productType === ProductType.SIMPLE && (
-                    <TextField
-                      fullWidth
-                      label='Tên sản phẩm *'
-                      {...register('name', { required: 'Vui lòng nhập tên sản phẩm' })}
-                      error={!!errors.name}
-                      helperText={errors.name?.message as string}
-                      disabled={isLoading}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                    />
-                  )}
-
-                  {/* Info for Variant products */}
-                  {productType === ProductType.VARIANT && (
-                    <Box
-                      sx={{
-                        p: 2,
-                        backgroundColor: '#f0f9ff',
-                        border: '1px solid #0ea5e9',
-                        borderRadius: '8px'
-                      }}
-                    >
-                      <Typography variant='body2' sx={{ color: '#0369a1', fontWeight: 500 }}>
-                        💡 Tên sản phẩm sẽ được tạo tự động từ danh mục và các biến thể
-                      </Typography>
-                    </Box>
-                  )}
+                  {/* Product Name - Required for both Simple and Variant products */}
+                  <TextField
+                    fullWidth
+                    label='Tên sản phẩm *'
+                    {...register('name', { required: 'Vui lòng nhập tên sản phẩm' })}
+                    error={!!errors.name}
+                    helperText={errors.name?.message as string}
+                    disabled={isLoading}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                  />
 
                   {/* Description */}
                   <Box>
@@ -652,9 +747,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                       Mô tả sản phẩm
                     </Typography>
                     <Editor
-                      {...register('description')}
                       value={text}
-                      onTextChange={e => setText(e.htmlValue || '')}
+                      onTextChange={e => {
+                        const newText = e.htmlValue || '';
+                        setText(newText);
+                        setValue('description', newText); // Sync with form state
+                      }}
                       style={{ height: '200px' }}
                       className='bg-white border outline-none peer border-slate-300 rounded-md focus:border-slate-500'
                     />

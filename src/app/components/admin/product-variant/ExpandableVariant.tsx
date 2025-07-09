@@ -26,6 +26,7 @@ interface ExpandableVariantProps {
     sku: string;
     images: string[];
     enabled: boolean;
+    imageFiles?: File[]; // Optional File objects for upload
   };
   onUpdate: (variantId: string, updates: any) => void;
   onDelete: (variantId: string) => void;
@@ -34,24 +35,61 @@ interface ExpandableVariantProps {
 const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState(variant);
+
+  // CRITICAL FIX: Process variant images from database structure
+  const processVariantImages = (variantImages: any): string[] => {
+    console.log('🔧 ExpandableVariant processing images:', variantImages);
+
+    if (!variantImages || !Array.isArray(variantImages)) {
+      console.log('❌ No images or not array');
+      return [];
+    }
+
+    // Check if images is array of strings (already processed) or array of objects (from database)
+    if (typeof variantImages[0] === 'string') {
+      console.log('✅ Images already processed (array of strings)');
+      return variantImages;
+    } else {
+      // Database format: [{color, colorCode, images: [urls]}, ...] - MERGE ALL
+      console.log('🔄 Converting from database format');
+      const allImages: string[] = [];
+      variantImages.forEach((imageObj: any) => {
+        if (imageObj && imageObj.images && Array.isArray(imageObj.images)) {
+          allImages.push(...imageObj.images);
+        }
+      });
+      console.log('✅ Merged images:', allImages);
+      return allImages;
+    }
+  };
+
+  const [editData, setEditData] = useState({
+    ...variant,
+    images: processVariantImages(variant.images), // Process images correctly
+    imageFiles: variant.imageFiles || [] // Initialize imageFiles
+  });
 
   const handleToggleExpand = () => {
     setExpanded(!expanded);
   };
 
   const handleSave = () => {
-    // Convert selected images to URLs if needed
+    // Pass both blob URLs for preview and File objects for upload
     const updatedData = {
       ...editData,
-      images: editData.images // These should already be URLs from handleImageUpload
+      images: editData.imageFiles || [], // Pass File objects for Firebase upload
+      imageUrls: editData.images // Keep blob URLs for preview
     };
     onUpdate(variant.id, updatedData);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setEditData(variant);
+    setEditData({
+      ...variant,
+      images: processVariantImages(variant.images), // Process images correctly on cancel too
+      imageFiles: variant.imageFiles || []
+    });
     setIsEditing(false);
   };
 
@@ -61,9 +99,12 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
       const newImages = Array.from(files);
       // Create temporary URLs for preview
       const imageUrls = newImages.map(file => URL.createObjectURL(file));
+
       setEditData(prev => ({
         ...prev,
-        images: [...prev.images, ...imageUrls]
+        images: [...prev.images, ...imageUrls],
+        // Store File objects separately for Firebase upload
+        imageFiles: [...(prev.imageFiles || []), ...newImages]
       }));
     }
   };
@@ -71,7 +112,9 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
   const handleRemoveImage = (indexToRemove: number) => {
     setEditData(prev => ({
       ...prev,
-      images: prev.images.filter((_, index) => index !== indexToRemove)
+      images: prev.images.filter((_: string, index: number) => index !== indexToRemove),
+      // Also remove corresponding File object
+      imageFiles: (prev.imageFiles || []).filter((_: File, index: number) => index !== indexToRemove)
     }));
   };
 
@@ -222,51 +265,58 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
                       Đã chọn {editData.images.length} hình ảnh
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {editData.images.map((img, index) => (
-                        <Box
-                          key={index}
-                          sx={{
-                            position: 'relative',
-                            width: 60,
-                            height: 60,
-                            borderRadius: '4px',
-                            overflow: 'hidden',
-                            border: '1px solid #e5e7eb'
-                          }}
-                        >
-                          <img
-                            src={img}
-                            alt={`Variant ${index + 1}`}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                          {/* Delete button */}
+                      {editData.images.map((img, index) => {
+                        console.log(`🖼️ Rendering variant image ${index}:`, img);
+                        return (
                           <Box
-                            onClick={() => handleRemoveImage(index)}
+                            key={index}
                             sx={{
-                              position: 'absolute',
-                              top: 2,
-                              right: 2,
-                              width: 16,
-                              height: 16,
-                              borderRadius: '50%',
-                              backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              '&:hover': {
-                                backgroundColor: '#dc2626'
-                              }
+                              position: 'relative',
+                              width: 60,
+                              height: 60,
+                              borderRadius: '4px',
+                              overflow: 'hidden',
+                              border: '1px solid #e5e7eb'
                             }}
                           >
-                            <Typography sx={{ color: 'white', fontSize: '10px', fontWeight: 'bold' }}>×</Typography>
+                            <img
+                              src={img}
+                              alt={`Variant ${index + 1}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                              onError={e => {
+                                console.error('Image load error:', img);
+                                e.currentTarget.src = '/noavatar.png';
+                              }}
+                            />
+                            {/* Delete button */}
+                            <Box
+                              onClick={() => handleRemoveImage(index)}
+                              sx={{
+                                position: 'absolute',
+                                top: 2,
+                                right: 2,
+                                width: 16,
+                                height: 16,
+                                borderRadius: '50%',
+                                backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  backgroundColor: '#dc2626'
+                                }
+                              }}
+                            >
+                              <Typography sx={{ color: 'white', fontSize: '10px', fontWeight: 'bold' }}>×</Typography>
+                            </Box>
                           </Box>
-                        </Box>
-                      ))}
+                        );
+                      })}
                     </Box>
                   </Box>
                 )}

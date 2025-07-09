@@ -11,12 +11,12 @@ export async function GET(request: NextRequest) {
     let settings = await prisma.adminSettings.findFirst();
 
     if (!settings) {
-      // Tạo default settings với báo cáo mỗi phút cho testing
+      // Tạo default settings
       console.log('🔧 Creating default admin settings...');
       settings = await prisma.adminSettings.create({
         data: {
           dailyReports: true,
-          reportInterval: 1, // 1 giờ default, sẽ override thành phút bên dưới
+          reportInterval: 24, // 24 giờ default
           discordNotifications: true,
           orderNotifications: true,
           emailNotifications: true,

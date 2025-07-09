@@ -56,6 +56,17 @@ export async function getProducts(params: IProductParams) {
           include: {
             promotion: true
           }
+        },
+        // Include variants for variant products
+        variants: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' }
+        },
+        // Include product attributes for variant products
+        productAttributes: {
+          include: {
+            values: true
+          }
         }
       }
     });

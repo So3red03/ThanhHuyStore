@@ -32,7 +32,6 @@ import ConfirmDialog from '@/app/components/ConfirmDialog';
 import SendNewProductEmail from '@/app/components/admin/SendNewProductEmail';
 import Image from 'next/image';
 import { Editor } from 'primereact/editor';
-import { ImageType } from './AddProductModal';
 import { Rating, Button as MuiButton } from '@mui/material';
 import { MdAdd } from 'react-icons/md';
 import { FaDollarSign, FaRegBuilding, FaRegEnvelope, FaRegListAlt, FaRegWindowMaximize } from 'react-icons/fa';
@@ -43,7 +42,6 @@ import * as MdIcons from 'react-icons/md';
 import Link from 'next/link';
 import { slugConvert } from '../../../../../utils/Slug';
 import AddProductModalNew from './AddProductModalNew';
-import EditProductModal from './EditProductModal';
 
 interface ManageProductsClientProps {
   products: any;
@@ -162,20 +160,52 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       // Tìm tên danh mục cha dựa vào parentId
       const subCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.name;
       const parentCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.parentId;
+      // For variant products, calculate total stock and use base price or first variant price
+      let displayPrice = product.price;
+      let displayStock = product.inStock;
+
+      console.log('📊 Stock calculation debug:', {
+        productId: product.id,
+        productName: product.name,
+        productType: product.productType,
+        originalStock: product.inStock,
+        variants: product.variants?.map((v: any) => ({ id: v.id, stock: v.stock }))
+      });
+
+      if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+        // Use base price if available, otherwise use first variant price
+        displayPrice = product.basePrice || product.variants[0]?.price || 0;
+
+        // Calculate total stock from all variants
+        displayStock = product.variants.reduce((total: number, variant: any) => {
+          console.log(`Adding variant ${variant.id} stock: ${variant.stock || 0}`);
+          return total + (variant.stock || 0);
+        }, 0);
+
+        console.log('✅ Total calculated stock:', displayStock);
+      }
+
       return {
         id: product.id,
         images: product.images,
         name: product.name,
-        price: product.price,
+        price: displayPrice,
         categoryId: product.categoryId,
         parentId: parentCategory,
         subCategory: subCategory,
         rating: productRating,
         description: product.description,
-        inStock: product.inStock,
+        inStock: displayStock,
         isDeleted: product.isDeleted,
         deletedAt: product.deletedAt,
-        deletedBy: product.deletedBy
+        deletedBy: product.deletedBy,
+        productType: product.productType,
+        variants: product.variants || [], // Include variants data
+        // Include all original product data for editing
+        brand: product.brand,
+        basePrice: product.basePrice,
+        priority: product.priority,
+        productAttributes: product.productAttributes || []
       };
     });
   }
@@ -186,7 +216,104 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       field: 'images',
       headerName: 'Ảnh SP',
       width: 80,
-      renderCell: params => <Image src={params.row.images[0].images[0]} alt='Ảnh sản phẩm' width={50} height={50} />
+      renderCell: params => {
+        const product = params.row;
+        let imageSrc = '/noavatar.png'; // Default fallback
+
+        console.log('🖼️ Product image debug:', {
+          productId: product.id,
+          productName: product.name,
+          productType: product.productType,
+          images: product.images,
+          variants: product.variants
+        });
+
+        // Handle Simple products
+        if (product.productType === 'SIMPLE' && product.images && product.images.length > 0) {
+          // Simple products: images structure is [{ color: 'default', colorCode: '#000000', images: ['url1', 'url2'] }]
+          if (product.images[0] && product.images[0].images && product.images[0].images.length > 0) {
+            imageSrc = product.images[0].images[0];
+            console.log('✅ Simple product image found:', imageSrc);
+          }
+        }
+        // Handle Variant products - get image from first variant
+        else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+          console.log('🔍 Searching for variant images...');
+          console.log('🔍 All variants:', product.variants);
+
+          // Try to find a variant with images
+          const variantWithImage = product.variants.find((variant: any) => {
+            console.log('Checking variant:', {
+              id: variant.id,
+              images: variant.images,
+              imagesLength: variant.images?.length,
+              imagesType: typeof variant.images
+            });
+            return variant.images && Array.isArray(variant.images) && variant.images.length > 0;
+          });
+
+          if (variantWithImage && variantWithImage.images.length > 0) {
+            console.log('🔍 ManageProducts variant.images:', variantWithImage.images);
+
+            // Check if images is array of strings (old format) or array of objects (new format)
+            if (typeof variantWithImage.images[0] === 'string') {
+              // Old format: images is array of URLs
+              imageSrc = variantWithImage.images[0];
+              console.log('✅ Variant image found (old format):', imageSrc);
+            } else {
+              // New format: images is array of objects - GET FIRST IMAGE FROM ANY OBJECT
+              console.log('📸 ManageProducts using new format - finding first image');
+              let foundImage = false;
+
+              for (const imageObj of variantWithImage.images) {
+                if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
+                  imageSrc = imageObj.images[0];
+                  console.log('✅ Variant image found (new format):', imageSrc);
+                  foundImage = true;
+                  break;
+                }
+              }
+
+              if (!foundImage) {
+                console.log('❌ No images found in any image object');
+              }
+            }
+          }
+          // Fallback: check main product images for variant products
+          else if (
+            product.images &&
+            product.images.length > 0 &&
+            product.images[0].images &&
+            product.images[0].images.length > 0
+          ) {
+            imageSrc = product.images[0].images[0];
+            console.log('✅ Fallback to main product image:', imageSrc);
+          } else {
+            console.log('❌ No images found for variant product');
+            console.log('❌ Debug info:', {
+              hasMainImages: !!product.images,
+              mainImagesLength: product.images?.length,
+              firstMainImage: product.images?.[0]
+            });
+          }
+        }
+
+        console.log('🎯 Final image src:', imageSrc);
+
+        return (
+          <Image
+            src={imageSrc}
+            alt='Ảnh sản phẩm'
+            width={50}
+            height={50}
+            style={{ objectFit: 'cover', borderRadius: '4px' }}
+            onError={e => {
+              console.error('❌ Image load failed:', imageSrc);
+              e.currentTarget.src = '/noavatar.png';
+            }}
+          />
+        );
+      }
     },
     {
       field: 'name',
@@ -295,7 +422,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     if (selectedProduct) {
       setIsDeleting(true);
       try {
-        await handleDelete(selectedProduct.id, selectedProduct.images);
+        await handleDelete(selectedProduct.id, selectedProduct);
       } catch (error) {
         console.error('Error deleting product:', error);
         toast.error('Có lỗi xảy ra khi xóa sản phẩm');
@@ -306,33 +433,77 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     }
   };
 
-  const handleDelete = async (id: string, images: { color: string; colorCode: string; images: string[] }[]) => {
-    // Kiểm tra xem images có phải là mảng hợp lệ không
-    if (!Array.isArray(images)) {
-      throw new Error("Dữ liệu 'images' không hợp lệ.");
-    }
-    // Tạo một mảng tất cả các URL ảnh cần xóa
-    const allImages = images.reduce((acc: string[], item) => {
-      return acc.concat(item.images);
-    }, []);
+  const handleDelete = async (id: string, productData: any) => {
+    try {
+      const imagesToDelete: string[] = [];
 
-    console.log(`Tổng số hình ảnh cần xóa: ${allImages.length}`);
+      // Handle different product types
+      if (productData.productType === 'SIMPLE') {
+        // Simple products: delete images from product.images
+        if (Array.isArray(productData.images)) {
+          productData.images.forEach((item: any) => {
+            if (item.images && Array.isArray(item.images)) {
+              imagesToDelete.push(...item.images);
+            }
+          });
+        }
+      } else if (productData.productType === 'VARIANT') {
+        // Variant products: delete images from both main product and variants
 
-    // Tạo các promise để xóa ảnh từ Firebase Storage
-    const deletePromises = allImages.map(async imageUrl => {
-      const storageRef = ref(storage, imageUrl);
-      console.log(`Đang xóa hình ảnh: ${imageUrl}`); // In ra đường dẫn hình ảnh
-      try {
-        await deleteObject(storageRef); // Trả về promise để xóa ảnh
-      } catch (error) {
-        console.error(`Lỗi khi xóa hình ảnh ${imageUrl}:`, error);
+        // Delete main product images (if any)
+        if (Array.isArray(productData.images)) {
+          productData.images.forEach((item: any) => {
+            if (item.images && Array.isArray(item.images)) {
+              imagesToDelete.push(...item.images);
+            }
+          });
+        }
+
+        // Delete variant images
+        if (Array.isArray(productData.variants)) {
+          productData.variants.forEach((variant: any) => {
+            if (Array.isArray(variant.images)) {
+              // Variant images structure: [{color, colorCode, images: [urls]}, ...]
+              variant.images.forEach((imageGroup: any) => {
+                if (imageGroup.images && Array.isArray(imageGroup.images)) {
+                  imagesToDelete.push(...imageGroup.images);
+                }
+              });
+            }
+          });
+        }
       }
-    });
-    // Chờ tất cả các promise xóa ảnh hoàn thành
-    await Promise.all(deletePromises);
-    await axios.delete(`/api/product/${id}`);
-    toast.success('Xóa sản phẩm thành công');
-    router.refresh();
+
+      // Delete all collected images from Firebase
+      if (imagesToDelete.length > 0) {
+        console.log('Deleting images from Firebase:', imagesToDelete);
+        const deletePromises = imagesToDelete.map(async (imageUrl: string) => {
+          try {
+            // Extract the path from the full Firebase URL
+            const url = new URL(imageUrl);
+            const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
+            if (pathMatch) {
+              const imagePath = decodeURIComponent(pathMatch[1]);
+              const storageRef = ref(storage, imagePath);
+              await deleteObject(storageRef);
+              console.log(`Successfully deleted image: ${imagePath}`);
+            }
+          } catch (error) {
+            console.error(`Error deleting image ${imageUrl}:`, error);
+            // Continue with other deletions even if one fails
+          }
+        });
+        await Promise.all(deletePromises);
+      }
+
+      // Delete product from database
+      await axios.delete(`/api/product/${id}`);
+      toast.success('Xóa sản phẩm thành công');
+      router.refresh();
+    } catch (error) {
+      console.error('Error in handleDelete:', error);
+      throw error;
+    }
   };
 
   const onSubmit: SubmitHandler<FieldValues> = async data => {
@@ -566,110 +737,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
           />
         </div>
       </div>
-      {/* Modal cập nhật sản phẩm  */}
-      {isOpen && (
-        <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
-          <FormWarp custom='!pt-8'>
-            <Heading title='Cập nhật thông tin sản phẩm' center>
-              <></>
-            </Heading>
-            <Input
-              id='name'
-              label='Tên sản phẩm'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedProduct?.name}
-              required
-            />
-            <Input
-              id='price'
-              label='Giá bán'
-              type='number'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={String(selectedProduct?.price)}
-              required
-            />
-            <Input
-              id='inStock'
-              label='Tồn kho'
-              type='number'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={String(selectedProduct?.inStock)}
-              required
-            />
-            <Editor
-              {...register('description')}
-              value={selectedProduct?.description}
-              onTextChange={onTextChange}
-              style={{ height: '320px' }}
-              className='bg-white !border !outline-none peer !border-slate-300 rounded-md focus:!border-slate-500'
-              disabled={isLoading}
-              required
-            />
-            <div className='w-full font-medium'>
-              <div className='mb-2 font-semibold'>Chọn danh mục sản phẩm</div>
-              <div className='grid !grid-cols-1 sm:!grid-cols-2 md:!grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto'>
-                {parentCategories.map((item: any) => {
-                  return (
-                    <div key={item.id}>
-                      <CategoryInput
-                        onClick={() => {
-                          setSelectedParentCategoryId(item.id); // Cập nhật ID danh mục cha đã chọn
-                          setValue('parentCategories', item.id); // Lưu vào form
-                        }}
-                        selected={selectedParentCategoryId === item.id} // So sánh với danh mục cha hiện tại
-                        label={item.name}
-                        icon={Icons[item.icon as keyof typeof Icons]} // Truyền icon
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <Input
-              id='categoryId'
-              label='Danh mục con'
-              disabled={isLoading}
-              type='combobox'
-              register={register}
-              errors={errors}
-              defaultValue={selectedProduct?.categoryId || ''}
-              options={filteredSubCategories.map((subCategory: any) => ({
-                label: subCategory.name,
-                value: subCategory.id
-              }))} // Hiển thị danh mục con đã lọc
-              required
-            />
-            {/* <div className="w-full flex flex-col flex-wrap gap-4">
-							<div>
-								<div className="font-bold">Chọn màu và hình ảnh của sản phẩm</div>
-								<div className="text-sm">
-									Cần có hình ảnh thích hợp dựa trên màu đã chọn nếu không lựa chọn không hợp lệ
-								</div>
-							</div>
-							<div className="grid grid-cols-2 gap-3">
-								{colors.map((item) => {
-									return (
-										<SelectColor
-											key={item.color}
-											item={item}
-											addImageToState={addImageToState}
-											removeImageToState={removeImageToState}
-											isProductCreated={isProductCreated}
-										/>
-									);
-								})}
-							</div>
-						</div> */}
-            <Button label='Lưu sản phẩm' onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
-          </FormWarp>
-        </AdminModal>
-      )}
       {isDelete && (
         <ConfirmDialog
           isOpen={isDelete}
@@ -690,16 +757,21 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       />
 
       {/* Edit Product Modal */}
-      <EditProductModal
+      <AddProductModalNew
         isOpen={editProductModalOpen}
         onClose={() => {
           setEditProductModalOpen(false);
           setEditingProduct(null);
         }}
-        product={editingProduct}
-        subCategories={subCategories}
+        mode='edit'
+        initialData={editingProduct}
+        onSuccess={() => {
+          router.refresh();
+          setEditProductModalOpen(false);
+          setEditingProduct(null);
+        }}
         parentCategories={parentCategories}
-        onProductUpdated={() => router.refresh()}
+        subCategories={subCategories}
       />
     </>
   );

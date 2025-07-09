@@ -85,15 +85,6 @@ export async function POST(request: NextRequest) {
           discordSent: sendDiscord && suggestions.length > 0
         }
       });
-    } else if (action === 'test-discord') {
-      // Test Discord webhook
-      const discordService = DiscordWebhookService.getInstance();
-      const success = await discordService.testConnection();
-
-      return NextResponse.json({
-        success,
-        message: success ? 'Discord webhook hoạt động bình thường' : 'Không thể kết nối Discord webhook'
-      });
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }

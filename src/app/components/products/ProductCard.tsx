@@ -3,9 +3,9 @@
 import Image from 'next/image';
 import { truncateText } from '../../../../utils/truncateText';
 import { formatPrice } from '../../../../utils/formatPrice';
-import { Rating } from '@mui/material';
+
 import SetColor from './SetColor';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { CartProductType, selectedImgType } from '@/app/(home)/product/[productId]/ProductDetails';
 import Link from 'next/link';
 import { slugConvert } from '../../../../utils/Slug';
@@ -22,12 +22,121 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
   // Check color hiện tại và img thay đổi theo color đc select
   const { trackProductInteraction } = useAnalyticsTracker();
 
+  // Enhanced image access for both Simple and Variant products
+  const getDefaultImage = () => {
+    console.log('🎴 ProductCard getDefaultImage debug:', {
+      productId: data.id,
+      productName: data.name,
+      productType: data.productType,
+      variants: data.variants,
+      images: data.images
+    });
+
+    // For variant products, try to get images from first variant
+    if (data.productType === 'VARIANT' && data.variants && data.variants.length > 0) {
+      const firstVariant = data.variants[0];
+      console.log('🔍 First variant:', firstVariant);
+
+      if (firstVariant.images && firstVariant.images.length > 0) {
+        console.log('🔍 firstVariant.images type:', typeof firstVariant.images);
+        console.log('🔍 firstVariant.images isArray:', Array.isArray(firstVariant.images));
+        console.log('🔍 firstVariant.images[0] type:', typeof firstVariant.images[0]);
+        console.log('🔍 firstVariant.images[0]:', firstVariant.images[0]);
+
+        // Check if images is array of strings (old format) or array of objects (new format)
+        if (typeof firstVariant.images[0] === 'string') {
+          // Old format: images is array of URLs
+          console.log('📸 Using old format - array of URLs');
+          const result = {
+            color: firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc'] || 'default',
+            colorCode: getColorCode(firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc']),
+            images: firstVariant.images
+          };
+          console.log('✅ Using variant images (old format):', result);
+          return result;
+        } else {
+          // New format: images is array of objects [{color, colorCode, images: [urls]}, ...]
+          console.log('📸 Using new format - array of objects');
+          console.log('🔍 All image objects:', firstVariant.images);
+
+          // CRITICAL FIX: Merge all images from all objects into one array
+          const allImages: string[] = [];
+          firstVariant.images.forEach((imageObj: any, index: number) => {
+            console.log(`🖼️ Image object ${index}:`, imageObj);
+            if (imageObj && imageObj.images && Array.isArray(imageObj.images)) {
+              allImages.push(...imageObj.images);
+            }
+          });
+
+          console.log('🎯 Merged all images:', allImages);
+
+          if (allImages.length > 0) {
+            const result = {
+              color:
+                firstVariant.attributes?.color ||
+                firstVariant.attributes?.['màu-sắc'] ||
+                firstVariant.images[0]?.color ||
+                'default',
+              colorCode:
+                getColorCode(firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc']) ||
+                firstVariant.images[0]?.colorCode ||
+                '#6b7280',
+              images: allImages
+            };
+            console.log('✅ Using variant images (new format - merged):', result);
+            return result;
+          } else {
+            console.log('❌ No images found after merging');
+          }
+        }
+      } else {
+        console.log('❌ No images in first variant');
+      }
+    }
+
+    // For simple products or fallback
+    if (data.images && data.images.length > 0 && data.images[0].images && data.images[0].images.length > 0) {
+      return { ...data.images[0] };
+    }
+
+    // Final fallback
+    return {
+      color: 'default',
+      colorCode: '#000000',
+      images: ['/noavatar.png']
+    };
+  };
+
+  // Helper function to get color code from color name
+  const getColorCode = (colorName?: string): string => {
+    const colorMap: { [key: string]: string } = {
+      đỏ: '#ff0000',
+      red: '#ff0000',
+      xanh: '#0000ff',
+      blue: '#0000ff',
+      'xanh-lá': '#00ff00',
+      green: '#00ff00',
+      vàng: '#ffff00',
+      yellow: '#ffff00',
+      đen: '#000000',
+      black: '#000000',
+      trắng: '#ffffff',
+      white: '#ffffff',
+      xám: '#808080',
+      gray: '#808080',
+      hồng: '#ffc0cb',
+      pink: '#ffc0cb'
+    };
+
+    return colorMap[colorName?.toLowerCase() || ''] || '#000000';
+  };
+
   const [cartProduct, setCartProduct] = useState<CartProductType>({
     id: data.id,
     name: data.name,
     description: data.description,
     category: data.category,
-    selectedImg: { ...data.images[0] },
+    selectedImg: getDefaultImage(),
     quantity: 1,
     price: data.price,
     inStock: data.inStock
@@ -85,35 +194,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     });
   }, []);
 
-  const [viewedProducts, setViewedProducts] = useState<CartProductType[] | null>(null);
-
-  useEffect(() => {
-    const syncViewedProducts = () => {
-      const storedViewed = localStorage.getItem('viewedProducts');
-      if (storedViewed) {
-        setViewedProducts(JSON.parse(storedViewed));
-      } else {
-        setViewedProducts([]);
-      }
-    };
-
-    // Lắng nghe sự kiện storage thay đổi
-    window.addEventListener('storage', syncViewedProducts);
-
-    // Gọi lần đầu khi component mount
-    syncViewedProducts();
-    return () => {
-      window.removeEventListener('storage', syncViewedProducts);
-    };
-  }, []);
-
   const saveViewedProduct = useCallback(
     (product: any) => {
       if (!product) return;
 
       try {
         // Track product click analytics
-        console.log('🎯 ProductCard: Tracking product click for:', product.id);
         trackProductInteraction('PRODUCT_CLICK', product.id, {
           productName: product.name,
           category: product.category,
@@ -138,19 +224,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
         const updatedHistory = [newView, ...filteredHistory].slice(0, 50);
 
         localStorage.setItem('productViewHistory', JSON.stringify(updatedHistory));
-
-        // Vẫn giữ logic cũ cho backward compatibility
-        setViewedProducts(prev => {
-          const updatedViewed = prev?.filter(p => p.id !== product.id) || [];
-          updatedViewed.unshift(product);
-
-          if (updatedViewed.length > 8) {
-            updatedViewed.pop();
-          }
-
-          localStorage.setItem('viewedProducts', JSON.stringify(updatedViewed));
-          return updatedViewed;
-        });
       } catch (error) {
         console.error('Error saving viewed product:', error);
       }
@@ -169,12 +242,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
       >
         <div className='aspect-square overflow-hidden relative w-full'>
           <Image
-            src={cartProduct.selectedImg.images[0]}
+            src={cartProduct.selectedImg?.images?.[0] || '/noavatar.png'}
             alt={data.name}
             fill
             sizes='100%'
             className='w-full h-full object-cover'
             loading='lazy'
+            onError={e => {
+              e.currentTarget.src = '/noavatar.png';
+            }}
           />
 
           {/* Product Tags */}

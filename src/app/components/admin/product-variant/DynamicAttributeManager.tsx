@@ -57,6 +57,27 @@ const DynamicAttributeManager: React.FC<DynamicAttributeManagerProps> = ({
   const [newAttributeName, setNewAttributeName] = useState('');
   const [newAttributeValues, setNewAttributeValues] = useState<string>('');
 
+  // Initialize selectedAttributes from existing variations (for edit mode)
+  useEffect(() => {
+    if (variations.length > 0 && attributes.length > 0) {
+      // Extract attribute keys from existing variations
+      const usedAttributeKeys = new Set<string>();
+      variations.forEach(variation => {
+        Object.keys(variation.attributes || {}).forEach(key => {
+          usedAttributeKeys.add(key);
+        });
+      });
+
+      // Find corresponding attribute IDs
+      const attributeIds = attributes.filter(attr => usedAttributeKeys.has(attr.slug)).map(attr => attr.id);
+
+      if (attributeIds.length > 0) {
+        console.log('🔧 Auto-selecting attributes for edit mode:', attributeIds);
+        setSelectedAttributes(attributeIds);
+      }
+    }
+  }, [variations, attributes]);
+
   // Generate all possible variations from selected attributes
   const generateVariations = () => {
     const selectedAttrs = attributes.filter(attr => selectedAttributes.includes(attr.id) && attr.values.length > 0);
@@ -231,6 +252,28 @@ const DynamicAttributeManager: React.FC<DynamicAttributeManagerProps> = ({
             ))}
           </Select>
         </FormControl>
+
+        {/* Display selected attributes */}
+        {selectedAttributes.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography variant='body2' sx={{ mb: 1, color: '#374151', fontWeight: 500 }}>
+              Đã chọn {selectedAttributes.length} thuộc tính:
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {selectedAttributes.map(attrId => {
+                const attribute = attributes.find(attr => attr.id === attrId);
+                return attribute ? (
+                  <Chip
+                    key={attrId}
+                    label={attribute.name}
+                    size='small'
+                    sx={{ backgroundColor: '#dbeafe', color: '#1e40af' }}
+                  />
+                ) : null;
+              })}
+            </Box>
+          </Box>
+        )}
 
         <MuiButton
           variant='contained'

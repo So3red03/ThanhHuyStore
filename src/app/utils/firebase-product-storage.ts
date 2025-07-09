@@ -47,8 +47,36 @@ export const generateVariantFolder = (color: string, storage?: string, ram?: str
   return parts.join('-').toLowerCase();
 };
 
-export const generateUniqueFilename = (originalFilename: string): string => {
-  const extension = originalFilename.split('.').pop();
+// New function for attribute-based folder structure
+export const generateVariantAttributeFolder = (variantData: VariantImageUpload): string => {
+  const attributes: string[] = [];
+
+  if (variantData.color) {
+    attributes.push(`color-${variantData.color.toLowerCase().replace(/\s+/g, '-')}`);
+  }
+  if (variantData.storage) {
+    attributes.push(`storage-${variantData.storage.toLowerCase().replace(/\s+/g, '-')}`);
+  }
+  if (variantData.ram) {
+    attributes.push(`ram-${variantData.ram.toLowerCase().replace(/\s+/g, '-')}`);
+  }
+
+  // If no attributes, use default
+  if (attributes.length === 0) {
+    return 'default-variant';
+  }
+
+  return attributes.join('_');
+};
+
+export const generateUniqueFilename = (originalFilename?: string): string => {
+  // Handle undefined or empty filename
+  if (!originalFilename || typeof originalFilename !== 'string') {
+    const uniqueId = uuidv4().substring(0, 8);
+    return `image-${uniqueId}.jpg`; // Default fallback
+  }
+
+  const extension = originalFilename.split('.').pop() || 'jpg';
   const nameWithoutExt = originalFilename.replace(`.${extension}`, '');
   const uniqueId = uuidv4().substring(0, 8);
   return `${nameWithoutExt}-${uniqueId}.${extension}`;
@@ -87,13 +115,14 @@ export const uploadProductImages = async (
   onProgress?: (progress: number) => void
 ): Promise<ProductImageResult[]> => {
   const slug = generateSlug(productName);
-  const basePath = `productImages/${slug}`;
+  // Clear folder structure: simple-products/product-name/
+  const basePath = `simple-products/${slug}`;
 
   const results: ProductImageResult[] = [];
 
   for (let i = 0; i < images.length; i++) {
     const { file, filename } = images[i];
-    const finalFilename = filename || generateUniqueFilename(file.name);
+    const finalFilename = filename || generateUniqueFilename(file?.name);
     const imagePath = `${basePath}/${finalFilename}`;
     const imageRef = ref(storage, imagePath);
 
@@ -113,7 +142,7 @@ export const uploadProductImages = async (
       }
     } catch (error) {
       console.error(`Error uploading ${finalFilename}:`, error);
-      throw new Error(`Failed to upload ${finalFilename}`);
+      throw new Error(`Failed to upload ${finalFilename}. Firebase upload failed.`);
     }
   }
 
@@ -126,15 +155,19 @@ export const uploadVariantImages = async (
   onProgress?: (progress: number) => void
 ): Promise<VariantImageResult> => {
   const slug = generateSlug(productName);
-  const variantFolder = generateVariantFolder(variantData.color, variantData.storage, variantData.ram);
-  const basePath = `productImages/${slug}/${variantFolder}`;
+
+  // New folder structure: variant-products/product-name/attribute-folders/
+  const basePath = `variant-products/${slug}`;
 
   const results: ProductImageResult[] = [];
 
   for (let i = 0; i < variantData.images.length; i++) {
     const { file, filename } = variantData.images[i];
-    const finalFilename = filename || generateUniqueFilename(file.name);
-    const imagePath = `${basePath}/${finalFilename}`;
+    const finalFilename = filename || generateUniqueFilename(file?.name);
+
+    // Create attribute-based folder path
+    const attributeFolder = generateVariantAttributeFolder(variantData);
+    const imagePath = `${basePath}/${attributeFolder}/${finalFilename}`;
     const imageRef = ref(storage, imagePath);
 
     try {
@@ -153,7 +186,7 @@ export const uploadVariantImages = async (
       }
     } catch (error) {
       console.error(`Error uploading ${finalFilename}:`, error);
-      throw new Error(`Failed to upload ${finalFilename}`);
+      throw new Error(`Failed to upload ${finalFilename}. Firebase upload failed.`);
     }
   }
 

@@ -3,6 +3,37 @@ import prisma from '../../../libs/prismadb';
 import { NextResponse } from 'next/server';
 import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
+// Helper function to get color code
+const getColorCode = (color: string): string => {
+  const colorMap: { [key: string]: string } = {
+    đỏ: '#ef4444',
+    red: '#ef4444',
+    xanh: '#3b82f6',
+    blue: '#3b82f6',
+    'xanh-lá': '#22c55e',
+    green: '#22c55e',
+    vàng: '#eab308',
+    yellow: '#eab308',
+    tím: '#a855f7',
+    purple: '#a855f7',
+    hồng: '#ec4899',
+    pink: '#ec4899',
+    cam: '#f97316',
+    orange: '#f97316',
+    đen: '#000000',
+    black: '#000000',
+    trắng: '#ffffff',
+    white: '#ffffff',
+    xám: '#6b7280',
+    gray: '#6b7280',
+    bạc: '#9ca3af',
+    silver: '#9ca3af',
+    bgc: '#4285f4'
+  };
+
+  return colorMap[color?.toLowerCase()] || '#6b7280';
+};
+
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const currentUser = await getCurrentUser();
 
@@ -101,7 +132,18 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const body = await request.json();
     console.log('PUT request body:', body); // Debug log
 
-    const { name, description, price, basePrice, inStock, categoryId, images = [], productType = 'SIMPLE' } = body;
+    const {
+      name,
+      description,
+      price,
+      basePrice,
+      inStock,
+      categoryId,
+      images = [],
+      productType = 'SIMPLE',
+      variations = [],
+      attributes = []
+    } = body;
 
     // Validation
     if (!name || !description || !categoryId) {
@@ -141,9 +183,108 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const oldStock = existingProduct.inStock;
     const newStock = parseInt(inStock) || 0;
 
-    const product = await prisma.product.update({
-      where: { id: params.id },
-      data: updateData
+    // Use transaction for complex updates
+    const product = await prisma.$transaction(async tx => {
+      // Update main product
+      const updatedProduct = await tx.product.update({
+        where: { id: params.id },
+        data: updateData
+      });
+
+      // Handle variant products
+      if (productType === 'VARIANT' && variations && variations.length > 0) {
+        // Delete existing variants
+        await tx.productVariant.deleteMany({
+          where: { productId: params.id }
+        });
+
+        // Delete existing attributes
+        await tx.productAttribute.deleteMany({
+          where: { productId: params.id }
+        });
+
+        // Create new attributes
+        if (attributes && attributes.length > 0) {
+          for (const attr of attributes) {
+            const createdAttribute = await tx.productAttribute.create({
+              data: {
+                productId: params.id,
+                name: attr.name,
+                label: attr.label || attr.name,
+                type: attr.type || 'SELECT',
+                displayType: 'DROPDOWN',
+                isRequired: true,
+                isVariation: true,
+                position: 0
+              }
+            });
+
+            // Create attribute values
+            if (attr.values && attr.values.length > 0) {
+              for (let i = 0; i < attr.values.length; i++) {
+                const value = attr.values[i];
+                await tx.attributeValue.create({
+                  data: {
+                    attributeId: createdAttribute.id,
+                    value: value.value,
+                    label: value.label || value.value,
+                    position: i
+                  }
+                });
+              }
+            }
+          }
+        }
+
+        // Create new variants
+        for (const variation of variations) {
+          // Convert images to proper format for schema
+          let variantImages = [];
+
+          if (variation.images && variation.images.length > 0) {
+            // Check if images is already in correct format (array of objects)
+            if (typeof variation.images[0] === 'object' && variation.images[0].color) {
+              // Already in correct format: [{color, colorCode, images: [urls]}, ...]
+              variantImages = variation.images;
+              console.log('✅ Using existing image format for variant:', variation.sku);
+            } else {
+              // Convert from array of URLs to proper format
+              const color = variation.attributes?.color || variation.attributes?.['màu-sắc'] || 'default';
+              const colorCode = getColorCode(color) || '#000000';
+
+              variantImages = [
+                {
+                  color: color,
+                  colorCode: colorCode,
+                  images: variation.images
+                }
+              ];
+              console.log(
+                '🔄 Converting image format for variant:',
+                variation.sku,
+                'from',
+                variation.images,
+                'to',
+                variantImages
+              );
+            }
+          }
+
+          await tx.productVariant.create({
+            data: {
+              productId: params.id,
+              sku: variation.sku || `${params.id}-${Date.now()}`,
+              attributes: variation.attributes || {},
+              price: parseFloat(variation.price) || 0,
+              stock: parseInt(variation.stock) || 0,
+              images: variantImages,
+              isActive: variation.isActive !== false
+            }
+          });
+        }
+      }
+
+      return updatedProduct;
     });
 
     // 🎯 AUDIT LOG: Inventory Update (if stock changed)

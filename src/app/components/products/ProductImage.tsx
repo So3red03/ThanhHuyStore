@@ -9,11 +9,17 @@ interface ProductImageProps {
 }
 
 const ProductImage: React.FC<ProductImageProps> = ({ cartProduct }) => {
+  // DEBUG: Log what ProductImage receives
+  console.log('🖼️ ProductImage received cartProduct:', cartProduct);
+  console.log('🖼️ ProductImage selectedImg:', cartProduct.selectedImg);
+  console.log('🖼️ ProductImage images:', cartProduct.selectedImg?.images);
+  console.log('🖼️ ProductImage images length:', cartProduct.selectedImg?.images?.length);
+
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [showMagnifier, setShowMagnifier] = useState(false);
-  const [largeImage, setLargeImage] = useState(cartProduct.selectedImg.images[0]);
-  const [selectedImage, setSelectedImage] = useState(cartProduct.selectedImg.images[0]);
+  const [largeImage, setLargeImage] = useState(cartProduct.selectedImg?.images?.[0] || '/noavatar.png');
+  const [selectedImage, setSelectedImage] = useState(cartProduct.selectedImg?.images?.[0] || '/noavatar.png');
 
   // Cập nhật largeImage khi cartProduct khi  thay đổi
   useEffect(() => {
@@ -40,7 +46,7 @@ const ProductImage: React.FC<ProductImageProps> = ({ cartProduct }) => {
     <div className='grid grid-cols-6 gap-2 max-h-[350px] min-h-[350px] sm:min-h-[400px]'>
       {/* Hiển thị các ảnh nhỏ tương ứng với màu được chọn */}
       <div className='flex items-center justify-center flex-col gap-4 cursor-pointer border h-fit max-h-[400px] min-h-[300px] sm:min-h-[400px] overflow-y-auto no-scrollbar'>
-        {cartProduct.selectedImg.images.map((currentImg: string) => {
+        {(cartProduct.selectedImg?.images || []).map((currentImg: string) => {
           return (
             <div
               key={currentImg}

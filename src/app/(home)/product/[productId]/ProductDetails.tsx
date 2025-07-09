@@ -32,6 +32,10 @@ export type selectedImgType = {
   color: string;
   colorCode: string;
   images: string[];
+  // Extended properties for variant support
+  displayLabel?: string;
+  previewImage?: string;
+  variant?: any; // Reference to the selected variant
 };
 
 const Horizontal = () => {
@@ -42,12 +46,96 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   const router = useRouter();
   const { handleAddProductToCart, cartProducts } = useCart();
   const [isProductInCart, setIsProductInCart] = useState(false);
+
+  // Helper function to get default image for both Simple and Variant products
+  const getDefaultImage = () => {
+    // For variant products, get images from first variant
+    if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+      const firstVariant = product.variants[0];
+      if (firstVariant.images && firstVariant.images.length > 0) {
+        console.log('🔍 ProductDetails variant.images:', firstVariant.images);
+
+        // Check if images is array of strings (old format) or array of objects (new format)
+        if (typeof firstVariant.images[0] === 'string') {
+          // Old format: images is array of URLs
+          console.log('📸 ProductDetails using old format');
+          return {
+            color: firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc'] || 'default',
+            colorCode: getColorCode(firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc']),
+            images: firstVariant.images
+          };
+        } else {
+          // New format: images is array of objects - MERGE ALL IMAGES
+          console.log('📸 ProductDetails using new format - merging images');
+          const allImages: string[] = [];
+          firstVariant.images.forEach((imageObj: any) => {
+            if (imageObj && imageObj.images && Array.isArray(imageObj.images)) {
+              allImages.push(...imageObj.images);
+            }
+          });
+
+          if (allImages.length > 0) {
+            return {
+              color:
+                firstVariant.attributes?.color ||
+                firstVariant.attributes?.['màu-sắc'] ||
+                firstVariant.images[0]?.color ||
+                'default',
+              colorCode:
+                getColorCode(firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc']) ||
+                firstVariant.images[0]?.colorCode ||
+                '#6b7280',
+              images: allImages
+            };
+          }
+        }
+      }
+    }
+
+    // For simple products or fallback
+    if (product.images && product.images.length > 0) {
+      return { ...product.images[0] };
+    }
+
+    // Final fallback
+    return {
+      color: 'default',
+      colorCode: '#000000',
+      images: ['/noavatar.png']
+    };
+  };
+
+  // Helper function to get color code from color name
+  const getColorCode = (colorName?: string): string => {
+    const colorMap: { [key: string]: string } = {
+      đỏ: '#ff0000',
+      red: '#ff0000',
+      xanh: '#0000ff',
+      blue: '#0000ff',
+      'xanh-lá': '#00ff00',
+      green: '#00ff00',
+      vàng: '#ffff00',
+      yellow: '#ffff00',
+      đen: '#000000',
+      black: '#000000',
+      trắng: '#ffffff',
+      white: '#ffffff',
+      xám: '#808080',
+      gray: '#808080',
+      hồng: '#ffc0cb',
+      pink: '#ffc0cb',
+      bgc: '#4285f4'
+    };
+
+    return colorMap[colorName?.toLowerCase() || ''] || '#000000';
+  };
+
   const [cartProduct, setCartProduct] = useState<CartProductType>({
     id: product.id,
     name: product.name,
     description: product.description,
     category: product.categoryId,
-    selectedImg: { ...product.images[0] },
+    selectedImg: getDefaultImage(),
     quantity: 1,
     price: product.price,
     inStock: product.inStock
