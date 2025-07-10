@@ -5,7 +5,7 @@ import prisma from '@/app/libs/prismadb';
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
-    
+
     if (!currentUser || currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -23,11 +23,11 @@ export async function GET(request: NextRequest) {
       where: {
         isActive: true,
         startDate: {
-          lte: endDate,
+          lte: endDate
         },
         endDate: {
-          gte: startDate,
-        },
+          gte: startDate
+        }
       },
       take: 5,
       orderBy: {
@@ -37,15 +37,15 @@ export async function GET(request: NextRequest) {
 
     // Get orders that used promotions in the date range
     const promotionUsage = await Promise.all(
-      promotions.map(async (promotion) => {
+      promotions.map(async promotion => {
         // Count orders that might have used this promotion
-        // Since we don't have direct promotion tracking in orders, 
+        // Since we don't have direct promotion tracking in orders,
         // we'll simulate based on discount amounts and dates
         const ordersInRange = await prisma.order.findMany({
           where: {
-            createDate: {
+            createdAt: {
               gte: startDate,
-              lte: endDate,
+              lte: endDate
             },
             discountAmount: {
               gt: 0
@@ -102,15 +102,11 @@ export async function GET(request: NextRequest) {
       period: {
         days,
         startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      },
+        endDate: endDate.toISOString()
+      }
     });
-
   } catch (error) {
     console.error('Promotion analytics error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

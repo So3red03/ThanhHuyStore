@@ -58,7 +58,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           deliveryStatus: deliveryStatus !== undefined ? { old: oldOrder.deliveryStatus, new: deliveryStatus } : null
         },
         paymentMethod: order.paymentMethod,
-        orderDate: order.createDate
+        orderDate: order.createdAt
       },
       resourceId: order.id,
       resourceType: 'Order',

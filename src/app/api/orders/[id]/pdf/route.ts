@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       pdfBuffer = await pdfGenerator.generateOrderInvoice({
         id: order.id,
         amount: order.amount,
-        createDate: order.createDate,
+        createDate: order.createdAt,
         paymentIntentId: order.paymentIntentId,
         phoneNumber: order.phoneNumber || undefined,
         address: order.address

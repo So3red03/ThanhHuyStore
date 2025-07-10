@@ -157,7 +157,7 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
                     </div>
                   </div>
 
-                  <p className='text-sm text-gray-500'>{formatDate(order.createDate)}</p>
+                  <p className='text-sm text-gray-500'>{formatDate(order.createdAt)}</p>
                   <div className='text-sm text-gray-600 flex items-center gap-2'>
                     Tình trạng đặt hàng:{' '}
                     <span className='font-medium'>

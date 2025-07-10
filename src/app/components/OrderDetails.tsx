@@ -10,7 +10,7 @@ import Button from './Button';
 import { useState } from 'react';
 import CancelOrderDialog from './CancelOrderDialog';
 import ReturnRequestForm from './returns/ReturnRequestForm';
-import ShippingTracker from './shipping/ShippingTracker';
+
 import { formatDate } from '../(home)/account/orders/OrdersClient';
 
 interface OrderDetailsProps {
@@ -87,7 +87,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
     // Chỉ cho phép đổi/trả đơn hàng đã hoàn thành và trong vòng 7 ngày
     if (order.status !== 'completed') return false;
 
-    const daysSinceOrder = Math.floor((Date.now() - new Date(order.createDate).getTime()) / (1000 * 60 * 60 * 24));
+    const daysSinceOrder = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60 * 24));
 
     return daysSinceOrder <= 7;
   };
@@ -146,7 +146,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
         <div className='grid grid-cols-4 gap-4 border-b pb-4 mb-8'>
           <div className='border-r border-gray-300'>
             <h2 className='font-semibold'>Đơn hàng đã đặt</h2>
-            <p>{formatDate(order.createDate)}</p>
+            <p>{formatDate(order.createdAt)}</p>
           </div>
           <div className='border-r border-gray-300'>
             <h2 className='font-semibold'>Tình trạng đặt hàng</h2>
@@ -225,12 +225,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
           <p className='text-gray-700'>Địa chỉ: {`${order.address?.line1 || ''} ${order.address?.city || ''}`}</p>
         </div>
 
-        {/* Shipping Tracker */}
-        {(order as any).shippingCode && (
-          <div className='mt-8'>
-            <ShippingTracker orderCode={(order as any).shippingCode} orderId={order.id} showOrderInfo={false} />
-          </div>
-        )}
+        {/* Shipping functionality removed */}
       </div>
 
       {/* Cancel Order Dialog */}

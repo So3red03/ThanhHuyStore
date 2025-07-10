@@ -209,8 +209,14 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         const product = params.row;
         let imageSrc = '/noavatar.png'; // Default fallback
 
-        // Handle Simple products
-        if (product.productType === 'SIMPLE' && product.images && product.images.length > 0) {
+        // NEW STRUCTURE: Check thumbnail first, then galleryImages
+        if (product.thumbnail) {
+          imageSrc = product.thumbnail;
+        } else if (product.galleryImages && product.galleryImages.length > 0) {
+          imageSrc = product.galleryImages[0];
+        }
+        // Handle Simple products (OLD STRUCTURE - for backward compatibility)
+        else if (product.productType === 'SIMPLE' && product.images && product.images.length > 0) {
           // Simple products: images structure is [{ images: ['url1', 'url2'] }]
           if (product.images[0] && product.images[0].images && product.images[0].images.length > 0) {
             imageSrc = product.images[0].images[0];
@@ -218,34 +224,48 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         }
         // Handle Variant products - get image from first variant
         else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
-          // Try to find a variant with images
-          const variantWithImage = product.variants.find((variant: any) => {
-            return variant.images && Array.isArray(variant.images) && variant.images.length > 0;
-          });
-
-          if (variantWithImage && variantWithImage.images.length > 0) {
-            // Check if images is array of strings (old format) or array of objects (new format)
-            if (typeof variantWithImage.images[0] === 'string') {
-              // Old format: images is array of URLs
-              imageSrc = variantWithImage.images[0];
+          // NEW STRUCTURE: Check variant thumbnail first
+          const variantWithThumbnail = product.variants.find((variant: any) => variant.thumbnail);
+          if (variantWithThumbnail) {
+            imageSrc = variantWithThumbnail.thumbnail;
+          } else {
+            // Check variant galleryImages
+            const variantWithGallery = product.variants.find(
+              (variant: any) => variant.galleryImages && variant.galleryImages.length > 0
+            );
+            if (variantWithGallery) {
+              imageSrc = variantWithGallery.galleryImages[0];
             } else {
-              // New format: images is array of objects - GET FIRST IMAGE FROM ANY OBJECT
-              for (const imageObj of variantWithImage.images) {
-                if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
-                  imageSrc = imageObj.images[0];
-                  break;
+              // OLD STRUCTURE: Try to find a variant with images (backward compatibility)
+              const variantWithImage = product.variants.find((variant: any) => {
+                return variant.images && Array.isArray(variant.images) && variant.images.length > 0;
+              });
+
+              if (variantWithImage && variantWithImage.images.length > 0) {
+                // Check if images is array of strings (old format) or array of objects (new format)
+                if (typeof variantWithImage.images[0] === 'string') {
+                  // Old format: images is array of URLs
+                  imageSrc = variantWithImage.images[0];
+                } else {
+                  // New format: images is array of objects - GET FIRST IMAGE FROM ANY OBJECT
+                  for (const imageObj of variantWithImage.images) {
+                    if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
+                      imageSrc = imageObj.images[0];
+                      break;
+                    }
+                  }
                 }
               }
+              // Fallback: check main product images for variant products (OLD STRUCTURE)
+              else if (
+                product.images &&
+                product.images.length > 0 &&
+                product.images[0].images &&
+                product.images[0].images.length > 0
+              ) {
+                imageSrc = product.images[0].images[0];
+              }
             }
-          }
-          // Fallback: check main product images for variant products
-          else if (
-            product.images &&
-            product.images.length > 0 &&
-            product.images[0].images &&
-            product.images[0].images.length > 0
-          ) {
-            imageSrc = product.images[0].images[0];
           }
         }
 

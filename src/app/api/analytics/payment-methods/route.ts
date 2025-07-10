@@ -5,7 +5,7 @@ import prisma from '@/app/libs/prismadb';
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
-    
+
     if (!currentUser || currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -22,20 +22,20 @@ export async function GET(request: NextRequest) {
     const paymentStats = await prisma.order.groupBy({
       by: ['paymentMethod'],
       where: {
-        createDate: {
+        createdAt: {
           gte: startDate,
-          lte: endDate,
+          lte: endDate
         },
         status: {
           in: ['confirmed', 'completed']
         }
       },
       _count: {
-        id: true,
+        id: true
       },
       _sum: {
-        amount: true,
-      },
+        amount: true
+      }
     });
 
     // Format data for chart
@@ -43,10 +43,14 @@ export async function GET(request: NextRequest) {
       method: stat.paymentMethod,
       count: stat._count.id,
       amount: stat._sum.amount || 0,
-      label: stat.paymentMethod === 'cod' ? 'COD' : 
-             stat.paymentMethod === 'stripe' ? 'Stripe' :
-             stat.paymentMethod === 'momo' ? 'MoMo' : 
-             stat.paymentMethod || 'Khác'
+      label:
+        stat.paymentMethod === 'cod'
+          ? 'COD'
+          : stat.paymentMethod === 'stripe'
+          ? 'Stripe'
+          : stat.paymentMethod === 'momo'
+          ? 'MoMo'
+          : stat.paymentMethod || 'Khác'
     }));
 
     // Calculate totals
@@ -69,15 +73,11 @@ export async function GET(request: NextRequest) {
       period: {
         days,
         startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      },
+        endDate: endDate.toISOString()
+      }
     });
-
   } catch (error) {
     console.error('Payment method analytics error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

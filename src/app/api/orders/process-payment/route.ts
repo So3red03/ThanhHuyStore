@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         const pdfBuffer = await pdfGenerator.generateOrderInvoice({
           id: order.id,
           amount: order.amount,
-          createDate: order.createDate,
+          createDate: order.createdAt,
           paymentIntentId: order.paymentIntentId,
           phoneNumber: order.phoneNumber || undefined,
           address: order.address

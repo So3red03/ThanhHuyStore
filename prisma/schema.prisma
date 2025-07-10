@@ -60,7 +60,6 @@ model User {
   // activities removed - migrated to AuditLog
   userVouchers    UserVoucher[]
   analyticsEvents AnalyticsEvent[]
-  returnRequests  ReturnRequest[]
 
   chatRoomIds     String[]          @db.ObjectId
   chatRoom        ChatRoom[]        @relation(fields: [chatRoomIds], references: [id])
@@ -77,7 +76,6 @@ model Order {
   currency        String
   status          OrderStatus       @default(pending)
   deliveryStatus  DeliveryStatus?
-  createDate      DateTime          @default(now())
   paymentIntentId String            @unique
   phoneNumber     String?
   address         Address?
@@ -94,15 +92,13 @@ model Order {
   cancelReason    String?
   cancelDate      DateTime?
 
-  // Shipping information
-  shippingCode    String?           // Mã vận đơn GHN
-  shippingStatus  String?           // Trạng thái vận chuyển
-  shippingData    Json?             // Dữ liệu từ GHN
+  // Timestamps
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   voucher         Voucher?          @relation(fields: [voucherId], references: [id])
   products        CartProductType[]
-  returnRequests  ReturnRequest[]
 }
 
 type CartProductType {
@@ -146,7 +142,6 @@ model Product {
   category         Category    @relation(fields: [categoryId], references: [id], onDelete: NoAction)
   inStock          Int?        // For simple products
   priority         Int         @default(0) // 0: normal, 1-10: priority levels
-  createDate       DateTime?   @default(now())
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
@@ -334,18 +329,7 @@ enum DeliveryStatus {
   returned
 }
 
-enum ReturnType {
-  EXCHANGE  // Đổi hàng
-  RETURN    // Trả hàng
-  REFUND    // Hoàn tiền
-}
 
-enum ReturnStatus {
-  PENDING     // Chờ xử lý
-  APPROVED    // Đã duyệt
-  REJECTED    // Từ chối
-  COMPLETED   // Hoàn tất
-}
 
 enum DiscountType {
   PERCENTAGE
@@ -402,32 +386,6 @@ model UserVoucher {
   @@unique([userId, voucherId])
 }
 
-model ReturnRequest {
-  id              String       @id @default(auto()) @map("_id") @db.ObjectId
-  orderId         String       @db.ObjectId
-  userId          String       @db.ObjectId
-  type            ReturnType
-  reason          String
-  description     String?
-  images          String[]     // Ảnh bằng chứng
-  status          ReturnStatus @default(PENDING)
-  adminNote       String?
-  processedBy     String?      @db.ObjectId
-
-  // Shipping info for return
-  returnShippingCode String?    // Mã vận đơn trả hàng
-  returnShippingFee  Float?     // Phí ship trả hàng
-
-  createdAt       DateTime     @default(now())
-  processedAt     DateTime?
-
-  order           Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([orderId])
-  @@index([userId])
-  @@index([status])
-}
 
 model Promotion {
   id              String       @id @default(auto()) @map("_id") @db.ObjectId

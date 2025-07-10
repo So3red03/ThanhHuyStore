@@ -37,7 +37,7 @@ export async function getAllProducts() {
         }
       },
       orderBy: {
-        createDate: 'desc'
+        createdAt: 'desc'
       }
     });
     return products;

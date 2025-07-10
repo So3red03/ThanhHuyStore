@@ -19,10 +19,10 @@ export async function GET() {
       select: {
         id: true,
         products: true,
-        createDate: true
+        createdAt: true
       },
       orderBy: {
-        createDate: 'desc'
+        createdAt: 'desc'
       },
       take: 20 // Lấy 20 đơn hàng gần nhất
     });
@@ -30,7 +30,7 @@ export async function GET() {
     // Trích xuất thông tin sản phẩm và danh mục
     const purchaseHistory = orders.map(order => ({
       orderId: order.id,
-      orderDate: order.createDate,
+      orderDate: order.createdAt,
       products: order.products.map((product: any) => ({
         id: product.id,
         name: product.name,
@@ -43,9 +43,6 @@ export async function GET() {
     return NextResponse.json(purchaseHistory);
   } catch (error) {
     console.error('Error fetching purchase history:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

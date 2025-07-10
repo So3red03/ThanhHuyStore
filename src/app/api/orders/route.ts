@@ -12,19 +12,16 @@ export async function GET() {
 
     const orders = await prisma.order.findMany({
       include: {
-        user: true,
+        user: true
       },
       orderBy: {
-        createDate: 'desc',
-      },
+        createdAt: 'desc'
+      }
     });
 
     return NextResponse.json(orders);
   } catch (error) {
     console.error('Error fetching orders:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

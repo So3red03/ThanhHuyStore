@@ -30,7 +30,7 @@ export class DiscordReportService {
       // Tổng số đơn hàng
       const totalOrders = await prisma.order.count({
         where: {
-          createDate: {
+          createdAt: {
             gte: startTime
           }
         }
@@ -39,7 +39,7 @@ export class DiscordReportService {
       // Tổng doanh thu
       const revenueResult = await prisma.order.aggregate({
         where: {
-          createDate: {
+          createdAt: {
             gte: startTime
           },
           status: {
@@ -54,7 +54,7 @@ export class DiscordReportService {
       // Đơn hàng thành công
       const successfulOrders = await prisma.order.count({
         where: {
-          createDate: {
+          createdAt: {
             gte: startTime
           },
           status: 'completed'
@@ -64,7 +64,7 @@ export class DiscordReportService {
       // Đơn hàng bị hủy
       const cancelledOrders = await prisma.order.count({
         where: {
-          createDate: {
+          createdAt: {
             gte: startTime
           },
           status: 'canceled'
@@ -74,7 +74,7 @@ export class DiscordReportService {
       // Đơn hàng đang chờ
       const pendingOrders = await prisma.order.count({
         where: {
-          createDate: {
+          createdAt: {
             gte: startTime
           },
           status: 'pending'
@@ -116,7 +116,7 @@ export class DiscordReportService {
       // Voucher được sử dụng
       const vouchersUsed = await prisma.order.count({
         where: {
-          createDate: {
+          createdAt: {
             gte: startTime
           },
           discountAmount: {
@@ -132,7 +132,7 @@ export class DiscordReportService {
         { name: 'Sản phẩm C', views: 100 }
       ];
 
-      const totalRevenue = revenueResult._sum.amount || 0;
+      const totalRevenue = revenueResult._sum?.amount || 0;
       const conversionRate = totalOrders > 0 ? (successfulOrders / totalOrders) * 100 : 0;
 
       return {

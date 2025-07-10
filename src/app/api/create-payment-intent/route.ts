@@ -227,7 +227,7 @@ const checkRateLimit = async (userId: string) => {
   const recentOrders = await prisma.order.count({
     where: {
       userId: userId,
-      createDate: {
+      createdAt: {
         gte: oneHourAgo
       }
     }

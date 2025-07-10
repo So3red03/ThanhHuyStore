@@ -57,14 +57,14 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products }) =
   // Lọc sản phẩm mới (trong 30 ngày gần đây)
   const recentProducts = products
     ?.filter(product => {
-      const productDate = new Date(product.createDate || product.createdAt || Date.now());
+      const productDate = new Date(product.createdAt || Date.now());
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       return productDate >= thirtyDaysAgo;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.createDate || a.createdAt || Date.now());
-      const dateB = new Date(b.createDate || b.createdAt || Date.now());
+      const dateA = new Date(a.createdAt || Date.now());
+      const dateB = new Date(b.createdAt || Date.now());
       return dateB.getTime() - dateA.getTime();
     });
 
@@ -116,7 +116,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products }) =
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                   <Typography sx={{ fontWeight: 500 }}>{product.name}</Typography>
                   <Chip
-                    label={new Date(product.createDate || product.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                    label={new Date(product.createdAt || Date.now()).toLocaleDateString('vi-VN')}
                     size='small'
                     color='primary'
                     variant='outlined'

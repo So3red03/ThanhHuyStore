@@ -12,6 +12,9 @@ interface ThumbnailGalleryUploadProps {
   onThumbnailChange: (file: File | null) => void;
   onGalleryChange: (files: File[]) => void;
   disabled?: boolean;
+  // For edit mode - existing images from server
+  existingThumbnail?: string | null;
+  existingGalleryImages?: string[];
 }
 
 const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
@@ -19,7 +22,9 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
   galleryImages,
   onThumbnailChange,
   onGalleryChange,
-  disabled = false
+  disabled = false,
+  existingThumbnail = null,
+  existingGalleryImages = []
 }) => {
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
@@ -28,6 +33,16 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
   const [errors, setErrors] = useState<string[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Debug existing images
+  useEffect(() => {
+    console.log('🖼️ ThumbnailGalleryUpload Debug:', {
+      existingThumbnail,
+      existingGalleryImages,
+      thumbnail,
+      galleryImages: galleryImages.length
+    });
+  }, [existingThumbnail, existingGalleryImages, thumbnail, galleryImages]);
 
   // File validation
   const validateFile = (file: File): string | null => {
@@ -251,7 +266,7 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
           <span className='ml-auto px-2 py-1 bg-red-100 text-red-600 text-xs font-medium rounded-full'>Bắt buộc</span>
         </div>
 
-        {thumbnail || thumbnailPreview ? (
+        {thumbnail || thumbnailPreview || existingThumbnail ? (
           <div className='relative group'>
             <div className='relative w-40 h-40 border-2 border-gray-200 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300'>
               {isUploading && (
@@ -260,7 +275,7 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
                 </div>
               )}
               <Image
-                src={thumbnailPreview || (thumbnail ? URL.createObjectURL(thumbnail) : '')}
+                src={thumbnailPreview || (thumbnail ? URL.createObjectURL(thumbnail) : '') || existingThumbnail || ''}
                 alt='Thumbnail preview'
                 fill
                 className='object-cover group-hover:scale-105 transition-transform duration-300'
@@ -325,16 +340,42 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
             <label className='block text-lg font-semibold text-gray-900'>Thư viện ảnh</label>
             <p className='text-sm text-gray-500'>Thêm nhiều ảnh để khách hàng xem chi tiết sản phẩm</p>
           </div>
-          {galleryImages.length > 0 && (
+          {(galleryImages.length > 0 || existingGalleryImages.length > 0) && (
             <span className='px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full'>
-              {galleryImages.length} ảnh
+              {galleryImages.length + existingGalleryImages.length} ảnh
             </span>
           )}
         </div>
 
         {/* Gallery Images Grid with Drag & Drop Reordering */}
-        {galleryImages.length > 0 && (
+        {(galleryImages.length > 0 || existingGalleryImages.length > 0) && (
           <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6'>
+            {/* Existing Gallery Images */}
+            {existingGalleryImages.map((imageUrl, index) => (
+              <div key={`existing-${index}`} className='relative group transition-all duration-300 hover:scale-105'>
+                <div className='relative w-full aspect-square border-2 border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300'>
+                  <Image
+                    src={imageUrl}
+                    alt={`Existing Gallery ${index + 1}`}
+                    fill
+                    className='object-cover group-hover:scale-110 transition-transform duration-300'
+                  />
+                  <div className='absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
+
+                  {/* Existing Image Label */}
+                  <div className='absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
+                    Hiện tại
+                  </div>
+
+                  {/* Image Index */}
+                  <div className='absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
+                    {index + 1}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* New Gallery Images */}
             {galleryImages.map((file, index) => (
               <div
                 key={index}
@@ -373,7 +414,7 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
 
                   {/* Image Index */}
                   <div className='absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
-                    {index + 1}
+                    {existingGalleryImages.length + index + 1}
                   </div>
                 </div>
               </div>

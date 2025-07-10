@@ -70,7 +70,7 @@ export async function POST(request: Request) {
         cancelledBy: 'ADMIN',
         adminName: currentUser.name,
         paymentMethod: updatedOrder.paymentMethod,
-        orderDate: updatedOrder.createDate,
+        orderDate: updatedOrder.createdAt,
         cancelDate: updatedOrder.cancelDate,
         productsCount: updatedOrder.products?.length || 0
       },

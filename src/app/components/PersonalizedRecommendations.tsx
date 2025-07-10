@@ -93,8 +93,8 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         .filter(product => (product.inStock ?? 0) > 0) // Chỉ sản phẩm còn hàng
         .sort((a, b) => {
           // Ưu tiên sản phẩm mới
-          const dateA = new Date(a.createDate || a.createdAt);
-          const dateB = new Date(b.createDate || b.createdAt);
+          const dateA = new Date(a.createdAt);
+          const dateB = new Date(b.createdAt);
           return dateB.getTime() - dateA.getTime();
         })
         .slice(0, 8);

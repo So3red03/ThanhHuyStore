@@ -102,6 +102,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   // New image states
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
+  // Existing images for edit mode
+  const [existingThumbnail, setExistingThumbnail] = useState<string | null>(null);
+  const [existingGalleryImages, setExistingGalleryImages] = useState<string[]>([]);
   const [parentCategories, setParentCategories] = useState<any[]>(propParentCategories);
   const [subCategories, setSubCategories] = useState<any[]>(propSubCategories);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
@@ -204,10 +207,27 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       setSelectedSubCategoryId(initialData.categoryId || '');
       setValue('parentCategories', parentCategoryId);
 
-      // Set existing images for edit mode
+      // Set existing images for edit mode - handle both old and new structure
       if (initialData.images && initialData.images.length > 0) {
+        // Old structure compatibility
         setExistingImages(initialData.images);
-        // Clear new images state for edit mode
+        setImages([]);
+      } else {
+        // New structure: thumbnail + galleryImages
+        if (initialData.thumbnail) {
+          // Convert thumbnail URL to File-like object for preview
+          setThumbnail(null); // Will be handled by ThumbnailGalleryUpload component
+          setExistingThumbnail(initialData.thumbnail);
+        }
+
+        if (initialData.galleryImages && initialData.galleryImages.length > 0) {
+          // Convert gallery URLs to File-like objects for preview
+          setGalleryImages([]);
+          setExistingGalleryImages(initialData.galleryImages);
+        }
+
+        // Clear old images state
+        setExistingImages([]);
         setImages([]);
       }
 
@@ -667,6 +687,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                   onThumbnailChange={handleThumbnailChange}
                   onGalleryChange={handleGalleryChange}
                   disabled={isLoading || isUploading}
+                  existingThumbnail={existingThumbnail}
+                  existingGalleryImages={existingGalleryImages}
                 />
 
                 {/* Display existing images (for edit mode) */}
@@ -1275,7 +1297,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
             }}
           >
             {isUploading
-              ? `Đang tải ảnh... ${uploadProgress}%`
+              ? `Đang tải ảnh... ${Math.round(uploadProgress)}%`
               : isLoading
               ? mode === 'edit'
                 ? 'Đang cập nhật...'

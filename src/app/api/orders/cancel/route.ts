@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
         cancelReason: reason,
         cancelledBy: 'USER',
         paymentMethod: updatedOrder.paymentMethod,
-        orderDate: updatedOrder.createDate,
+        orderDate: updatedOrder.createdAt,
         cancelDate: updatedOrder.cancelDate,
         productsCount: updatedOrder.products?.length || 0
       },
