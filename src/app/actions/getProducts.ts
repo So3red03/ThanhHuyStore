@@ -24,20 +24,23 @@ export async function getProducts(params: IProductParams) {
     const products = await prisma.product.findMany({
       where: {
         ...query,
-        // Tìm kiếm theo tên hoặc mô tả
-        OR: [
-          {
-            name: {
-              contains: searchString,
-              // Tìm kiếm không phân biệt chữ hoa chữ thường
-              mode: 'insensitive'
+        // Chỉ áp dụng tìm kiếm khi có searchString
+        ...(searchString && {
+          OR: [
+            {
+              name: {
+                contains: searchString,
+                mode: 'insensitive'
+              }
             },
-            description: {
-              contains: searchString,
-              mode: 'insensitive'
+            {
+              description: {
+                contains: searchString,
+                mode: 'insensitive'
+              }
             }
-          }
-        ]
+          ]
+        })
       },
       include: {
         reviews: {

@@ -184,6 +184,25 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   // Initialize form with initialData
   useEffect(() => {
     if (initialData && mode === 'edit') {
+      console.log('🔍 AddProductModalNew - initialData:', {
+        id: initialData.id,
+        name: initialData.name,
+        thumbnail: initialData.thumbnail,
+        galleryImages: initialData.galleryImages,
+        images: initialData.images,
+        productType: initialData.productType
+      });
+
+      // Reset all states first
+      setUploadProgress(0);
+      setIsUploading(false);
+      setThumbnail(null);
+      setGalleryImages([]);
+      setExistingThumbnail(null);
+      setExistingGalleryImages([]);
+      setExistingImages([]);
+      setImages([]);
+
       // Set form values
       setValue('name', initialData.name);
       setValue('description', initialData.description);
@@ -207,28 +226,24 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       setSelectedSubCategoryId(initialData.categoryId || '');
       setValue('parentCategories', parentCategoryId);
 
-      // Set existing images for edit mode - handle both old and new structure
-      if (initialData.images && initialData.images.length > 0) {
-        // Old structure compatibility
-        setExistingImages(initialData.images);
-        setImages([]);
-      } else {
-        // New structure: thumbnail + galleryImages
+      // Set existing images for edit mode - prioritize new structure
+      // NEW STRUCTURE: thumbnail + galleryImages (preferred)
+      if (initialData.thumbnail || (initialData.galleryImages && initialData.galleryImages.length > 0)) {
+        console.log('📸 Using NEW structure (thumbnail + galleryImages)');
         if (initialData.thumbnail) {
-          // Convert thumbnail URL to File-like object for preview
-          setThumbnail(null); // Will be handled by ThumbnailGalleryUpload component
           setExistingThumbnail(initialData.thumbnail);
+          console.log('✅ Set existingThumbnail:', initialData.thumbnail);
         }
 
         if (initialData.galleryImages && initialData.galleryImages.length > 0) {
-          // Convert gallery URLs to File-like objects for preview
-          setGalleryImages([]);
           setExistingGalleryImages(initialData.galleryImages);
+          console.log('✅ Set existingGalleryImages:', initialData.galleryImages.length, 'images');
         }
-
-        // Clear old images state
-        setExistingImages([]);
-        setImages([]);
+      }
+      // OLD STRUCTURE: images (fallback for backward compatibility)
+      else if (initialData.images && initialData.images.length > 0) {
+        console.log('📸 Using OLD structure (images) as fallback');
+        setExistingImages(initialData.images);
       }
 
       // Load variants and attributes for variant products
@@ -320,16 +335,23 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
       // Handle image uploads
       if (mode === 'edit') {
-        // For edit mode, upload new images if provided, otherwise keep existing
+        // For edit mode, handle both new uploads and existing images
+        let finalThumbnail = existingThumbnail; // Start with existing
+        let finalGalleryImages = [...existingGalleryImages]; // Start with existing
+
+        // Upload new images if provided
         if (thumbnail || galleryImages.length > 0) {
           const uploadedImages = await uploadImagesToFirebase(data.name);
-          submitData.thumbnail = uploadedImages.thumbnail;
-          submitData.galleryImages = uploadedImages.galleryImages;
-        } else {
-          // Keep existing images
-          submitData.thumbnail = initialData?.thumbnail || null;
-          submitData.galleryImages = initialData?.galleryImages || [];
+          if (uploadedImages.thumbnail) {
+            finalThumbnail = uploadedImages.thumbnail;
+          }
+          if (uploadedImages.galleryImages.length > 0) {
+            finalGalleryImages = [...finalGalleryImages, ...uploadedImages.galleryImages];
+          }
         }
+
+        submitData.thumbnail = finalThumbnail;
+        submitData.galleryImages = finalGalleryImages;
       } else {
         // For add mode, upload new images
         if (thumbnail || galleryImages.length > 0) {
@@ -496,16 +518,16 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         thumbnailUrl = await uploadSimpleProductThumbnail(
           thumbnail,
           productName,
-          progress => setUploadProgress(progress.progress * 0.3) // 30% for thumbnail
+          progress => setUploadProgress(Math.min(progress.progress * 0.3, 30)) // 30% for thumbnail, max 30
         );
       }
 
       // Upload gallery images if exist
       if (galleryImages.length > 0) {
-        galleryUrls = await uploadSimpleProductGallery(galleryImages, productName, (fileIndex, progress) => {
+        galleryUrls = await uploadSimpleProductGallery(galleryImages, productName, (_, progress) => {
           const baseProgress = thumbnailUrl ? 30 : 0;
           const galleryProgress = (progress.progress / galleryImages.length) * (100 - baseProgress);
-          setUploadProgress(baseProgress + galleryProgress);
+          setUploadProgress(Math.min(baseProgress + galleryProgress, 100)); // Ensure max 100%
         });
       }
 
@@ -539,7 +561,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         if (variation.thumbnail instanceof File) {
           thumbnailUrl = await uploadVariantProductThumbnail(variation.thumbnail, productName, variantId, progress => {
             const overallProgress = (i / variations.length + progress.progress / 100 / variations.length) * 100;
-            setUploadProgress(Math.round(overallProgress));
+            setUploadProgress(Math.min(Math.round(overallProgress), 100)); // Ensure max 100%
           });
         }
 
@@ -547,16 +569,11 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         if (variation.galleryImages && Array.isArray(variation.galleryImages) && variation.galleryImages.length > 0) {
           const fileImages = variation.galleryImages.filter((img: any) => img instanceof File);
           if (fileImages.length > 0) {
-            galleryUrls = await uploadVariantProductGallery(
-              fileImages,
-              productName,
-              variantId,
-              (fileIndex, progress) => {
-                const baseProgress = (i / variations.length) * 100;
-                const galleryProgress = (progress.progress / 100 / variations.length) * 0.7;
-                setUploadProgress(Math.round(baseProgress + galleryProgress));
-              }
-            );
+            galleryUrls = await uploadVariantProductGallery(fileImages, productName, variantId, (_, progress) => {
+              const baseProgress = (i / variations.length) * 100;
+              const galleryProgress = (progress.progress / 100 / variations.length) * 0.7;
+              setUploadProgress(Math.min(Math.round(baseProgress + galleryProgress), 100)); // Ensure max 100%
+            });
           }
         }
 
@@ -590,10 +607,23 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setGalleryImages(files);
   }, []);
 
+  // Handlers for existing image removal
+  const handleExistingThumbnailRemove = useCallback(() => {
+    setExistingThumbnail(null);
+  }, []);
+
+  const handleExistingGalleryImageRemove = useCallback((index: number) => {
+    setExistingGalleryImages(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
   const handleClose = async () => {
     reset();
     setThumbnail(null);
     setGalleryImages([]);
+    setExistingThumbnail(null);
+    setExistingGalleryImages([]);
+    setExistingImages([]);
+    setImages([]);
     setVariations([]);
     setAttributes([]);
     setSelectedParentId('');
@@ -601,8 +631,27 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setUploadProgress(0);
     setIsUploading(false);
     setProductType(ProductType.SIMPLE);
+    setText('');
+    setTabValue(0);
     onClose();
   };
+
+  // Reset component when modal opens/closes or mode changes
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset all states when modal closes
+      setUploadProgress(0);
+      setIsUploading(false);
+      setThumbnail(null);
+      setGalleryImages([]);
+      setExistingThumbnail(null);
+      setExistingGalleryImages([]);
+      setExistingImages([]);
+      setImages([]);
+      setText('');
+      setTabValue(0);
+    }
+  }, [isOpen]);
 
   return (
     <Dialog
@@ -689,6 +738,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                   disabled={isLoading || isUploading}
                   existingThumbnail={existingThumbnail}
                   existingGalleryImages={existingGalleryImages}
+                  onExistingThumbnailRemove={handleExistingThumbnailRemove}
+                  onExistingGalleryImageRemove={handleExistingGalleryImageRemove}
                 />
 
                 {/* Display existing images (for edit mode) */}

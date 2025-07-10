@@ -15,6 +15,9 @@ interface ThumbnailGalleryUploadProps {
   // For edit mode - existing images from server
   existingThumbnail?: string | null;
   existingGalleryImages?: string[];
+  // Callbacks to handle existing image removal
+  onExistingThumbnailRemove?: () => void;
+  onExistingGalleryImageRemove?: (index: number) => void;
 }
 
 const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
@@ -24,7 +27,9 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
   onGalleryChange,
   disabled = false,
   existingThumbnail = null,
-  existingGalleryImages = []
+  existingGalleryImages = [],
+  onExistingThumbnailRemove,
+  onExistingGalleryImageRemove
 }) => {
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
@@ -34,14 +39,31 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Debug existing images
+  // Reset component state when existing images change (for edit mode)
   useEffect(() => {
     console.log('🖼️ ThumbnailGalleryUpload Debug:', {
       existingThumbnail,
       existingGalleryImages,
       thumbnail,
-      galleryImages: galleryImages.length
+      galleryImages: galleryImages.length,
+      'existingThumbnail type': typeof existingThumbnail,
+      'existingGalleryImages type': typeof existingGalleryImages,
+      'existingGalleryImages length': existingGalleryImages?.length
     });
+
+    // Reset upload progress when switching between products
+    setUploadProgress(0);
+    setIsUploading(false);
+    setErrors([]);
+
+    // Clear previews when new existing images are loaded
+    if (existingThumbnail && !thumbnail) {
+      setThumbnailPreview(null);
+    }
+
+    if (existingGalleryImages.length > 0 && galleryImages.length === 0) {
+      setGalleryPreviews([]);
+    }
   }, [existingThumbnail, existingGalleryImages, thumbnail, galleryImages]);
 
   // File validation
@@ -134,11 +156,17 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
         const reader = new FileReader();
         reader.onload = () => {
           setGalleryPreviews(prev => [...prev, reader.result as string]);
-          // Simulate upload progress
-          setUploadProgress(((index + 1) / validFiles.length) * 100);
+          // Simulate upload progress - reset to 0 first, then calculate
+          const progress = ((index + 1) / validFiles.length) * 100;
+          setUploadProgress(Math.min(progress, 100)); // Ensure it doesn't exceed 100%
         };
         reader.readAsDataURL(file);
       });
+
+      // Reset progress after a short delay
+      setTimeout(() => {
+        setUploadProgress(0);
+      }, 2000);
     },
     [galleryImages, onGalleryChange]
   );
@@ -172,6 +200,10 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
   const removeThumbnail = () => {
     onThumbnailChange(null);
     setThumbnailPreview(null);
+    // Also clear existing thumbnail if in edit mode
+    if (existingThumbnail && onExistingThumbnailRemove) {
+      onExistingThumbnailRemove();
+    }
   };
 
   const removeGalleryImage = (index: number) => {
@@ -366,6 +398,19 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
                   <div className='absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
                     Hiện tại
                   </div>
+
+                  {/* Remove Button for Existing Images */}
+                  {onExistingGalleryImageRemove && (
+                    <button
+                      type='button'
+                      onClick={() => onExistingGalleryImageRemove(index)}
+                      className='absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transform hover:scale-110 transition-all duration-200 shadow-lg opacity-0 group-hover:opacity-100'
+                      disabled={disabled}
+                      aria-label={`Xóa ảnh hiện tại ${index + 1}`}
+                    >
+                      <MdClose size={14} />
+                    </button>
+                  )}
 
                   {/* Image Index */}
                   <div className='absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300'>

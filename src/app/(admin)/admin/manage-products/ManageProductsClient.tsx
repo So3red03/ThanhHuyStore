@@ -44,7 +44,7 @@ import { slugConvert } from '../../../../../utils/Slug';
 import AddProductModalNew from './AddProductModalNew';
 
 interface ManageProductsClientProps {
-  products: any;
+  products: Product[];
   currentUser: SafeUser | null | undefined;
   subCategories: any;
   parentCategories: any;
@@ -129,6 +129,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   //     toast.error('Lỗi khi khôi phục sản phẩm');
   //   }
   // };
+  console.log(products);
 
   const onTextChange = (e: any) => {
     const newText = e.htmlValue;
@@ -136,7 +137,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     setCustomValue('description', newText); // Cập nhật giá trị description trong form
   };
 
-  const handleOpenModal = (product: any) => {
+  const handleOpenModal = async (product: Product) => {
     setEditingProduct(product);
     setEditProductModalOpen(true);
   };
@@ -176,7 +177,9 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
       return {
         id: product.id,
-        images: product.images,
+        images: product.images, // Keep for backward compatibility
+        thumbnail: product.thumbnail, // ✅ Add thumbnail
+        galleryImages: product.galleryImages, // ✅ Add galleryImages
         name: product.name,
         price: displayPrice,
         categoryId: product.categoryId,
@@ -207,65 +210,21 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       width: 80,
       renderCell: params => {
         const product = params.row;
+        console.log(product);
         let imageSrc = '/noavatar.png'; // Default fallback
 
-        // NEW STRUCTURE: Check thumbnail first, then galleryImages
+        // Đơn giản hóa logic: ưu tiên thumbnail, sau đó galleryImages[0]
         if (product.thumbnail) {
           imageSrc = product.thumbnail;
         } else if (product.galleryImages && product.galleryImages.length > 0) {
           imageSrc = product.galleryImages[0];
-        }
-        // Handle Simple products (OLD STRUCTURE - for backward compatibility)
-        else if (product.productType === 'SIMPLE' && product.images && product.images.length > 0) {
-          // Simple products: images structure is [{ images: ['url1', 'url2'] }]
-          if (product.images[0] && product.images[0].images && product.images[0].images.length > 0) {
-            imageSrc = product.images[0].images[0];
-          }
-        }
-        // Handle Variant products - get image from first variant
-        else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
-          // NEW STRUCTURE: Check variant thumbnail first
-          const variantWithThumbnail = product.variants.find((variant: any) => variant.thumbnail);
-          if (variantWithThumbnail) {
-            imageSrc = variantWithThumbnail.thumbnail;
-          } else {
-            // Check variant galleryImages
-            const variantWithGallery = product.variants.find(
-              (variant: any) => variant.galleryImages && variant.galleryImages.length > 0
-            );
-            if (variantWithGallery) {
-              imageSrc = variantWithGallery.galleryImages[0];
-            } else {
-              // OLD STRUCTURE: Try to find a variant with images (backward compatibility)
-              const variantWithImage = product.variants.find((variant: any) => {
-                return variant.images && Array.isArray(variant.images) && variant.images.length > 0;
-              });
-
-              if (variantWithImage && variantWithImage.images.length > 0) {
-                // Check if images is array of strings (old format) or array of objects (new format)
-                if (typeof variantWithImage.images[0] === 'string') {
-                  // Old format: images is array of URLs
-                  imageSrc = variantWithImage.images[0];
-                } else {
-                  // New format: images is array of objects - GET FIRST IMAGE FROM ANY OBJECT
-                  for (const imageObj of variantWithImage.images) {
-                    if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
-                      imageSrc = imageObj.images[0];
-                      break;
-                    }
-                  }
-                }
-              }
-              // Fallback: check main product images for variant products (OLD STRUCTURE)
-              else if (
-                product.images &&
-                product.images.length > 0 &&
-                product.images[0].images &&
-                product.images[0].images.length > 0
-              ) {
-                imageSrc = product.images[0].images[0];
-              }
-            }
+        } else if (product.variants && product.variants.length > 0) {
+          // Với variant products, lấy ảnh từ variant đầu tiên có ảnh
+          const firstVariantWithImage = product.variants.find(
+            (variant: any) => variant.thumbnail || (variant.galleryImages && variant.galleryImages.length > 0)
+          );
+          if (firstVariantWithImage) {
+            imageSrc = firstVariantWithImage.thumbnail || firstVariantWithImage.galleryImages[0];
           }
         }
 
@@ -277,7 +236,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
             height={50}
             style={{ objectFit: 'cover', borderRadius: '4px' }}
             onError={e => {
-              console.error('❌ Image load failed:', imageSrc);
               e.currentTarget.src = '/noavatar.png';
             }}
           />
@@ -482,66 +440,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       bgColor: 'bg-red-100'
     }
   ];
-  // const [images, setImages] = useState<ImageType[]>([]);
-  // const [isProductCreated, setIsProductCreated] = useState(false);
-  // useEffect(() => {
-  // 	if (isProductCreated) {
-  // 		reset();
-  // 		setImages([]);
-  // 		setText('');
-  // 		setIsProductCreated(false);
-  // 	}
-  // }, [isProductCreated, reset, toggleOpen]);
-
-  // useEffect(() => {
-  // 	setCustomValue('images', images);
-  // }, [images, setCustomValue]);
-
-  // const addImageToState = useCallback((value: ImageType) => {
-  // 	setImages((prev) => {
-  // 		if (!prev) return [value];
-
-  // 		// Kiểm tra xem màu sắc đã tồn tại trong mảng chưa
-  // 		const existingImageIndex = prev.findIndex((item) => item.color === value.color);
-  // 		if (existingImageIndex !== -1) {
-  // 			// Cập nhật hình ảnh cho màu sắc đã tồn tại
-  // 			const updatedImages = [...prev];
-  // 			updatedImages[existingImageIndex] = {
-  // 				...updatedImages[existingImageIndex],
-  // 				image: [...(updatedImages[existingImageIndex].image || []), ...(value.image || [])],
-  // 			};
-  // 			return updatedImages;
-  // 		} else {
-  // 			// Thêm phần tử mới nếu màu sắc chưa tồn tại
-  // 			return [...prev, value];
-  // 		}
-  // 	});
-  // }, []);
-
-  // const removeImageToState = useCallback((value: ImageType) => {
-  // 	setImages((prev) => {
-  // 		if (!prev) return [];
-
-  // 		const existingImageIndex = prev.findIndex((item) => item.color === value.color);
-  // 		if (existingImageIndex !== -1) {
-  // 			const updatedImages = [...prev];
-  // 			const remainingImages =
-  // 				updatedImages[existingImageIndex].image?.filter((image) => !value.image?.includes(image)) || [];
-
-  // 			// Nếu không còn hình ảnh nào cho màu sắc đó, xóa phần tử
-  // 			if (remainingImages.length === 0) {
-  // 				return updatedImages.filter((_, i) => i !== existingImageIndex);
-  // 			} else {
-  // 				updatedImages[existingImageIndex] = {
-  // 					...updatedImages[existingImageIndex],
-  // 					image: remainingImages,
-  // 				};
-  // 				return updatedImages;
-  // 			}
-  // 		}
-  // 		return prev;
-  // 	});
-  // }, []);
 
   return (
     <>
