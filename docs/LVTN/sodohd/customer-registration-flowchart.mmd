@@ -1,0 +1,32 @@
+%% Sơ đồ 1: Đăng ký khách hàng
+flowchart TD
+    A[Bắt đầu] --> B[Khách hàng chọn chức năng đăng ký]
+    B --> C[Hệ thống hiển thị form đăng ký]
+    C --> D[Khách hàng nhập thông tin đăng ký]
+    D --> E{Khách hàng có muốn tiếp tục?}
+    E -->|Có| F[Khách hàng nhấn nút Đăng ký]
+    E -->|Không| G[Hiển thị thông báo lỗi]
+    F --> H[Hệ thống kiểm tra thông tin đăng ký]
+    H --> I{Thông tin có hợp lệ?}
+    I -->|Có| J[Hệ thống tạo tài khoản khách hàng mới]
+    I -->|Không| G
+    J --> K[Lưu thông tin vào cơ sở dữ liệu]
+    K --> L[Hiển thị thông báo đăng ký thành công]
+    L --> M[Chuyển đến giao diện chờ quản trị viên xét duyệt]
+    M --> N[Kết thúc]
+    G --> O{Khách hàng có muốn thử lại?}
+    O -->|Không| P[Khách hàng thoát khỏi giao diện]
+    O -->|Có| D
+    P --> Q[Hệ thống quay về trang chủ]
+    Q --> R[Kết thúc]
+
+    %% Styling to match the original diagram colors
+    classDef startEnd fill:#90EE90,stroke:#333,stroke-width:2px,color:#000
+    classDef process fill:#E6E6FA,stroke:#333,stroke-width:2px,color:#000
+    classDef decision fill:#E6E6FA,stroke:#333,stroke-width:2px,color:#000
+    classDef error fill:#FFB6C1,stroke:#333,stroke-width:2px,color:#000
+
+    class A,N,R startEnd
+    class B,C,D,F,H,J,K,L,M,P,Q process
+    class E,I,O decision
+    class G error

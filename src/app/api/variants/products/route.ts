@@ -124,7 +124,8 @@ export async function POST(request: Request) {
           productType: 'VARIANT',
           basePrice: parseFloat(basePrice),
           categoryId,
-          images,
+          thumbnail: null,
+          galleryImages: [],
           inStock: null, // Variant products don't have direct stock
           price: null // Variant products don't have direct price
         }
@@ -187,7 +188,8 @@ export async function POST(request: Request) {
             attributes: variant.attributes,
             price: parseFloat(variant.price),
             stock: parseInt(variant.stock || '0'),
-            images: variant.images || []
+            thumbnail: variant.thumbnail || null,
+            galleryImages: variant.galleryImages || []
           }
         });
         createdVariants.push(createdVariant);

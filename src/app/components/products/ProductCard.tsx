@@ -22,113 +22,64 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
   // Check color hiện tại và img thay đổi theo color đc select
   const { trackProductInteraction } = useAnalyticsTracker();
 
-  // Enhanced image access for both Simple and Variant products
+  // Enhanced image access for both Simple and Variant products - using new structure
   const getDefaultImage = () => {
-    console.log('🎴 ProductCard getDefaultImage debug:', {
-      productId: data.id,
-      productName: data.name,
-      productType: data.productType,
-      variants: data.variants,
-      images: data.images
-    });
-
-    // For variant products, try to get images from first variant
-    if (data.productType === 'VARIANT' && data.variants && data.variants.length > 0) {
-      const firstVariant = data.variants[0];
-      console.log('🔍 First variant:', firstVariant);
-
-      if (firstVariant.images && firstVariant.images.length > 0) {
-        console.log('🔍 firstVariant.images type:', typeof firstVariant.images);
-        console.log('🔍 firstVariant.images isArray:', Array.isArray(firstVariant.images));
-        console.log('🔍 firstVariant.images[0] type:', typeof firstVariant.images[0]);
-        console.log('🔍 firstVariant.images[0]:', firstVariant.images[0]);
-
-        // Check if images is array of strings (old format) or array of objects (new format)
-        if (typeof firstVariant.images[0] === 'string') {
-          // Old format: images is array of URLs
-          console.log('📸 Using old format - array of URLs');
-          const result = {
-            color: firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc'] || 'default',
-            colorCode: getColorCode(firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc']),
-            images: firstVariant.images
-          };
-          console.log('✅ Using variant images (old format):', result);
-          return result;
-        } else {
-          // New format: images is array of objects [{color, colorCode, images: [urls]}, ...]
-          console.log('📸 Using new format - array of objects');
-          console.log('🔍 All image objects:', firstVariant.images);
-
-          // CRITICAL FIX: Merge all images from all objects into one array
-          const allImages: string[] = [];
-          firstVariant.images.forEach((imageObj: any, index: number) => {
-            console.log(`🖼️ Image object ${index}:`, imageObj);
-            if (imageObj && imageObj.images && Array.isArray(imageObj.images)) {
-              allImages.push(...imageObj.images);
-            }
-          });
-
-          console.log('🎯 Merged all images:', allImages);
-
-          if (allImages.length > 0) {
-            const result = {
-              color:
-                firstVariant.attributes?.color ||
-                firstVariant.attributes?.['màu-sắc'] ||
-                firstVariant.images[0]?.color ||
-                'default',
-              colorCode:
-                getColorCode(firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc']) ||
-                firstVariant.images[0]?.colorCode ||
-                '#6b7280',
-              images: allImages
-            };
-            console.log('✅ Using variant images (new format - merged):', result);
-            return result;
-          } else {
-            console.log('❌ No images found after merging');
-          }
-        }
-      } else {
-        console.log('❌ No images in first variant');
+    // Handle Simple products
+    if (data.productType === 'SIMPLE') {
+      // Use thumbnail first, then first gallery image as fallback
+      const imageUrl =
+        data.thumbnail || (data.galleryImages && data.galleryImages.length > 0 ? data.galleryImages[0] : null);
+      if (imageUrl) {
+        return {
+          images: [imageUrl],
+          displayLabel: 'Sản phẩm đơn'
+        };
       }
     }
+    // Handle Variant products - get image from first variant with images
+    else if (data.productType === 'VARIANT' && data.variants && data.variants.length > 0) {
+      // Try to find a variant with images
+      const variantWithImage = data.variants.find((variant: any) => {
+        return variant.thumbnail || (variant.galleryImages && variant.galleryImages.length > 0);
+      });
 
-    // For simple products or fallback
-    if (data.images && data.images.length > 0 && data.images[0].images && data.images[0].images.length > 0) {
-      return { ...data.images[0] };
+      if (variantWithImage) {
+        const imageUrl =
+          variantWithImage.thumbnail ||
+          (variantWithImage.galleryImages && variantWithImage.galleryImages.length > 0
+            ? variantWithImage.galleryImages[0]
+            : null);
+
+        if (imageUrl) {
+          return {
+            images: [imageUrl],
+            variantId: variantWithImage.id,
+            attributes: variantWithImage.attributes,
+            displayLabel: getVariantDisplayLabel(variantWithImage.attributes)
+          };
+        }
+      }
+      // Fallback: check main product images for variant products
+      else if (data.thumbnail || (data.galleryImages && data.galleryImages.length > 0)) {
+        const imageUrl = data.thumbnail || data.galleryImages[0];
+        return {
+          images: [imageUrl],
+          displayLabel: 'Sản phẩm biến thể'
+        };
+      }
     }
 
     // Final fallback
     return {
-      color: 'default',
-      colorCode: '#000000',
-      images: ['/noavatar.png']
+      images: ['/noavatar.png'],
+      displayLabel: 'Không có ảnh'
     };
   };
 
-  // Helper function to get color code from color name
-  const getColorCode = (colorName?: string): string => {
-    const colorMap: { [key: string]: string } = {
-      đỏ: '#ff0000',
-      red: '#ff0000',
-      xanh: '#0000ff',
-      blue: '#0000ff',
-      'xanh-lá': '#00ff00',
-      green: '#00ff00',
-      vàng: '#ffff00',
-      yellow: '#ffff00',
-      đen: '#000000',
-      black: '#000000',
-      trắng: '#ffffff',
-      white: '#ffffff',
-      xám: '#808080',
-      gray: '#808080',
-      hồng: '#ffc0cb',
-      pink: '#ffc0cb'
-    };
-
-    return colorMap[colorName?.toLowerCase() || ''] || '#000000';
+  // Helper function to create display label for variant
+  const getVariantDisplayLabel = (attributes: Record<string, string> = {}): string => {
+    const attributeValues = Object.values(attributes).filter(Boolean);
+    return attributeValues.length > 0 ? attributeValues.join(' - ') : 'Biến thể';
   };
 
   const [cartProduct, setCartProduct] = useState<CartProductType>({
@@ -136,7 +87,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     name: data.name,
     description: data.description,
     category: data.category,
-    selectedImg: getDefaultImage(),
+    selectedImg: getDefaultImage()?.images?.[0] || '/noavatar.png',
     quantity: 1,
     price: data.price,
     inStock: data.inStock
@@ -190,7 +141,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
 
   const handleColorSelect = useCallback((value: selectedImgType) => {
     setCartProduct(prev => {
-      return { ...prev, selectedImg: value };
+      return { ...prev, selectedImg: value.images?.[0] || '/noavatar.png' };
     });
   }, []);
 
@@ -242,7 +193,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
       >
         <div className='aspect-square overflow-hidden relative w-full'>
           <Image
-            src={cartProduct.selectedImg?.images?.[0] || '/noavatar.png'}
+            src={cartProduct.selectedImg || '/noavatar.png'}
             alt={data.name}
             fill
             sizes='100%'
@@ -279,9 +230,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
           )}
         </div>
       </Link>
-      <div className='py-4 px-14'>
-        <SetColor cartProduct={cartProduct} product={data} handleColorSelect={handleColorSelect} performance={true} />
-      </div>
+      {/* Only show SetColor for VARIANT products, not SIMPLE products */}
+      {data.productType === 'VARIANT' && (
+        <div className='py-4 px-14'>
+          <SetColor cartProduct={cartProduct} product={data} handleColorSelect={handleColorSelect} performance={true} />
+        </div>
+      )}
       {/* <div>
 		<Rating value={productRating} />
 	</div> */}

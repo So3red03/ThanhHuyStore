@@ -2,7 +2,41 @@ import prisma from '../libs/prismadb';
 
 export async function getProductsNoCondition() {
   try {
-    const products = await prisma.product.findMany();
+    const products = await prisma.product.findMany({
+      include: {
+        reviews: {
+          include: {
+            user: true
+          },
+          orderBy: {
+            createdDate: 'desc'
+          }
+        },
+        category: true,
+        productPromotions: {
+          where: {
+            isActive: true
+          },
+          include: {
+            promotion: true
+          }
+        },
+        // Include variants for variant products
+        variants: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' }
+        },
+        // Include product attributes for variant products
+        productAttributes: {
+          include: {
+            values: {
+              orderBy: { position: 'asc' }
+            }
+          },
+          orderBy: { position: 'asc' }
+        }
+      }
+    });
     // products.forEach(async (product) => {
     // 	if (product.inStock < 6) {
     // 		await prisma.notification.create({

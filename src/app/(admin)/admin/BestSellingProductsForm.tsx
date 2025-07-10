@@ -3,27 +3,23 @@ import { formatPrice } from '../../../../utils/formatPrice';
 import Image from 'next/image';
 
 interface BestsSellingProductFormProps {
-	item?: CartProductType;
+  item?: CartProductType;
 }
 
 const BestsSellingProductForm: React.FC<BestsSellingProductFormProps> = ({ item }) => {
-	if (!item) return;
-	return (
-		<>
-			<tr className="border-t">
-				<td className="py-2 flex gap-2 items-center">
-					<Image src={item.selectedImg.images[0]} alt={item.name} width={40} height={40} />
-					<span>{item?.name}</span>
-				</td>
-				<td className="py-2 px-3 ">{item?.inStock}</td>
-				{item ? (
-					<td className="py-2 ">{formatPrice(item.price || 0)}</td>
-				) : (
-					<td className="py-2 ">{formatPrice(0)}</td>
-				)}
-			</tr>
-		</>
-	);
+  if (!item) return;
+  return (
+    <>
+      <tr className='border-t'>
+        <td className='py-2 flex gap-2 items-center'>
+          <Image src={item.selectedImg || '/images/placeholder.jpg'} alt={item.name} width={40} height={40} />
+          <span>{item?.name}</span>
+        </td>
+        <td className='py-2 px-3 '>{item?.inStock}</td>
+        {item ? <td className='py-2 '>{formatPrice(item.price || 0)}</td> : <td className='py-2 '>{formatPrice(0)}</td>}
+      </tr>
+    </>
+  );
 };
 
 export default BestsSellingProductForm;

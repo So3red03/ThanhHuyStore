@@ -19,33 +19,27 @@ const SetColor: React.FC<SetColorProps> = ({ product, cartProduct, handleColorSe
     if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
       // For variant products, create options from variants
       return product.variants.map((variant: any) => {
-        // Extract images from variant.images structure: [{color, colorCode, images: [urls]}, ...]
+        // Extract images from variant.images structure - following ManageProductsClient logic
         let imageUrls = ['/noavatar.png'];
         let previewImage = '/noavatar.png';
 
         if (variant.images && variant.images.length > 0) {
-          console.log('🔍 SetColor variant.images:', variant.images);
-
           // Check if images is array of strings (old format) or array of objects (new format)
           if (typeof variant.images[0] === 'string') {
             // Old format: images is array of URLs
             imageUrls = variant.images;
             previewImage = variant.images[0];
-            console.log('📸 SetColor using old format');
           } else {
-            // New format: images is array of objects - MERGE ALL IMAGES
-            console.log('📸 SetColor using new format - merging images');
+            // New format: images is array of objects - COLLECT ALL IMAGES FROM ALL OBJECTS
             const allImages: string[] = [];
-            variant.images.forEach((imageObj: any) => {
-              if (imageObj && imageObj.images && Array.isArray(imageObj.images)) {
+            for (const imageObj of variant.images) {
+              if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
                 allImages.push(...imageObj.images);
               }
-            });
-
+            }
             if (allImages.length > 0) {
               imageUrls = allImages;
               previewImage = allImages[0];
-              console.log('✅ SetColor merged images:', allImages);
             }
           }
         }
@@ -67,19 +61,19 @@ const SetColor: React.FC<SetColorProps> = ({ product, cartProduct, handleColorSe
         }
 
         return {
-          color: colorName || 'default',
-          colorCode: '#000000', // Not used in new design
           images: imageUrls,
           displayLabel,
           previewImage,
-          variant
+          variant,
+          variantId: variant.id,
+          attributes: variant.attributes
         };
       });
     } else {
       // For simple products, use existing images array
-      return (product.images || []).map((image: any) => ({
-        ...image,
-        displayLabel: image.color || 'Tùy chọn',
+      return (product.images || []).map((image: any, index: number) => ({
+        images: image.images || [],
+        displayLabel: `Tùy chọn ${index + 1}`,
         previewImage: image.images?.[0] || '/noavatar.png',
         variant: null
       }));
@@ -119,32 +113,36 @@ const SetColor: React.FC<SetColorProps> = ({ product, cartProduct, handleColorSe
   const { capacityGroups, colorGroups } = groupedOptions();
 
   if (performance) {
-    // Simplified version for ProductCard
-    return (
-      <div className='flex gap-1 justify-center'>
-        {availableOptions.slice(0, 3).map((option: any, index: number) => (
-          <div
-            key={option.color + index}
-            onClick={e => {
-              e.stopPropagation();
-              handleColorSelect(option);
-            }}
-            className={`w-4 h-4 rounded border cursor-pointer ${
-              cartProduct.selectedImg.color === option.color ? 'border-red-500 border-2' : 'border-gray-300'
-            }`}
-          >
-            <img
-              src={option.previewImage}
-              alt={option.displayLabel}
-              className='w-full h-full object-cover rounded'
-              onError={e => {
-                e.currentTarget.src = '/noavatar.png';
+    // Simplified version for ProductCard - only show for variant products
+    if (product.productType === 'VARIANT' && availableOptions.length > 1) {
+      return (
+        <div className='flex gap-1 justify-center'>
+          {availableOptions.slice(0, 3).map((option: any, index: number) => (
+            <div
+              key={option.color + index}
+              onClick={e => {
+                e.stopPropagation();
+                handleColorSelect(option);
               }}
-            />
-          </div>
-        ))}
-      </div>
-    );
+              className={`w-4 h-4 rounded border cursor-pointer ${
+                cartProduct.selectedImg === option.previewImage ? 'border-red-500 border-2' : 'border-gray-300'
+              }`}
+            >
+              <img
+                src={option.previewImage}
+                alt={option.displayLabel}
+                className='w-full h-full object-cover rounded'
+                onError={e => {
+                  e.currentTarget.src = '/noavatar.png';
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      );
+    }
+    // For simple products, don't show any options
+    return null;
   }
 
   return (
@@ -156,9 +154,7 @@ const SetColor: React.FC<SetColorProps> = ({ product, cartProduct, handleColorSe
           <div className='flex gap-2 flex-wrap'>
             {Object.keys(capacityGroups).map(capacity => {
               const option = capacityGroups[capacity][0]; // Take first option for this capacity
-              const isSelected =
-                cartProduct.selectedImg.variant?.attributes?.['dung-lượng'] === capacity ||
-                cartProduct.selectedImg.variant?.attributes?.capacity === capacity;
+              const isSelected = cartProduct.selectedImg === option.previewImage;
 
               return (
                 <button
@@ -188,7 +184,7 @@ const SetColor: React.FC<SetColorProps> = ({ product, cartProduct, handleColorSe
           <div className='flex gap-2 flex-wrap'>
             {Object.keys(colorGroups).map(color => {
               const option = colorGroups[color][0]; // Take first option for this color
-              const isSelected = cartProduct.selectedImg.color === color;
+              const isSelected = cartProduct.selectedImg === option.previewImage;
 
               return (
                 <button
@@ -227,7 +223,7 @@ const SetColor: React.FC<SetColorProps> = ({ product, cartProduct, handleColorSe
             <span className='font-semibold block mb-2'>Tùy chọn:</span>
             <div className='flex gap-2 flex-wrap'>
               {availableOptions.map((option: any, index: number) => {
-                const isSelected = cartProduct.selectedImg.color === option.color;
+                const isSelected = cartProduct.selectedImg === option.previewImage;
 
                 return (
                   <button

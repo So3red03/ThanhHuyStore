@@ -1,4 +1,12 @@
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject,
+  listAll
+} from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
 import firebase from '../libs/firebase';
 
@@ -28,6 +36,12 @@ export interface VariantImageResult {
   storage?: string;
   ram?: string;
   images: ProductImageResult[];
+}
+
+export interface ProgressInfo {
+  progress: number;
+  bytesTransferred: number;
+  totalBytes: number;
 }
 
 // Utility functions
@@ -239,12 +253,18 @@ export const deleteProductImages = async (imagePaths: string[]): Promise<void> =
 
 export const deleteVariantImages = async (
   productName: string,
-  color: string,
-  storageSize?: string,
-  ram?: string
+  variantId: string,
+  attributes?: Record<string, string>
 ): Promise<void> => {
   const slug = generateSlug(productName);
-  const variantFolder = generateVariantFolder(color, storageSize, ram);
+  // Use variantId or generate folder from attributes
+  const variantFolder =
+    variantId ||
+    generateVariantFolder(
+      attributes?.color || attributes?.['màu-sắc'] || 'default',
+      attributes?.['dung-lượng'] || attributes?.storage,
+      attributes?.ram
+    );
   const variantPath = `productImages/${slug}/${variantFolder}`;
 
   try {
@@ -254,7 +274,6 @@ export const deleteVariantImages = async (
     const deletePromises = listResult.items.map(async itemRef => {
       try {
         await deleteObject(itemRef);
-        console.log(`Deleted: ${itemRef.fullPath}`);
       } catch (error) {
         console.error(`Error deleting ${itemRef.fullPath}:`, error);
       }
@@ -302,4 +321,176 @@ export const deleteAllProductImages = async (productName: string): Promise<void>
   } catch (error) {
     console.error(`Error deleting product folder ${productPath}:`, error);
   }
+};
+
+// ===== NEW SIMPLIFIED STRUCTURE FUNCTIONS =====
+
+// Upload thumbnail for simple products
+export const uploadSimpleProductThumbnail = async (
+  file: File,
+  productName: string,
+  onProgress?: (progress: ProgressInfo) => void
+): Promise<string> => {
+  const slug = generateSlug(productName);
+  const fileName = `thumbnail.${file.name.split('.').pop()}`;
+  const filePath = `simple-products/${slug}/${fileName}`;
+  const storageRef = ref(storage, filePath);
+
+  return new Promise<string>((resolve, reject) => {
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      'state_changed',
+      snapshot => {
+        const progress = {
+          progress: (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
+          bytesTransferred: snapshot.bytesTransferred,
+          totalBytes: snapshot.totalBytes
+        };
+        onProgress?.(progress);
+      },
+      error => {
+        console.error('Error uploading thumbnail:', error);
+        reject(error);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        } catch (error) {
+          reject(error);
+        }
+      }
+    );
+  });
+};
+
+// Upload gallery images for simple products
+export const uploadSimpleProductGallery = async (
+  files: File[],
+  productName: string,
+  onProgress?: (fileIndex: number, progress: ProgressInfo) => void
+): Promise<string[]> => {
+  const slug = generateSlug(productName);
+  const uploadPromises = files.map(async (file, index) => {
+    const fileName = `img${index + 1}.${file.name.split('.').pop()}`;
+    const filePath = `simple-products/${slug}/gallery/${fileName}`;
+    const storageRef = ref(storage, filePath);
+
+    return new Promise<string>((resolve, reject) => {
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on(
+        'state_changed',
+        snapshot => {
+          const progress = {
+            progress: (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
+            bytesTransferred: snapshot.bytesTransferred,
+            totalBytes: snapshot.totalBytes
+          };
+          onProgress?.(index, progress);
+        },
+        error => {
+          console.error(`Error uploading gallery image ${index}:`, error);
+          reject(error);
+        },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (error) {
+            reject(error);
+          }
+        }
+      );
+    });
+  });
+
+  return Promise.all(uploadPromises);
+};
+
+// Upload thumbnail for variant products
+export const uploadVariantProductThumbnail = async (
+  file: File,
+  productName: string,
+  variantId: string,
+  onProgress?: (progress: ProgressInfo) => void
+): Promise<string> => {
+  const slug = generateSlug(productName);
+  const fileName = `thumbnail.${file.name.split('.').pop()}`;
+  const filePath = `variant-products/${slug}/${variantId}/${fileName}`;
+  const storageRef = ref(storage, filePath);
+
+  return new Promise<string>((resolve, reject) => {
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      'state_changed',
+      snapshot => {
+        const progress = {
+          progress: (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
+          bytesTransferred: snapshot.bytesTransferred,
+          totalBytes: snapshot.totalBytes
+        };
+        onProgress?.(progress);
+      },
+      error => {
+        console.error('Error uploading variant thumbnail:', error);
+        reject(error);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        } catch (error) {
+          reject(error);
+        }
+      }
+    );
+  });
+};
+
+// Upload gallery images for variant products
+export const uploadVariantProductGallery = async (
+  files: File[],
+  productName: string,
+  variantId: string,
+  onProgress?: (fileIndex: number, progress: ProgressInfo) => void
+): Promise<string[]> => {
+  const slug = generateSlug(productName);
+  const uploadPromises = files.map(async (file, index) => {
+    const fileName = `img${index + 1}.${file.name.split('.').pop()}`;
+    const filePath = `variant-products/${slug}/${variantId}/gallery/${fileName}`;
+    const storageRef = ref(storage, filePath);
+
+    return new Promise<string>((resolve, reject) => {
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on(
+        'state_changed',
+        snapshot => {
+          const progress = {
+            progress: (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
+            bytesTransferred: snapshot.bytesTransferred,
+            totalBytes: snapshot.totalBytes
+          };
+          onProgress?.(index, progress);
+        },
+        error => {
+          console.error(`Error uploading variant gallery image ${index}:`, error);
+          reject(error);
+        },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (error) {
+            reject(error);
+          }
+        }
+      );
+    });
+  });
+
+  return Promise.all(uploadPromises);
 };

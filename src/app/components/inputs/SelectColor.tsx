@@ -10,9 +10,16 @@ interface SelectColorProps {
   addImageToState: (value: ImageType) => void;
   removeImageToState: (value: ImageType) => void;
   isProductCreated: boolean;
+  index: number; // Add index prop for unique identification
 }
 
-const SelectColor: React.FC<SelectColorProps> = ({ item, addImageToState, removeImageToState, isProductCreated }) => {
+const SelectColor: React.FC<SelectColorProps> = ({
+  item,
+  addImageToState,
+  removeImageToState,
+  isProductCreated,
+  index
+}) => {
   const [isSelected, setIsSelected] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
 
@@ -44,14 +51,14 @@ const SelectColor: React.FC<SelectColorProps> = ({ item, addImageToState, remove
       <div className='flex flex-col gap-2 justify-stretch-center h-auto'>
         <div className='flex gap-2 items-center'>
           <input
-            id={item.color}
+            id={`image-${index}`}
             type='checkbox'
             checked={isSelected}
             onChange={handleCheck}
             className='cursor-pointer'
           />
-          <label htmlFor={item.color} className='font-medium cursor-pointer'>
-            {item.color}
+          <label htmlFor={`image-${index}`} className='font-medium cursor-pointer'>
+            Ảnh {index + 1}
           </label>
         </div>
         <div>

@@ -77,7 +77,8 @@ export async function POST(request: NextRequest) {
         price: parseFloat(price),
         stock: parseInt(stock),
         attributes: attributes || {},
-        images: variantImages,
+        thumbnail: body.thumbnail || null,
+        galleryImages: body.galleryImages || [],
         isActive: isActive !== false
       }
     });
@@ -109,8 +110,6 @@ export async function PUT(request: NextRequest) {
     const variantImages =
       images && images.length > 0
         ? images.map((imageUrl: string) => ({
-            color: 'default',
-            colorCode: '#000000',
             images: [imageUrl]
           }))
         : undefined;

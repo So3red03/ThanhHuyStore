@@ -173,3 +173,14 @@
 - **Solution**: Thêm `processVariantImages()` function để merge images khi initialize
 - **Applied to**: `useState` initialization và `handleCancel` function
 - **Debug logs**: Track image processing trong edit modal
+
+### ✅ 15. Sửa API PUT route - Preserve images khi update variant
+
+- **Root cause**: API xóa tất cả variants cũ và tạo mới → mất images khi user chỉ update stock
+- **Problem**: User update stock 22→20, frontend gửi variant data không có images → tạo variant mới với `images: []`
+- **Solution**:
+  - Get existing variants trước khi xóa
+  - Find existing variant by SKU để preserve images
+  - Chỉ dùng new images nếu user upload mới
+  - Preserve existing images nếu không có images mới
+- **Console logs**: Track image preservation process

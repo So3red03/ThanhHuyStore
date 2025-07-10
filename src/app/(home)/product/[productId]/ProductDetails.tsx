@@ -1,11 +1,11 @@
 'use client';
 
 import Button from '@/app/components/Button';
+import ProductImage from '@/app/components/products/ProductImage';
 import SetColor from '@/app/components/products/SetColor';
 import SetQuantity from '@/app/components/products/SetQuantity';
 import { Rating } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
-import ProductImage from '@/app/components/products/ProductImage';
 import { useCart } from '../../../hooks/useCart';
 import { useRouter } from 'next/navigation';
 import { formatPrice } from '../../../../../utils/formatPrice';
@@ -22,20 +22,20 @@ export type CartProductType = {
   name: string;
   description: string;
   category: string;
-  selectedImg: selectedImgType;
+  selectedImg: string; // URL of selected image
   quantity: number;
   price: number;
   inStock: number;
 };
 
 export type selectedImgType = {
-  color: string;
-  colorCode: string;
   images: string[];
   // Extended properties for variant support
   displayLabel?: string;
   previewImage?: string;
   variant?: any; // Reference to the selected variant
+  variantId?: string; // ID of the selected variant
+  attributes?: Record<string, string>; // Selected attributes like {"color": "silver", "storage": "512gb"}
 };
 
 const Horizontal = () => {
@@ -47,98 +47,115 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   const { handleAddProductToCart, cartProducts } = useCart();
   const [isProductInCart, setIsProductInCart] = useState(false);
 
+  // DEBUG: Log product data to understand structure
+  console.log('🔍 ProductDetails received product:', product);
+  console.log('🔍 Product type:', product.productType);
+  console.log('🔍 Product images:', product.images);
+  console.log('🔍 Product variants:', product.variants);
+
+  // Helper function to create display label for variant
+  const getVariantDisplayLabel = (attributes: Record<string, string> = {}): string => {
+    const attributeValues = Object.values(attributes).filter(Boolean);
+    return attributeValues.length > 0 ? attributeValues.join(' - ') : 'Biến thể';
+  };
+
   // Helper function to get default image for both Simple and Variant products
   const getDefaultImage = () => {
-    // For variant products, get images from first variant
-    if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
-      const firstVariant = product.variants[0];
-      if (firstVariant.images && firstVariant.images.length > 0) {
-        console.log('🔍 ProductDetails variant.images:', firstVariant.images);
+    console.log('🖼️ getDefaultImage called for product type:', product.productType);
 
+    // Handle Simple products
+    if (product.productType === 'SIMPLE' && product.images && product.images.length > 0) {
+      // Simple products: images structure is [{ images: ['url1', 'url2'] }]
+      console.log('🖼️ Simple product images found:', product.images);
+      if (product.images[0] && product.images[0].images && product.images[0].images.length > 0) {
+        console.log('🖼️ Returning simple product images:', product.images[0]);
+        return {
+          images: product.images[0].images,
+          displayLabel: 'Sản phẩm đơn'
+        };
+      }
+    }
+    // Handle Variant products - get image from first variant with images
+    else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+      // Try to find a variant with images
+      const variantWithImage = product.variants.find((variant: any) => {
+        return variant.images && Array.isArray(variant.images) && variant.images.length > 0;
+      });
+
+      if (variantWithImage && variantWithImage.images.length > 0) {
         // Check if images is array of strings (old format) or array of objects (new format)
-        if (typeof firstVariant.images[0] === 'string') {
+        if (typeof variantWithImage.images[0] === 'string') {
           // Old format: images is array of URLs
-          console.log('📸 ProductDetails using old format');
           return {
-            color: firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc'] || 'default',
-            colorCode: getColorCode(firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc']),
-            images: firstVariant.images
+            images: variantWithImage.images,
+            variantId: variantWithImage.id,
+            attributes: variantWithImage.attributes,
+            displayLabel: getVariantDisplayLabel(variantWithImage.attributes)
           };
         } else {
-          // New format: images is array of objects - MERGE ALL IMAGES
-          console.log('📸 ProductDetails using new format - merging images');
+          // New format: images is array of objects - COLLECT ALL IMAGES FROM ALL OBJECTS
           const allImages: string[] = [];
-          firstVariant.images.forEach((imageObj: any) => {
-            if (imageObj && imageObj.images && Array.isArray(imageObj.images)) {
+
+          for (const imageObj of variantWithImage.images) {
+            if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
               allImages.push(...imageObj.images);
             }
-          });
+          }
 
           if (allImages.length > 0) {
             return {
-              color:
-                firstVariant.attributes?.color ||
-                firstVariant.attributes?.['màu-sắc'] ||
-                firstVariant.images[0]?.color ||
-                'default',
-              colorCode:
-                getColorCode(firstVariant.attributes?.color || firstVariant.attributes?.['màu-sắc']) ||
-                firstVariant.images[0]?.colorCode ||
-                '#6b7280',
-              images: allImages
+              images: allImages,
+              variantId: variantWithImage.id,
+              attributes: variantWithImage.attributes,
+              displayLabel: getVariantDisplayLabel(variantWithImage.attributes)
             };
           }
         }
       }
-    }
-
-    // For simple products or fallback
-    if (product.images && product.images.length > 0) {
-      return { ...product.images[0] };
+      // Fallback: check main product images for variant products
+      else if (
+        product.images &&
+        product.images.length > 0 &&
+        product.images[0].images &&
+        product.images[0].images.length > 0
+      ) {
+        return {
+          images: product.images[0].images,
+          displayLabel: 'Sản phẩm biến thể'
+        };
+      }
     }
 
     // Final fallback
     return {
-      color: 'default',
-      colorCode: '#000000',
-      images: ['/noavatar.png']
+      images: ['/noavatar.png'],
+      displayLabel: 'Không có ảnh'
     };
   };
 
-  // Helper function to get color code from color name
-  const getColorCode = (colorName?: string): string => {
-    const colorMap: { [key: string]: string } = {
-      đỏ: '#ff0000',
-      red: '#ff0000',
-      xanh: '#0000ff',
-      blue: '#0000ff',
-      'xanh-lá': '#00ff00',
-      green: '#00ff00',
-      vàng: '#ffff00',
-      yellow: '#ffff00',
-      đen: '#000000',
-      black: '#000000',
-      trắng: '#ffffff',
-      white: '#ffffff',
-      xám: '#808080',
-      gray: '#808080',
-      hồng: '#ffc0cb',
-      pink: '#ffc0cb',
-      bgc: '#4285f4'
-    };
-
-    return colorMap[colorName?.toLowerCase() || ''] || '#000000';
+  // Calculate stock based on product type
+  const calculateStock = () => {
+    if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+      // For variant products, calculate total stock from all variants
+      return product.variants.reduce((total: number, variant: any) => {
+        return total + (variant.stock || 0);
+      }, 0);
+    }
+    // For simple products, use product.inStock
+    return product.inStock || 0;
   };
+
+  const totalStock = calculateStock();
 
   const [cartProduct, setCartProduct] = useState<CartProductType>({
     id: product.id,
     name: product.name,
     description: product.description,
     category: product.categoryId,
-    selectedImg: getDefaultImage(),
+    selectedImg: getDefaultImage()?.images?.[0] || '/noavatar.png',
     quantity: 1,
     price: product.price,
-    inStock: product.inStock
+    inStock: totalStock
   });
 
   // Function to trigger chat box opening
@@ -168,7 +185,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   const handleColorSelect = useCallback((value: selectedImgType) => {
     setCartProduct(prev => ({
       ...prev,
-      selectedImg: value
+      selectedImg: value.images?.[0] || '/noavatar.png'
     }));
   }, []);
 
@@ -178,18 +195,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   // 		return { ...prev, quantity: prev.quantity++ };
   // 	});
   // };
-
-  const [selectedProducts, setSelectedProducts] = useState<any>([]);
-
-  const handleSelectProduct = (product: any) => {
-    setSelectedProducts((prevSelected: any) => {
-      if (prevSelected.includes(product)) {
-        return prevSelected.filter((item: any) => item !== product);
-      } else {
-        return [...prevSelected, product];
-      }
-    });
-  };
 
   return (
     <>
@@ -225,8 +230,8 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
               height={24}
             />
             <span className='font-semibold'>Hàng hóa: </span>
-            <span className={product.inStock ? 'text-teal-400' : 'text-[#d43232]'}>
-              {product.inStock ? 'Có sẵn' : 'Hết hàng'}
+            <span className={totalStock > 0 ? 'text-teal-400' : 'text-[#d43232]'}>
+              {totalStock > 0 ? 'Có sẵn' : 'Hết hàng'}
             </span>
           </div>
           {isProductInCart ? (
@@ -242,11 +247,16 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
             </>
           ) : (
             <>
-              <div className='mt-4'>
-                <SetColor cartProduct={cartProduct} product={product} handleColorSelect={handleColorSelect} />
-              </div>
-              <Horizontal />
-              {product.inStock ? (
+              {/* Only show SetColor for VARIANT products, not SIMPLE products */}
+              {product.productType === 'VARIANT' && (
+                <>
+                  <div className='mt-4'>
+                    <SetColor cartProduct={cartProduct} product={product} handleColorSelect={handleColorSelect} />
+                  </div>
+                  <Horizontal />
+                </>
+              )}
+              {totalStock > 0 ? (
                 <Button
                   custom='md:!w-[400px] mt-7'
                   label='Thêm vào giỏ hàng'

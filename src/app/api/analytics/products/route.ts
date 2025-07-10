@@ -47,7 +47,21 @@ export async function GET(request: Request) {
         id: { in: productIds }
       },
       include: {
-        category: true
+        category: true,
+        // Include variants for variant products
+        variants: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' }
+        },
+        // Include product attributes for variant products
+        productAttributes: {
+          include: {
+            values: {
+              orderBy: { position: 'asc' }
+            }
+          },
+          orderBy: { position: 'asc' }
+        }
       }
     });
 
@@ -59,7 +73,7 @@ export async function GET(request: Request) {
         name: product?.name || 'Unknown Product',
         category: product?.category?.name || 'Unknown Category',
         price: product?.price || 0,
-        image: product?.images?.[0]?.images?.[0] || '',
+        image: product?.thumbnail || product?.galleryImages?.[0] || '',
         views: item._count.id,
         inStock: product?.inStock || 0
       };

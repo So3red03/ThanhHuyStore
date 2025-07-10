@@ -65,8 +65,11 @@ export async function getProducts(params: IProductParams) {
         // Include product attributes for variant products
         productAttributes: {
           include: {
-            values: true
-          }
+            values: {
+              orderBy: { position: 'asc' }
+            }
+          },
+          orderBy: { position: 'asc' }
         }
       }
     });
@@ -90,6 +93,15 @@ export async function getParentCategoryAndProductsBySlug(parentSlug: string) {
               //   isDeleted: { not: true }
               // },
               include: {
+                reviews: {
+                  include: {
+                    user: true
+                  },
+                  orderBy: {
+                    createdDate: 'desc'
+                  }
+                },
+                category: true,
                 productPromotions: {
                   where: {
                     isActive: true
@@ -97,6 +109,20 @@ export async function getParentCategoryAndProductsBySlug(parentSlug: string) {
                   include: {
                     promotion: true
                   }
+                },
+                // Include variants for variant products
+                variants: {
+                  where: { isActive: true },
+                  orderBy: { createdAt: 'desc' }
+                },
+                // Include product attributes for variant products
+                productAttributes: {
+                  include: {
+                    values: {
+                      orderBy: { position: 'asc' }
+                    }
+                  },
+                  orderBy: { position: 'asc' }
                 }
               }
             }
@@ -136,6 +162,15 @@ export async function getProductsByCategory(slug: string) {
         // isDeleted: { not: true }
       },
       include: {
+        reviews: {
+          include: {
+            user: true
+          },
+          orderBy: {
+            createdDate: 'desc'
+          }
+        },
+        category: true,
         productPromotions: {
           where: {
             isActive: true
@@ -143,6 +178,20 @@ export async function getProductsByCategory(slug: string) {
           include: {
             promotion: true
           }
+        },
+        // Include variants for variant products
+        variants: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' }
+        },
+        // Include product attributes for variant products
+        productAttributes: {
+          include: {
+            values: {
+              orderBy: { position: 'asc' }
+            }
+          },
+          orderBy: { position: 'asc' }
         }
       }
     });

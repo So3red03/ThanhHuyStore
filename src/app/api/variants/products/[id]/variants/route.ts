@@ -89,7 +89,8 @@ export async function POST(request: Request, { params }: { params: IParams }) {
             attributes: variant.attributes,
             price: parseFloat(variant.price),
             stock: parseInt(variant.stock || '0'),
-            images: variant.images || []
+            thumbnail: variant.thumbnail || null,
+            galleryImages: variant.galleryImages || []
           }
         });
         createdVariants.push(createdVariant);

@@ -6,13 +6,10 @@ import { Editor } from 'primereact/editor';
 import axios from 'axios';
 
 import {
-  uploadProductImages,
-  uploadMultipleVariants,
-  validateImageFiles,
-  deleteProductImages,
-  ProductImageUpload,
-  ProductImageResult,
-  VariantImageUpload
+  uploadSimpleProductThumbnail,
+  uploadSimpleProductGallery,
+  uploadVariantProductThumbnail,
+  uploadVariantProductGallery
 } from '@/app/utils/firebase-product-storage';
 import * as SlIcons from 'react-icons/sl';
 import * as AiIcons from 'react-icons/ai';
@@ -39,7 +36,7 @@ import {
   Tabs,
   Tab
 } from '@mui/material';
-import { MdClose, MdSave, MdUpload } from 'react-icons/md';
+import { MdClose, MdSave } from 'react-icons/md';
 
 // Import variant system components
 import { ProductType } from '@/app/components/admin/product-variant';
@@ -48,10 +45,9 @@ import DynamicAttributeManager, {
   VariationCombination
 } from '@/app/components/admin/product-variant/DynamicAttributeManager';
 import ExpandableVariant from '@/app/components/admin/product-variant/ExpandableVariant';
+import ThumbnailGalleryUpload from '@/app/components/inputs/ThumbnailGalleryUpload';
 
 export type ImageType = {
-  color: string;
-  colorCode: string;
   image: File[] | null;
 };
 
@@ -103,7 +99,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const [productType, setProductType] = useState<ProductType>(ProductType.SIMPLE);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedImageResults, setUploadedImageResults] = useState<ProductImageResult[]>([]);
+  // New image states
+  const [thumbnail, setThumbnail] = useState<File | null>(null);
+  const [galleryImages, setGalleryImages] = useState<File[]>([]);
   const [parentCategories, setParentCategories] = useState<any[]>(propParentCategories);
   const [subCategories, setSubCategories] = useState<any[]>(propSubCategories);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
@@ -183,12 +181,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   // Initialize form with initialData
   useEffect(() => {
     if (initialData && mode === 'edit') {
-      console.log('🔧 Initializing edit form with data:', initialData);
-      console.log('📂 Available subCategories:', subCategories);
-      console.log('🖼️ Initial images:', initialData.images);
-      console.log('🔄 Initial variants:', initialData.variants);
-      console.log('🏷️ Initial productAttributes:', initialData.productAttributes);
-
       // Set form values
       setValue('name', initialData.name);
       setValue('description', initialData.description);
@@ -207,9 +199,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       const subCategory = subCategories.find((sub: any) => sub.id === initialData.categoryId);
       const parentCategoryId = subCategory?.parentId || '';
 
-      console.log('Found subcategory:', subCategory);
-      console.log('Parent category ID:', parentCategoryId);
-
       // Set parent and subcategory
       setSelectedParentId(parentCategoryId);
       setSelectedSubCategoryId(initialData.categoryId || '');
@@ -217,7 +206,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
       // Set existing images for edit mode
       if (initialData.images && initialData.images.length > 0) {
-        console.log('Setting existing images:', initialData.images);
         setExistingImages(initialData.images);
         // Clear new images state for edit mode
         setImages([]);
@@ -225,17 +213,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
       // Load variants and attributes for variant products
       if (initialData.productType === 'VARIANT') {
-        console.log('Loading variant product data:', {
-          variants: initialData.variants,
-          productAttributes: initialData.productAttributes
-        });
-
         // Load variants
         if (initialData.variants && initialData.variants.length > 0) {
           const loadedVariations = initialData.variants.map((variant: any) => {
-            console.log('Processing variant:', variant);
-            console.log('Variant images:', variant.images);
-
             return {
               id: variant.id,
               name: variant.name || `Variant ${variant.id}`,
@@ -249,7 +229,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               isActive: variant.isActive !== false
             };
           });
-          console.log('Loaded variations:', loadedVariations);
           setVariations(loadedVariations);
         }
 
@@ -269,7 +248,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               position: val.position || 0
             }))
           }));
-          console.log('Loaded attributes:', loadedAttributes);
           setAttributes(loadedAttributes);
         }
       }
@@ -312,42 +290,35 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
     try {
-      console.log('Submitting form data:', data);
-      console.log('Current images:', images);
-      console.log('Mode:', mode);
+      // Prepare submit data
+      const submitData: any = {
+        name: data.name,
+        description: data.description,
+        categoryId: selectedSubCategoryId,
+        productType: productType
+      };
 
-      let finalImages = [];
-
+      // Handle image uploads
       if (mode === 'edit') {
-        // For edit mode, handle both existing and new images
-
-        // Check if user has added new images (File objects in images state)
-        const hasNewImages = images.some(img => img.image && img.image.length > 0);
-
-        if (hasNewImages) {
-          // Upload new images to Firebase
+        // For edit mode, upload new images if provided, otherwise keep existing
+        if (thumbnail || galleryImages.length > 0) {
           const uploadedImages = await uploadImagesToFirebase(data.name);
-          const newImageObjects = uploadedImages.map(result => ({
-            color: 'default',
-            colorCode: '#000000',
-            images: [result.downloadURL]
-          }));
-
-          // Combine existing images with new uploaded images
-          finalImages = [...existingImages, ...newImageObjects];
+          submitData.thumbnail = uploadedImages.thumbnail;
+          submitData.galleryImages = uploadedImages.galleryImages;
         } else {
-          // No new images, keep existing images
-          finalImages = existingImages;
+          // Keep existing images
+          submitData.thumbnail = initialData?.thumbnail || null;
+          submitData.galleryImages = initialData?.galleryImages || [];
         }
       } else {
-        // For add mode, upload new images to Firebase
-        if (images.length > 0) {
+        // For add mode, upload new images
+        if (thumbnail || galleryImages.length > 0) {
           const uploadedImages = await uploadImagesToFirebase(data.name);
-          finalImages = uploadedImages.map(result => ({
-            color: 'default',
-            colorCode: '#000000',
-            images: [result.downloadURL]
-          }));
+          submitData.thumbnail = uploadedImages.thumbnail;
+          submitData.galleryImages = uploadedImages.galleryImages;
+        } else {
+          submitData.thumbnail = null;
+          submitData.galleryImages = [];
         }
       }
 
@@ -386,7 +357,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         }
 
         // For simple products, images are recommended but not required
-        if (finalImages.length === 0 && mode === 'add') {
+        if (!thumbnail && galleryImages.length === 0 && mode === 'add') {
           const confirmWithoutImages = window.confirm(
             'Bạn chưa thêm hình ảnh cho sản phẩm. Bạn có muốn tiếp tục không?'
           );
@@ -432,53 +403,30 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         }
       }
 
-      // Prepare submit data based on product type
-      let submitData: any = {
-        productType,
-        categoryId: selectedSubCategoryId
-      };
-
-      // Both Simple and Variant products use user-entered name
-      submitData.name = data.name;
-      submitData.description = data.description || '';
-
+      // Add product type specific data
       if (productType === ProductType.SIMPLE) {
         // Simple products include price, stock, and images in main product
-        submitData = {
-          ...submitData,
-          price: parseFloat(data.price),
-          basePrice: data.basePrice ? parseFloat(data.basePrice) : parseFloat(data.price),
-          inStock: parseInt(data.inStock),
-          images: finalImages
-        };
+        submitData.price = parseFloat(data.price);
+        submitData.basePrice = data.basePrice ? parseFloat(data.basePrice) : parseFloat(data.price);
+        submitData.inStock = parseInt(data.inStock);
       } else if (productType === ProductType.VARIANT) {
         // For variant products, upload images to Firebase with proper folder structure
         const uploadedVariations = await uploadVariantImagesToFirebase(submitData.name, variations);
 
-        submitData = {
-          ...submitData,
-          // For variant products, main product doesn't have price/stock
-          price: 0, // Will be calculated from variants
-          basePrice: 0,
-          inStock: 0, // Will be calculated from variants
-          images: finalImages, // Main product images (optional)
-          variations: uploadedVariations,
-          attributes: attributes
-        };
+        // For variant products, main product doesn't have price/stock
+        submitData.price = 0; // Will be calculated from variants
+        submitData.basePrice = 0;
+        submitData.inStock = 0; // Will be calculated from variants
+        submitData.variations = uploadedVariations;
+        submitData.attributes = attributes;
       }
-
-      console.log('Submit data before sending:', submitData);
-      console.log('Product type:', productType);
-      console.log('Variations:', variations);
 
       if (mode === 'edit' && initialData?.id) {
         // Update product - use the correct API endpoint
-        console.log('Updating product with data:', submitData);
         await axios.put(`/api/product/${initialData.id}`, submitData);
         toast.success('Sản phẩm đã được cập nhật thành công!');
       } else {
         // Create product
-        console.log('Creating product with data:', submitData);
         await axios.post('/api/product', submitData);
         toast.success('Sản phẩm đã được tạo thành công!');
       }
@@ -494,70 +442,61 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   };
 
-  // Image upload handlers
-  const handleImageUpload = useCallback((files: FileList) => {
-    console.log('handleImageUpload called with files:', files);
-    const fileArray = Array.from(files);
-    console.log('File array:', fileArray);
+  // Validation function for images
+  const validateImageFiles = (files: File[]): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 
-    // Validate files
-    const validation = validateImageFiles(fileArray);
-    console.log('Validation result:', validation);
-    if (!validation.isValid) {
-      validation.errors.forEach(error => toast.error(error));
-      return;
-    }
-
-    const newImages: ImageType[] = fileArray
-      .filter(file => file.type.startsWith('image/'))
-      .map(file => ({
-        color: 'default',
-        colorCode: '#000000',
-        image: [file]
-      }));
-
-    console.log('New images to add:', newImages);
-    setImages(prev => {
-      const updated = [...prev, ...newImages];
-      console.log('Updated images state:', updated);
-      return updated;
+    files.forEach((file, index) => {
+      if (!allowedTypes.includes(file.type)) {
+        errors.push(`File ${index + 1}: Định dạng không được hỗ trợ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.`);
+      }
+      if (file.size > maxSize) {
+        errors.push(`File ${index + 1}: Kích thước quá lớn. Tối đa 5MB.`);
+      }
     });
-    toast.success(`Đã thêm ${newImages.length} hình ảnh`);
-  }, []);
 
-  // Upload images to Firebase
-  const uploadImagesToFirebase = async (productName: string): Promise<ProductImageResult[]> => {
-    if (images.length === 0) return [];
+    return { isValid: errors.length === 0, errors };
+  };
 
+  // Upload images to Firebase using new structure
+  const uploadImagesToFirebase = async (
+    productName: string
+  ): Promise<{ thumbnail: string | null; galleryImages: string[] }> => {
     setIsUploading(true);
     setUploadProgress(0);
 
     try {
-      const imageUploads: ProductImageUpload[] = [];
+      let thumbnailUrl: string | null = null;
+      let galleryUrls: string[] = [];
 
-      images.forEach((img, index) => {
-        if (img.image && img.image.length > 0) {
-          img.image.forEach((file, fileIndex) => {
-            imageUploads.push({
-              file,
-              filename: `image-${index}-${fileIndex}.${file.name.split('.').pop()}`
-            });
-          });
-        }
-      });
+      // Upload thumbnail if exists
+      if (thumbnail) {
+        thumbnailUrl = await uploadSimpleProductThumbnail(
+          thumbnail,
+          productName,
+          progress => setUploadProgress(progress.progress * 0.3) // 30% for thumbnail
+        );
+      }
 
-      const results = await uploadProductImages(productName, imageUploads, (progress: number) =>
-        setUploadProgress(progress)
-      );
+      // Upload gallery images if exist
+      if (galleryImages.length > 0) {
+        galleryUrls = await uploadSimpleProductGallery(galleryImages, productName, (fileIndex, progress) => {
+          const baseProgress = thumbnailUrl ? 30 : 0;
+          const galleryProgress = (progress.progress / galleryImages.length) * (100 - baseProgress);
+          setUploadProgress(baseProgress + galleryProgress);
+        });
+      }
 
-      setUploadedImageResults(results);
-      return results;
+      return { thumbnail: thumbnailUrl, galleryImages: galleryUrls };
     } catch (error) {
       console.error('Error uploading images:', error);
-      toast.error('Có lỗi xảy ra khi tải lên hình ảnh');
+      toast.error('Lỗi khi tải lên hình ảnh');
       throw error;
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -572,53 +511,44 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       for (let i = 0; i < variations.length; i++) {
         const variation = variations[i];
 
-        // Check if variation has valid File objects to upload
-        if (
-          variation.images &&
-          variation.images.length > 0 &&
-          variation.images.every((file: File) => file instanceof File)
-        ) {
-          // Convert File objects to VariantImageUpload format
-          const variantData: VariantImageUpload = {
-            color: variation.attributes?.color || variation.attributes?.['màu-sắc'] || 'default',
-            storage: variation.attributes?.storage || variation.attributes?.['dung-lượng'],
-            ram: variation.attributes?.ram || variation.attributes?.['bộ-nhớ'],
-            images: variation.images.map((file: File) => ({
-              file,
-              filename: file?.name ? `${Date.now()}-${file.name}` : undefined
-            }))
-          };
+        const variantId = `variant-${i + 1}-${Date.now()}`;
+        let thumbnailUrl: string | null = null;
+        let galleryUrls: string[] = [];
 
-          // Upload images to Firebase
-          const uploadResult = await uploadMultipleVariants(productName, [variantData], (_, progress) => {
-            setUploadProgress(Math.round(((i + 1) / variations.length) * progress));
-          });
-
-          // Update variation with uploaded image URLs
-          const firebaseImageUrls = uploadResult[0].images.map(img => img.downloadURL);
-
-          uploadedVariations.push({
-            attributes: variation.attributes,
-            price: variation.price,
-            stock: variation.stock,
-            sku: variation.sku || '',
-            images: firebaseImageUrls,
-            isActive: variation.isActive
-          });
-        } else {
-          // No new images to upload, keep existing images
-          console.log('🔄 Keeping existing images for variation:', variation.attributes);
-          console.log('🖼️ Existing images:', variation.images);
-
-          uploadedVariations.push({
-            attributes: variation.attributes,
-            price: variation.price,
-            stock: variation.stock,
-            sku: variation.sku || '',
-            images: variation.images || [], // Keep existing images instead of empty array
-            isActive: variation.isActive
+        // Check if variation has new thumbnail to upload
+        if (variation.thumbnail instanceof File) {
+          thumbnailUrl = await uploadVariantProductThumbnail(variation.thumbnail, productName, variantId, progress => {
+            const overallProgress = (i / variations.length + progress.progress / 100 / variations.length) * 100;
+            setUploadProgress(Math.round(overallProgress));
           });
         }
+
+        // Check if variation has new gallery images to upload
+        if (variation.galleryImages && Array.isArray(variation.galleryImages) && variation.galleryImages.length > 0) {
+          const fileImages = variation.galleryImages.filter((img: any) => img instanceof File);
+          if (fileImages.length > 0) {
+            galleryUrls = await uploadVariantProductGallery(
+              fileImages,
+              productName,
+              variantId,
+              (fileIndex, progress) => {
+                const baseProgress = (i / variations.length) * 100;
+                const galleryProgress = (progress.progress / 100 / variations.length) * 0.7;
+                setUploadProgress(Math.round(baseProgress + galleryProgress));
+              }
+            );
+          }
+        }
+
+        uploadedVariations.push({
+          attributes: variation.attributes,
+          price: variation.price,
+          stock: variation.stock,
+          sku: variation.sku || '',
+          thumbnail: thumbnailUrl || variation.thumbnail || null,
+          galleryImages: galleryUrls.length > 0 ? galleryUrls : variation.galleryImages || [],
+          isActive: variation.isActive
+        });
       }
 
       return uploadedVariations;
@@ -631,59 +561,26 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   };
 
-  const handleImageDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        handleImageUpload(files);
-      }
-    },
-    [handleImageUpload]
-  );
+  // Handlers for thumbnail and gallery changes
+  const handleThumbnailChange = useCallback((file: File | null) => {
+    setThumbnail(file);
+  }, []);
 
-  const handleImageSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      console.log('handleImageSelect called');
-      const files = e.target.files;
-      console.log('Selected files:', files);
-      if (files && files.length > 0) {
-        console.log('Calling handleImageUpload with', files.length, 'files');
-        handleImageUpload(files);
-      } else {
-        console.log('No files selected');
-      }
-    },
-    [handleImageUpload]
-  );
-
-  // Delete uploaded images from Firebase
-  const deleteUploadedImages = async () => {
-    if (uploadedImageResults.length > 0) {
-      try {
-        const imagePaths = uploadedImageResults.map(result => result.path);
-        await deleteProductImages(imagePaths);
-        setUploadedImageResults([]);
-      } catch (error) {
-        console.error('Error deleting uploaded images:', error);
-      }
-    }
-  };
+  const handleGalleryChange = useCallback((files: File[]) => {
+    setGalleryImages(files);
+  }, []);
 
   const handleClose = async () => {
-    // Clean up uploaded images if user cancels
-    if (mode === 'add' && uploadedImageResults.length > 0) {
-      await deleteUploadedImages();
-    }
-
     reset();
-    setImages([]);
-    setExistingImages([]);
-    setUploadedImageResults([]);
+    setThumbnail(null);
+    setGalleryImages([]);
+    setVariations([]);
+    setAttributes([]);
     setSelectedParentId('');
     setSelectedSubCategoryId('');
     setUploadProgress(0);
     setIsUploading(false);
+    setProductType(ProductType.SIMPLE);
     onClose();
   };
 
@@ -764,83 +661,13 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
             {/* Right Column - Product Image */}
             <Grid item xs={12} md={6}>
               <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb', height: 'fit-content' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Typography variant='h6' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    Hình ảnh sản phẩm
-                  </Typography>
-                  <Typography
-                    variant='body2'
-                    sx={{
-                      color: '#3b82f6',
-                      cursor: 'pointer',
-                      '&:hover': { textDecoration: 'underline' }
-                    }}
-                  >
-                    Thêm từ URL
-                  </Typography>
-                </Box>
-
-                <Box
-                  component='label'
-                  htmlFor='image-upload'
-                  sx={{
-                    border: '2px dashed #d1d5db',
-                    borderRadius: '12px',
-                    p: 6,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: '200px',
-                    transition: 'all 0.2s ease-in-out',
-                    '&:hover': {
-                      borderColor: '#3b82f6',
-                      backgroundColor: '#f8fafc',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)'
-                    }
-                  }}
-                  onDrop={handleImageDrop}
-                  onDragOver={e => e.preventDefault()}
-                  onDragEnter={e => e.preventDefault()}
-                >
-                  <input
-                    type='file'
-                    multiple
-                    accept='image/*'
-                    onChange={handleImageSelect}
-                    style={{ display: 'none' }}
-                    id='image-upload'
-                  />
-
-                  {/* Centered Upload Icon */}
-                  <Box
-                    sx={{
-                      mb: 3,
-                      p: 3,
-                      borderRadius: '50%',
-                      backgroundColor: '#f3f4f6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <MdUpload size={32} color='#6b7280' />
-                  </Box>
-
-                  <Typography variant='h6' sx={{ color: '#374151', mb: 1, fontWeight: 600 }}>
-                    Kéo thả hình ảnh vào đây
-                  </Typography>
-                  <Typography variant='body2' sx={{ color: '#9ca3af', mb: 3 }}>
-                    hoặc nhấp để chọn tệp
-                  </Typography>
-
-                  <Typography variant='caption' sx={{ color: '#9ca3af' }}>
-                    Hỗ trợ: JPG, PNG, GIF (tối đa 5MB mỗi file)
-                  </Typography>
-                </Box>
+                <ThumbnailGalleryUpload
+                  thumbnail={thumbnail}
+                  galleryImages={galleryImages}
+                  onThumbnailChange={handleThumbnailChange}
+                  onGalleryChange={handleGalleryChange}
+                  disabled={isLoading || isUploading}
+                />
 
                 {/* Display existing images (for edit mode) */}
                 {mode === 'edit' && existingImages.length > 0 && (

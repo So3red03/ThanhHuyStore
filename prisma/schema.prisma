@@ -111,7 +111,7 @@ type CartProductType {
   description String
   category    String
   brand       String?
-  selectedImg Image
+  selectedImg String?  // URL ảnh đã chọn
   quantity    Int
   price       Float
   inStock     Int
@@ -121,11 +121,7 @@ type CartProductType {
   attributes  Json?    // Selected attributes: {"color": "silver", "storage": "512gb"}
 }
 
-type Image {
-  color     String
-  colorCode String
-  images    String[]
-}
+// Removed Image type - no longer needed with simplified structure
 
 type Address {
   city        String
@@ -159,7 +155,8 @@ model Product {
   deletedAt        DateTime?
   deletedBy        String?
 
-  images           Image[]
+  thumbnail        String?    // Ảnh đại diện chính
+  galleryImages    String[]   // Mảng URL ảnh gallery
   reviews          Review[]
   notifications    Notification[]
   productPromotions ProductPromotion[]
@@ -626,7 +623,8 @@ model ProductVariant {
   attributes Json     // {"color": "silver", "storage": "512gb", "ram": "16gb"}
   price      Float
   stock      Int      @default(0)
-  images     Image[]  // Array of image objects with color/colorCode/images
+  thumbnail       String?    // Ảnh đại diện variant
+  galleryImages   String[]   // Mảng URL ảnh gallery variant
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

@@ -1,0 +1,30 @@
+%% Sơ đồ 3: Xem báo cáo doanh thu
+flowchart TD
+    A[Bắt đầu] --> B[Khách hàng nhập thông tin đăng nhập]
+    B --> C[Nhấn nút 'Đăng nhập']
+    C --> D{Hệ thống kiểm tra thông tin đăng nhập}
+    D -->|Hợp lệ| E[Hiển thị giao diện chính]
+    D -->|Không hợp lệ| F[Hiển thị thông báo: 'Thông tin không đúng']
+    F --> B
+    E --> G[Khách hàng chọn chức năng 'Xem báo cáo doanh thu']
+    G --> H[Hệ thống xử lý yêu cầu]
+    H --> I[Truy vấn dữ liệu doanh thu từ cơ sở dữ liệu]
+    I --> J[Chuẩn bị giao diện thống kê]
+    J --> K[Hiển thị giao diện thống kê doanh thu với các loại báo cáo]
+    K --> L{Khách hàng có thực hiện chức năng khác?}
+    L -->|Có| M[Chọn chức năng khác]
+    L -->|Không| N[Kết thúc]
+    M --> O[Hệ thống điều hướng sang giao diện tương ứng]
+    O --> P[Hiển thị giao diện mới]
+    P --> N
+
+    %% Styling to match the original diagram colors
+    classDef startEnd fill:#87CEEB,stroke:#333,stroke-width:2px,color:#000
+    classDef process fill:#E6E6FA,stroke:#333,stroke-width:2px,color:#000
+    classDef decision fill:#FFE4B5,stroke:#FF8C00,stroke-width:2px,color:#000
+    classDef error fill:#FFB6C1,stroke:#333,stroke-width:2px,color:#000
+
+    class A,N startEnd
+    class B,C,E,G,H,I,J,K,M,O,P process
+    class D,L decision
+    class F error

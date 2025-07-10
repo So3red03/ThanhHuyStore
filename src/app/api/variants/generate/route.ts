@@ -114,7 +114,8 @@ export async function POST(request: Request) {
             attributes: variant.attributes,
             price: variant.price,
             stock: variant.stock,
-            images: variant.images,
+            thumbnail: null,
+            galleryImages: [],
             isActive: variant.isActive
           }
         });

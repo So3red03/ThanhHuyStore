@@ -2,37 +2,7 @@ import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '../../../libs/prismadb';
 import { NextResponse } from 'next/server';
 import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
-
-// Helper function to get color code
-const getColorCode = (color: string): string => {
-  const colorMap: { [key: string]: string } = {
-    đỏ: '#ef4444',
-    red: '#ef4444',
-    xanh: '#3b82f6',
-    blue: '#3b82f6',
-    'xanh-lá': '#22c55e',
-    green: '#22c55e',
-    vàng: '#eab308',
-    yellow: '#eab308',
-    tím: '#a855f7',
-    purple: '#a855f7',
-    hồng: '#ec4899',
-    pink: '#ec4899',
-    cam: '#f97316',
-    orange: '#f97316',
-    đen: '#000000',
-    black: '#000000',
-    trắng: '#ffffff',
-    white: '#ffffff',
-    xám: '#6b7280',
-    gray: '#6b7280',
-    bạc: '#9ca3af',
-    silver: '#9ca3af',
-    bgc: '#4285f4'
-  };
-
-  return colorMap[color?.toLowerCase()] || '#6b7280';
-};
+import { deleteAllProductImages } from '@/app/utils/firebase-product-storage';
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const currentUser = await getCurrentUser();
@@ -54,44 +24,56 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ error: 'Product not found' }, { status: 404 });
   }
 
-  // TODO: Implement soft delete after database update
-  // For now, use hard delete
-  const product = await prisma.product.delete({
-    where: { id: params.id }
-  });
+  try {
+    // Delete product from database first
+    const product = await prisma.product.delete({
+      where: { id: params.id }
+    });
 
-  // 🎯 AUDIT LOG: Product Deleted
-  await AuditLogger.log({
-    eventType: AuditEventType.PRODUCT_DELETED,
-    severity: AuditSeverity.HIGH, // HIGH because deleting products is critical
-    userId: currentUser.id,
-    userEmail: currentUser.email!,
-    userRole: 'ADMIN',
-    ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-    userAgent: request.headers.get('user-agent') || 'unknown',
-    description: `Xóa sản phẩm: ${productToDelete.name}`,
-    details: {
-      productName: productToDelete.name,
-      productType: productToDelete.productType,
-      price: productToDelete.price,
-      inStock: productToDelete.inStock,
-      categoryName: productToDelete.category?.name || 'No category',
-      variantsCount: productToDelete.variants?.length || 0,
-      totalVariantStock: productToDelete.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
-      deletedAt: new Date()
-    },
-    resourceId: params.id,
-    resourceType: 'Product',
-    oldValue: {
-      name: productToDelete.name,
-      productType: productToDelete.productType,
-      price: productToDelete.price,
-      inStock: productToDelete.inStock,
-      variantsCount: productToDelete.variants?.length || 0
+    // Delete all product images from Firebase Storage
+    try {
+      await deleteAllProductImages(productToDelete.name);
+    } catch (imageError) {
+      console.error('Error deleting product images from Firebase:', imageError);
+      // Don't fail the whole operation if image deletion fails
     }
-  });
 
-  return NextResponse.json(product);
+    // 🎯 AUDIT LOG: Product Deleted
+    await AuditLogger.log({
+      eventType: AuditEventType.PRODUCT_DELETED,
+      severity: AuditSeverity.HIGH, // HIGH because deleting products is critical
+      userId: currentUser.id,
+      userEmail: currentUser.email!,
+      userRole: 'ADMIN',
+      ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      description: `Xóa sản phẩm: ${productToDelete.name}`,
+      details: {
+        productName: productToDelete.name,
+        productType: productToDelete.productType,
+        price: productToDelete.price,
+        inStock: productToDelete.inStock,
+        categoryName: productToDelete.category?.name || 'No category',
+        variantsCount: productToDelete.variants?.length || 0,
+        totalVariantStock: productToDelete.variants?.reduce((sum, v) => sum + v.stock, 0) || 0,
+        deletedAt: new Date()
+      },
+      resourceId: params.id,
+      resourceType: 'Product',
+      oldValue: {
+        name: productToDelete.name,
+        productType: productToDelete.productType,
+        price: productToDelete.price,
+        inStock: productToDelete.inStock,
+        variantsCount: productToDelete.variants?.length || 0
+      }
+    });
+
+    return NextResponse.json(product);
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+  }
 }
 
 // TODO: PATCH: Restore sản phẩm đã xóa (soft delete) - implement after database update
@@ -130,7 +112,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const body = await request.json();
-    console.log('PUT request body:', body); // Debug log
 
     const {
       name,
@@ -139,7 +120,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       basePrice,
       inStock,
       categoryId,
-      images = [],
+      thumbnail = null,
+      galleryImages = [],
       productType = 'SIMPLE',
       variations = [],
       attributes = []
@@ -165,7 +147,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       description,
       categoryId,
       productType,
-      images: images || []
+      thumbnail,
+      galleryImages: galleryImages || []
     };
 
     // Handle pricing based on product type
@@ -193,6 +176,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
       // Handle variant products
       if (productType === 'VARIANT' && variations && variations.length > 0) {
+        // CRITICAL FIX: Get existing variants to preserve images
+        const existingVariants = await tx.productVariant.findMany({
+          where: { productId: params.id }
+        });
+        console.log('🔍 Found existing variants:', existingVariants.length);
+
         // Delete existing variants
         await tx.productVariant.deleteMany({
           where: { productId: params.id }
@@ -238,36 +227,24 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
         // Create new variants
         for (const variation of variations) {
-          // Convert images to proper format for schema
-          let variantImages = [];
+          // CRITICAL FIX: Find existing variant to preserve images if no new images provided
+          const existingVariant = existingVariants.find(v => v.sku === variation.sku);
+          console.log(`🔍 Processing variant ${variation.sku}, existing:`, !!existingVariant);
 
-          if (variation.images && variation.images.length > 0) {
-            // Check if images is already in correct format (array of objects)
-            if (typeof variation.images[0] === 'object' && variation.images[0].color) {
-              // Already in correct format: [{color, colorCode, images: [urls]}, ...]
-              variantImages = variation.images;
-              console.log('✅ Using existing image format for variant:', variation.sku);
-            } else {
-              // Convert from array of URLs to proper format
-              const color = variation.attributes?.color || variation.attributes?.['màu-sắc'] || 'default';
-              const colorCode = getColorCode(color) || '#000000';
+          // Convert images to new format
+          let variantThumbnail = variation.thumbnail || null;
+          let variantGalleryImages = variation.galleryImages || [];
 
-              variantImages = [
-                {
-                  color: color,
-                  colorCode: colorCode,
-                  images: variation.images
-                }
-              ];
-              console.log(
-                '🔄 Converting image format for variant:',
-                variation.sku,
-                'from',
-                variation.images,
-                'to',
-                variantImages
-              );
+          // If no new images provided, preserve existing ones (convert from old format if needed)
+          if (!variantThumbnail && !variantGalleryImages.length && existingVariant) {
+            // Handle old format: existingVariant might have 'images' field instead of thumbnail/galleryImages
+            if ((existingVariant as any).thumbnail) {
+              variantThumbnail = (existingVariant as any).thumbnail;
             }
+            if ((existingVariant as any).galleryImages) {
+              variantGalleryImages = (existingVariant as any).galleryImages || [];
+            }
+            console.log('🔄 Preserving existing images for variant:', variation.sku);
           }
 
           await tx.productVariant.create({
@@ -277,7 +254,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
               attributes: variation.attributes || {},
               price: parseFloat(variation.price) || 0,
               stock: parseInt(variation.stock) || 0,
-              images: variantImages,
+              thumbnail: variantThumbnail,
+              galleryImages: variantGalleryImages,
               isActive: variation.isActive !== false
             }
           });

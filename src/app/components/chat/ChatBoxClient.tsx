@@ -60,8 +60,8 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
 
     checkChatbotSettings();
 
-    // Poll for settings changes every 30 seconds in production
-    const interval = setInterval(checkChatbotSettings, 30000);
+    // Poll for settings changes every 5 minutes instead of 30 seconds
+    const interval = setInterval(checkChatbotSettings, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 

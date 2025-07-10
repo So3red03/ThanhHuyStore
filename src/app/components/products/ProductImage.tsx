@@ -1,32 +1,26 @@
 'use client';
 
-import { CartProductType, selectedImgType } from '@/app/(home)/product/[productId]/ProductDetails';
+import { CartProductType } from '@/app/(home)/product/[productId]/ProductDetails';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface ProductImageProps {
   cartProduct: CartProductType;
 }
 
 const ProductImage: React.FC<ProductImageProps> = ({ cartProduct }) => {
-  // DEBUG: Log what ProductImage receives
-  console.log('🖼️ ProductImage received cartProduct:', cartProduct);
-  console.log('🖼️ ProductImage selectedImg:', cartProduct.selectedImg);
-  console.log('🖼️ ProductImage images:', cartProduct.selectedImg?.images);
-  console.log('🖼️ ProductImage images length:', cartProduct.selectedImg?.images?.length);
-
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [showMagnifier, setShowMagnifier] = useState(false);
-  const [largeImage, setLargeImage] = useState(cartProduct.selectedImg?.images?.[0] || '/noavatar.png');
-  const [selectedImage, setSelectedImage] = useState(cartProduct.selectedImg?.images?.[0] || '/noavatar.png');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Cập nhật largeImage khi cartProduct khi  thay đổi
-  useEffect(() => {
-    setLargeImage(cartProduct.selectedImg.images[0]);
-    // Mặc định cập nhật có viền ở image đầu tiên product khi thay đổi color
-    setSelectedImage(cartProduct.selectedImg.images[0]);
-  }, [cartProduct]);
+  // Get the image URL
+  const imageUrl = cartProduct.selectedImg || '/noavatar.png';
+
+  // Handle image load
+  const handleImageLoad = () => {
+    setIsLoading(false);
+  };
 
   const handleMouseHover = (e: any) => {
     const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
@@ -34,74 +28,62 @@ const ProductImage: React.FC<ProductImageProps> = ({ cartProduct }) => {
     const y = ((e.pageY - top) / height) * 100;
     setPosition({ x, y });
 
-    setCursorPosition({ x: e.pageX - left, y: e.pageY - top });
-  };
-
-  const handleImageClick = (Image: string) => {
-    setLargeImage(Image);
-    setSelectedImage(Image); // Cập nhật ảnh đang được chọn
+    const cursorX = e.pageX - left;
+    const cursorY = e.pageY - top;
+    setCursorPosition({ x: cursorX, y: cursorY });
   };
 
   return (
-    <div className='grid grid-cols-6 gap-2 max-h-[350px] min-h-[350px] sm:min-h-[400px]'>
-      {/* Hiển thị các ảnh nhỏ tương ứng với màu được chọn */}
-      <div className='flex items-center justify-center flex-col gap-4 cursor-pointer border h-fit max-h-[400px] min-h-[300px] sm:min-h-[400px] overflow-y-auto no-scrollbar'>
-        {(cartProduct.selectedImg?.images || []).map((currentImg: string) => {
-          return (
-            <div
-              key={currentImg}
-              className={`relative w-[85%] aspect-square flex items-center justify-center rounded ${
-                currentImg === selectedImage ? 'border-[1.5px] border-teal-300' : 'border-none'
-              }`}
-              onClick={() => handleImageClick(currentImg)}
-            >
-              <Image
-                src={currentImg}
-                alt={cartProduct.selectedImg.color}
-                fill
-                sizes='100vw'
-                className='object-contain'
-                loading='lazy'
-              />
+    <div className='grid grid-cols-6 gap-2 h-full max-h-[500px] min-h-[300px]'>
+      {/* Main Image Display */}
+      <div className='col-span-6 relative aspect-square'>
+        <div
+          className='relative w-full h-full cursor-zoom-in overflow-hidden rounded-lg border border-gray-200'
+          onMouseEnter={() => setShowMagnifier(true)}
+          onMouseLeave={() => setShowMagnifier(false)}
+          onMouseMove={handleMouseHover}
+        >
+          {/* Loading Skeleton */}
+          {isLoading && (
+            <div className='absolute inset-0 bg-gray-200 animate-pulse rounded-lg flex items-center justify-center'>
+              <div className='text-gray-400'>Loading...</div>
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {/* Hiển thị ảnh lớn của màu theo ảnh nhỏ được chọn */}
-      <div
-        className='col-span-5 relative aspect-square flex items-start justify-center'
-        onMouseEnter={() => setShowMagnifier(true)}
-        onMouseLeave={() => setShowMagnifier(false)}
-        onMouseMove={handleMouseHover}
-      >
-        <Image
-          width={270}
-          height={50}
-          className='h-auto w-[430px] object-contain'
-          src={largeImage}
-          alt={cartProduct.name}
-          priority
-        />
-        {showMagnifier && (
-          <div
-            style={{
-              position: 'absolute',
-              left: `${cursorPosition.x - 75}px`,
-              top: `${cursorPosition.y - 75}px`,
-              pointerEvents: 'none'
-            }}
-          >
+          {/* Main Product Image */}
+          <Image
+            src={imageUrl}
+            alt={`${cartProduct.name} - Ảnh sản phẩm`}
+            fill
+            className={`object-cover transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+            onLoad={handleImageLoad}
+            sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+            priority
+          />
+
+          {/* Magnifier */}
+          {showMagnifier && (
             <div
-              className='w-[150px] h-[150px] border border-black'
+              className='absolute pointer-events-none border-2 border-white shadow-lg'
               style={{
-                backgroundImage: `url(${largeImage})`,
+                left: `${cursorPosition.x - 75}px`,
+                top: `${cursorPosition.y - 75}px`,
+                width: '150px',
+                height: '150px',
+                backgroundImage: `url(${imageUrl})`,
+                backgroundSize: '400% 400%',
                 backgroundPosition: `${position.x}% ${position.y}%`,
-                backgroundSize: '450%'
+                borderRadius: '50%',
+                zIndex: 10
               }}
             />
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Image Counter - Only show if there would be multiple images */}
+        <div className='absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm'>
+          1 / 1
+        </div>
       </div>
     </div>
   );

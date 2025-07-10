@@ -164,25 +164,14 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       let displayPrice = product.price;
       let displayStock = product.inStock;
 
-      console.log('📊 Stock calculation debug:', {
-        productId: product.id,
-        productName: product.name,
-        productType: product.productType,
-        originalStock: product.inStock,
-        variants: product.variants?.map((v: any) => ({ id: v.id, stock: v.stock }))
-      });
-
       if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
         // Use base price if available, otherwise use first variant price
         displayPrice = product.basePrice || product.variants[0]?.price || 0;
 
         // Calculate total stock from all variants
         displayStock = product.variants.reduce((total: number, variant: any) => {
-          console.log(`Adding variant ${variant.id} stock: ${variant.stock || 0}`);
           return total + (variant.stock || 0);
         }, 0);
-
-        console.log('✅ Total calculated stock:', displayStock);
       }
 
       return {
@@ -220,62 +209,32 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         const product = params.row;
         let imageSrc = '/noavatar.png'; // Default fallback
 
-        console.log('🖼️ Product image debug:', {
-          productId: product.id,
-          productName: product.name,
-          productType: product.productType,
-          images: product.images,
-          variants: product.variants
-        });
-
         // Handle Simple products
         if (product.productType === 'SIMPLE' && product.images && product.images.length > 0) {
-          // Simple products: images structure is [{ color: 'default', colorCode: '#000000', images: ['url1', 'url2'] }]
+          // Simple products: images structure is [{ images: ['url1', 'url2'] }]
           if (product.images[0] && product.images[0].images && product.images[0].images.length > 0) {
             imageSrc = product.images[0].images[0];
-            console.log('✅ Simple product image found:', imageSrc);
           }
         }
         // Handle Variant products - get image from first variant
         else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
-          console.log('🔍 Searching for variant images...');
-          console.log('🔍 All variants:', product.variants);
-
           // Try to find a variant with images
           const variantWithImage = product.variants.find((variant: any) => {
-            console.log('Checking variant:', {
-              id: variant.id,
-              images: variant.images,
-              imagesLength: variant.images?.length,
-              imagesType: typeof variant.images
-            });
             return variant.images && Array.isArray(variant.images) && variant.images.length > 0;
           });
 
           if (variantWithImage && variantWithImage.images.length > 0) {
-            console.log('🔍 ManageProducts variant.images:', variantWithImage.images);
-
             // Check if images is array of strings (old format) or array of objects (new format)
             if (typeof variantWithImage.images[0] === 'string') {
               // Old format: images is array of URLs
               imageSrc = variantWithImage.images[0];
-              console.log('✅ Variant image found (old format):', imageSrc);
             } else {
               // New format: images is array of objects - GET FIRST IMAGE FROM ANY OBJECT
-              console.log('📸 ManageProducts using new format - finding first image');
-              let foundImage = false;
-
               for (const imageObj of variantWithImage.images) {
                 if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
                   imageSrc = imageObj.images[0];
-                  console.log('✅ Variant image found (new format):', imageSrc);
-                  foundImage = true;
                   break;
                 }
-              }
-
-              if (!foundImage) {
-                console.log('❌ No images found in any image object');
               }
             }
           }
@@ -287,18 +246,8 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
             product.images[0].images.length > 0
           ) {
             imageSrc = product.images[0].images[0];
-            console.log('✅ Fallback to main product image:', imageSrc);
-          } else {
-            console.log('❌ No images found for variant product');
-            console.log('❌ Debug info:', {
-              hasMainImages: !!product.images,
-              mainImagesLength: product.images?.length,
-              firstMainImage: product.images?.[0]
-            });
           }
         }
-
-        console.log('🎯 Final image src:', imageSrc);
 
         return (
           <Image
@@ -435,68 +384,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
   const handleDelete = async (id: string, productData: any) => {
     try {
-      const imagesToDelete: string[] = [];
-
-      // Handle different product types
-      if (productData.productType === 'SIMPLE') {
-        // Simple products: delete images from product.images
-        if (Array.isArray(productData.images)) {
-          productData.images.forEach((item: any) => {
-            if (item.images && Array.isArray(item.images)) {
-              imagesToDelete.push(...item.images);
-            }
-          });
-        }
-      } else if (productData.productType === 'VARIANT') {
-        // Variant products: delete images from both main product and variants
-
-        // Delete main product images (if any)
-        if (Array.isArray(productData.images)) {
-          productData.images.forEach((item: any) => {
-            if (item.images && Array.isArray(item.images)) {
-              imagesToDelete.push(...item.images);
-            }
-          });
-        }
-
-        // Delete variant images
-        if (Array.isArray(productData.variants)) {
-          productData.variants.forEach((variant: any) => {
-            if (Array.isArray(variant.images)) {
-              // Variant images structure: [{color, colorCode, images: [urls]}, ...]
-              variant.images.forEach((imageGroup: any) => {
-                if (imageGroup.images && Array.isArray(imageGroup.images)) {
-                  imagesToDelete.push(...imageGroup.images);
-                }
-              });
-            }
-          });
-        }
-      }
-
-      // Delete all collected images from Firebase
-      if (imagesToDelete.length > 0) {
-        console.log('Deleting images from Firebase:', imagesToDelete);
-        const deletePromises = imagesToDelete.map(async (imageUrl: string) => {
-          try {
-            // Extract the path from the full Firebase URL
-            const url = new URL(imageUrl);
-            const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
-            if (pathMatch) {
-              const imagePath = decodeURIComponent(pathMatch[1]);
-              const storageRef = ref(storage, imagePath);
-              await deleteObject(storageRef);
-              console.log(`Successfully deleted image: ${imagePath}`);
-            }
-          } catch (error) {
-            console.error(`Error deleting image ${imageUrl}:`, error);
-            // Continue with other deletions even if one fails
-          }
-        });
-        await Promise.all(deletePromises);
-      }
-
-      // Delete product from database
+      // Delete product from database (API will handle Firebase image deletion)
       await axios.delete(`/api/product/${id}`);
       toast.success('Xóa sản phẩm thành công');
       router.refresh();
@@ -507,7 +395,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   };
 
   const onSubmit: SubmitHandler<FieldValues> = async data => {
-    console.log(data);
     setIsLoading(true);
     axios
       .put(`/api/product/${data.id}`, {

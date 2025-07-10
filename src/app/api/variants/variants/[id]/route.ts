@@ -50,7 +50,7 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
     }
 
     const body = await request.json();
-    const { sku, attributes, price, stock, images, isActive } = body;
+    const { sku, attributes, price, stock, thumbnail, galleryImages, isActive } = body;
 
     // Check if variant exists
     const existingVariant = await prisma.productVariant.findUnique({
@@ -69,7 +69,8 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
         attributes,
         price: price ? parseFloat(price) : undefined,
         stock: stock !== undefined ? parseInt(stock) : undefined,
-        images,
+        thumbnail: thumbnail || null,
+        galleryImages: galleryImages || [],
         isActive,
         updatedAt: new Date()
       }

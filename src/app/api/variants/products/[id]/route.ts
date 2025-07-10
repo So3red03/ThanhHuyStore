@@ -102,7 +102,8 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
           brand,
           basePrice: basePrice ? parseFloat(basePrice) : undefined,
           categoryId,
-          images,
+          thumbnail: body.thumbnail || null,
+          galleryImages: body.galleryImages || [],
           updatedAt: new Date()
         }
       });
@@ -178,7 +179,8 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
               attributes: variant.attributes,
               price: parseFloat(variant.price),
               stock: parseInt(variant.stock || '0'),
-              images: variant.images || []
+              thumbnail: variant.thumbnail || null,
+              galleryImages: variant.galleryImages || []
             }
           });
         }

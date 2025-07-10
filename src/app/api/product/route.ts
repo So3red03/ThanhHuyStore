@@ -81,7 +81,8 @@ export async function POST(request: Request) {
       description: description || '',
       categoryId,
       productType: productType || 'SIMPLE',
-      images: images || []
+      thumbnail: body.thumbnail || null,
+      galleryImages: body.galleryImages || []
     };
 
     if (productType === 'SIMPLE') {
@@ -111,14 +112,9 @@ export async function POST(request: Request) {
         // Generate unique SKU if not provided
         const sku = variation.sku || `${product.id.slice(-8)}-VAR-${index + 1}-${Date.now()}`;
 
-        // Convert images to proper Image type format
-        const formattedImages = Array.isArray(variation.images)
-          ? variation.images.map((imgUrl: string) => ({
-              color: 'default',
-              colorCode: '#000000',
-              images: [imgUrl]
-            }))
-          : [];
+        // Convert images to new format
+        const thumbnail = variation.thumbnail || null;
+        const galleryImages = Array.isArray(variation.galleryImages) ? variation.galleryImages : [];
 
         return prisma.productVariant.create({
           data: {
@@ -127,7 +123,8 @@ export async function POST(request: Request) {
             attributes: variation.attributes || {},
             price: parseFloat(variation.price),
             stock: parseInt(variation.stock),
-            images: formattedImages,
+            thumbnail,
+            galleryImages,
             isActive: variation.isActive !== false
           }
         });

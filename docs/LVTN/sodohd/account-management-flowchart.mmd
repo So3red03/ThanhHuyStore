@@ -1,0 +1,44 @@
+%% Sơ đồ 4: Quản lý tài khoản
+flowchart TD
+    A[Bắt đầu] --> B[Khách hàng nhập thông tin đăng nhập]
+    B --> C[Nhấn nút 'Đăng nhập']
+    C --> D{Hệ thống kiểm tra thông tin đăng nhập}
+    D -->|Hợp lệ| E[Hiển thị giao diện chính]
+    D -->|Không hợp lệ| F[Hiển thị thông báo: 'Thông tin không đúng']
+    F --> B
+    E --> G[Khách hàng chọn chức năng 'Quản lý tài khoản']
+    G --> H[Hệ thống truy vấn thông tin tài khoản]
+    H --> I[Hiển thị thông tin tài khoản khách hàng]
+    I --> J{Khách hàng có muốn sửa thông tin?}
+    J -->|Có| K[Nhấn vào nút 'Sửa thông tin']
+    J -->|Không| L{Thực hiện chức năng khác?}
+    K --> M[Hiển thị form chỉnh sửa]
+    M --> N[Thay đổi các trường thông tin cần cập nhật]
+    N --> O[Nhấn nút 'Lưu']
+    O --> P{Hệ thống kiểm tra thông tin nhập}
+    P -->|Hợp lệ| Q[Cập nhật thông tin trong hệ thống]
+    P -->|Không hợp lệ| R[Hiển thị thông báo lỗi]
+    Q --> S[Hiển thị thông báo 'Cập nhật thành công']
+    S --> T[Làm mới thông tin tài khoản]
+    T --> I
+    R --> M
+    L -->|Có| U[Chọn chức năng khác]
+    L -->|Không| V[Kết thúc]
+    U --> W[Hệ thống điều hướng sang giao diện tương ứng]
+    W --> X[Hiển thị giao diện mới]
+    X --> V
+
+    %% Styling to match the original diagram colors
+    classDef startEnd fill:#87CEEB,stroke:#333,stroke-width:2px,color:#000
+    classDef process fill:#E6E6FA,stroke:#333,stroke-width:2px,color:#000
+    classDef editProcess fill:#ADD8E6,stroke:#333,stroke-width:2px,color:#000
+    classDef decision fill:#FFE4B5,stroke:#FF8C00,stroke-width:2px,color:#000
+    classDef error fill:#FFB6C1,stroke:#333,stroke-width:2px,color:#000
+    classDef success fill:#90EE90,stroke:#333,stroke-width:2px,color:#000
+
+    class A,V startEnd
+    class B,C,E,G,H,I,U,W,X process
+    class K,M,N,O,T editProcess
+    class D,J,L,P decision
+    class F,R error
+    class Q,S success
