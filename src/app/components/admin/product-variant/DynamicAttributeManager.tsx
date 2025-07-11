@@ -36,7 +36,9 @@ export interface VariationCombination {
   price?: number;
   stock?: number;
   sku?: string;
-  images?: string[];
+  thumbnail?: string | File | null; // Ảnh đại diện variant
+  galleryImages?: (string | File)[]; // Mảng URL hoặc File ảnh gallery variant
+  images?: string[]; // Backward compatibility
   isActive: boolean;
 }
 

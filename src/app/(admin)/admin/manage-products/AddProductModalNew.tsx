@@ -252,13 +252,17 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         if (initialData.variants && initialData.variants.length > 0) {
           const loadedVariations = initialData.variants.map((variant: any) => {
             return {
-              id: variant.id,
+              id: variant.id, // Keep original ID for display
+              databaseId: variant.id, // Real database ObjectID for API calls
               name: variant.name || `Variant ${variant.id}`,
               attributes: variant.attributes || {},
               price: variant.price || 0,
-              salePrice: variant.salePrice || 0,
               stock: variant.stock || 0,
               sku: variant.sku || '',
+              // Map thumbnail and galleryImages correctly
+              thumbnail: variant.thumbnail || null,
+              galleryImages: variant.galleryImages || [],
+              // Keep images for backward compatibility
               images: variant.images || [],
               enabled: variant.isActive !== false,
               isActive: variant.isActive !== false
@@ -341,12 +345,19 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
         // Upload new images if provided
         if (thumbnail || galleryImages.length > 0) {
-          const uploadedImages = await uploadImagesToFirebase(data.name);
-          if (uploadedImages.thumbnail) {
-            finalThumbnail = uploadedImages.thumbnail;
-          }
-          if (uploadedImages.galleryImages.length > 0) {
-            finalGalleryImages = [...finalGalleryImages, ...uploadedImages.galleryImages];
+          try {
+            const uploadedImages = await uploadImagesToFirebase(data.name);
+            if (uploadedImages.thumbnail) {
+              finalThumbnail = uploadedImages.thumbnail;
+            }
+            if (uploadedImages.galleryImages.length > 0) {
+              finalGalleryImages = [...finalGalleryImages, ...uploadedImages.galleryImages];
+            }
+          } catch (error) {
+            console.error('Firebase upload failed during edit:', error);
+            toast.error('Lỗi upload ảnh Firebase. Không thể cập nhật sản phẩm.');
+            setIsLoading(false);
+            return; // Stop execution if Firebase upload fails
           }
         }
 
@@ -355,9 +366,16 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       } else {
         // For add mode, upload new images
         if (thumbnail || galleryImages.length > 0) {
-          const uploadedImages = await uploadImagesToFirebase(data.name);
-          submitData.thumbnail = uploadedImages.thumbnail;
-          submitData.galleryImages = uploadedImages.galleryImages;
+          try {
+            const uploadedImages = await uploadImagesToFirebase(data.name);
+            submitData.thumbnail = uploadedImages.thumbnail;
+            submitData.galleryImages = uploadedImages.galleryImages;
+          } catch (error) {
+            console.error('Firebase upload failed for simple product:', error);
+            toast.error('Lỗi upload ảnh Firebase. Không thể tạo sản phẩm.');
+            setIsLoading(false);
+            return; // Stop execution if Firebase upload fails
+          }
         } else {
           submitData.thumbnail = null;
           submitData.galleryImages = [];
@@ -453,32 +471,63 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         submitData.inStock = parseInt(data.inStock);
       } else if (productType === ProductType.VARIANT) {
         // For variant products, upload images to Firebase with proper folder structure
-        const uploadedVariations = await uploadVariantImagesToFirebase(submitData.name, variations);
+        try {
+          const uploadedVariations = await uploadVariantImagesToFirebase(submitData.name, variations);
 
-        // For variant products, main product doesn't have price/stock
-        submitData.price = 0; // Will be calculated from variants
-        submitData.basePrice = 0;
-        submitData.inStock = 0; // Will be calculated from variants
-        submitData.variations = uploadedVariations;
-        submitData.attributes = attributes;
+          // For variant products, main product doesn't have price/stock
+          // basePrice will be calculated from variants on the server side
+          submitData.variations = uploadedVariations;
+          submitData.attributes = attributes;
+
+          console.log('🚀 Sending variant product data:', {
+            name: submitData.name,
+            description: submitData.description,
+            categoryId: submitData.categoryId,
+            attributesCount: attributes.length,
+            variationsCount: uploadedVariations.length
+          });
+        } catch (error) {
+          console.error('Firebase upload failed for variant products:', error);
+          toast.error('Lỗi upload ảnh Firebase. Không thể tạo sản phẩm biến thể.');
+          setIsLoading(false);
+          return; // Stop execution if Firebase upload fails
+        }
       }
 
       if (mode === 'edit' && initialData?.id) {
-        // Update product - use the correct API endpoint
-        await axios.put(`/api/product/${initialData.id}`, submitData);
+        // Update product - use the correct API endpoint based on product type
+        if (productType === ProductType.VARIANT) {
+          await axios.put(`/api/variants/products/${initialData.id}`, submitData);
+        } else {
+          await axios.put(`/api/product/${initialData.id}`, submitData);
+        }
         toast.success('Sản phẩm đã được cập nhật thành công!');
       } else {
-        // Create product
-        await axios.post('/api/product', submitData);
+        // Create product - use the correct API endpoint based on product type
+        if (productType === ProductType.VARIANT) {
+          await axios.post('/api/variants/products', submitData);
+        } else {
+          await axios.post('/api/product', submitData);
+        }
         toast.success('Sản phẩm đã được tạo thành công!');
       }
 
       reset();
       onSuccess?.();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error);
-      toast.error(mode === 'edit' ? 'Có lỗi xảy ra khi cập nhật sản phẩm' : 'Có lỗi xảy ra khi tạo sản phẩm');
+
+      // Display specific error message from API
+      let errorMessage = mode === 'edit' ? 'Có lỗi xảy ra khi cập nhật sản phẩm' : 'Có lỗi xảy ra khi tạo sản phẩm';
+
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -616,6 +665,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setExistingGalleryImages(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  const handleExistingGalleryImagesReorder = useCallback((reorderedImages: string[]) => {
+    setExistingGalleryImages(reorderedImages);
+  }, []);
+
   const handleClose = async () => {
     reset();
     setThumbnail(null);
@@ -687,9 +740,99 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         </DialogTitle>
 
         <DialogContent sx={{ p: 0 }}>
+          {/* Product Type Selector - Enhanced */}
+          <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb', backgroundColor: '#f8fafc', mt: 3 }}>
+            <Typography variant='h6' sx={{ fontWeight: 600, mb: 3, color: '#1f2937' }}>
+              Loại sản phẩm
+            </Typography>
+            <FormControl fullWidth>
+              <Select
+                value={productType}
+                onChange={e => handleProductTypeChange(e.target.value as ProductType)}
+                disabled={isLoading}
+                sx={{
+                  borderRadius: '12px',
+                  backgroundColor: 'white',
+                  border: '2px solid #e5e7eb',
+                  '& .MuiSelect-select': {
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    py: 2
+                  },
+                  '&:hover': {
+                    borderColor: '#3b82f6'
+                  },
+                  '&.Mui-focused': {
+                    borderColor: '#3b82f6',
+                    boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)'
+                  }
+                }}
+              >
+                <MenuItem value={ProductType.SIMPLE} sx={{ py: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                    <Box
+                      sx={{
+                        fontSize: '24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: '#dbeafe',
+                        borderRadius: '8px',
+                        p: 1,
+                        minWidth: '48px',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      📦
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#1f2937' }}>
+                        Sản phẩm đơn giản
+                      </Typography>
+                      <Typography variant='body2' sx={{ color: '#6b7280', mt: 0.5 }}>
+                        Sản phẩm không có biến thể như màu sắc, kích thước
+                      </Typography>
+                    </Box>
+                  </Box>
+                </MenuItem>
+                <MenuItem value={ProductType.VARIANT} sx={{ py: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                    <Box
+                      sx={{
+                        fontSize: '24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: '#fef3c7',
+                        borderRadius: '8px',
+                        p: 1,
+                        minWidth: '48px',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      🎨
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#1f2937' }}>
+                        Sản phẩm biến thể
+                      </Typography>
+                      <Typography variant='body2' sx={{ color: '#6b7280', mt: 0.5 }}>
+                        Sản phẩm có nhiều lựa chọn: màu sắc, dung lượng, kích thước...
+                      </Typography>
+                    </Box>
+                  </Box>
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
           <Grid container sx={{ minHeight: '600px' }}>
             {/* Left Column - Product Information */}
-            <Grid item xs={12} md={6} sx={{ p: 3, borderRight: '1px solid #e5e7eb' }}>
+            <Grid
+              item
+              xs={12}
+              md={productType === ProductType.SIMPLE ? 6 : 12}
+              sx={{ p: 3, borderRight: productType === ProductType.SIMPLE ? 'none' : 'none' }}
+            >
               <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
                 <Typography variant='h6' sx={{ fontWeight: 600, mb: 3, color: '#1f2937' }}>
                   Thông tin sản phẩm
@@ -725,138 +868,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                   </Box>
                 </Box>
               </Card>
-            </Grid>
 
-            {/* Right Column - Product Image */}
-            <Grid item xs={12} md={6}>
-              <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb', height: 'fit-content' }}>
-                <ThumbnailGalleryUpload
-                  thumbnail={thumbnail}
-                  galleryImages={galleryImages}
-                  onThumbnailChange={handleThumbnailChange}
-                  onGalleryChange={handleGalleryChange}
-                  disabled={isLoading || isUploading}
-                  existingThumbnail={existingThumbnail}
-                  existingGalleryImages={existingGalleryImages}
-                  onExistingThumbnailRemove={handleExistingThumbnailRemove}
-                  onExistingGalleryImageRemove={handleExistingGalleryImageRemove}
-                />
-
-                {/* Display existing images (for edit mode) */}
-                {mode === 'edit' && existingImages.length > 0 && (
-                  <Box sx={{ mt: 3 }}>
-                    <Typography variant='body2' sx={{ mb: 2, color: '#374151', fontWeight: 500 }}>
-                      Hình ảnh hiện có ({existingImages.length})
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                      {existingImages.map((imgGroup: any, groupIndex: number) =>
-                        imgGroup.images?.map((imgUrl: string, imgIndex: number) => (
-                          <Box
-                            key={`existing-${groupIndex}-${imgIndex}`}
-                            sx={{
-                              width: 80,
-                              height: 80,
-                              borderRadius: '8px',
-                              overflow: 'hidden',
-                              border: '1px solid #e5e7eb',
-                              position: 'relative'
-                            }}
-                          >
-                            <img
-                              src={imgUrl}
-                              alt={`Existing ${groupIndex + 1}-${imgIndex + 1}`}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover'
-                              }}
-                            />
-                            <IconButton
-                              size='small'
-                              onClick={() => {
-                                // Remove image from existing images
-                                setExistingImages(prev => {
-                                  const newImages = [...prev];
-                                  newImages[groupIndex].images = newImages[groupIndex].images.filter(
-                                    (_: string, i: number) => i !== imgIndex
-                                  );
-                                  // Remove group if no images left
-                                  return newImages.filter(group => group.images.length > 0);
-                                });
-                              }}
-                              sx={{
-                                position: 'absolute',
-                                top: 2,
-                                right: 2,
-                                backgroundColor: 'rgba(0,0,0,0.5)',
-                                color: 'white',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(0,0,0,0.7)'
-                                }
-                              }}
-                            >
-                              <MdClose size={16} />
-                            </IconButton>
-                          </Box>
-                        ))
-                      )}
-                    </Box>
-                  </Box>
-                )}
-
-                {/* Display new uploaded images */}
-                {images.length > 0 && (
-                  <Box sx={{ mt: 3 }}>
-                    <Typography variant='body2' sx={{ mb: 2, color: '#374151', fontWeight: 500 }}>
-                      Hình ảnh mới ({images.length})
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                      {images.map((img, index) => (
-                        <Box
-                          key={`new-${index}`}
-                          sx={{
-                            width: 80,
-                            height: 80,
-                            borderRadius: '8px',
-                            overflow: 'hidden',
-                            border: '1px solid #e5e7eb',
-                            position: 'relative'
-                          }}
-                        >
-                          <img
-                            src={img.image?.[0] ? URL.createObjectURL(img.image[0]) : ''}
-                            alt={`New Upload ${index + 1}`}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                          <IconButton
-                            size='small'
-                            onClick={() => setImages(prev => prev.filter((_, i) => i !== index))}
-                            sx={{
-                              position: 'absolute',
-                              top: 2,
-                              right: 2,
-                              backgroundColor: 'rgba(0,0,0,0.5)',
-                              color: 'white',
-                              '&:hover': {
-                                backgroundColor: 'rgba(0,0,0,0.7)'
-                              }
-                            }}
-                          >
-                            <MdClose size={16} />
-                          </IconButton>
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                )}
-              </Card>
-
-              {/* Organize Section */}
-              <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb', mt: 3 }}>
+              {/* Organize Section - Always visible for both product types */}
+              <Card sx={{ p: 3, mt: 3 }}>
                 <Typography variant='h6' sx={{ fontWeight: 600, mb: 3, color: '#1f2937' }}>
                   Phân loại
                 </Typography>
@@ -951,92 +965,139 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 </Box>
               </Card>
             </Grid>
-          </Grid>
 
-          {/* Product Type Selector - Enhanced */}
-          <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb', backgroundColor: '#f8fafc', mt: 3 }}>
-            <Typography variant='h6' sx={{ fontWeight: 600, mb: 3, color: '#1f2937' }}>
-              Loại sản phẩm
-            </Typography>
-            <FormControl fullWidth>
-              <Select
-                value={productType}
-                onChange={e => handleProductTypeChange(e.target.value as ProductType)}
-                disabled={isLoading}
-                sx={{
-                  borderRadius: '12px',
-                  backgroundColor: 'white',
-                  border: '2px solid #e5e7eb',
-                  '& .MuiSelect-select': {
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    py: 2
-                  },
-                  '&:hover': {
-                    borderColor: '#3b82f6'
-                  },
-                  '&.Mui-focused': {
-                    borderColor: '#3b82f6',
-                    boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)'
-                  }
-                }}
-              >
-                <MenuItem value={ProductType.SIMPLE} sx={{ py: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                    <Box
-                      sx={{
-                        fontSize: '24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        backgroundColor: '#dbeafe',
-                        borderRadius: '8px',
-                        p: 1,
-                        minWidth: '48px',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      📦
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#1f2937' }}>
-                        Sản phẩm đơn giản
+            {/* Right Column - Product Image (Only for SIMPLE products) */}
+            {productType === ProductType.SIMPLE && (
+              <Grid item xs={12} md={6}>
+                <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb', height: 'fit-content' }}>
+                  <ThumbnailGalleryUpload
+                    thumbnail={thumbnail}
+                    galleryImages={galleryImages}
+                    onThumbnailChange={handleThumbnailChange}
+                    onGalleryChange={handleGalleryChange}
+                    disabled={isLoading || isUploading}
+                    existingThumbnail={existingThumbnail}
+                    existingGalleryImages={existingGalleryImages}
+                    onExistingThumbnailRemove={handleExistingThumbnailRemove}
+                    onExistingGalleryImageRemove={handleExistingGalleryImageRemove}
+                    onExistingGalleryImagesReorder={handleExistingGalleryImagesReorder}
+                  />
+
+                  {/* Display existing images (for edit mode) */}
+                  {mode === 'edit' && existingImages.length > 0 && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant='body2' sx={{ mb: 2, color: '#374151', fontWeight: 500 }}>
+                        Hình ảnh hiện có ({existingImages.length})
                       </Typography>
-                      <Typography variant='body2' sx={{ color: '#6b7280', mt: 0.5 }}>
-                        Sản phẩm không có biến thể như màu sắc, kích thước
-                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        {existingImages.map((imgGroup: any, groupIndex: number) =>
+                          imgGroup.images?.map((imgUrl: string, imgIndex: number) => (
+                            <Box
+                              key={`existing-${groupIndex}-${imgIndex}`}
+                              sx={{
+                                width: 80,
+                                height: 80,
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                border: '1px solid #e5e7eb',
+                                position: 'relative'
+                              }}
+                            >
+                              <img
+                                src={imgUrl}
+                                alt={`Existing ${groupIndex + 1}-${imgIndex + 1}`}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover'
+                                }}
+                              />
+                              <IconButton
+                                size='small'
+                                onClick={() => {
+                                  // Remove image from existing images
+                                  setExistingImages(prev => {
+                                    const newImages = [...prev];
+                                    newImages[groupIndex].images = newImages[groupIndex].images.filter(
+                                      (_: string, i: number) => i !== imgIndex
+                                    );
+                                    // Remove group if no images left
+                                    return newImages.filter(group => group.images.length > 0);
+                                  });
+                                }}
+                                sx={{
+                                  position: 'absolute',
+                                  top: 2,
+                                  right: 2,
+                                  backgroundColor: 'rgba(0,0,0,0.5)',
+                                  color: 'white',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(0,0,0,0.7)'
+                                  }
+                                }}
+                              >
+                                <MdClose size={16} />
+                              </IconButton>
+                            </Box>
+                          ))
+                        )}
+                      </Box>
                     </Box>
-                  </Box>
-                </MenuItem>
-                <MenuItem value={ProductType.VARIANT} sx={{ py: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                    <Box
-                      sx={{
-                        fontSize: '24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        backgroundColor: '#fef3c7',
-                        borderRadius: '8px',
-                        p: 1,
-                        minWidth: '48px',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      🎨
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography sx={{ fontWeight: 600, fontSize: '16px', color: '#1f2937' }}>
-                        Sản phẩm biến thể
+                  )}
+
+                  {/* Display new uploaded images */}
+                  {images.length > 0 && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant='body2' sx={{ mb: 2, color: '#374151', fontWeight: 500 }}>
+                        Hình ảnh mới ({images.length})
                       </Typography>
-                      <Typography variant='body2' sx={{ color: '#6b7280', mt: 0.5 }}>
-                        Sản phẩm có nhiều lựa chọn: màu sắc, dung lượng, kích thước...
-                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        {images.map((img, index) => (
+                          <Box
+                            key={`new-${index}`}
+                            sx={{
+                              width: 80,
+                              height: 80,
+                              borderRadius: '8px',
+                              overflow: 'hidden',
+                              border: '1px solid #e5e7eb',
+                              position: 'relative'
+                            }}
+                          >
+                            <img
+                              src={img.image?.[0] ? URL.createObjectURL(img.image[0]) : ''}
+                              alt={`New Upload ${index + 1}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                            <IconButton
+                              size='small'
+                              onClick={() => setImages(prev => prev.filter((_, i) => i !== index))}
+                              sx={{
+                                position: 'absolute',
+                                top: 2,
+                                right: 2,
+                                backgroundColor: 'rgba(0,0,0,0.5)',
+                                color: 'white',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(0,0,0,0.7)'
+                                }
+                              }}
+                            >
+                              <MdClose size={16} />
+                            </IconButton>
+                          </Box>
+                        ))}
+                      </Box>
                     </Box>
-                  </Box>
-                </MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
+                  )}
+                </Card>
+              </Grid>
+            )}
+          </Grid>
 
           {/* WordPress-style Product Data Tabs */}
           <Card sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
@@ -1086,15 +1147,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                     {...register('price', { required: 'Vui lòng nhập giá bán' })}
                     error={!!errors.price}
                     helperText={errors.price?.message as string}
-                    disabled={isLoading}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label='Giá khuyến mãi (VNĐ)'
-                    type='number'
-                    {...register('salePrice')}
                     disabled={isLoading}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                   />
@@ -1228,6 +1280,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                             price: 0,
                             stock: 0,
                             sku: `SKU-MANUAL-${Date.now()}`,
+                            thumbnail: null,
+                            galleryImages: [],
                             images: []
                           };
                           setVariations([...variations, newVariant]);
@@ -1264,15 +1318,32 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                           .join(' | ');
 
                         // Convert variation to variant format for ExpandableVariant
+                        const displayId = `${Object.values(variation.attributes).join('-').toLowerCase()}`;
+
+                        // Only set databaseId if variation.id is a valid ObjectID (24 char hex)
+                        const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+                        const databaseId = variation.id && objectIdRegex.test(variation.id) ? variation.id : undefined;
+
+                        console.log('🔍 Variant mapping:', {
+                          displayId,
+                          variationId: variation.id,
+                          databaseId,
+                          isValidObjectId: databaseId ? true : false
+                        });
+
                         const variant = {
-                          id: `${Object.values(variation.attributes).join('-').toLowerCase()}`,
+                          id: displayId,
+                          databaseId: databaseId, // Only set if valid ObjectID
                           name: attributeValues || `Biến thể ${index + 1}`,
                           attributes: variation.attributes,
                           price: variation.price || 0,
                           salePrice: undefined,
                           stock: variation.stock || 0,
                           sku: variation.sku || `SKU-${Object.values(variation.attributes).join('-').toUpperCase()}`,
-                          images: variation.images || [],
+                          // Map image fields correctly
+                          thumbnail: variation.thumbnail || null,
+                          galleryImages: variation.galleryImages || [],
+                          images: variation.images || [], // Keep for backward compatibility
                           enabled: variation.isActive
                         };
 

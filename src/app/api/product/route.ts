@@ -14,52 +14,108 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { name, description, price, categoryId, inStock, images, productType, variations, attributes } = body;
 
-  // Validation: Check basic required fields
-  if (!categoryId) {
-    return NextResponse.json({ error: 'Thiếu thông tin bắt buộc: categoryId' }, { status: 400 });
-  }
+  // Detailed validation with specific error messages
+  const missingFields = [];
 
-  // Name validation - only required for Simple products
-  if (productType === 'SIMPLE' && (!name || name.trim() === '')) {
-    return NextResponse.json({ error: 'Sản phẩm đơn cần có tên sản phẩm' }, { status: 400 });
-  }
+  // Common required fields for all product types
+  if (!name || name.trim() === '') missingFields.push('name (tên sản phẩm)');
+  if (!description || description.trim() === '') missingFields.push('description (mô tả)');
+  if (!categoryId || categoryId.trim() === '') missingFields.push('categoryId (danh mục)');
 
   // Validation: Check if categoryId is valid ObjectId format
-  if (!categoryId || categoryId.trim() === '' || categoryId.length !== 24) {
-    return NextResponse.json({ error: 'categoryId không hợp lệ. Vui lòng chọn danh mục.' }, { status: 400 });
+  if (categoryId && categoryId.length !== 24) {
+    return NextResponse.json(
+      {
+        error: 'categoryId không hợp lệ. Vui lòng chọn danh mục.',
+        receivedCategoryId: categoryId
+      },
+      { status: 400 }
+    );
+  }
+
+  if (missingFields.length > 0) {
+    console.error('❌ Missing required fields:', { name, description, categoryId, missingFields });
+    return NextResponse.json(
+      {
+        error: `Thiếu các trường bắt buộc: ${missingFields.join(', ')}`,
+        missingFields,
+        receivedData: { name, description, categoryId, productType }
+      },
+      { status: 400 }
+    );
   }
 
   // Different validation for Simple vs Variant products
   if (productType === 'SIMPLE') {
+    const simpleProductErrors = [];
+
     if (!price || price <= 0) {
-      return NextResponse.json({ error: 'Sản phẩm đơn cần có giá hợp lệ (> 0)' }, { status: 400 });
+      simpleProductErrors.push('price (giá sản phẩm > 0)');
     }
     if (inStock === undefined || inStock === null || inStock < 0) {
-      return NextResponse.json({ error: 'Sản phẩm đơn cần có số lượng tồn kho hợp lệ (>= 0)' }, { status: 400 });
+      simpleProductErrors.push('inStock (số lượng tồn kho >= 0)');
+    }
+
+    if (simpleProductErrors.length > 0) {
+      console.error('❌ Simple product validation errors:', { price, inStock, simpleProductErrors });
+      return NextResponse.json(
+        {
+          error: `Sản phẩm đơn thiếu: ${simpleProductErrors.join(', ')}`,
+          missingFields: simpleProductErrors,
+          receivedData: { price, inStock }
+        },
+        { status: 400 }
+      );
     }
   } else if (productType === 'VARIANT') {
     if (!variations || !Array.isArray(variations) || variations.length === 0) {
-      return NextResponse.json({ error: 'Sản phẩm biến thể cần có ít nhất một biến thể' }, { status: 400 });
+      console.error('❌ Variant product missing variations:', { variations });
+      return NextResponse.json(
+        {
+          error: 'Sản phẩm biến thể cần có ít nhất một biến thể',
+          receivedVariations: variations
+        },
+        { status: 400 }
+      );
     }
 
     // Validate each variation
-    for (const variation of variations) {
+    const variantErrors = [];
+    for (let i = 0; i < variations.length; i++) {
+      const variation = variations[i];
       if (!variation.price || variation.price <= 0) {
-        return NextResponse.json({ error: 'Mỗi biến thể cần có giá hợp lệ (> 0)' }, { status: 400 });
+        variantErrors.push(`Biến thể ${i + 1}: thiếu giá hợp lệ (> 0)`);
       }
       if (variation.stock === undefined || variation.stock === null || variation.stock < 0) {
-        return NextResponse.json({ error: 'Mỗi biến thể cần có số lượng tồn kho hợp lệ (>= 0)' }, { status: 400 });
+        variantErrors.push(`Biến thể ${i + 1}: thiếu số lượng hợp lệ (>= 0)`);
       }
-      if (!variation.attributes || Object.keys(variation.attributes).length === 0) {
-        return NextResponse.json({ error: 'Mỗi biến thể cần có ít nhất một thuộc tính' }, { status: 400 });
-      }
+    }
+
+    if (variantErrors.length > 0) {
+      console.error('❌ Variant validation errors:', { variantErrors });
+      return NextResponse.json(
+        {
+          error: `Lỗi biến thể: ${variantErrors.join(', ')}`,
+          variantErrors,
+          receivedVariations: variations
+        },
+        { status: 400 }
+      );
     }
 
     // Check for duplicate SKUs in variations
     const skus = variations.map((v: any, index: number) => v.sku || `VAR-${index + 1}`);
     const duplicateSkus = skus.filter((sku: string, index: number) => skus.indexOf(sku) !== index);
     if (duplicateSkus.length > 0) {
-      return NextResponse.json({ error: `SKU trùng lặp trong biến thể: ${duplicateSkus.join(', ')}` }, { status: 400 });
+      console.error('❌ Duplicate SKUs found:', { duplicateSkus });
+      return NextResponse.json(
+        {
+          error: `SKU trùng lặp trong biến thể: ${duplicateSkus.join(', ')}`,
+          duplicateSkus,
+          receivedSKUs: skus
+        },
+        { status: 400 }
+      );
     }
   }
 

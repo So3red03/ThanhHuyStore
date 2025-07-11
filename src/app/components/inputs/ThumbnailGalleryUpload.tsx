@@ -15,9 +15,10 @@ interface ThumbnailGalleryUploadProps {
   // For edit mode - existing images from server
   existingThumbnail?: string | null;
   existingGalleryImages?: string[];
-  // Callbacks to handle existing image removal
+  // Callbacks to handle existing image removal and reordering
   onExistingThumbnailRemove?: () => void;
   onExistingGalleryImageRemove?: (index: number) => void;
+  onExistingGalleryImagesReorder?: (reorderedImages: string[]) => void;
 }
 
 const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
@@ -29,7 +30,8 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
   existingThumbnail = null,
   existingGalleryImages = [],
   onExistingThumbnailRemove,
-  onExistingGalleryImageRemove
+  onExistingGalleryImageRemove,
+  onExistingGalleryImagesReorder
 }) => {
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
@@ -213,38 +215,57 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
     setGalleryPreviews(newPreviews);
   };
 
-  // Drag and drop reordering
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
+  // Enhanced drag and drop reordering for combined gallery
+  const handleDragStart = (index: number, isExisting: boolean = false) => {
+    setDraggedIndex(isExisting ? index : index + existingGalleryImages.length);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleDrop = (e: React.DragEvent, dropIndex: number, isExistingDrop: boolean = false) => {
     e.preventDefault();
 
-    if (draggedIndex === null || draggedIndex === dropIndex) {
+    const actualDropIndex = isExistingDrop ? dropIndex : dropIndex + existingGalleryImages.length;
+
+    if (draggedIndex === null || draggedIndex === actualDropIndex) {
       setDraggedIndex(null);
       return;
     }
 
-    const newFiles = [...galleryImages];
-    const newPreviews = [...galleryPreviews];
+    // Create combined arrays for reordering
+    const combinedImages = [...existingGalleryImages, ...galleryImages];
+    const combinedPreviews = [
+      ...existingGalleryImages.map(url => url), // existing images use their URLs as previews
+      ...galleryPreviews
+    ];
 
-    // Swap items
-    const draggedFile = newFiles[draggedIndex];
-    const draggedPreview = newPreviews[draggedIndex];
+    // Perform the reordering
+    const draggedItem = combinedImages[draggedIndex];
+    const draggedPreview = combinedPreviews[draggedIndex];
 
-    newFiles.splice(draggedIndex, 1);
-    newPreviews.splice(draggedIndex, 1);
+    combinedImages.splice(draggedIndex, 1);
+    combinedPreviews.splice(draggedIndex, 1);
 
-    newFiles.splice(dropIndex, 0, draggedFile);
-    newPreviews.splice(dropIndex, 0, draggedPreview);
+    combinedImages.splice(actualDropIndex, 0, draggedItem);
+    combinedPreviews.splice(actualDropIndex, 0, draggedPreview);
 
-    onGalleryChange(newFiles);
-    setGalleryPreviews(newPreviews);
+    // Split back into existing and new arrays with proper type casting
+    const newExistingImages = combinedImages
+      .slice(0, existingGalleryImages.length)
+      .filter((item): item is string => typeof item === 'string');
+    const newGalleryImages = combinedImages
+      .slice(existingGalleryImages.length)
+      .filter((item): item is File => item instanceof File);
+    const newGalleryPreviews = combinedPreviews.slice(existingGalleryImages.length);
+
+    // Update states and notify parent
+    if (onExistingGalleryImagesReorder) {
+      onExistingGalleryImagesReorder(newExistingImages);
+    }
+    onGalleryChange(newGalleryImages);
+    setGalleryPreviews(newGalleryPreviews);
     setDraggedIndex(null);
   };
 
@@ -382,9 +403,18 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
         {/* Gallery Images Grid with Drag & Drop Reordering */}
         {(galleryImages.length > 0 || existingGalleryImages.length > 0) && (
           <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6'>
-            {/* Existing Gallery Images */}
+            {/* Existing Gallery Images with Drag & Drop */}
             {existingGalleryImages.map((imageUrl, index) => (
-              <div key={`existing-${index}`} className='relative group transition-all duration-300 hover:scale-105'>
+              <div
+                key={`existing-${index}`}
+                draggable
+                onDragStart={() => handleDragStart(index, true)}
+                onDragOver={handleDragOver}
+                onDrop={e => handleDrop(e, index, true)}
+                className={`relative group cursor-move transition-all duration-300 hover:scale-105 ${
+                  draggedIndex === index ? 'opacity-50 scale-95' : ''
+                }`}
+              >
                 <div className='relative w-full aspect-square border-2 border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300'>
                   <Image
                     src={imageUrl}
@@ -394,9 +424,9 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
                   />
                   <div className='absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
 
-                  {/* Existing Image Label */}
-                  <div className='absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
-                    Hiện tại
+                  {/* Drag Handle for Existing Images */}
+                  <div className='absolute top-2 left-2 bg-white/90 backdrop-blur-sm rounded-lg p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300'>
+                    <MdDragIndicator className='text-gray-600' size={16} />
                   </div>
 
                   {/* Remove Button for Existing Images */}
@@ -429,7 +459,7 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
                 onDragOver={handleDragOver}
                 onDrop={e => handleDrop(e, index)}
                 className={`relative group cursor-move transition-all duration-300 hover:scale-105 ${
-                  draggedIndex === index ? 'opacity-50 scale-95' : ''
+                  draggedIndex === index + existingGalleryImages.length ? 'opacity-50 scale-95' : ''
                 }`}
               >
                 <div className='relative w-full aspect-square border-2 border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300'>

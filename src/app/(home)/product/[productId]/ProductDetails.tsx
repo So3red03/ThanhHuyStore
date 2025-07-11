@@ -63,56 +63,117 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   const getDefaultImage = () => {
     console.log('🖼️ getDefaultImage called for product type:', product.productType);
 
-    // Handle Simple products
-    if (product.productType === 'SIMPLE' && product.images && product.images.length > 0) {
-      // Simple products: images structure is [{ images: ['url1', 'url2'] }]
-      console.log('🖼️ Simple product images found:', product.images);
-      if (product.images[0] && product.images[0].images && product.images[0].images.length > 0) {
-        console.log('🖼️ Returning simple product images:', product.images[0]);
+    // Handle Simple products - use new thumbnail/galleryImages structure
+    if (product.productType === 'SIMPLE') {
+      console.log('🖼️ Simple product - checking thumbnail and galleryImages');
+
+      // Use thumbnail first, then gallery images as fallback
+      if (product.thumbnail) {
         return {
-          images: product.images[0].images,
+          images: [product.thumbnail, ...(product.galleryImages || [])],
+          displayLabel: 'Sản phẩm đơn'
+        };
+      } else if (product.galleryImages && product.galleryImages.length > 0) {
+        return {
+          images: product.galleryImages,
           displayLabel: 'Sản phẩm đơn'
         };
       }
+
+      // Fallback to old images structure if new structure not available
+      else if (product.images && product.images.length > 0) {
+        console.log('🖼️ Fallback to old images structure:', product.images);
+        if (product.images[0] && product.images[0].images && product.images[0].images.length > 0) {
+          return {
+            images: product.images[0].images,
+            displayLabel: 'Sản phẩm đơn'
+          };
+        }
+      }
     }
-    // Handle Variant products - get image from first variant with images
+    // Handle Variant products - use new thumbnail/galleryImages structure
     else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
-      // Try to find a variant with images
+      console.log('🖼️ Variant product - checking variants for images');
+
+      // Try to find a variant with thumbnail or galleryImages
       const variantWithImage = product.variants.find((variant: any) => {
-        return variant.images && Array.isArray(variant.images) && variant.images.length > 0;
+        return variant.thumbnail || (variant.galleryImages && variant.galleryImages.length > 0);
       });
 
-      if (variantWithImage && variantWithImage.images.length > 0) {
-        // Check if images is array of strings (old format) or array of objects (new format)
-        if (typeof variantWithImage.images[0] === 'string') {
-          // Old format: images is array of URLs
+      if (variantWithImage) {
+        const images = [];
+
+        // Add thumbnail first if available
+        if (variantWithImage.thumbnail) {
+          images.push(variantWithImage.thumbnail);
+        }
+
+        // Add gallery images
+        if (variantWithImage.galleryImages && variantWithImage.galleryImages.length > 0) {
+          images.push(...variantWithImage.galleryImages);
+        }
+
+        if (images.length > 0) {
           return {
-            images: variantWithImage.images,
+            images,
             variantId: variantWithImage.id,
             attributes: variantWithImage.attributes,
             displayLabel: getVariantDisplayLabel(variantWithImage.attributes)
           };
-        } else {
-          // New format: images is array of objects - COLLECT ALL IMAGES FROM ALL OBJECTS
-          const allImages: string[] = [];
+        }
+      }
 
-          for (const imageObj of variantWithImage.images) {
-            if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
-              allImages.push(...imageObj.images);
-            }
-          }
+      // Fallback to old images structure for variants
+      else {
+        const variantWithOldImages = product.variants.find((variant: any) => {
+          return variant.images && Array.isArray(variant.images) && variant.images.length > 0;
+        });
 
-          if (allImages.length > 0) {
+        if (variantWithOldImages && variantWithOldImages.images.length > 0) {
+          // Check if images is array of strings (old format) or array of objects (new format)
+          if (typeof variantWithOldImages.images[0] === 'string') {
+            // Old format: images is array of URLs
             return {
-              images: allImages,
-              variantId: variantWithImage.id,
-              attributes: variantWithImage.attributes,
-              displayLabel: getVariantDisplayLabel(variantWithImage.attributes)
+              images: variantWithOldImages.images,
+              variantId: variantWithOldImages.id,
+              attributes: variantWithOldImages.attributes,
+              displayLabel: getVariantDisplayLabel(variantWithOldImages.attributes)
             };
+          } else {
+            // New format: images is array of objects - COLLECT ALL IMAGES FROM ALL OBJECTS
+            const allImages: string[] = [];
+
+            for (const imageObj of variantWithOldImages.images) {
+              if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
+                allImages.push(...imageObj.images);
+              }
+            }
+
+            if (allImages.length > 0) {
+              return {
+                images: allImages,
+                variantId: variantWithOldImages.id,
+                attributes: variantWithOldImages.attributes,
+                displayLabel: getVariantDisplayLabel(variantWithOldImages.attributes)
+              };
+            }
           }
         }
       }
-      // Fallback: check main product images for variant products
+
+      // Fallback: check main product thumbnail/galleryImages for variant products
+      if (product.thumbnail || (product.galleryImages && product.galleryImages.length > 0)) {
+        const images = [];
+        if (product.thumbnail) images.push(product.thumbnail);
+        if (product.galleryImages) images.push(...product.galleryImages);
+
+        return {
+          images,
+          displayLabel: 'Sản phẩm biến thể'
+        };
+      }
+
+      // Final fallback: check old main product images structure
       else if (
         product.images &&
         product.images.length > 0 &&

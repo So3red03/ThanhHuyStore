@@ -52,6 +52,16 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
     const body = await request.json();
     const { sku, attributes, price, stock, thumbnail, galleryImages, isActive } = body;
 
+    console.log('🔄 Updating variant:', {
+      variantId: params.id,
+      sku,
+      price,
+      stock,
+      thumbnail: thumbnail ? 'provided' : 'not provided',
+      galleryImages: galleryImages ? `array with ${galleryImages.length} items` : 'not provided',
+      isActive
+    });
+
     // Check if variant exists
     const existingVariant = await prisma.productVariant.findUnique({
       where: { id: params.id }
@@ -61,19 +71,24 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
       return NextResponse.json({ error: 'Variant not found' }, { status: 404 });
     }
 
+    // Prepare update data - only include fields that should be updated
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    // Only update fields that are provided
+    if (sku !== undefined) updateData.sku = sku;
+    if (attributes !== undefined) updateData.attributes = attributes;
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (stock !== undefined) updateData.stock = parseInt(stock);
+    if (thumbnail !== undefined) updateData.thumbnail = thumbnail || null;
+    if (galleryImages !== undefined) updateData.galleryImages = galleryImages;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
     // Update the variant
     const updatedVariant = await prisma.productVariant.update({
       where: { id: params.id },
-      data: {
-        sku,
-        attributes,
-        price: price ? parseFloat(price) : undefined,
-        stock: stock !== undefined ? parseInt(stock) : undefined,
-        thumbnail: thumbnail || null,
-        galleryImages: galleryImages || [],
-        isActive,
-        updatedAt: new Date()
-      }
+      data: updateData
     });
 
     return NextResponse.json({

@@ -138,7 +138,45 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   };
 
   const handleOpenModal = async (product: Product) => {
-    setEditingProduct(product);
+    console.log('🔍 ManageProductsClient - Opening edit modal for product:', product.id, product.productType);
+
+    // For variant products, fetch full data from API to get complete variant info
+    if (product.productType === 'VARIANT') {
+      try {
+        console.log('📡 Fetching full variant product data from API...');
+
+        // Try variant API first
+        let fullProductData;
+        try {
+          const variantResponse = await axios.get(`/api/variants/products/${product.id}`);
+          fullProductData = variantResponse.data;
+          console.log('✅ Got data from variant API');
+        } catch (variantError) {
+          console.log('⚠️ Variant API failed, trying regular API...');
+          // Fallback to regular product API
+          const regularResponse = await axios.get(`/api/product/${product.id}`);
+          fullProductData = regularResponse.data;
+          console.log('✅ Got data from regular API');
+        }
+
+        console.log('✅ Full variant product data:', {
+          id: fullProductData.id,
+          variants: fullProductData.variants?.length || 0,
+          variantSample: fullProductData.variants?.[0],
+          allVariants: JSON.stringify(fullProductData.variants, null, 2)
+        });
+
+        setEditingProduct(fullProductData);
+      } catch (error) {
+        console.error('❌ Error fetching full product data:', error);
+        // Fallback to original product data
+        setEditingProduct(product);
+      }
+    } else {
+      // For simple products, use existing data
+      setEditingProduct(product);
+    }
+
     setEditProductModalOpen(true);
   };
 

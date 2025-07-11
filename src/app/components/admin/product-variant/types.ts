@@ -77,7 +77,9 @@ export interface ProductVariant {
   attributes: Record<string, string>; // {"color": "silver", "storage": "512gb"}
   price: number;
   stock: number;
-  images: string[];
+  thumbnail?: string | null; // Ảnh đại diện variant
+  galleryImages?: string[]; // Mảng URL ảnh gallery variant
+  images?: string[]; // Backward compatibility
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

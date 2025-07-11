@@ -23,7 +23,7 @@ const ManageProducts = async () => {
     >
       <Container custom='!p-0'>
         <ManageProductsClient
-          products={products}
+          products={products || []}
           currentUser={currentUser}
           subCategories={subCategories}
           parentCategories={parentCategories}

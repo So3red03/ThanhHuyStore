@@ -97,20 +97,42 @@ export async function POST(request: Request) {
       name,
       description,
       brand = 'Apple',
-      basePrice,
+      basePrice = 0, // Optional for variant products, will be calculated from variants
       categoryId,
       images = [],
       attributes = [],
       variants = []
     } = body;
 
-    // Validation
-    if (!name || !description || !basePrice || !categoryId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    // Detailed validation with specific error messages
+    // For variant products, only name, description, and categoryId are required
+    // basePrice is optional and will be calculated from variants
+    const missingFields = [];
+    if (!name) missingFields.push('name (tên sản phẩm)');
+    if (!description) missingFields.push('description (mô tả)');
+    if (!categoryId) missingFields.push('categoryId (danh mục)');
+
+    if (missingFields.length > 0) {
+      console.error('❌ Missing required fields:', { name, description, categoryId, missingFields });
+      return NextResponse.json(
+        {
+          error: `Thiếu các trường bắt buộc: ${missingFields.join(', ')}`,
+          missingFields,
+          receivedData: { name, description, categoryId, basePrice }
+        },
+        { status: 400 }
+      );
     }
 
     if (!Array.isArray(attributes) || attributes.length === 0) {
-      return NextResponse.json({ error: 'At least one attribute is required for variant products' }, { status: 400 });
+      console.error('❌ Missing attributes:', { attributes });
+      return NextResponse.json(
+        {
+          error: 'Cần ít nhất một thuộc tính cho sản phẩm biến thể',
+          receivedAttributes: attributes
+        },
+        { status: 400 }
+      );
     }
 
     // Create product with attributes and variants in transaction
@@ -176,23 +198,48 @@ export async function POST(request: Request) {
 
       // 4. Create variants if provided
       const createdVariants = [];
+      let minPrice = null;
+      let totalStock = 0;
+
       for (const variant of variants) {
         if (!variant.sku || !variant.attributes || !variant.price) {
           continue; // Skip invalid variants
         }
+
+        const variantPrice = parseFloat(variant.price);
+        const variantStock = parseInt(variant.stock || '0');
+
+        // Track min price for basePrice calculation
+        if (minPrice === null || variantPrice < minPrice) {
+          minPrice = variantPrice;
+        }
+
+        // Track total stock
+        totalStock += variantStock;
 
         const createdVariant = await tx.productVariant.create({
           data: {
             productId: product.id,
             sku: variant.sku,
             attributes: variant.attributes,
-            price: parseFloat(variant.price),
-            stock: parseInt(variant.stock || '0'),
+            price: variantPrice,
+            stock: variantStock,
             thumbnail: variant.thumbnail || null,
             galleryImages: variant.galleryImages || []
           }
         });
         createdVariants.push(createdVariant);
+      }
+
+      // 5. Update product with calculated basePrice and total stock
+      if (minPrice !== null) {
+        await tx.product.update({
+          where: { id: product.id },
+          data: {
+            basePrice: minPrice, // Set basePrice to minimum variant price
+            inStock: totalStock // Set total stock from all variants
+          }
+        });
       }
 
       return {

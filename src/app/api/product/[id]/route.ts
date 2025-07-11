@@ -4,6 +4,55 @@ import { NextResponse } from 'next/server';
 import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 import { deleteAllProductImages } from '@/app/utils/firebase-product-storage';
 
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const product = await prisma.product.findUnique({
+      where: {
+        id: params.id,
+        isDeleted: false
+      },
+      include: {
+        category: true,
+        productAttributes: {
+          include: {
+            values: {
+              orderBy: { position: 'asc' }
+            }
+          },
+          orderBy: { position: 'asc' }
+        },
+        variants: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' }
+        },
+        reviews: {
+          include: {
+            user: {
+              select: { id: true, name: true, image: true }
+            }
+          },
+          orderBy: { createdDate: 'desc' }
+        },
+        productPromotions: {
+          where: { isActive: true },
+          include: {
+            promotion: true
+          }
+        }
+      }
+    });
+
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(product);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const currentUser = await getCurrentUser();
 
@@ -25,29 +74,50 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   }
 
   try {
-    // Delete product from database first
-    const product = await prisma.product.delete({
-      where: { id: params.id }
-    });
+    // Check if this is a hard delete request (query parameter)
+    const url = new URL(request.url);
+    const hardDelete = url.searchParams.get('hard') === 'true';
 
-    // Delete all product images from Firebase Storage
-    try {
-      await deleteAllProductImages(productToDelete.name);
-    } catch (imageError) {
-      console.error('Error deleting product images from Firebase:', imageError);
-      // Don't fail the whole operation if image deletion fails
+    let product;
+
+    if (hardDelete) {
+      // Hard delete: Remove from database and Firebase
+      product = await prisma.product.delete({
+        where: { id: params.id }
+      });
+
+      // Delete all product images from Firebase Storage
+      try {
+        await deleteAllProductImages(productToDelete.name);
+      } catch (imageError) {
+        console.error('Error deleting product images from Firebase:', imageError);
+        // Don't fail the whole operation if image deletion fails
+      }
+    } else {
+      // Soft delete: Mark as deleted but keep data
+      product = await prisma.product.update({
+        where: { id: params.id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: currentUser.id
+        }
+      });
+      // Note: Firebase images are kept for potential restore
     }
 
     // 🎯 AUDIT LOG: Product Deleted
     await AuditLogger.log({
-      eventType: AuditEventType.PRODUCT_DELETED,
-      severity: AuditSeverity.HIGH, // HIGH because deleting products is critical
+      eventType: hardDelete ? AuditEventType.PRODUCT_DELETED : AuditEventType.PRODUCT_UPDATED,
+      severity: hardDelete ? AuditSeverity.HIGH : AuditSeverity.MEDIUM,
       userId: currentUser.id,
       userEmail: currentUser.email!,
       userRole: 'ADMIN',
       ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
       userAgent: request.headers.get('user-agent') || 'unknown',
-      description: `Xóa sản phẩm: ${productToDelete.name}`,
+      description: hardDelete
+        ? `Xóa vĩnh viễn sản phẩm: ${productToDelete.name}`
+        : `Xóa mềm sản phẩm: ${productToDelete.name}`,
       details: {
         productName: productToDelete.name,
         productType: productToDelete.productType,
@@ -127,9 +197,34 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       attributes = []
     } = body;
 
-    // Validation
-    if (!name || !description || !categoryId) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    // Detailed validation with specific error messages
+    const missingFields = [];
+
+    if (!name || name.trim() === '') missingFields.push('name (tên sản phẩm)');
+    if (!description || description.trim() === '') missingFields.push('description (mô tả)');
+    if (!categoryId || categoryId.trim() === '') missingFields.push('categoryId (danh mục)');
+
+    // Validation: Check if categoryId is valid ObjectId format
+    if (categoryId && categoryId.length !== 24) {
+      return NextResponse.json(
+        {
+          error: 'categoryId không hợp lệ. Vui lòng chọn danh mục.',
+          receivedCategoryId: categoryId
+        },
+        { status: 400 }
+      );
+    }
+
+    if (missingFields.length > 0) {
+      console.error('❌ Missing required fields for update:', { name, description, categoryId, missingFields });
+      return NextResponse.json(
+        {
+          error: `Thiếu các trường bắt buộc: ${missingFields.join(', ')}`,
+          missingFields,
+          receivedData: { name, description, categoryId, productType }
+        },
+        { status: 400 }
+      );
     }
 
     // Check if product exists
@@ -139,6 +234,30 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     if (!existingProduct) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    // Additional validation based on product type
+    if (productType === 'SIMPLE') {
+      const simpleProductErrors = [];
+
+      if (!price || price <= 0) {
+        simpleProductErrors.push('price (giá sản phẩm > 0)');
+      }
+      if (inStock === undefined || inStock === null || inStock < 0) {
+        simpleProductErrors.push('inStock (số lượng tồn kho >= 0)');
+      }
+
+      if (simpleProductErrors.length > 0) {
+        console.error('❌ Simple product validation errors for update:', { price, inStock, simpleProductErrors });
+        return NextResponse.json(
+          {
+            error: `Sản phẩm đơn thiếu: ${simpleProductErrors.join(', ')}`,
+            missingFields: simpleProductErrors,
+            receivedData: { price, inStock }
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Prepare update data
@@ -153,8 +272,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // Handle pricing based on product type
     if (productType === 'SIMPLE') {
-      updateData.price = parseFloat(price) || 0;
-      updateData.inStock = parseInt(inStock) || 0;
+      updateData.price = parseFloat(price);
+      updateData.inStock = parseInt(inStock);
     } else if (productType === 'VARIANT') {
       updateData.basePrice = parseFloat(basePrice) || parseFloat(price) || 0;
       // For variant products, stock is managed at variant level

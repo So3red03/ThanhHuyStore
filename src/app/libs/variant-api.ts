@@ -1,6 +1,6 @@
 /**
  * Variant API Client Library
- * 
+ *
  * Provides type-safe client functions for variant system API endpoints
  */
 
@@ -62,7 +62,9 @@ export interface ProductVariant {
   attributes: Record<string, string>;
   price: number;
   stock: number;
-  images: string[];
+  thumbnail?: string | null; // Ảnh đại diện variant
+  galleryImages?: string[]; // Mảng URL ảnh gallery variant
+  images?: string[]; // Backward compatibility
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -128,12 +130,7 @@ export class VariantAPI {
   }
 
   // Product endpoints
-  async getVariantProducts(params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    categoryId?: string;
-  }) {
+  async getVariantProducts(params?: { page?: number; limit?: number; search?: string; categoryId?: string }) {
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.set('page', params.page.toString());
     if (params?.limit) searchParams.set('limit', params.limit.toString());
@@ -260,20 +257,11 @@ export const formatVariantAttributes = (attributes: Record<string, string>): str
     .join(', ');
 };
 
-export const calculateVariantPrice = (
-  basePrice: number,
-  attributeValues: AttributeValue[]
-): number => {
-  return attributeValues.reduce(
-    (total, value) => total + (value.priceAdjustment || 0),
-    basePrice
-  );
+export const calculateVariantPrice = (basePrice: number, attributeValues: AttributeValue[]): number => {
+  return attributeValues.reduce((total, value) => total + (value.priceAdjustment || 0), basePrice);
 };
 
-export const generateSKU = (
-  prefix: string,
-  attributes: Record<string, string>
-): string => {
+export const generateSKU = (prefix: string, attributes: Record<string, string>): string => {
   const parts = [prefix];
   Object.values(attributes).forEach(value => {
     parts.push(value.toUpperCase());
