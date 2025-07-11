@@ -274,12 +274,40 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
     inStock: totalStock
   });
 
+  // Get current selected variant info for display
+  const getCurrentVariantInfo = () => {
+    if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+      // Find the variant that matches the current selected image
+      const currentVariant = product.variants.find(
+        (variant: any) =>
+          cartProduct.selectedImg &&
+          (variant.thumbnail === cartProduct.selectedImg ||
+            (variant.galleryImages && variant.galleryImages.includes(cartProduct.selectedImg)))
+      );
+
+      if (currentVariant && currentVariant.attributes) {
+        const attributes = currentVariant.attributes;
+        const colorName = attributes.color || attributes['màu-sắc'] || '';
+        const capacity = attributes.capacity || attributes['dung-lượng'] || '';
+
+        const parts = [];
+        if (capacity) parts.push(capacity);
+        if (colorName) parts.push(colorName);
+
+        return parts.length > 0 ? ` - ${parts.join(' - ')}` : '';
+      }
+    }
+    return '';
+  };
+
   // Function to trigger chat box opening
   const handleOpenChat = () => {
     // Dispatch custom event to open chat box
     const event = new CustomEvent('openChatBox', {
       detail: {
-        message: `Xin chào! Tôi muốn tư vấn về sản phẩm "${product.name}" hiện đang hết hàng. Khi nào có thể đặt hàng được ạ?`
+        message: `Xin chào! Tôi muốn tư vấn về sản phẩm "${
+          product.name
+        }${getCurrentVariantInfo()}" hiện đang hết hàng. Khi nào có thể đặt hàng được ạ?`
       }
     });
     window.dispatchEvent(event);
@@ -327,7 +355,12 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
           }}
         />
         <div className='flex flex-col gap-1 text-slate-500 text-sm ml-0 lg:ml-16'>
-          <h2 className='text-3xl font-semibold text-slate-700'>{product.name}</h2>
+          <h2 className='text-3xl font-semibold text-slate-700'>
+            {product.name}
+            {getCurrentVariantInfo() && (
+              <span className='text-2xl text-blue-600 font-medium'>{getCurrentVariantInfo()}</span>
+            )}
+          </h2>
           <div className='flex items-center gap-2'>
             <Rating value={productRating} readOnly precision={0.5} />
             <div className='py-2'>({product.reviews.length}) Đánh giá</div>

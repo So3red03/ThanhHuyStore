@@ -11,11 +11,11 @@ interface ProductVariantSelectorProps {
   performance?: boolean;
 }
 
-const ProductVariantSelector: React.FC<ProductVariantSelectorProps> = ({ 
-  product, 
-  cartProduct, 
-  handleColorSelect, 
-  performance 
+const ProductVariantSelector: React.FC<ProductVariantSelectorProps> = ({
+  product,
+  cartProduct,
+  handleColorSelect,
+  performance
 }) => {
   const pathname = usePathname();
   const isProductDetail = pathname?.includes('/product/');
@@ -110,64 +110,146 @@ const ProductVariantSelector: React.FC<ProductVariantSelectorProps> = ({
 
   const availableOptions = getAvailableOptions();
 
+  // Get current selected variant attributes
+  const getCurrentSelectedAttributes = () => {
+    if (product.productType === 'VARIANT' && cartProduct.selectedImg) {
+      const currentVariant = availableOptions.find(
+        (option: any) =>
+          option.selectedImg === cartProduct.selectedImg || option.previewImage === cartProduct.selectedImg
+      );
+      return currentVariant?.variant?.attributes || {};
+    }
+    return {};
+  };
+
   // Group options by attribute type for better display
   const groupedOptions = () => {
     if (product.productType === 'VARIANT') {
-      // Group by capacity first, then by color
-      const capacityGroups: { [key: string]: any[] } = {};
-      const colorGroups: { [key: string]: any[] } = {};
+      const currentAttributes = getCurrentSelectedAttributes();
+      const selectedCapacity = currentAttributes.capacity || currentAttributes['dung-lượng'];
+      const selectedColor = currentAttributes.color || currentAttributes['màu-sắc'];
+
+      // Get unique capacities and colors
+      const capacities = new Set<string>();
+      const colors = new Set<string>();
 
       availableOptions.forEach((option: any) => {
         const attributes = option.variant?.attributes || {};
         const capacity = attributes.capacity || attributes['dung-lượng'];
         const color = attributes.color || attributes['màu-sắc'];
 
-        if (capacity) {
-          if (!capacityGroups[capacity]) capacityGroups[capacity] = [];
-          capacityGroups[capacity].push(option);
-        }
-
-        if (color) {
-          if (!colorGroups[color]) colorGroups[color] = [];
-          colorGroups[color].push(option);
-        }
+        if (capacity) capacities.add(capacity);
+        if (color) colors.add(color);
       });
 
-      return { capacityGroups, colorGroups };
+      // Create capacity options
+      const capacityOptions = Array.from(capacities).map(capacity => {
+        // Find variant with this capacity and current selected color (if any)
+        let targetVariant = availableOptions.find((option: any) => {
+          const attrs = option.variant?.attributes || {};
+          const varCapacity = attrs.capacity || attrs['dung-lượng'];
+          const varColor = attrs.color || attrs['màu-sắc'];
+          return varCapacity === capacity && (!selectedColor || varColor === selectedColor);
+        });
+
+        // If no exact match, find any variant with this capacity
+        if (!targetVariant) {
+          targetVariant = availableOptions.find((option: any) => {
+            const attrs = option.variant?.attributes || {};
+            const varCapacity = attrs.capacity || attrs['dung-lượng'];
+            return varCapacity === capacity;
+          });
+        }
+
+        return {
+          value: capacity,
+          option: targetVariant,
+          isSelected: capacity === selectedCapacity
+        };
+      });
+
+      // Create color options
+      const colorOptions = Array.from(colors).map(color => {
+        // Find variant with this color and current selected capacity (if any)
+        let targetVariant = availableOptions.find((option: any) => {
+          const attrs = option.variant?.attributes || {};
+          const varCapacity = attrs.capacity || attrs['dung-lượng'];
+          const varColor = attrs.color || attrs['màu-sắc'];
+          return varColor === color && (!selectedCapacity || varCapacity === selectedCapacity);
+        });
+
+        // If no exact match, find any variant with this color
+        if (!targetVariant) {
+          targetVariant = availableOptions.find((option: any) => {
+            const attrs = option.variant?.attributes || {};
+            const varColor = attrs.color || attrs['màu-sắc'];
+            return varColor === color;
+          });
+        }
+
+        return {
+          value: color,
+          option: targetVariant,
+          isSelected: color === selectedColor
+        };
+      });
+
+      return { capacityOptions, colorOptions };
     }
-    return { capacityGroups: {}, colorGroups: {} };
+    return { capacityOptions: [], colorOptions: [] };
   };
 
-  const { capacityGroups, colorGroups } = groupedOptions();
+  const { capacityOptions, colorOptions } = groupedOptions();
 
   if (performance) {
     // Simplified version for ProductCard - only show for variant products
     if (product.productType === 'VARIANT' && availableOptions.length > 1) {
+      // Limit to max 4 options to prevent layout breaking
+      const maxOptions = Math.min(availableOptions.length, 4);
+      const displayOptions = availableOptions.slice(0, maxOptions);
+
       return (
-        <div className='flex gap-1 justify-center'>
-          {availableOptions.slice(0, 3).map((option: any, index: number) => (
-            <div
-              key={option.color + index}
-              onClick={e => {
-                e.stopPropagation();
-                handleColorSelect(option);
-              }}
-              className={`w-4 h-4 rounded border cursor-pointer ${
-                cartProduct.selectedImg === (option.selectedImg || option.previewImage)
-                  ? 'border-red-500 border-2'
-                  : 'border-gray-300'
-              }`}
-            >
-              <img
-                src={option.previewImage}
-                alt={option.displayLabel}
-                className='w-full h-full object-cover rounded'
-                onError={e => {
-                  e.currentTarget.src = '/noavatar.png';
+        <div className='flex gap-1.5 justify-center items-center flex-wrap max-w-full'>
+          {displayOptions.map((option: any, index: number) => {
+            const isSelected = cartProduct.selectedImg === (option.selectedImg || option.previewImage);
+
+            return (
+              <div
+                key={option.color + index}
+                onClick={e => {
+                  e.stopPropagation();
+                  handleColorSelect(option);
                 }}
-              />
+                className={`relative w-6 h-6 rounded-md border-2 cursor-pointer transition-all duration-200 overflow-hidden ${
+                  isSelected
+                    ? 'border-blue-500 ring-1 ring-blue-200 shadow-sm'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                <img
+                  src={option.previewImage || option.selectedImg || '/noavatar.png'}
+                  alt={option.displayLabel}
+                  className='w-full h-full object-cover rounded-sm'
+                  onError={e => {
+                    e.currentTarget.src = '/noavatar.png';
+                  }}
+                />
+                {/* Blue selection indicator instead of red circle */}
+                {isSelected && (
+                  <div className='absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center'>
+                    <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Show "more" indicator if there are more options */}
+          {availableOptions.length > maxOptions && (
+            <div className='w-6 h-6 rounded-md border-2 border-gray-300 bg-gray-100 flex items-center justify-center text-xs text-gray-500 font-medium'>
+              +{availableOptions.length - maxOptions}
             </div>
-          ))}
+          )}
         </div>
       );
     }
@@ -178,33 +260,34 @@ const ProductVariantSelector: React.FC<ProductVariantSelectorProps> = ({
   return (
     <div className='flex flex-col gap-6 select-none'>
       {/* Capacity Options - New Design */}
-      {Object.keys(capacityGroups).length > 0 && (
+      {capacityOptions.length > 0 && (
         <div>
           <span className='font-semibold block mb-3 text-gray-800'>Dung lượng</span>
           <div className='flex gap-3 flex-wrap'>
-            {Object.keys(capacityGroups).map(capacity => {
-              const option = capacityGroups[capacity][0]; // Take first option for this capacity
-              const isSelected = cartProduct.selectedImg === (option.selectedImg || option.previewImage);
-
+            {capacityOptions.map(({ value: capacity, option, isSelected }) => {
               return (
                 <button
                   key={capacity}
                   onClick={e => {
                     e.stopPropagation();
-                    handleColorSelect(option);
+                    if (option) handleColorSelect(option);
                   }}
                   className={`relative px-6 py-3 border-2 rounded-lg text-sm font-medium transition-all duration-200 min-w-[80px] ${
                     isSelected
-                      ? 'border-red-500 bg-red-50 text-red-600 shadow-md'
+                      ? 'border-blue-500 bg-blue-50 text-blue-600 shadow-md'
                       : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:shadow-sm'
                   }`}
                 >
                   {capacity}
                   {/* Selection indicator */}
                   {isSelected && (
-                    <div className='absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center'>
+                    <div className='absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center'>
                       <svg className='w-2.5 h-2.5 text-white' fill='currentColor' viewBox='0 0 20 20'>
-                        <path fillRule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z' clipRule='evenodd' />
+                        <path
+                          fillRule='evenodd'
+                          d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
+                          clipRule='evenodd'
+                        />
                       </svg>
                     </div>
                   )}
@@ -216,34 +299,31 @@ const ProductVariantSelector: React.FC<ProductVariantSelectorProps> = ({
       )}
 
       {/* Color Options - New Design */}
-      {Object.keys(colorGroups).length > 0 && (
+      {colorOptions.length > 0 && (
         <div>
           <span className='font-semibold block mb-3 text-gray-800'>Màu sắc</span>
           <div className='flex gap-3 flex-wrap'>
-            {Object.keys(colorGroups).map(color => {
-              const option = colorGroups[color][0]; // Take first option for this color
-              const isSelected = cartProduct.selectedImg === (option.selectedImg || option.previewImage);
-
+            {colorOptions.map(({ value: color, option, isSelected }) => {
               return (
                 <button
                   key={color}
                   onClick={e => {
                     e.stopPropagation();
-                    handleColorSelect(option);
+                    if (option) handleColorSelect(option);
                   }}
                   className={`relative flex items-center gap-3 px-4 py-3 border-2 rounded-lg text-sm font-medium transition-all duration-200 min-w-[120px] ${
                     isSelected
-                      ? 'border-red-500 bg-red-50 text-red-600 shadow-md'
+                      ? 'border-blue-500 bg-blue-50 text-blue-600 shadow-md'
                       : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:shadow-sm'
                   }`}
                 >
-                  <div className='relative w-8 h-8 rounded-md overflow-hidden border border-gray-200'>
+                  <div className='relative w-10 h-10 rounded-md overflow-hidden border border-gray-200'>
                     <Image
-                      src={option.previewImage}
+                      src={option?.previewImage || option?.selectedImg || '/noavatar.png'}
                       alt={color}
                       fill
                       className='object-cover'
-                      sizes='32px'
+                      sizes='40px'
                       onError={e => {
                         e.currentTarget.src = '/noavatar.png';
                       }}
@@ -252,9 +332,13 @@ const ProductVariantSelector: React.FC<ProductVariantSelectorProps> = ({
                   <span className='flex-1 text-left'>{color}</span>
                   {/* Selection indicator */}
                   {isSelected && (
-                    <div className='absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center'>
+                    <div className='absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center'>
                       <svg className='w-2.5 h-2.5 text-white' fill='currentColor' viewBox='0 0 20 20'>
-                        <path fillRule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z' clipRule='evenodd' />
+                        <path
+                          fillRule='evenodd'
+                          d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
+                          clipRule='evenodd'
+                        />
                       </svg>
                     </div>
                   )}
@@ -266,60 +350,60 @@ const ProductVariantSelector: React.FC<ProductVariantSelectorProps> = ({
       )}
 
       {/* Fallback for simple products or no grouped options */}
-      {Object.keys(capacityGroups).length === 0 &&
-        Object.keys(colorGroups).length === 0 &&
-        availableOptions.length > 0 && (
-          <div>
-            <span className='font-semibold block mb-3 text-gray-800'>Tùy chọn</span>
-            <div className='flex gap-3 flex-wrap'>
-              {availableOptions.map((option: any, index: number) => {
-                const isSelected = cartProduct.selectedImg === (option.selectedImg || option.previewImage);
+      {capacityOptions.length === 0 && colorOptions.length === 0 && availableOptions.length > 0 && (
+        <div>
+          <span className='font-semibold block mb-3 text-gray-800'>Tùy chọn</span>
+          <div className='flex gap-3 flex-wrap'>
+            {availableOptions.map((option: any, index: number) => {
+              const isSelected = cartProduct.selectedImg === (option.selectedImg || option.previewImage);
 
-                return (
-                  <button
-                    key={option.color + index}
-                    onClick={e => {
-                      e.stopPropagation();
-                      handleColorSelect(option);
-                    }}
-                    className={`relative flex items-center gap-3 px-4 py-3 border-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isSelected
-                        ? 'border-red-500 bg-red-50 text-red-600 shadow-md'
-                        : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className='relative w-8 h-8 rounded-md overflow-hidden border border-gray-200'>
-                      <Image
-                        src={option.previewImage}
-                        alt={option.displayLabel}
-                        fill
-                        className='object-cover'
-                        sizes='32px'
-                        onError={e => {
-                          e.currentTarget.src = '/noavatar.png';
-                        }}
-                      />
+              return (
+                <button
+                  key={option.color + index}
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleColorSelect(option);
+                  }}
+                  className={`relative flex items-center gap-3 px-4 py-3 border-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isSelected
+                      ? 'border-blue-500 bg-blue-50 text-blue-600 shadow-md'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:shadow-sm'
+                  }`}
+                >
+                  <div className='relative w-10 h-10 rounded-md overflow-hidden border border-gray-200'>
+                    <Image
+                      src={option.previewImage || option.selectedImg || '/noavatar.png'}
+                      alt={option.displayLabel}
+                      fill
+                      className='object-cover'
+                      sizes='40px'
+                      onError={e => {
+                        e.currentTarget.src = '/noavatar.png';
+                      }}
+                    />
+                  </div>
+                  <span className='flex-1 text-left'>{option.displayLabel}</span>
+                  {/* Selection indicator */}
+                  {isSelected && (
+                    <div className='absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center'>
+                      <svg className='w-2.5 h-2.5 text-white' fill='currentColor' viewBox='0 0 20 20'>
+                        <path
+                          fillRule='evenodd'
+                          d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
+                          clipRule='evenodd'
+                        />
+                      </svg>
                     </div>
-                    <span className='flex-1 text-left'>{option.displayLabel}</span>
-                    {/* Selection indicator */}
-                    {isSelected && (
-                      <div className='absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center'>
-                        <svg className='w-2.5 h-2.5 text-white' fill='currentColor' viewBox='0 0 20 20'>
-                          <path fillRule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z' clipRule='evenodd' />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
+      )}
 
       {availableOptions.length === 0 && (
-        <div className='text-gray-500 text-sm py-4 text-center bg-gray-50 rounded-lg'>
-          Không có tùy chọn
-        </div>
+        <div className='text-gray-500 text-sm py-4 text-center bg-gray-50 rounded-lg'>Không có tùy chọn</div>
       )}
     </div>
   );
