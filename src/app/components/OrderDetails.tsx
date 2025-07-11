@@ -180,13 +180,34 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
 
         {/* Products List */}
         {order.products.map((item: any) => {
+          // Get image URL from new structure or fallback to old structure
+          const getImageUrl = () => {
+            if (typeof item.selectedImg === 'string') {
+              return item.selectedImg;
+            } else if (item.selectedImg && item.selectedImg.images && item.selectedImg.images.length > 0) {
+              return item.selectedImg.images[0];
+            }
+            return '/noavatar.png';
+          };
+
+          // Get variant display info
+          const getVariantInfo = () => {
+            if (item.attributes) {
+              const attributeValues = Object.values(item.attributes).filter(Boolean);
+              return attributeValues.length > 0 ? attributeValues.join(' - ') : '';
+            } else if (item.selectedImg && item.selectedImg.color) {
+              return item.selectedImg.color;
+            }
+            return '';
+          };
+
           return (
             <div className='flex items-center justify-between mb-5' key={item.id}>
               <div className='flex items-center space-x-4'>
-                <Image src={item.selectedImg.images[0]} width={80} height={80} alt={item.name} />
+                <Image src={getImageUrl()} width={80} height={80} alt={item.name} />
                 <div>
                   <h3 className='font-semibold'>{item.name}</h3>
-                  <p className='text-gray-500'>{item.selectedImg.color}</p>
+                  {getVariantInfo() && <p className='text-gray-500'>{getVariantInfo()}</p>}
                 </div>
               </div>
               <p className='font-semibold'>{formatPrice(item.price * item.quantity)}</p>

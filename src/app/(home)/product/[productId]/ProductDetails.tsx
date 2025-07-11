@@ -2,7 +2,7 @@
 
 import Button from '@/app/components/Button';
 import ProductImage from '@/app/components/products/ProductImage';
-import SetColor from '@/app/components/products/SetColor';
+import ProductVariantSelector from '@/app/components/products/ProductVariantSelector';
 import SetQuantity from '@/app/components/products/SetQuantity';
 import { Rating } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
@@ -30,6 +30,7 @@ export type CartProductType = {
 
 export type selectedImgType = {
   images: string[];
+  selectedImg?: string; // Primary selected image URL
   // Extended properties for variant support
   displayLabel?: string;
   previewImage?: string;
@@ -194,6 +195,60 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
     };
   };
 
+  // Get all available images for gallery display
+  const getAvailableImages = () => {
+    // Handle Simple products - use new thumbnail/galleryImages structure
+    if (product.productType === 'SIMPLE') {
+      const allImages = [product.thumbnail, ...(product.galleryImages || [])].filter(Boolean);
+      if (allImages.length > 0) {
+        return { images: allImages };
+      }
+      // Fallback to old images structure
+      else if (product.images && product.images.length > 0 && product.images[0].images) {
+        return { images: product.images[0].images };
+      }
+    }
+    // Handle Variant products - get images from current selected variant or first variant
+    else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+      // Try to find current selected variant first
+      const currentVariant = product.variants.find(
+        (variant: any) =>
+          cartProduct.selectedImg &&
+          (variant.thumbnail === cartProduct.selectedImg ||
+            (variant.galleryImages && variant.galleryImages.includes(cartProduct.selectedImg)))
+      );
+
+      const targetVariant = currentVariant || product.variants[0];
+
+      if (targetVariant) {
+        const allImages = [targetVariant.thumbnail, ...(targetVariant.galleryImages || [])].filter(Boolean);
+        if (allImages.length > 0) {
+          return { images: allImages };
+        }
+        // Fallback to old images structure
+        else if (targetVariant.images && targetVariant.images.length > 0) {
+          if (typeof targetVariant.images[0] === 'string') {
+            return { images: targetVariant.images };
+          } else {
+            // Extract from nested structure
+            const extractedImages: string[] = [];
+            for (const imageObj of targetVariant.images) {
+              if (imageObj && imageObj.images && Array.isArray(imageObj.images)) {
+                extractedImages.push(...imageObj.images);
+              }
+            }
+            if (extractedImages.length > 0) {
+              return { images: extractedImages };
+            }
+          }
+        }
+      }
+    }
+
+    // Final fallback
+    return { images: ['/noavatar.png'] };
+  };
+
   // Calculate stock based on product type
   const calculateStock = () => {
     if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
@@ -246,7 +301,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   const handleColorSelect = useCallback((value: selectedImgType) => {
     setCartProduct(prev => ({
       ...prev,
-      selectedImg: value.images?.[0] || '/noavatar.png'
+      selectedImg: value.selectedImg || value.images?.[0] || '/noavatar.png'
     }));
   }, []);
 
@@ -261,7 +316,16 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
     <>
       <div className='grid grid-cols-1 md:grid-cols-2 gap-12 mt-6'>
         {/*Product Image */}
-        <ProductImage cartProduct={cartProduct} />
+        <ProductImage
+          cartProduct={cartProduct}
+          availableImages={getAvailableImages().images}
+          onImageSelect={imageUrl => {
+            setCartProduct(prev => ({
+              ...prev,
+              selectedImg: imageUrl
+            }));
+          }}
+        />
         <div className='flex flex-col gap-1 text-slate-500 text-sm ml-0 lg:ml-16'>
           <h2 className='text-3xl font-semibold text-slate-700'>{product.name}</h2>
           <div className='flex items-center gap-2'>
@@ -312,7 +376,11 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
               {product.productType === 'VARIANT' && (
                 <>
                   <div className='mt-4'>
-                    <SetColor cartProduct={cartProduct} product={product} handleColorSelect={handleColorSelect} />
+                    <ProductVariantSelector
+                      cartProduct={cartProduct}
+                      product={product}
+                      handleColorSelect={handleColorSelect}
+                    />
                   </div>
                   <Horizontal />
                 </>

@@ -45,15 +45,15 @@ export async function POST(request: Request) {
     });
 
     if (interestedUsers.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'No users found with interest in this category',
-        sentCount: 0 
+        sentCount: 0
       });
     }
 
     // Gửi email cho từng user
     let sentCount = 0;
-    const emailPromises = interestedUsers.map(async (user) => {
+    const emailPromises = interestedUsers.map(async user => {
       try {
         await sendNewProductEmail(user.email, user.name || 'Khách hàng', product);
         sentCount++;
@@ -75,13 +75,9 @@ export async function POST(request: Request) {
         category: product.category.name
       }
     });
-
   } catch (error) {
     console.error('Error sending new product emails:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -100,7 +96,9 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
       }
     });
 
-    const productUrl = `${process.env.NEXT_PUBLIC_API_URL}/product/${product.name.toLowerCase().replace(/\s+/g, '-')}-${product.id}`;
+    const productUrl = `${process.env.NEXT_PUBLIC_API_URL}/product/${product.name.toLowerCase().replace(/\s+/g, '-')}-${
+      product.id
+    }`;
     const unsubscribeUrl = `${process.env.NEXT_PUBLIC_API_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
 
     const htmlContent = `
@@ -130,10 +128,17 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
           </div>
           
           <div class="content">
-            <p>Chúng tôi vừa ra mắt một sản phẩm mới trong danh mục <strong>${product.category.name}</strong> mà bạn quan tâm:</p>
+            <p>Chúng tôi vừa ra mắt một sản phẩm mới trong danh mục <strong>${
+              product.category.name
+            }</strong> mà bạn quan tâm:</p>
             
             <div class="product-card">
-              <img src="${product.images[0]?.images[0] || ''}" alt="${product.name}" class="product-image">
+              <img src="${
+                product.thumbnail ||
+                (product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages[0] : '') ||
+                (product.images && product.images[0]?.images && product.images[0].images[0]) ||
+                ''
+              }" alt="${product.name}" class="product-image">
               <h2>${product.name}</h2>
               <p>${product.description}</p>
               <div class="price">${product.price.toLocaleString('vi-VN')}₫</div>

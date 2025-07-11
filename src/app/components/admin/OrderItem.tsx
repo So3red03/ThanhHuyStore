@@ -13,7 +13,15 @@ const OrderItem: React.FC<OrderItemProps> = ({ item }) => {
       <div className='p-4'>
         <div className='flex'>
           <div className='w-1/6 flex items-center justify-stretch'>
-            <Image src={item.selectedImg || '/images/placeholder.jpg'} width={80} height={80} alt={item.name} />
+            <Image
+              src={item.selectedImg || '/images/placeholder.jpg'}
+              width={80}
+              height={80}
+              alt={item.name}
+              onError={e => {
+                e.currentTarget.src = '/images/placeholder.jpg';
+              }}
+            />
           </div>
           <div className='w-1/6 flex items-center justify-center'>
             <p className='text-gray-500 mb-0'>{truncateText(item.name)}</p>

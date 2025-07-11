@@ -47,11 +47,14 @@ interface OrderData {
     description: string;
     price: number;
     quantity: number;
-    selectedImg: {
-      color: string;
-      colorCode: string;
-      images: string[];
-    };
+    selectedImg:
+      | string
+      | {
+          color: string;
+          colorCode: string;
+          images: string[];
+        };
+    attributes?: Record<string, string>; // For variant products
   }>;
 }
 
@@ -192,11 +195,22 @@ export class PDFGenerator {
         yPosition = 50;
       }
 
+      // Get variant info for display
+      const getVariantInfo = () => {
+        if (product.attributes) {
+          const attributeValues = Object.values(product.attributes).filter(Boolean);
+          return attributeValues.length > 0 ? attributeValues.join(' - ') : '-';
+        } else if (typeof product.selectedImg === 'object' && product.selectedImg.color) {
+          return product.selectedImg.color;
+        }
+        return '-';
+      };
+
       doc
         .font('Helvetica')
         .text(`${index + 1}`, 60, yPosition, { width: 40 })
         .text(product.name, 100, yPosition, { width: 200 })
-        .text(product.selectedImg.color, 300, yPosition, { width: 80 })
+        .text(getVariantInfo(), 300, yPosition, { width: 80 })
         .text(`${product.quantity}`, 380, yPosition, { width: 40 })
         .text(formatPrice(product.price), 420, yPosition, { width: 60 })
         .text(formatPrice(product.price * product.quantity), 480, yPosition, { width: 70 });

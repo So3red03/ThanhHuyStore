@@ -12,7 +12,15 @@ const BestsSellingProductForm: React.FC<BestsSellingProductFormProps> = ({ item 
     <>
       <tr className='border-t'>
         <td className='py-2 flex gap-2 items-center'>
-          <Image src={item.selectedImg || '/images/placeholder.jpg'} alt={item.name} width={40} height={40} />
+          <Image
+            src={item.selectedImg || '/images/placeholder.jpg'}
+            alt={item.name}
+            width={40}
+            height={40}
+            onError={e => {
+              e.currentTarget.src = '/images/placeholder.jpg';
+            }}
+          />
           <span>{item?.name}</span>
         </td>
         <td className='py-2 px-3 '>{item?.inStock}</td>

@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { truncateText } from '../../../../utils/truncateText';
 import { formatPrice } from '../../../../utils/formatPrice';
 
-import SetColor from './SetColor';
+import ProductVariantSelector from './ProductVariantSelector';
 import { useCallback, useState } from 'react';
 import { CartProductType, selectedImgType } from '@/app/(home)/product/[productId]/ProductDetails';
 import Link from 'next/link';
@@ -31,8 +31,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
         data.thumbnail || (data.galleryImages && data.galleryImages.length > 0 ? data.galleryImages[0] : null);
       if (imageUrl) {
         return {
-          images: [imageUrl],
-          displayLabel: 'Sản phẩm đơn'
+          images: [data.thumbnail, ...(data.galleryImages || [])].filter(Boolean),
+          displayLabel: 'Sản phẩm đơn',
+          selectedImg: imageUrl
         };
       }
     }
@@ -52,10 +53,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
 
         if (imageUrl) {
           return {
-            images: [imageUrl],
+            images: [variantWithImage.thumbnail, ...(variantWithImage.galleryImages || [])].filter(Boolean),
             variantId: variantWithImage.id,
             attributes: variantWithImage.attributes,
-            displayLabel: getVariantDisplayLabel(variantWithImage.attributes)
+            displayLabel: getVariantDisplayLabel(variantWithImage.attributes),
+            selectedImg: imageUrl
           };
         }
       }
@@ -63,8 +65,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
       else if (data.thumbnail || (data.galleryImages && data.galleryImages.length > 0)) {
         const imageUrl = data.thumbnail || data.galleryImages[0];
         return {
-          images: [imageUrl],
-          displayLabel: 'Sản phẩm biến thể'
+          images: [data.thumbnail, ...(data.galleryImages || [])].filter(Boolean),
+          displayLabel: 'Sản phẩm biến thể',
+          selectedImg: imageUrl
         };
       }
     }
@@ -72,7 +75,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     // Final fallback
     return {
       images: ['/noavatar.png'],
-      displayLabel: 'Không có ảnh'
+      displayLabel: 'Không có ảnh',
+      selectedImg: '/noavatar.png'
     };
   };
 
@@ -82,12 +86,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     return attributeValues.length > 0 ? attributeValues.join(' - ') : 'Biến thể';
   };
 
+  const defaultImageData = getDefaultImage();
   const [cartProduct, setCartProduct] = useState<CartProductType>({
     id: data.id,
     name: data.name,
     description: data.description,
     category: data.category,
-    selectedImg: getDefaultImage()?.images?.[0] || '/noavatar.png',
+    selectedImg: defaultImageData?.selectedImg || '/noavatar.png',
     quantity: 1,
     price: data.price,
     inStock: data.inStock
@@ -141,7 +146,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
 
   const handleColorSelect = useCallback((value: selectedImgType) => {
     setCartProduct(prev => {
-      return { ...prev, selectedImg: value.images?.[0] || '/noavatar.png' };
+      return { ...prev, selectedImg: value.selectedImg || value.images?.[0] || '/noavatar.png' };
     });
   }, []);
 
@@ -230,10 +235,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
           )}
         </div>
       </Link>
-      {/* Only show SetColor for VARIANT products, not SIMPLE products */}
+      {/* Only show ProductVariantSelector for VARIANT products, not SIMPLE products */}
       {data.productType === 'VARIANT' && (
         <div className='py-4 px-14'>
-          <SetColor cartProduct={cartProduct} product={data} handleColorSelect={handleColorSelect} performance={true} />
+          <ProductVariantSelector
+            cartProduct={cartProduct}
+            product={data}
+            handleColorSelect={handleColorSelect}
+            performance={true}
+          />
         </div>
       )}
       {/* <div>

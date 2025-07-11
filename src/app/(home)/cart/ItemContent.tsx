@@ -27,6 +27,9 @@ const ItemContent: React.FC<ItemContentProps> = ({ item }) => {
               fill
               className='object-fill'
               sizes='100%'
+              onError={e => {
+                e.currentTarget.src = '/noavatar.png';
+              }}
             />
           </div>
         </Link>
