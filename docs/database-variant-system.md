@@ -1,23 +1,27 @@
 # Database Schema: Product Variant System
 
 ## Overview
+
 This document describes the database schema for the flexible product variant system, designed to be similar to WordPress WooCommerce with complete customization capabilities.
 
 ## Schema Design Principles
 
 ### 1. **Flexibility First**
+
 - No hardcoded attributes
 - Global attribute library for reusability
 - Product-specific customization
 - Multiple display types per attribute
 
 ### 2. **Performance Optimized**
+
 - Proper indexing for fast queries
 - JSON fields for flexible data storage
 - Minimal joins for common operations
 - Efficient variant lookups
 
 ### 3. **Backward Compatibility**
+
 - Existing simple products remain unchanged
 - Gradual migration path
 - No breaking changes to existing APIs
@@ -25,21 +29,21 @@ This document describes the database schema for the flexible product variant sys
 ## Core Models
 
 ### Product (Enhanced)
+
 ```prisma
 model Product {
   id               String      @id @default(auto()) @map("_id") @db.ObjectId
   name             String
   description      String
   brand            String      @default("Apple")
-  
+
   // Product type and pricing
   productType      ProductType @default(SIMPLE)
   price            Float?      // For simple products
-  basePrice        Float?      // Base price for variant products
-  
+
   categoryId       String      @db.ObjectId
   inStock          Int?        // For simple products
-  
+
   // Variant system relationships
   productAttributes ProductAttribute[]
   variants         ProductVariant[]
@@ -47,12 +51,14 @@ model Product {
 ```
 
 **Key Changes:**
+
 - Added `productType` enum (SIMPLE/VARIANT)
 - `price` is nullable for variant products
 - Added `basePrice` for variant products
 - `inStock` is nullable for variant products
 
 ### GlobalAttribute
+
 ```prisma
 model GlobalAttribute {
   id          String        @id @default(auto()) @map("_id") @db.ObjectId
@@ -66,11 +72,13 @@ model GlobalAttribute {
 ```
 
 **Purpose:**
+
 - Reusable attribute definitions across products
 - Centralized attribute management
 - Type safety with AttributeType enum
 
 ### ProductAttribute
+
 ```prisma
 model ProductAttribute {
   id           String      @id @default(auto()) @map("_id") @db.ObjectId
@@ -85,11 +93,13 @@ model ProductAttribute {
 ```
 
 **Purpose:**
+
 - Product-specific attribute configuration
 - Display type customization per product
 - Attribute ordering and requirements
 
 ### AttributeValue
+
 ```prisma
 model AttributeValue {
   id              String  @id @default(auto()) @map("_id") @db.ObjectId
@@ -107,11 +117,13 @@ model AttributeValue {
 ```
 
 **Purpose:**
+
 - Flexible value storage (global or product-specific)
 - Price adjustments per value
 - Rich metadata (colors, images, descriptions)
 
 ### ProductVariant
+
 ```prisma
 model ProductVariant {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -126,6 +138,7 @@ model ProductVariant {
 ```
 
 **Purpose:**
+
 - Individual variant storage
 - JSON attributes for flexibility
 - Independent pricing and stock
@@ -134,6 +147,7 @@ model ProductVariant {
 ## Enums
 
 ### ProductType
+
 ```prisma
 enum ProductType {
   SIMPLE   // Traditional single-variant product
@@ -142,6 +156,7 @@ enum ProductType {
 ```
 
 ### AttributeType
+
 ```prisma
 enum AttributeType {
   TEXT     // Free text input
@@ -152,6 +167,7 @@ enum AttributeType {
 ```
 
 ### DisplayType
+
 ```prisma
 enum DisplayType {
   BUTTON       // Individual buttons (like Image 1)
@@ -168,6 +184,7 @@ enum DisplayType {
 ### Creating a MacBook Pro Variant Product
 
 1. **Create Product**
+
 ```javascript
 const product = await prisma.product.create({
   data: {
@@ -180,6 +197,7 @@ const product = await prisma.product.create({
 ```
 
 2. **Add Attributes**
+
 ```javascript
 // Color attribute
 await prisma.productAttribute.create({
@@ -205,6 +223,7 @@ await prisma.productAttribute.create({
 ```
 
 3. **Create Variants**
+
 ```javascript
 await prisma.productVariant.create({
   data: {
@@ -220,6 +239,7 @@ await prisma.productVariant.create({
 ### Querying Variants
 
 **Get Product with All Variants:**
+
 ```javascript
 const product = await prisma.product.findUnique({
   where: { id: productId },
@@ -236,6 +256,7 @@ const product = await prisma.product.findUnique({
 ```
 
 **Find Variant by Attributes:**
+
 ```javascript
 const variant = await prisma.productVariant.findFirst({
   where: {
@@ -250,16 +271,19 @@ const variant = await prisma.productVariant.findFirst({
 ## Migration Strategy
 
 ### Phase 1: Schema Update
+
 1. Add new models and enums
 2. Update existing Product model
 3. Generate Prisma client
 
 ### Phase 2: Data Migration
+
 1. Set all existing products to `SIMPLE` type
 2. Create global attributes library
 3. Seed sample attribute values
 
 ### Phase 3: Testing
+
 1. Create sample variant products
 2. Test all CRUD operations
 3. Verify performance
@@ -267,6 +291,7 @@ const variant = await prisma.productVariant.findFirst({
 ## Performance Considerations
 
 ### Indexing Strategy
+
 ```prisma
 // ProductVariant indexes
 @@index([productId])        // Fast product variant lookup
@@ -280,6 +305,7 @@ const variant = await prisma.productVariant.findFirst({
 ```
 
 ### Query Optimization
+
 - Use `include` strategically to avoid N+1 queries
 - JSON field queries are indexed in MongoDB
 - Batch operations for bulk updates
@@ -288,12 +314,14 @@ const variant = await prisma.productVariant.findFirst({
 ## Security Considerations
 
 ### Data Validation
+
 - SKU uniqueness enforcement
 - Price validation (non-negative)
 - Stock validation (non-negative)
 - Attribute value format validation
 
 ### Access Control
+
 - Admin-only variant management
 - Customer read-only access
 - Audit logging for changes
@@ -301,11 +329,13 @@ const variant = await prisma.productVariant.findFirst({
 ## Backup and Recovery
 
 ### Before Migration
+
 ```bash
 npm run variant:backup
 ```
 
 ### After Migration
+
 - Regular database backups
 - Point-in-time recovery capability
 - Test restore procedures
@@ -313,12 +343,14 @@ npm run variant:backup
 ## Monitoring
 
 ### Key Metrics
+
 - Variant creation rate
 - Query performance
 - Storage usage
 - Error rates
 
 ### Alerts
+
 - Failed variant operations
 - Performance degradation
 - Data inconsistencies
@@ -326,6 +358,7 @@ npm run variant:backup
 ## Future Enhancements
 
 ### Planned Features
+
 - Variant image management
 - Bulk import/export
 - Advanced pricing rules
@@ -333,6 +366,7 @@ npm run variant:backup
 - Analytics integration
 
 ### Scalability
+
 - Sharding strategy for large catalogs
 - Caching layer for frequent queries
 - CDN for variant images

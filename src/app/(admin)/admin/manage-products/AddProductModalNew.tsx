@@ -130,7 +130,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       description: initialData?.description || '',
       category: initialData?.categoryId || '',
       price: initialData?.price || '',
-      basePrice: initialData?.basePrice || '',
       inStock: initialData?.inStock || '',
       images: null
     }
@@ -207,7 +206,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       setValue('name', initialData.name);
       setValue('description', initialData.description);
       setValue('price', initialData.price);
-      setValue('basePrice', initialData.basePrice);
       setValue('inStock', initialData.inStock);
       setValue('categoryId', initialData.categoryId);
 
@@ -467,7 +465,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       if (productType === ProductType.SIMPLE) {
         // Simple products include price, stock, and images in main product
         submitData.price = parseFloat(data.price);
-        submitData.basePrice = data.basePrice ? parseFloat(data.basePrice) : parseFloat(data.price);
         submitData.inStock = parseInt(data.inStock);
       } else if (productType === ProductType.VARIANT) {
         // For variant products, upload images to Firebase with proper folder structure
@@ -475,9 +472,27 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           const uploadedVariations = await uploadVariantImagesToFirebase(submitData.name, variations);
 
           // For variant products, main product doesn't have price/stock
-          // basePrice will be calculated from variants on the server side
-          submitData.variations = uploadedVariations;
-          submitData.attributes = attributes;
+          // Price will be calculated from variants on the server side
+          submitData.variants = uploadedVariations;
+
+          // Transform attributes to match backend expected format
+          submitData.attributes = attributes.map((attr: any) => ({
+            name: attr.name,
+            label: attr.name, // Use name as label
+            type: 'SELECT', // Default type
+            displayType: 'BUTTON', // Default display type
+            isRequired: true,
+            isVariation: attr.isUsedForVariations ?? true,
+            description: attr.description || '',
+            values: attr.values.map((value: any) => ({
+              value: value.value,
+              label: value.label,
+              description: value.description || '',
+              colorCode: value.colorCode || null,
+              imageUrl: value.imageUrl || null,
+              priceAdjustment: parseFloat(value.priceAdjustment || '0')
+            }))
+          }));
 
           console.log('🚀 Sending variant product data:', {
             name: submitData.name,
@@ -497,17 +512,17 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       if (mode === 'edit' && initialData?.id) {
         // Update product - use the correct API endpoint based on product type
         if (productType === ProductType.VARIANT) {
-          await axios.put(`/api/variants/products/${initialData.id}`, submitData);
+          await axios.put(`/api/product/variant/${initialData.id}`, submitData);
         } else {
-          await axios.put(`/api/product/${initialData.id}`, submitData);
+          await axios.put(`/api/product/simple/${initialData.id}`, submitData);
         }
         toast.success('Sản phẩm đã được cập nhật thành công!');
       } else {
         // Create product - use the correct API endpoint based on product type
         if (productType === ProductType.VARIANT) {
-          await axios.post('/api/variants/products', submitData);
+          await axios.post('/api/product/variant', submitData);
         } else {
-          await axios.post('/api/product', submitData);
+          await axios.post('/api/product/simple', submitData);
         }
         toast.success('Sản phẩm đã được tạo thành công!');
       }
@@ -591,6 +606,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   };
 
+  // Generate variant folder name based on attributes
+  const generateVariantFolderName = (attributes: Record<string, string>): string => {
+    const attributeValues = Object.values(attributes).filter(Boolean);
+    if (attributeValues.length === 0) {
+      return `variant-${Date.now()}`;
+    }
+    return attributeValues.join('-').toLowerCase().replace(/\s+/g, '-');
+  };
+
   // Upload variant images to Firebase with proper folder structure
   const uploadVariantImagesToFirebase = async (productName: string, variations: any[]): Promise<any[]> => {
     setIsUploading(true);
@@ -602,7 +626,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       for (let i = 0; i < variations.length; i++) {
         const variation = variations[i];
 
-        const variantId = `variant-${i + 1}-${Date.now()}`;
+        // Create variant folder name based on attributes
+        const variantId = generateVariantFolderName(variation.attributes);
         let thumbnailUrl: string | null = null;
         let galleryUrls: string[] = [];
 
@@ -632,8 +657,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           stock: variation.stock,
           sku: variation.sku || '',
           thumbnail: thumbnailUrl || variation.thumbnail || null,
-          galleryImages: galleryUrls.length > 0 ? galleryUrls : variation.galleryImages || [],
-          isActive: variation.isActive
+          galleryImages: galleryUrls.length > 0 ? galleryUrls : variation.galleryImages || []
         });
       }
 

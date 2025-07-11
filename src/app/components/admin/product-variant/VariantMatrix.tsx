@@ -32,13 +32,7 @@ import {
 } from '@mui/icons-material';
 import { VariantMatrixProps, ProductVariant, AttributeCombination, ProductAttribute } from './types';
 
-const VariantMatrix: React.FC<VariantMatrixProps> = ({
-  productId,
-  attributes,
-  variants,
-  onVariantsChange,
-  basePrice
-}) => {
+const VariantMatrix: React.FC<VariantMatrixProps> = ({ productId, attributes, variants, onVariantsChange }) => {
   const [showBulkPriceDialog, setShowBulkPriceDialog] = useState(false);
   const [showBulkStockDialog, setShowBulkStockDialog] = useState(false);
   const [bulkPrice, setBulkPrice] = useState('');
@@ -99,9 +93,9 @@ const VariantMatrix: React.FC<VariantMatrixProps> = ({
         }
       });
 
-      return basePrice + totalAdjustment;
+      return totalAdjustment;
     },
-    [attributes, basePrice]
+    [attributes]
   );
 
   // Generate SKU from combination

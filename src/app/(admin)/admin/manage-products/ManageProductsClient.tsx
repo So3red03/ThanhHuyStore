@@ -148,13 +148,13 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         // Try variant API first
         let fullProductData;
         try {
-          const variantResponse = await axios.get(`/api/variants/products/${product.id}`);
+          const variantResponse = await axios.get(`/api/product/variant/${product.id}`);
           fullProductData = variantResponse.data;
           console.log('✅ Got data from variant API');
         } catch (variantError) {
           console.log('⚠️ Variant API failed, trying regular API...');
           // Fallback to regular product API
-          const regularResponse = await axios.get(`/api/product/${product.id}`);
+          const regularResponse = await axios.get(`/api/product/simple/${product.id}`);
           fullProductData = regularResponse.data;
           console.log('✅ Got data from regular API');
         }
@@ -204,8 +204,8 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       let displayStock = product.inStock;
 
       if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
-        // Use base price if available, otherwise use first variant price
-        displayPrice = product.basePrice || product.variants[0]?.price || 0;
+        // Use first variant price for display
+        displayPrice = product.variants[0]?.price || 0;
 
         // Calculate total stock from all variants
         displayStock = product.variants.reduce((total: number, variant: any) => {
@@ -233,7 +233,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         variants: product.variants || [], // Include variants data
         // Include all original product data for editing
         brand: product.brand,
-        basePrice: product.basePrice,
         priority: product.priority,
         productAttributes: product.productAttributes || []
       };
@@ -401,7 +400,10 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const handleDelete = async (id: string, productData: any) => {
     try {
       // Delete product from database (API will handle Firebase image deletion)
-      await axios.delete(`/api/product/${id}`);
+      const endpoint =
+        productData.productType === 'VARIANT' ? `/api/product/variant/${id}` : `/api/product/simple/${id}`;
+
+      await axios.delete(endpoint);
       toast.success('Xóa sản phẩm thành công');
       router.refresh();
     } catch (error) {
@@ -412,19 +414,24 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
+
+    // Determine endpoint based on product type
+    const endpoint =
+      data.productType === 'VARIANT' ? `/api/product/variant/${data.id}` : `/api/product/simple/${data.id}`;
+
     axios
-      .put(`/api/product/${data.id}`, {
+      .put(endpoint, {
         name: data.name,
         description: data.description,
         price: Number(data.price),
         inStock: Number(data.inStock),
         categoryId: data.categoryId
       })
-      .then(res => {
+      .then(() => {
         toast.success('Lưu thông tin thành công');
         router.refresh();
       })
-      .catch(error => {
+      .catch(() => {
         toast.error('Có lỗi xảy ra khi lưu thông tin');
       })
       .finally(() => {

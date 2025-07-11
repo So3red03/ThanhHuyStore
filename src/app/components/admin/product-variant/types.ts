@@ -91,8 +91,7 @@ export interface VariantProduct {
   name: string;
   description: string;
   productType: ProductType;
-  basePrice?: number; // Base price for variants
-  price?: number; // Price for simple products
+  price?: number; // Price for products
   categoryId: string;
   inStock?: number; // Stock for simple products
   attributes: ProductAttribute[];
@@ -159,7 +158,6 @@ export interface VariantMatrixProps {
   attributes: ProductAttribute[];
   variants: ProductVariant[];
   onVariantsChange: (variants: ProductVariant[]) => void;
-  basePrice: number;
 }
 
 export interface AttributeSelectorProps {

@@ -105,7 +105,7 @@ async function verifyVariantSystem() {
         product: {
           select: {
             name: true,
-            basePrice: true
+            price: true
           }
         }
       }

@@ -1,0 +1,85 @@
+{
+  "name": "iPad 10.9-inch Wi-Fi",
+  "description": "<p>iPad mới nhất với màn hình 10.9 inch</p>",
+  "categoryId": "6768da5dd04035bd693c1c17",
+  "productType": "VARIANT",
+  "brand": "Apple",
+  "thumbnail": null,
+  "galleryImages": [],
+  "variants": [
+    {
+      "attributes": {
+        "màu-sắc": "bạc",
+        "dung-lượng": "64gb"
+      },
+      "price": 8090000,
+      "stock": 22,
+      "sku": "SKU-BAC-64GB",
+      "thumbnail": "https://firebasestorage.googleapis.com/v0/b/thanhhuy-store.appspot.com/o/variant-products%2Fipad-109-inch-wi-fi%2Fb%E1%BA%A1c-64gb%2Fthumbnail.jpeg?alt=media&token=2efc0ef1-1642-498c-9739-0bb9dc94cc74",
+      "galleryImages": [
+        "https://firebasestorage.googleapis.com/v0/b/thanhhuy-store.appspot.com/o/variant-products%2Fipad-109-inch-wi-fi%2Fb%E1%BA%A1c-64gb%2Fgallery%2Fimg1.jpeg?alt=media&token=4bc0c901-980d-4a68-ae9e-bdbc790a82cf"
+      ]
+    },
+    {
+      "attributes": {
+        "màu-sắc": "xanh",
+        "dung-lượng": "64gb"
+      },
+      "price": 8090000,
+      "stock": 22,
+      "sku": "SKU-XANH-64GB",
+      "thumbnail": "https://firebasestorage.googleapis.com/v0/b/thanhhuy-store.appspot.com/o/variant-products%2Fipad-109-inch-wi-fi%2Fxanh-64gb%2Fthumbnail.jpeg?alt=media&token=0b01a442-c546-4638-a5b5-beed04f6701b",
+      "galleryImages": [
+        "https://firebasestorage.googleapis.com/v0/b/thanhhuy-store.appspot.com/o/variant-products%2Fipad-109-inch-wi-fi%2Fxanh-64gb%2Fgallery%2Fimg1.jpeg?alt=media&token=581b8045-eb99-4121-8deb-7854ac6144ef"
+      ]
+    }
+  ],
+  "attributes": [
+    {
+      "name": "Màu sắc",
+      "label": "Màu sắc",
+      "type": "SELECT",
+      "displayType": "BUTTON",
+      "isRequired": true,
+      "isVariation": true,
+      "description": "",
+      "values": [
+        {
+          "value": "bạc",
+          "label": "Bạc",
+          "description": "",
+          "colorCode": null,
+          "imageUrl": null,
+          "priceAdjustment": 0
+        },
+        {
+          "value": "xanh",
+          "label": "Xanh",
+          "description": "",
+          "colorCode": null,
+          "imageUrl": null,
+          "priceAdjustment": 0
+        }
+      ]
+    },
+    {
+      "name": "Dung lượng",
+      "label": "Dung lượng",
+      "type": "SELECT",
+      "displayType": "BUTTON",
+      "isRequired": true,
+      "isVariation": true,
+      "description": "",
+      "values": [
+        {
+          "value": "64gb",
+          "label": "64GB",
+          "description": "",
+          "colorCode": null,
+          "imageUrl": null,
+          "priceAdjustment": 0
+        }
+      ]
+    }
+  ]
+}

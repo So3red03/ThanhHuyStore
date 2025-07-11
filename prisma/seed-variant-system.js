@@ -53,7 +53,7 @@ async function seedVariantSystem() {
           'MacBook Pro 16-inch với chip Apple M3 Pro mạnh mẽ, màn hình Liquid Retina XDR tuyệt đẹp và thời lượng pin cả ngày.',
         brand: 'Apple',
         productType: 'VARIANT',
-        basePrice: 60000000, // 60M VND base price
+        price: 60000000, // 60M VND base price
         categoryId: category.id,
         images: [
           {

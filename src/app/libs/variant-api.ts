@@ -13,7 +13,7 @@ export interface VariantProduct {
   description: string;
   brand: string;
   productType: 'VARIANT';
-  basePrice: number;
+  price?: number;
   categoryId: string;
   images: string[];
   productAttributes: ProductAttribute[];
@@ -74,7 +74,7 @@ export interface CreateVariantProductData {
   name: string;
   description: string;
   brand?: string;
-  basePrice: number;
+  price?: number;
   categoryId: string;
   images?: string[];
   attributes: CreateAttributeData[];
@@ -125,7 +125,7 @@ export interface BulkVariantAction {
 export class VariantAPI {
   private baseURL: string;
 
-  constructor(baseURL: string = '/api/variants') {
+  constructor(baseURL: string = '/api/product/variant') {
     this.baseURL = baseURL;
   }
 
@@ -137,53 +137,53 @@ export class VariantAPI {
     if (params?.search) searchParams.set('search', params.search);
     if (params?.categoryId) searchParams.set('categoryId', params.categoryId);
 
-    const response = await axios.get(`${this.baseURL}/products?${searchParams}`);
+    const response = await axios.get(`${this.baseURL}?${searchParams}`);
     return response.data;
   }
 
   async getVariantProduct(id: string): Promise<VariantProduct> {
-    const response = await axios.get(`${this.baseURL}/products/${id}`);
+    const response = await axios.get(`${this.baseURL}/${id}`);
     return response.data;
   }
 
   async createVariantProduct(data: CreateVariantProductData) {
-    const response = await axios.post(`${this.baseURL}/products`, data);
+    const response = await axios.post(`${this.baseURL}`, data);
     return response.data;
   }
 
   async updateVariantProduct(id: string, data: Partial<CreateVariantProductData>) {
-    const response = await axios.put(`${this.baseURL}/products/${id}`, data);
+    const response = await axios.put(`${this.baseURL}/${id}`, data);
     return response.data;
   }
 
   async deleteVariantProduct(id: string) {
-    const response = await axios.delete(`${this.baseURL}/products/${id}`);
+    const response = await axios.delete(`${this.baseURL}/${id}`);
     return response.data;
   }
 
   // Attribute endpoints
   async getProductAttributes(productId: string): Promise<ProductAttribute[]> {
-    const response = await axios.get(`${this.baseURL}/products/${productId}/attributes`);
+    const response = await axios.get(`${this.baseURL}/${productId}/attributes`);
     return response.data;
   }
 
   async createProductAttribute(productId: string, data: CreateAttributeData) {
-    const response = await axios.post(`${this.baseURL}/products/${productId}/attributes`, data);
+    const response = await axios.post(`${this.baseURL}/${productId}/attributes`, data);
     return response.data;
   }
 
   async updateAttribute(attributeId: string, data: Partial<CreateAttributeData>) {
-    const response = await axios.put(`${this.baseURL}/attributes/${attributeId}`, data);
+    const response = await axios.put(`/api/product/variant/attributes/${attributeId}`, data);
     return response.data;
   }
 
   async deleteAttribute(attributeId: string) {
-    const response = await axios.delete(`${this.baseURL}/attributes/${attributeId}`);
+    const response = await axios.delete(`/api/product/variant/attributes/${attributeId}`);
     return response.data;
   }
 
   async reorderAttributes(productId: string, attributeIds: string[]) {
-    const response = await axios.put(`${this.baseURL}/products/${productId}/attributes`, {
+    const response = await axios.put(`${this.baseURL}/${productId}/attributes`, {
       attributeIds
     });
     return response.data;
@@ -192,12 +192,12 @@ export class VariantAPI {
   // Variant endpoints
   async getProductVariants(productId: string, includeInactive = false): Promise<ProductVariant[]> {
     const params = includeInactive ? '?includeInactive=true' : '';
-    const response = await axios.get(`${this.baseURL}/products/${productId}/variants${params}`);
+    const response = await axios.get(`${this.baseURL}/${productId}/variants${params}`);
     return response.data;
   }
 
   async createVariants(productId: string, variants: CreateVariantData[]) {
-    const response = await axios.post(`${this.baseURL}/products/${productId}/variants`, {
+    const response = await axios.post(`${this.baseURL}/${productId}/variants`, {
       variants
     });
     return response.data;
@@ -219,13 +219,13 @@ export class VariantAPI {
   }
 
   async bulkUpdateVariants(productId: string, action: BulkVariantAction) {
-    const response = await axios.put(`${this.baseURL}/products/${productId}/variants`, action);
+    const response = await axios.put(`${this.baseURL}/${productId}/variants`, action);
     return response.data;
   }
 
   // Generation endpoints
-  async generateVariants(productId: string, basePrice?: number, skuPrefix?: string) {
-    const response = await axios.post(`${this.baseURL}/generate`, {
+  async generateVariants(productId: string, basePrice: number = 0, skuPrefix?: string) {
+    const response = await axios.post(`/api/product/variant/generate`, {
       productId,
       basePrice,
       skuPrefix
@@ -233,12 +233,12 @@ export class VariantAPI {
     return response.data;
   }
 
-  async previewVariants(productId: string, basePrice?: number) {
+  async previewVariants(productId: string, basePrice: number = 0) {
     const params = new URLSearchParams();
     params.set('productId', productId);
     if (basePrice) params.set('basePrice', basePrice.toString());
 
-    const response = await axios.get(`${this.baseURL}/generate?${params}`);
+    const response = await axios.get(`/api/product/variant/generate?${params}`);
     return response.data;
   }
 }

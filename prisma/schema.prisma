@@ -136,7 +136,6 @@ model Product {
   // Product type and pricing
   productType      ProductType @default(SIMPLE)
   price            Float?      // For simple products
-  basePrice        Float?      // Base price for variant products
 
   categoryId       String      @db.ObjectId
   category         Category    @relation(fields: [categoryId], references: [id], onDelete: NoAction)

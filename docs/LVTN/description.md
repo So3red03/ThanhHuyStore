@@ -79,24 +79,23 @@ body {
 
 **Mô tả:** Bảng product chứa thông tin sản phẩm với hỗ trợ cả sản phẩm đơn giản và có biến thể.
 
-| Thuộc tính  | Kiểu        | K   | U   | M   | Diễn giải                       |
-| ----------- | ----------- | --- | --- | --- | ------------------------------- |
-| id          | String      | x   | x   | x   | Mã định danh sản phẩm           |
-| name        | String      |     |     | x   | Tên sản phẩm                    |
-| description | String      |     |     | x   | Mô tả sản phẩm                  |
-| brand       | String      |     |     |     | Thương hiệu                     |
-| productType | ProductType |     |     |     | Loại sản phẩm (SIMPLE/VARIANT)  |
-| price       | Float       |     |     |     | Giá sản phẩm đơn giản           |
-| basePrice   | Float       |     |     |     | Giá cơ sở cho sản phẩm biến thể |
-| categoryId  | String      |     |     | x   | ID danh mục (FK)                |
-| inStock     | Int         |     |     |     | Số lượng tồn kho                |
-| priority    | Int         |     |     |     | Độ ưu tiên hiển thị             |
-| createDate  | DateTime    |     |     |     | Ngày tạo                        |
-| createdAt   | DateTime    |     |     |     | Thời gian tạo                   |
-| updatedAt   | DateTime    |     |     |     | Thời gian cập nhật              |
-| isDeleted   | Boolean     |     |     |     | Đánh dấu xóa mềm                |
-| deletedAt   | DateTime    |     |     |     | Thời gian xóa                   |
-| deletedBy   | String      |     |     |     | Người thực hiện xóa             |
+| Thuộc tính  | Kiểu        | K   | U   | M   | Diễn giải                      |
+| ----------- | ----------- | --- | --- | --- | ------------------------------ |
+| id          | String      | x   | x   | x   | Mã định danh sản phẩm          |
+| name        | String      |     |     | x   | Tên sản phẩm                   |
+| description | String      |     |     | x   | Mô tả sản phẩm                 |
+| brand       | String      |     |     |     | Thương hiệu                    |
+| productType | ProductType |     |     |     | Loại sản phẩm (SIMPLE/VARIANT) |
+| price       | Float       |     |     |     | Giá sản phẩm                   |
+| categoryId  | String      |     |     | x   | ID danh mục (FK)               |
+| inStock     | Int         |     |     |     | Số lượng tồn kho               |
+| priority    | Int         |     |     |     | Độ ưu tiên hiển thị            |
+| createDate  | DateTime    |     |     |     | Ngày tạo                       |
+| createdAt   | DateTime    |     |     |     | Thời gian tạo                  |
+| updatedAt   | DateTime    |     |     |     | Thời gian cập nhật             |
+| isDeleted   | Boolean     |     |     |     | Đánh dấu xóa mềm               |
+| deletedAt   | DateTime    |     |     |     | Thời gian xóa                  |
+| deletedBy   | String      |     |     |     | Người thực hiện xóa            |
 
 ## Bảng Category
 

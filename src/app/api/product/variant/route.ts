@@ -1,10 +1,10 @@
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
-import prisma from '@/app/libs/prismadb';
+import prisma from '../../../libs/prismadb';
 import { NextResponse } from 'next/server';
-import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
+import { AuditLogger, AuditEventType, AuditSeverity } from '../../../utils/auditLogger';
 
 /**
- * GET: Fetch all variant products with their attributes and variants
+ * GET: Fetch all variant products
  */
 export async function GET(request: Request) {
   try {
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST: Create a new variant product
+ * POST: Create new variant product
  */
 export async function POST(request: Request) {
   try {
@@ -93,20 +93,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const {
-      name,
-      description,
-      brand = 'Apple',
-      basePrice = 0, // Optional for variant products, will be calculated from variants
-      categoryId,
-      images = [],
-      attributes = [],
-      variants = []
-    } = body;
+    console.log('🔍 Received payload:', JSON.stringify(body, null, 2));
+
+    const { name, description, brand = 'Apple', categoryId, attributes = [], variants = [] } = body;
 
     // Detailed validation with specific error messages
     // For variant products, only name, description, and categoryId are required
-    // basePrice is optional and will be calculated from variants
     const missingFields = [];
     if (!name) missingFields.push('name (tên sản phẩm)');
     if (!description) missingFields.push('description (mô tả)');
@@ -118,22 +110,13 @@ export async function POST(request: Request) {
         {
           error: `Thiếu các trường bắt buộc: ${missingFields.join(', ')}`,
           missingFields,
-          receivedData: { name, description, categoryId, basePrice }
+          receivedData: { name, description, categoryId }
         },
         { status: 400 }
       );
     }
 
-    if (!Array.isArray(attributes) || attributes.length === 0) {
-      console.error('❌ Missing attributes:', { attributes });
-      return NextResponse.json(
-        {
-          error: 'Cần ít nhất một thuộc tính cho sản phẩm biến thể',
-          receivedAttributes: attributes
-        },
-        { status: 400 }
-      );
-    }
+    console.log('✅ Creating variant product:', { name, description, categoryId });
 
     // Create product with attributes and variants in transaction
     const result = await prisma.$transaction(async tx => {
@@ -144,7 +127,6 @@ export async function POST(request: Request) {
           description,
           brand,
           productType: 'VARIANT',
-          basePrice: parseFloat(basePrice),
           categoryId,
           thumbnail: null,
           galleryImages: [],
@@ -153,7 +135,9 @@ export async function POST(request: Request) {
         }
       });
 
-      // 2. Create attributes
+      console.log('✅ Product created:', product.id);
+
+      // 2. Create product attributes
       const createdAttributes = [];
       for (let i = 0; i < attributes.length; i++) {
         const attr = attributes[i];
@@ -161,9 +145,9 @@ export async function POST(request: Request) {
           data: {
             productId: product.id,
             name: attr.name,
-            label: attr.label,
-            type: attr.type,
-            displayType: attr.displayType,
+            label: attr.label || attr.name, // Use name as label if label is missing
+            type: attr.type || 'SELECT', // Default type if missing
+            displayType: attr.displayType || 'BUTTON', // Default displayType if missing
             isRequired: attr.isRequired ?? true,
             isVariation: attr.isVariation ?? true,
             position: i,
@@ -196,20 +180,29 @@ export async function POST(request: Request) {
         });
       }
 
-      // 4. Create variants if provided
+      console.log('✅ Attributes created:', createdAttributes.length);
+
+      // 4. Create product variants
       const createdVariants = [];
       let minPrice = null;
       let totalStock = 0;
 
+      console.log('🔍 Processing variants:', variants.length);
       for (const variant of variants) {
+        console.log('🔍 Processing variant:', {
+          sku: variant.sku,
+          attributes: variant.attributes,
+          price: variant.price
+        });
         if (!variant.sku || !variant.attributes || !variant.price) {
+          console.log('❌ Skipping invalid variant:', variant);
           continue; // Skip invalid variants
         }
 
         const variantPrice = parseFloat(variant.price);
         const variantStock = parseInt(variant.stock || '0');
 
-        // Track min price for basePrice calculation
+        // Track min price for product price calculation
         if (minPrice === null || variantPrice < minPrice) {
           minPrice = variantPrice;
         }
@@ -231,12 +224,12 @@ export async function POST(request: Request) {
         createdVariants.push(createdVariant);
       }
 
-      // 5. Update product with calculated basePrice and total stock
+      // 5. Update product with calculated price and total stock
       if (minPrice !== null) {
         await tx.product.update({
           where: { id: product.id },
           data: {
-            basePrice: minPrice, // Set basePrice to minimum variant price
+            price: minPrice, // Set price to minimum variant price
             inStock: totalStock // Set total stock from all variants
           }
         });
@@ -262,7 +255,6 @@ export async function POST(request: Request) {
       details: {
         productName: name,
         productType: 'VARIANT',
-        basePrice: parseFloat(basePrice),
         attributesCount: result.attributes.length,
         variantsCount: result.variants.length,
         brand,
@@ -272,19 +264,10 @@ export async function POST(request: Request) {
       resourceType: 'Product'
     });
 
-    return NextResponse.json({
-      success: true,
-      data: result,
-      message: 'Variant product created successfully'
-    });
+    console.log('✅ Variant product created successfully:', result.product.id);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error creating variant product:', error);
-
-    // Handle unique constraint errors
-    if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-      return NextResponse.json({ error: 'SKU already exists' }, { status: 400 });
-    }
-
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
