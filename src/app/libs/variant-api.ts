@@ -204,17 +204,17 @@ export class VariantAPI {
   }
 
   async getVariant(variantId: string): Promise<ProductVariant> {
-    const response = await axios.get(`${this.baseURL}/variants/${variantId}`);
+    const response = await axios.get(`/api/product/variant/variants/${variantId}`);
     return response.data;
   }
 
   async updateVariant(variantId: string, data: Partial<CreateVariantData>) {
-    const response = await axios.put(`${this.baseURL}/variants/${variantId}`, data);
+    const response = await axios.put(`/api/product/variant/variants/${variantId}`, data);
     return response.data;
   }
 
   async deleteVariant(variantId: string) {
-    const response = await axios.delete(`${this.baseURL}/variants/${variantId}`);
+    const response = await axios.delete(`/api/product/variant/variants/${variantId}`);
     return response.data;
   }
 

@@ -329,7 +329,7 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
       });
 
       // Call API to update variant
-      const response = await fetch(`/api/variants/variants/${variantId}`, {
+      const response = await fetch(`/api/product/variant/variants/${variantId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
