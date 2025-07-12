@@ -123,7 +123,7 @@ const PromotionChart: React.FC<PromotionChartProps> = ({ data, title = 'Top 5 Ch
           color: '#6B7280',
           font: {
             size: 11,
-            weight: '500'
+            weight: 'normal' as const
           },
           maxRotation: 0,
           minRotation: 0
