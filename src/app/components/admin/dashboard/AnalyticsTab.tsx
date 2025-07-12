@@ -13,19 +13,8 @@ import {
   InputLabel,
   Grid
 } from '@mui/material';
-import {
-  MdRefresh,
-  MdDateRange,
-  MdVisibility,
-  MdShoppingCart,
-  MdTrendingUp,
-  MdPeople,
-  MdSearch,
-  MdPercent
-} from 'react-icons/md';
-import DashboardCharts from '../DashboardCharts';
+import { MdRefresh, MdDateRange, MdVisibility, MdShoppingCart, MdPeople, MdSearch, MdPercent } from 'react-icons/md';
 import { useAnalyticsOverview, useProductAnalytics, useArticleAnalytics } from '@/app/hooks/useAnalytics';
-import AnalyticsKPICards from '../../analytics/AnalyticsKPICards';
 import AnalyticsTrendChart from '../../analytics/AnalyticsTrendChart';
 import TopProductsTable from '../../analytics/TopProductsTable';
 import TopArticlesTable from '../../analytics/TopArticlesTable';
@@ -84,63 +73,47 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
     }
   };
 
-  // Create default weekly sales data if not provided
-  const defaultSalesWeeklyData = salesWeeklyData || {
-    labels: ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'],
-    datasets: [
-      {
-        label: 'Doanh số (VNĐ)',
-        data: [12000000, 19000000, 15000000, 25000000, 22000000, 30000000, 28000000],
-        backgroundColor: 'rgba(59, 130, 246, 0.5)',
-        borderColor: 'rgba(59, 130, 246, 1)',
-        borderWidth: 1
-      }
-    ]
-  };
-
-  // Create custom stats data for 3-column layout
-  const customStatsData = [
+  // Create real analytics stats from API data
+  const analyticsStatsData = [
     {
       title: 'Lượt xem trang',
-      value: 68,
-      change: '+12%',
+      value: overviewData?.overview?.pageViews || 0,
+      change: overviewLoading ? '...' : `${overviewData?.overview?.pageViews || 0}`,
       icon: MdVisibility,
-      color: '#3b82f6'
+      color: '#3b82f6',
+      loading: overviewLoading
     },
     {
       title: 'Khách truy cập',
-      value: 43,
-      change: '+8%',
+      value: overviewData?.overview?.uniqueVisitors || 0,
+      change: overviewLoading ? '...' : `${overviewData?.overview?.uniqueVisitors || 0}`,
       icon: MdPeople,
-      color: '#10b981'
+      color: '#10b981',
+      loading: overviewLoading
     },
     {
       title: 'Xem sản phẩm',
-      value: 4,
-      change: '+15%',
+      value: overviewData?.overview?.productViews || 0,
+      change: overviewLoading ? '...' : `${overviewData?.overview?.productViews || 0}`,
       icon: MdShoppingCart,
-      color: '#8b5cf6'
+      color: '#8b5cf6',
+      loading: overviewLoading
     },
     {
       title: 'Xem bài viết',
-      value: 2,
-      change: '+5%',
+      value: overviewData?.overview?.articleViews || 0,
+      change: overviewLoading ? '...' : `${overviewData?.overview?.articleViews || 0}`,
       icon: MdSearch,
-      color: '#f59e0b'
+      color: '#f59e0b',
+      loading: overviewLoading
     },
     {
-      title: 'Tìm kiếm',
-      value: 0,
-      change: '+20%',
-      icon: MdTrendingUp,
-      color: '#06b6d4'
-    },
-    {
-      title: 'Mua hàng',
-      value: 0,
-      change: '+3%',
-      icon: MdPercent,
-      color: '#ef4444'
+      title: 'Đơn hàng',
+      value: overviewData?.overview?.purchases || 0,
+      change: overviewLoading ? '...' : `${overviewData?.overview?.purchases || 0}`,
+      icon: MdShoppingCart,
+      color: '#8b5cf6',
+      loading: overviewLoading
     }
   ];
 
@@ -189,9 +162,9 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Custom Stats Cards - 3 columns layout */}
+      {/* Real Analytics Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {customStatsData.map((stat, index) => (
+        {analyticsStatsData.map((stat, index) => (
           <Grid item xs={12} md={6} lg={4} key={index}>
             <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb', height: '100%' }}>
               <CardContent sx={{ p: 3 }}>
@@ -200,12 +173,21 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
                     <Typography variant='body2' sx={{ color: '#6b7280', mb: 1 }}>
                       {stat.title}
                     </Typography>
-                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#1f2937', mb: 1 }}>
-                      {stat.value}
-                    </Typography>
-                    <Typography variant='body2' sx={{ color: '#10b981', fontWeight: 600 }}>
-                      {stat.change}
-                    </Typography>
+                    {stat.loading ? (
+                      <div className='animate-pulse'>
+                        <div className='h-8 bg-gray-200 rounded w-16 mb-2'></div>
+                        <div className='h-4 bg-gray-200 rounded w-12'></div>
+                      </div>
+                    ) : (
+                      <>
+                        <Typography variant='h4' sx={{ fontWeight: 700, color: '#1f2937', mb: 1 }}>
+                          {stat.value.toLocaleString()}
+                        </Typography>
+                        <Typography variant='body2' sx={{ color: '#10b981', fontWeight: 600 }}>
+                          {stat.change}
+                        </Typography>
+                      </>
+                    )}
                   </div>
                   <div className='p-3 rounded-lg' style={{ backgroundColor: `${stat.color}15` }}>
                     <stat.icon size={24} style={{ color: stat.color }} />

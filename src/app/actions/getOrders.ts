@@ -11,8 +11,9 @@ export async function getOrders() {
         createdAt: 'desc'
       }
     });
-    return orders;
+    return orders || [];
   } catch (error: any) {
-    throw new Error(error);
+    console.error('Error fetching orders:', error);
+    return []; // Return empty array instead of throwing error
   }
 }

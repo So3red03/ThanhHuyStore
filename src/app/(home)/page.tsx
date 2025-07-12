@@ -86,7 +86,6 @@ export default async function Home() {
       </main>
     );
   } catch (error) {
-    console.error('Error loading home page:', error);
     return (
       <main>
         <div className='w-full'>

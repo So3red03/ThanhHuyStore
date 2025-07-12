@@ -40,8 +40,8 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       } catch (error) {
         console.error('Error getting recommendations:', error);
         // Fallback: hiển thị sản phẩm ngẫu nhiên
-        const randomProducts = getRandomProducts();
-        setRecommendedProducts(randomProducts);
+        const recentProducts = getRecentProducts();
+        setRecommendedProducts(recentProducts);
       } finally {
         setLoading(false);
       }
@@ -99,9 +99,9 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         })
         .slice(0, 8);
 
-      return recommendations.length > 0 ? recommendations : getRandomProducts();
+      return recommendations.length > 0 ? recommendations : getRecentProducts();
     } catch (error) {
-      return getRandomProducts();
+      return getRecentProducts();
     }
   };
 
@@ -113,14 +113,18 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       .slice(0, 8);
 
     // Nếu không có sản phẩm tồn kho thấp, lấy sản phẩm ngẫu nhiên
-    return lowStockProducts.length > 0 ? lowStockProducts : getRandomProducts();
+    return lowStockProducts.length > 0 ? lowStockProducts : getRecentProducts();
   };
 
   // Lấy sản phẩm ngẫu nhiên (fallback)
-  const getRandomProducts = (): Product[] => {
-    const availableProducts = allProducts.filter(product => (product.inStock ?? 0) > 0);
-    const shuffled = [...availableProducts].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 8);
+
+  const getRecentProducts = (): Product[] => {
+    const recentProducts = allProducts
+      .filter(product => (product.inStock ?? 0) > 0)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 8);
+
+    return recentProducts.length > 0 ? recentProducts : [];
   };
 
   // Lưu lịch sử xem sản phẩm

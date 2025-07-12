@@ -8,15 +8,12 @@ export async function GET(request: Request) {
     const currentUser = await getCurrentUser();
 
     if (!currentUser || currentUser.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '7');
-    
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
@@ -69,6 +66,9 @@ export async function GET(request: Request) {
       }
     });
 
+    // Debug logging for article views
+    console.log(`[ANALYTICS_OVERVIEW] Article views count: ${articleViews} for period from ${startDate.toISOString()}`);
+
     // Get searches
     const searches = await prisma.analyticsEvent.count({
       where: {
@@ -109,10 +109,12 @@ export async function GET(request: Request) {
       trendsMap.set(date, (trendsMap.get(date) || 0) + trend._count.id);
     });
 
-    const trends = Array.from(trendsMap.entries()).map(([date, count]) => ({
-      date,
-      count
-    })).sort((a, b) => a.date.localeCompare(b.date));
+    const trends = Array.from(trendsMap.entries())
+      .map(([date, count]) => ({
+        date,
+        count
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     return NextResponse.json({
       overview: {
@@ -131,12 +133,8 @@ export async function GET(request: Request) {
         endDate: new Date().toISOString()
       }
     });
-
   } catch (error: any) {
     console.error('[ANALYTICS_OVERVIEW]', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

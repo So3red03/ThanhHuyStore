@@ -10,6 +10,7 @@ import { CartProductType, selectedImgType } from '@/app/(home)/product/[productI
 import Link from 'next/link';
 import { slugConvert } from '../../../../utils/Slug';
 import { useAnalyticsTracker } from '@/app/hooks/useAnalytics';
+import { getDefaultImage } from '../../../../utils/product';
 
 interface ProductCardProps {
   data: any;
@@ -23,62 +24,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
   const { trackProductInteraction } = useAnalyticsTracker();
 
   // Enhanced image access for both Simple and Variant products - using new structure
-  const getDefaultImage = () => {
-    // Handle Simple products
-    if (data.productType === 'SIMPLE') {
-      // Use thumbnail first, then first gallery image as fallback
-      const imageUrl =
-        data.thumbnail || (data.galleryImages && data.galleryImages.length > 0 ? data.galleryImages[0] : null);
-      if (imageUrl) {
-        return {
-          images: [data.thumbnail, ...(data.galleryImages || [])].filter(Boolean),
-          displayLabel: 'Sản phẩm đơn',
-          selectedImg: imageUrl
-        };
-      }
-    }
-    // Handle Variant products - get image from first variant with images
-    else if (data.productType === 'VARIANT' && data.variants && data.variants.length > 0) {
-      // Try to find a variant with images
-      const variantWithImage = data.variants.find((variant: any) => {
-        return variant.thumbnail || (variant.galleryImages && variant.galleryImages.length > 0);
-      });
-
-      if (variantWithImage) {
-        const imageUrl =
-          variantWithImage.thumbnail ||
-          (variantWithImage.galleryImages && variantWithImage.galleryImages.length > 0
-            ? variantWithImage.galleryImages[0]
-            : null);
-
-        if (imageUrl) {
-          return {
-            images: [variantWithImage.thumbnail, ...(variantWithImage.galleryImages || [])].filter(Boolean),
-            variantId: variantWithImage.id,
-            attributes: variantWithImage.attributes,
-            displayLabel: getVariantDisplayLabel(variantWithImage.attributes),
-            selectedImg: imageUrl
-          };
-        }
-      }
-      // Fallback: check main product images for variant products
-      else if (data.thumbnail || (data.galleryImages && data.galleryImages.length > 0)) {
-        const imageUrl = data.thumbnail || data.galleryImages[0];
-        return {
-          images: [data.thumbnail, ...(data.galleryImages || [])].filter(Boolean),
-          displayLabel: 'Sản phẩm biến thể',
-          selectedImg: imageUrl
-        };
-      }
-    }
-
-    // Final fallback
-    return {
-      images: ['/noavatar.png'],
-      displayLabel: 'Không có ảnh',
-      selectedImg: '/noavatar.png'
-    };
-  };
 
   // Helper function to create display label for variant
   const getVariantDisplayLabel = (attributes: Record<string, string> = {}): string => {
@@ -86,19 +31,40 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     return attributeValues.length > 0 ? attributeValues.join(' - ') : 'Biến thể';
   };
 
-  const defaultImageData = getDefaultImage();
+  // Get default image using utility function
+  const defaultImage = getDefaultImage(data);
+
+  // For variant products, get first variant data for cart
+  const getDefaultVariantData = () => {
+    if (data.productType === 'VARIANT' && data.variants && data.variants.length > 0) {
+      const firstVariant = data.variants[0];
+      return {
+        variantId: firstVariant.id,
+        attributes: firstVariant.attributes || {},
+        price: firstVariant.price || data.price
+      };
+    }
+    return {
+      variantId: undefined,
+      attributes: {},
+      price: data.price
+    };
+  };
+
+  const defaultVariantData = getDefaultVariantData();
+
   const [cartProduct, setCartProduct] = useState<CartProductType>({
     id: data.id,
     name: data.name,
     description: data.description,
     category: data.category,
-    selectedImg: defaultImageData?.selectedImg || '/noavatar.png',
-    thumbnail: data.thumbnail || defaultImageData?.selectedImg || '/noavatar.png',
+    selectedImg: defaultImage,
+    thumbnail: defaultImage,
     quantity: 1,
-    price: data.price,
+    price: defaultVariantData.price,
     inStock: data.inStock,
-    variantId: defaultImageData?.variantId,
-    attributes: defaultImageData?.attributes
+    variantId: defaultVariantData.variantId,
+    attributes: defaultVariantData.attributes
   });
 
   // Check if product is new (created within last 30 days)
@@ -164,12 +130,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
       if (!product) return;
 
       try {
-        // Track product click analytics
-        trackProductInteraction('PRODUCT_CLICK', product.id, {
+        // Track product view analytics (merged from click)
+        trackProductInteraction(product.id, {
           productName: product.name,
           category: product.category,
           price: product.price,
-          clickSource: 'ProductCard'
+          clickSource: 'ProductCard',
+          interactionType: 'click'
         });
 
         // Lưu theo format mới cho RecentlyViewedProducts

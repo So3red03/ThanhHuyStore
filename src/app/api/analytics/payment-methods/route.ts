@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - days);
 
-    // Get payment method statistics
+    // Get payment method statistics - include all orders with paymentMethod
     const paymentStats = await prisma.order.groupBy({
       by: ['paymentMethod'],
       where: {
@@ -26,8 +26,11 @@ export async function GET(request: NextRequest) {
           gte: startDate,
           lte: endDate
         },
+        paymentMethod: {
+          not: null // Only include orders with payment method
+        },
         status: {
-          in: ['confirmed', 'completed']
+          in: ['pending', 'confirmed', 'completed'] // Include more statuses
         }
       },
       _count: {
@@ -62,6 +65,23 @@ export async function GET(request: NextRequest) {
       ...item,
       percentage: totalOrders > 0 ? ((item.count / totalOrders) * 100).toFixed(1) : '0'
     }));
+
+    // If no data, return empty but valid structure
+    if (dataWithPercentage.length === 0) {
+      return NextResponse.json({
+        data: [],
+        summary: {
+          totalOrders: 0,
+          totalAmount: 0,
+          methodCount: 0
+        },
+        period: {
+          days,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        }
+      });
+    }
 
     return NextResponse.json({
       data: dataWithPercentage,

@@ -1,6 +1,6 @@
 'use client';
 
-import BestsSellingProductForm from '@/app/(admin)/admin/BestSellingProductsForm';
+import BestsSellingProductForm from './BestSellingProductsForm';
 
 interface BestSellingProductsProps {
   uniqueProducts: any[];

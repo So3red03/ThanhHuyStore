@@ -34,6 +34,31 @@ export async function POST(request: Request) {
       }
     }
 
+    // Prevent duplicate events within short time window (5 seconds)
+    const fiveSecondsAgo = new Date(Date.now() - 5000);
+    const existingEvent = await prisma.analyticsEvent.findFirst({
+      where: {
+        userId: currentUser?.id || null,
+        sessionId: sessionId || null,
+        eventType,
+        entityType,
+        entityId: processedEntityId,
+        path,
+        timestamp: {
+          gte: fiveSecondsAgo
+        }
+      }
+    });
+
+    if (existingEvent) {
+      console.log(`[ANALYTICS] Duplicate event prevented: ${eventType} for ${entityType}:${processedEntityId}`);
+      return NextResponse.json({
+        success: true,
+        eventId: existingEvent.id,
+        duplicate: true
+      });
+    }
+
     // Create analytics event
     const analyticsEvent = await prisma.analyticsEvent.create({
       data: {

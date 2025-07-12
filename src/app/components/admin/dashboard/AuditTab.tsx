@@ -53,12 +53,12 @@ interface AuditLog {
   timestamp: string;
 }
 
-interface NotificationsTabProps {
+interface AuditTabProps {
   orders: any[];
   users: any[];
 }
 
-const NotificationsTab: React.FC<NotificationsTabProps> = () => {
+const AuditTab: React.FC<AuditTabProps> = () => {
   // State for audit logs
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -391,7 +391,11 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
         <CardContent sx={{ p: 3 }}>
           <div className='flex items-center justify-between mb-4'>
             <Typography variant='h6' component='h3' sx={{ fontWeight: 600, color: '#1f2937' }}>
-              📋 Audit Logs ({pagination.totalCount} records)
+              📋 Audit Logs (
+              {searchTerm
+                ? `${filteredAuditLogs.length} kết quả tìm kiếm / ${pagination.totalCount}`
+                : `${pagination.totalCount}`}{' '}
+              records)
             </Typography>
             {loading && <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600'></div>}
           </div>
@@ -409,7 +413,7 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {auditLogs.map(log => (
+                {filteredAuditLogs.map(log => (
                   <TableRow key={log.id} hover>
                     <TableCell>
                       <Typography variant='body2' sx={{ fontSize: '0.75rem' }}>
@@ -453,8 +457,8 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
             </Table>
           </TableContainer>
 
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
+          {/* Pagination - Hide when searching */}
+          {!searchTerm && pagination.totalPages > 1 && (
             <div className='flex justify-center mt-4'>
               <Pagination
                 count={pagination.totalPages}
@@ -514,4 +518,4 @@ const NotificationsTab: React.FC<NotificationsTabProps> = () => {
   );
 };
 
-export default NotificationsTab;
+export default AuditTab;

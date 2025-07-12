@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { EventType } from '@prisma/client';
+import { getDefaultImage } from '../../../../../utils/product';
 
 export async function GET(request: Request) {
   try {
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
         name: product?.name || 'Unknown Product',
         category: product?.category?.name || 'Unknown Category',
         price: product?.price || 0,
-        image: product?.thumbnail || product?.galleryImages?.[0] || '',
+        image: product ? getDefaultImage(product) : '/noavatar.png',
         views: item._count.id,
         inStock: product?.inStock || 0
       };

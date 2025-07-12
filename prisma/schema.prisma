@@ -450,8 +450,6 @@ model AnalyticsEvent {
 enum EventType {
   PAGE_VIEW
   PRODUCT_VIEW
-  PRODUCT_CLICK
-  SEARCH
   PURCHASE
   ARTICLE_VIEW
 }

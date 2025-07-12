@@ -12,10 +12,19 @@ const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) => {
   const pathname = usePathname();
   const { trackEvent } = useAnalyticsTracker();
 
-  // Track page views
+  // Track page views (exclude product and article pages as they have specific tracking)
   useEffect(() => {
     const trackPageView = () => {
       if (!pathname) return;
+
+      // Skip PAGE_VIEW for product pages (use PRODUCT_VIEW instead)
+      const isProductPage = pathname.match(/\/product\/(.+)-([a-f0-9]{24})$/);
+      // Skip PAGE_VIEW for article pages (use ARTICLE_VIEW instead)
+      const isArticlePage = pathname.match(/\/article\/([^\/]+)/);
+
+      if (isProductPage || isArticlePage) {
+        return; // Skip PAGE_VIEW for these specific pages
+      }
 
       trackEvent({
         eventType: 'PAGE_VIEW',
@@ -100,7 +109,7 @@ const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) => {
     trackArticleView();
   }, [pathname, trackEvent]);
 
-  // Track clicks on products
+  // Track clicks on products (merged with PRODUCT_VIEW)
   useEffect(() => {
     const handleProductClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -115,10 +124,11 @@ const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) => {
           const fullSlug = productMatch[1];
           const productId = productMatch[2]; // Extract actual MongoDB ObjectId
 
-          console.log('🖱️ Tracking product click:', { fullSlug, productId, href, clickedFrom: pathname });
+          console.log('🖱️ Tracking product interaction:', { fullSlug, productId, href, clickedFrom: pathname });
 
+          // Use PRODUCT_VIEW instead of PRODUCT_CLICK to merge events
           trackEvent({
-            eventType: 'PRODUCT_CLICK',
+            eventType: 'PRODUCT_VIEW',
             entityType: 'product',
             entityId: productId, // Use actual product ID
             path: pathname || '/',
@@ -127,6 +137,7 @@ const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) => {
               productId: productId,
               targetUrl: href,
               clickedFrom: pathname,
+              interactionType: 'click', // Distinguish from page view
               timestamp: new Date().toISOString()
             }
           });

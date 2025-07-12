@@ -15,13 +15,14 @@ import {
   InputLabel
 } from '@mui/material';
 import { MdSchedule, MdDownload, MdRefresh, MdDateRange } from 'react-icons/md';
-import BestSellingProducts from '../BestSellingProducts';
 import OrdersTable from '../OrdersTable';
 import PaymentMethodChart from '../../analytics/PaymentMethodChart';
 import PromotionChart from '../../analytics/PromotionChart';
-import { usePaymentMethodAnalytics, usePromotionAnalytics } from '@/app/hooks/useAnalytics';
+import { usePaymentMethodAnalytics, useVoucherAnalytics } from '@/app/hooks/useAnalytics';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import VoucherAnalytics from '../VoucherAnalytics';
+import BestSellingProducts from '../BestSellingProducts';
 
 interface ReportsTabProps {
   orders: any[];
@@ -53,7 +54,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, on
 
   // Analytics hooks từ AdminNewsDashboard
   const { data: paymentData, loading: paymentLoading } = usePaymentMethodAnalytics(getDaysFromFilter(timeFilter));
-  const { data: promotionData, loading: promotionLoading } = usePromotionAnalytics(getDaysFromFilter(timeFilter));
+  const { data: voucherData, loading: voucherLoading } = useVoucherAnalytics(getDaysFromFilter(timeFilter));
 
   // Report sending state từ AdminNewsDashboard
   const [reportLoading, setReportLoading] = useState(false);
@@ -174,15 +175,125 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, on
         </CardContent>
       </Card>
 
-      {/* Payment Methods & Promotions Charts từ AdminNewsDashboard */}
+      {/* Enhanced Analytics Charts */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6'>
-        {paymentData && !paymentLoading && (
-          <PaymentMethodChart data={paymentData.data} title='Phương thức thanh toán' />
-        )}
-        {promotionData && !promotionLoading && (
-          <PromotionChart data={promotionData.data} title='Top 5 Chương trình khuyến mãi' />
-        )}
+        {/* Enhanced Payment Method Chart */}
+        <Card
+          sx={{ borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <div className='flex items-center gap-3 mb-4'>
+              <div className='p-2 bg-blue-100 rounded-lg'>
+                <svg className='w-6 h-6 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'
+                  />
+                </svg>
+              </div>
+              <div>
+                <Typography variant='h6' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                  Phương thức thanh toán
+                </Typography>
+                <Typography variant='body2' color='textSecondary'>
+                  Thống kê theo {getDaysFromFilter(timeFilter)} ngày qua
+                </Typography>
+              </div>
+            </div>
+            {paymentLoading ? (
+              <div className='flex justify-center items-center h-64'>
+                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+              </div>
+            ) : paymentData && paymentData.data && paymentData.data.length > 0 ? (
+              <div>
+                <PaymentMethodChart data={paymentData.data} />
+                <div className='mt-4 p-3 bg-gray-50 rounded-lg'>
+                  <Typography variant='body2' color='textSecondary'>
+                    📊 Tổng {paymentData.summary?.totalOrders || 0} đơn hàng •{' '}
+                    {paymentData.summary?.totalAmount
+                      ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                          paymentData.summary.totalAmount
+                        )
+                      : '0 VNĐ'}
+                  </Typography>
+                </div>
+              </div>
+            ) : (
+              <div className='flex flex-col items-center justify-center h-64 text-gray-500'>
+                <div className='text-4xl mb-2'>�</div>
+                <Typography variant='h6' color='textSecondary'>
+                  Không có dữ liệu thanh toán
+                </Typography>
+                <Typography variant='body2' color='textSecondary'>
+                  Chưa có đơn hàng nào trong khoảng thời gian này
+                </Typography>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Voucher Chart */}
+        <Card
+          sx={{ borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <div className='flex items-center gap-3 mb-4'>
+              <div className='p-2 bg-purple-100 rounded-lg'>
+                <svg className='w-6 h-6 text-purple-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z'
+                  />
+                </svg>
+              </div>
+              <div>
+                <Typography variant='h6' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                  Top 5 Voucher phổ biến
+                </Typography>
+                <Typography variant='body2' color='textSecondary'>
+                  Voucher được sử dụng nhiều nhất
+                </Typography>
+              </div>
+            </div>
+            {voucherLoading ? (
+              <div className='flex justify-center items-center h-64'>
+                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600'></div>
+              </div>
+            ) : voucherData && voucherData.data && voucherData.data.length > 0 ? (
+              <div>
+                <PromotionChart data={voucherData.data} title='Top 5 Voucher được sử dụng nhiều nhất' />
+                <div className='mt-4 p-3 bg-gray-50 rounded-lg'>
+                  <Typography variant='body2' color='textSecondary'>
+                    🎫 {voucherData.summary?.totalUsage || 0} lượt sử dụng • Tiết kiệm{' '}
+                    {voucherData.summary?.totalDiscount
+                      ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                          voucherData.summary.totalDiscount
+                        )
+                      : '0 VNĐ'}
+                  </Typography>
+                </div>
+              </div>
+            ) : (
+              <div className='flex flex-col items-center justify-center h-64 text-gray-500'>
+                <div className='text-4xl mb-2'>🎫</div>
+                <Typography variant='h6' color='textSecondary'>
+                  Không có dữ liệu voucher
+                </Typography>
+                <Typography variant='body2' color='textSecondary'>
+                  Chưa có voucher nào được sử dụng trong khoảng thời gian này
+                </Typography>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Voucher Analytics Section */}
+      <VoucherAnalytics timeFilter={timeFilter} />
 
       {/* Best Selling Products từ AdminDashBoardForm */}
       <div className='mb-6'>
@@ -207,7 +318,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, on
       </Snackbar>
 
       {/* Loading States */}
-      {(paymentLoading || promotionLoading) && (
+      {(paymentLoading || voucherLoading) && (
         <div className='flex justify-center items-center py-8'>
           <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600'></div>
         </div>

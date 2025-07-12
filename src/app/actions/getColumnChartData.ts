@@ -50,6 +50,18 @@ export default async function getColumnChartData() {
 
     return formattedData;
   } catch (error: any) {
-    throw new Error(error);
+    console.error('Error fetching column chart data:', error);
+    // Return default data structure for 7 days
+    const defaultData = [];
+    const startDate = moment().subtract(6, 'days').startOf('days');
+    for (let i = 0; i < 7; i++) {
+      const currentDate = startDate.clone().add(i, 'day');
+      defaultData.push({
+        day: currentDate.format('dddd'),
+        date: currentDate.format('YYYY-MM-DD'),
+        totalAmount: 0
+      });
+    }
+    return defaultData;
   }
 }

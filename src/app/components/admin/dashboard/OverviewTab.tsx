@@ -113,12 +113,12 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           return {
             orders:
               orders?.filter(order => {
-                const orderDate = new Date(order.createdAt);
+                const orderDate = new Date(order.createdAt || order.createDate);
                 return orderDate >= start && orderDate <= end;
               }) || [],
             users:
               users?.filter(user => {
-                const userDate = new Date(user.createAt);
+                const userDate = new Date(user.createdAt || user.createAt);
                 return userDate >= start && userDate <= end;
               }) || []
           };
@@ -131,12 +131,12 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
     return {
       orders:
         orders?.filter(order => {
-          const orderDate = new Date(order.createDate);
+          const orderDate = new Date(order.createdAt || order.createDate);
           return orderDate >= filterDate;
         }) || [],
       users:
         users?.filter(user => {
-          const userDate = new Date(user.createAt);
+          const userDate = new Date(user.createdAt || user.createAt);
           return userDate >= filterDate;
         }) || []
     };
@@ -145,17 +145,35 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   // Filter client users
   const filteredClient = filteredData.users.filter(user => user.role === 'USER') || [];
 
-  // Create pie chart data based on filtered data
+  // Convert salesWeeklyData to chart format
+  const chartWeeklyData =
+    salesWeeklyData && Array.isArray(salesWeeklyData)
+      ? {
+          labels: salesWeeklyData.map(item => item.day || 'N/A'),
+          datasets: [
+            {
+              label: 'Doanh số (VNĐ)',
+              data: salesWeeklyData.map(item => item.totalAmount || 0),
+              backgroundColor: 'rgba(59, 130, 246, 0.5)',
+              borderColor: 'rgba(59, 130, 246, 1)',
+              borderWidth: 1
+            }
+          ]
+        }
+      : null;
+
+  // Create pie chart data based on filtered data using OrderStatus
   const defaultOrderPieData = orderPieData || {
-    labels: ['Đã giao', 'Đang xử lý', 'Đã hủy'],
+    labels: ['Hoàn thành', 'Đang xử lý', 'Đã hủy', 'Đã xác nhận'],
     datasets: [
       {
         data: [
-          filteredData.orders?.filter(order => order.deliveryStatus === 'delivered').length || 0,
-          filteredData.orders?.filter(order => order.deliveryStatus === 'pending').length || 0,
-          filteredData.orders?.filter(order => order.deliveryStatus === 'cancelled').length || 0
+          filteredData.orders?.filter(order => order.status === 'completed').length || 0,
+          filteredData.orders?.filter(order => order.status === 'pending').length || 0,
+          filteredData.orders?.filter(order => order.status === 'canceled').length || 0,
+          filteredData.orders?.filter(order => order.status === 'confirmed').length || 0
         ],
-        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#3b82f6'],
         borderWidth: 0
       }
     ]
@@ -265,8 +283,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           <div className='rounded-lg border border-gray-200 w-full px-4 py-6'>
             <h2 className='text-center font-bold text-lg text-gray-500 mb-4'>Doanh số hàng tuần</h2>
             <div className='w-full max-w-full h-[30vh] max-h-[400px] block mx-auto'>
-              {salesWeeklyData ? (
-                <DashboardCharts salesWeeklyData={salesWeeklyData} type='bar' />
+              {chartWeeklyData ? (
+                <DashboardCharts salesWeeklyData={chartWeeklyData} type='bar' />
               ) : (
                 <DashboardCharts
                   salesWeeklyData={{
@@ -274,7 +292,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
                     datasets: [
                       {
                         label: 'Doanh số (VNĐ)',
-                        data: [12000000, 19000000, 15000000, 25000000, 22000000, 30000000, 28000000],
+                        data: [0, 0, 0, 0, 0, 0, 0], // Show 0 data instead of fake data
                         backgroundColor: 'rgba(59, 130, 246, 0.5)',
                         borderColor: 'rgba(59, 130, 246, 1)',
                         borderWidth: 1

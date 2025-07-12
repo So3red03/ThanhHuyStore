@@ -10,7 +10,7 @@ import DashboardTabs from '@/app/components/admin/DashboardTabs';
 import OverviewTab from '@/app/components/admin/dashboard/OverviewTab';
 import AnalyticsTab from '@/app/components/admin/dashboard/AnalyticsTab';
 import ReportsTab from '@/app/components/admin/dashboard/ReportsTab';
-import NotificationsTab from '@/app/components/admin/dashboard/NotificationsTab';
+import AuditTab from '@/app/components/admin/dashboard/AuditTab';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,13 +42,14 @@ const AdminDashboard = async () => {
             reviews={reviews}
             conversations={conversations}
             userInSession={userInSession}
+            salesWeeklyData={columnChartData}
           />
         }
         analyticsContent={
           <AnalyticsTab orders={orders} users={users} totalRevenue={totalRevenue} columnData={columnChartData} />
         }
         reportsContent={<ReportsTab orders={orders} users={users} totalRevenue={totalRevenue} />}
-        notificationsContent={<NotificationsTab orders={orders} users={users} />}
+        notificationsContent={<AuditTab orders={orders} users={users} />}
       />
     </Suspense>
   );

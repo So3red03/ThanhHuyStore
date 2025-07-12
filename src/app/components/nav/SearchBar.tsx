@@ -10,76 +10,11 @@ import Image from 'next/image';
 import ProductCard from '../products/ProductCard';
 import { slugConvert } from '../../../../utils/Slug';
 import Fuse from 'fuse.js';
-
-// Helper function to get first image from product (supports both Simple and Variant products)
-const getProductFirstImage = (product: any): string => {
-  // Handle Simple products - use new thumbnail + galleryImages structure
-  if (product.productType === 'SIMPLE') {
-    if (product.thumbnail) {
-      return product.thumbnail;
-    } else if (product.galleryImages && product.galleryImages.length > 0) {
-      return product.galleryImages[0];
-    }
-    // Fallback: check old images structure for backward compatibility
-    else if (product.images && product.images.length > 0) {
-      if (product.images[0] && product.images[0].images && product.images[0].images.length > 0) {
-        return product.images[0].images[0];
-      }
-    }
-  }
-  // Handle Variant products - get image from first variant with images
-  else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
-    const variantWithImage = product.variants.find((variant: any) => {
-      return variant.thumbnail || (variant.galleryImages && variant.galleryImages.length > 0);
-    });
-
-    if (variantWithImage) {
-      if (variantWithImage.thumbnail) {
-        return variantWithImage.thumbnail;
-      } else if (variantWithImage.galleryImages && variantWithImage.galleryImages.length > 0) {
-        return variantWithImage.galleryImages[0];
-      }
-    }
-
-    // Fallback: check old variant images structure for backward compatibility
-    const variantWithOldImages = product.variants.find((variant: any) => {
-      return variant.images && Array.isArray(variant.images) && variant.images.length > 0;
-    });
-
-    if (variantWithOldImages && variantWithOldImages.images.length > 0) {
-      // Check if images is array of strings (old format) or array of objects (new format)
-      if (typeof variantWithOldImages.images[0] === 'string') {
-        return variantWithOldImages.images[0];
-      } else {
-        // New format: images is array of objects
-        for (const imageObj of variantWithOldImages.images) {
-          if (imageObj && imageObj.images && Array.isArray(imageObj.images) && imageObj.images.length > 0) {
-            return imageObj.images[0];
-          }
-        }
-      }
-    }
-
-    // Fallback: check main product images for variant products
-    if (product.thumbnail) {
-      return product.thumbnail;
-    } else if (product.galleryImages && product.galleryImages.length > 0) {
-      return product.galleryImages[0];
-    } else if (
-      product.images &&
-      product.images.length > 0 &&
-      product.images[0].images &&
-      product.images[0].images.length > 0
-    ) {
-      return product.images[0].images[0];
-    }
-  }
-
-  return '/noavatar.png';
-};
+import { Product } from '@prisma/client';
+import { getDefaultImage } from '../../../../utils/product';
 
 interface SearchBarProps {
-  products: any[];
+  products: Product[];
 }
 
 // Utility function để normalize chuỗi
@@ -126,7 +61,9 @@ const createSearchKeywords = (productName: string): string => {
 };
 
 const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
-  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+  console.log(products);
+
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
 
@@ -245,10 +182,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
             </div>
             <div>
               <Image
-                src={getProductFirstImage(product)}
+                src={getDefaultImage(product)}
                 alt={product.name}
                 width={40}
                 height={40}
+                className='object-cover rounded'
                 onError={e => {
                   e.currentTarget.src = '/noavatar.png';
                 }}

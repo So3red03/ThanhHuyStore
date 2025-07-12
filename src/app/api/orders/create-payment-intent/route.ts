@@ -458,6 +458,36 @@ export async function POST(request: NextRequest) {
       // Create order with inventory reservation
       const createdOrder = await createOrderWithInventoryReservation(orderData, products);
 
+      // Track purchase analytics for Stripe
+      try {
+        await prisma.analyticsEvent.create({
+          data: {
+            userId: currentUser.id,
+            eventType: 'PURCHASE',
+            entityType: 'order',
+            entityId: createdOrder.id,
+            metadata: {
+              orderId: createdOrder.id,
+              paymentIntentId: paymentIntent.id,
+              amount: finalAmount,
+              currency: 'VND',
+              paymentMethod: 'stripe',
+              productCount: products.length,
+              products: products.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                quantity: p.quantity
+              }))
+            },
+            path: '/checkout',
+            timestamp: new Date()
+          }
+        });
+      } catch (error) {
+        console.error('Error tracking Stripe purchase analytics:', error);
+      }
+
       // 🎯 AUDIT LOG: Stripe Payment Intent Created (includes order creation)
       await AuditLogger.log({
         eventType: AuditEventType.PAYMENT_INTENT_CREATED,
@@ -518,6 +548,35 @@ export async function POST(request: NextRequest) {
         resourceId: createdOrder.id,
         resourceType: 'Order'
       });
+
+      // Track purchase analytics
+      try {
+        await prisma.analyticsEvent.create({
+          data: {
+            userId: currentUser.id,
+            eventType: 'PURCHASE',
+            entityType: 'order',
+            entityId: createdOrder.id,
+            metadata: {
+              orderId: createdOrder.id,
+              amount: orderData.amount,
+              currency: orderData.currency || 'VND',
+              paymentMethod: 'cod',
+              productCount: orderData.products.length,
+              products: orderData.products.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                quantity: p.quantity
+              }))
+            },
+            path: '/checkout',
+            timestamp: new Date()
+          }
+        });
+      } catch (error) {
+        console.error('Error tracking purchase analytics:', error);
+      }
 
       // Send notifications (Discord only, email handled by process-payment)
       try {
@@ -653,7 +712,7 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      return new Promise((resolve, reject) => {
+      return await new Promise<NextResponse>((resolve, reject) => {
         const req = https.request(options, res => {
           res.setEncoding('utf8');
           let body = '';

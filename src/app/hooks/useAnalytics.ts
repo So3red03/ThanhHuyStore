@@ -162,7 +162,7 @@ export const usePaymentMethodAnalytics = (days: number = 7) => {
   return { data, loading, error, refetch: fetchData };
 };
 
-export const usePromotionAnalytics = (days: number = 7) => {
+export const useVoucherAnalytics = (days: number = 7) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -172,11 +172,11 @@ export const usePromotionAnalytics = (days: number = 7) => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get(`/api/analytics/promotions?days=${days}`);
+      const response = await axios.get(`/api/analytics/vouchers?days=${days}`);
       setData(response.data);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch promotion analytics');
-      console.error('Promotion analytics error:', err);
+      setError(err.response?.data?.error || 'Failed to fetch voucher analytics');
+      console.error('Voucher analytics error:', err);
     } finally {
       setLoading(false);
     }
@@ -188,6 +188,9 @@ export const usePromotionAnalytics = (days: number = 7) => {
 
   return { data, loading, error, refetch: fetchData };
 };
+
+// Keep the old name for backward compatibility
+export const usePromotionAnalytics = useVoucherAnalytics;
 
 // Get session timeout from admin settings
 const getSessionTimeout = async (): Promise<number> => {
@@ -281,14 +284,10 @@ export const trackPurchase = async (orderId: string, userId?: string, orderData?
   });
 };
 
-// Helper function to track product interactions
-export const trackProductInteraction = async (
-  eventType: 'PRODUCT_VIEW' | 'PRODUCT_CLICK',
-  productId: string,
-  additionalData?: any
-) => {
+// Helper function to track product interactions (unified as PRODUCT_VIEW)
+export const trackProductInteraction = async (productId: string, additionalData?: any) => {
   await trackEvent({
-    eventType,
+    eventType: 'PRODUCT_VIEW', // Always use PRODUCT_VIEW (merged PRODUCT_CLICK)
     entityType: 'product',
     entityId: productId,
     metadata: {

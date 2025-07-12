@@ -12,5 +12,6 @@ export async function getTotalRevenue() {
     return orders.reduce((total: any, order: any) => total + order.amount, 0);
   } catch (error) {
     console.error('Error calculating total revenue:', error);
+    return 0; // Return 0 instead of undefined
   }
 }
