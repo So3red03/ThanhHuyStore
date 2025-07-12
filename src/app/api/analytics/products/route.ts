@@ -19,11 +19,11 @@ export async function GET(request: Request) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // Get top viewed products (combining clicks and views)
+    // Get top viewed products
     const topViewedProducts = await prisma.analyticsEvent.groupBy({
       by: ['entityId'],
       where: {
-        eventType: { in: [EventType.PRODUCT_VIEW, EventType.PRODUCT_CLICK] },
+        eventType: EventType.PRODUCT_VIEW,
         entityType: 'product',
         entityId: { not: null },
         timestamp: {

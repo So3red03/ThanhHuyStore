@@ -69,15 +69,8 @@ export async function GET(request: Request) {
     // Debug logging for article views
     console.log(`[ANALYTICS_OVERVIEW] Article views count: ${articleViews} for period from ${startDate.toISOString()}`);
 
-    // Get searches
-    const searches = await prisma.analyticsEvent.count({
-      where: {
-        eventType: EventType.SEARCH,
-        timestamp: {
-          gte: startDate
-        }
-      }
-    });
+    // Get searches - removed as SEARCH event type no longer exists
+    const searches = 0;
 
     // Get purchases
     const purchases = await prisma.analyticsEvent.count({

@@ -29,19 +29,12 @@ export async function POST(request: Request) {
         const timestamp = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 
         // Random event type
-        const eventTypes = [
-          EventType.PAGE_VIEW,
-          EventType.PRODUCT_VIEW,
-          EventType.PRODUCT_CLICK,
-          EventType.SEARCH,
-          EventType.PURCHASE,
-          EventType.ARTICLE_VIEW
-        ];
+        const eventTypes = [EventType.PAGE_VIEW, EventType.PRODUCT_VIEW, EventType.PURCHASE, EventType.ARTICLE_VIEW];
         const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
 
         // Random user (some anonymous)
         const user = Math.random() > 0.3 ? users[Math.floor(Math.random() * users.length)] : null;
-        const sessionId = user ? null : `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const sessionId = user ? null : `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
         let entityType = null;
         let entityId = null;
@@ -50,7 +43,6 @@ export async function POST(request: Request) {
 
         switch (eventType) {
           case EventType.PRODUCT_VIEW:
-          case EventType.PRODUCT_CLICK:
             if (products.length > 0) {
               const product = products[Math.floor(Math.random() * products.length)];
               entityType = 'product';
@@ -75,16 +67,6 @@ export async function POST(request: Request) {
                 category: article.categoryId
               };
             }
-            break;
-
-          case EventType.SEARCH:
-            const searchTerms = ['iPhone', 'MacBook', 'iPad', 'Apple Watch', 'AirPods', 'iMac'];
-            const searchTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
-            path = '/search';
-            metadata = {
-              searchTerm,
-              resultCount: Math.floor(Math.random() * 50) + 1
-            };
             break;
 
           case EventType.PURCHASE:
