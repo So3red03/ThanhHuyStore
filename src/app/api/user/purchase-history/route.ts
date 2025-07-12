@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
+import { OrderStatus } from '@prisma/client';
 
 export async function GET() {
   try {
@@ -14,7 +15,7 @@ export async function GET() {
     const orders = await prisma.order.findMany({
       where: {
         userId: currentUser.id,
-        status: 'completed' // Sửa từ 'complete' thành 'completed' theo OrderStatus enum
+        status: OrderStatus.completed
       },
       select: {
         id: true,

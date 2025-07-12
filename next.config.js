@@ -33,11 +33,13 @@ const nextConfig = {
       config.externals.push('bcrypt');
     }
 
-    // Tối ưu cho development
+    // Tối ưu cho development - chỉ dùng polling khi cần thiết
     if (dev) {
       config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300
+        // Chỉ dùng polling trên Windows nếu có vấn đề với file watching
+        // poll: 1000, // Bỏ comment này nếu gặp vấn đề file watching
+        aggregateTimeout: 300,
+        ignored: /node_modules/
       };
     }
 

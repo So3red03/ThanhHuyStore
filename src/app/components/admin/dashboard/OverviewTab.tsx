@@ -113,7 +113,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           return {
             orders:
               orders?.filter(order => {
-                const orderDate = new Date(order.createDate);
+                const orderDate = new Date(order.createdAt);
                 return orderDate >= start && orderDate <= end;
               }) || [],
             users:

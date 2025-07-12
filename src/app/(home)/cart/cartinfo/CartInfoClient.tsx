@@ -233,10 +233,10 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
 
       {/* Chọn cách nhận hàng */}
       <h2 className='text-lg font-semibold my-4'>Chọn cách nhận hàng</h2>
-      <div className='my-2'>
+      {/* <div className='my-2'>
         <input type='radio' id='delivery' name='deliveryMethod' value='delivery' className='mr-2' />
         <label htmlFor='delivery'>Giao hàng tận nơi</label>
-      </div>
+      </div> */}
       <div className='bg-[#ececec] p-4 mb-6 rounded-md'>
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4'>
           <div>

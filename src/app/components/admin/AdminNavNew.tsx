@@ -43,8 +43,7 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-vouchers': 'Quản lý Voucher',
   '/admin/manage-promotions': 'Quản lý Promotion',
   '/admin/news-dashboard': 'Phân tích',
-  '/admin/settings': 'Cài đặt hệ thống',
-  '/admin/test-features': '🧪 Test Features'
+  '/admin/settings': 'Cài đặt hệ thống'
 };
 
 interface AdminNavNewProps {

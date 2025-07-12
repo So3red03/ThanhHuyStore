@@ -122,19 +122,19 @@ export const MenuItems = [
         }
       ]
     }
-  },
-  {
-    title: 'Khác',
-    subItem: {
-      title: 'Khác',
-      icon: MdOutlineSettings,
-      list: [
-        {
-          title: '🧪 Test Features',
-          path: '/admin/test-features',
-          icon: MdBugReport
-        }
-      ]
-    }
   }
+  // {
+  //   title: 'Khác',
+  //   subItem: {
+  //     title: 'Khác',
+  //     icon: MdOutlineSettings,
+  //     list: [
+  //       {
+  //         title: '🧪 Test Features',
+  //         path: '/admin/test-features',
+  //         icon: MdBugReport
+  //       }
+  //     ]
+  //   }
+  // }
 ];

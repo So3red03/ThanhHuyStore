@@ -61,7 +61,7 @@ const StripeCheckout = () => {
 
       // Nạp sản phẩm trong giỏ hàng qua checkOutForm
       axios
-        .post('/api/create-payment-intent', {
+        .post('/api/orders/create-payment-intent', {
           products: cartProducts,
           payment_intent_id: paymentIntent,
           phoneNumber: cartInfo.phone,

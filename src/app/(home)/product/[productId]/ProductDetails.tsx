@@ -22,10 +22,16 @@ export type CartProductType = {
   name: string;
   description: string;
   category: string;
-  selectedImg: string; // URL of selected image
+  brand?: string;
+  selectedImg: string; // URL of selected image (for backward compatibility)
+  thumbnail?: string; // New thumbnail field
   quantity: number;
   price: number;
   inStock: number;
+
+  // Variant support
+  variantId?: string; // ID of selected variant
+  attributes?: Record<string, string>; // Selected attributes: {"color": "silver", "storage": "512gb"}
 };
 
 export type selectedImgType = {
@@ -263,19 +269,41 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
 
   const totalStock = calculateStock();
 
-  const [cartProduct, setCartProduct] = useState<CartProductType>({
-    id: product.id,
-    name: product.name,
-    description: product.description,
-    category: product.categoryId,
-    selectedImg: getDefaultImage()?.images?.[0] || '/noavatar.png',
-    quantity: 1,
-    price: product.price,
-    inStock: totalStock
+  const [cartProduct, setCartProduct] = useState<CartProductType>(() => {
+    const defaultImage = getDefaultImage()?.images?.[0] || '/noavatar.png';
+    let initialVariantId: string | undefined = undefined;
+    let initialAttributes: Record<string, string> | undefined = undefined;
+    let initialPrice = product.price;
+    let initialStock = totalStock;
+
+    // For variant products, set initial variant data
+    if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+      const firstVariant = product.variants[0];
+      if (firstVariant) {
+        initialVariantId = firstVariant.id;
+        initialAttributes = firstVariant.attributes || {};
+        initialPrice = firstVariant.price || product.price;
+        initialStock = firstVariant.stock || 0;
+      }
+    }
+
+    return {
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      category: product.categoryId,
+      selectedImg: defaultImage,
+      thumbnail: product.thumbnail || defaultImage,
+      quantity: 1,
+      price: initialPrice,
+      inStock: initialStock,
+      variantId: initialVariantId,
+      attributes: initialAttributes
+    };
   });
 
-  // Get current selected variant info for display
-  const getCurrentVariantInfo = () => {
+  // Get current selected variant
+  const getCurrentVariant = () => {
     if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
       // Find the variant that matches the current selected image
       const currentVariant = product.variants.find(
@@ -284,20 +312,44 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
           (variant.thumbnail === cartProduct.selectedImg ||
             (variant.galleryImages && variant.galleryImages.includes(cartProduct.selectedImg)))
       );
+      return currentVariant || product.variants[0]; // Fallback to first variant
+    }
+    return null;
+  };
 
-      if (currentVariant && currentVariant.attributes) {
-        const attributes = currentVariant.attributes;
-        const colorName = attributes.color || attributes['màu-sắc'] || '';
-        const capacity = attributes.capacity || attributes['dung-lượng'] || '';
+  // Get current selected variant info for display
+  const getCurrentVariantInfo = () => {
+    const currentVariant = getCurrentVariant();
+    if (currentVariant && currentVariant.attributes) {
+      const attributes = currentVariant.attributes;
+      const colorName = attributes.color || attributes['màu-sắc'] || '';
+      const capacity = attributes.capacity || attributes['dung-lượng'] || '';
 
-        const parts = [];
-        if (capacity) parts.push(capacity);
-        if (colorName) parts.push(colorName);
+      const parts = [];
+      if (capacity) parts.push(capacity.toUpperCase());
+      if (colorName) parts.push(colorName.charAt(0).toUpperCase() + colorName.slice(1));
 
-        return parts.length > 0 ? ` - ${parts.join(' - ')}` : '';
-      }
+      return parts.length > 0 ? ` ${parts.join(' - ')}` : '';
     }
     return '';
+  };
+
+  // Get current price based on variant or product
+  const getCurrentPrice = () => {
+    const currentVariant = getCurrentVariant();
+    if (currentVariant && currentVariant.price) {
+      return currentVariant.price;
+    }
+    return product.price || 0;
+  };
+
+  // Get current stock based on variant or product
+  const getCurrentStock = () => {
+    const currentVariant = getCurrentVariant();
+    if (currentVariant && typeof currentVariant.stock === 'number') {
+      return currentVariant.stock;
+    }
+    return totalStock;
   };
 
   // Function to trigger chat box opening
@@ -326,12 +378,44 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
     product.reviews.reduce((acc: number, item: any) => item.rating + acc, 0) / product.reviews.length;
 
   // Check color hiện tại và img thay đổi theo color đc select
-  const handleColorSelect = useCallback((value: selectedImgType) => {
-    setCartProduct(prev => ({
-      ...prev,
-      selectedImg: value.selectedImg || value.images?.[0] || '/noavatar.png'
-    }));
-  }, []);
+  const handleColorSelect = useCallback(
+    (value: selectedImgType) => {
+      const newSelectedImg = value.selectedImg || value.images?.[0] || '/noavatar.png';
+
+      setCartProduct(prev => {
+        // Find the variant that matches the new selected image
+        let variantPrice = product.price || 0;
+        let variantStock = totalStock;
+        let variantId: string | undefined = undefined;
+        let variantAttributes: Record<string, string> | undefined = undefined;
+
+        if (product.productType === 'VARIANT' && product.variants) {
+          const matchingVariant = product.variants.find(
+            (variant: any) =>
+              variant.thumbnail === newSelectedImg ||
+              (variant.galleryImages && variant.galleryImages.includes(newSelectedImg))
+          );
+
+          if (matchingVariant) {
+            variantPrice = matchingVariant.price || product.price || 0;
+            variantStock = matchingVariant.stock || 0;
+            variantId = matchingVariant.id;
+            variantAttributes = matchingVariant.attributes || {};
+          }
+        }
+
+        return {
+          ...prev,
+          selectedImg: newSelectedImg,
+          price: variantPrice,
+          inStock: variantStock,
+          variantId: variantId,
+          attributes: variantAttributes
+        };
+      });
+    },
+    [product, totalStock]
+  );
 
   // const handleQtyIncrease = () => {
   // 	if (cartProduct.quantity == 99) return;
@@ -358,7 +442,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
           <h2 className='text-3xl font-semibold text-slate-700'>
             {product.name}
             {getCurrentVariantInfo() && (
-              <span className='text-2xl text-blue-600 font-medium'>{getCurrentVariantInfo()}</span>
+              <span className='text-3xl font-semibold text-slate-700'> {getCurrentVariantInfo()}</span>
             )}
           </h2>
           <div className='flex items-center gap-2'>
@@ -366,7 +450,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
             <div className='py-2'>({product.reviews.length}) Đánh giá</div>
           </div>
           <Horizontal />
-          <div className='font-semibold text-2xl text-[#d43232]'>{formatPrice(product.price)}</div>
+          <div className='font-semibold text-2xl text-[#d43232]'>{formatPrice(getCurrentPrice())}</div>
           <div className='mt-4'>
             <div className='flex items-center gap-2'>
               <Image
@@ -388,8 +472,8 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
               height={24}
             />
             <span className='font-semibold'>Hàng hóa: </span>
-            <span className={totalStock > 0 ? 'text-teal-400' : 'text-[#d43232]'}>
-              {totalStock > 0 ? 'Có sẵn' : 'Hết hàng'}
+            <span className={getCurrentStock() > 0 ? 'text-teal-400' : 'text-[#d43232]'}>
+              {getCurrentStock() > 0 ? 'Có sẵn' : 'Hết hàng'}
             </span>
           </div>
           {isProductInCart ? (
@@ -418,7 +502,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
                   <Horizontal />
                 </>
               )}
-              {totalStock > 0 ? (
+              {getCurrentStock() > 0 ? (
                 <Button
                   custom='md:!w-[400px] mt-7'
                   label='Thêm vào giỏ hàng'

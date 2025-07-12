@@ -67,7 +67,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
               <tr className='border-t' key={order.id}>
                 <td className='py-2 px-4 text-blue-500'>{truncateText(order.id)}</td>
                 <td className='py-2 px-4'>{order.user.name}</td>
-                <td className='py-2 px-4'>{formatDate(order.createDate)}</td>
+                <td className='py-2 px-4'>{formatDate(order.createdAt)}</td>
                 <td className='py-2 px-4'>
                   <span className={`flex justify-center items-center h-full`}>
                     {order.status === 'completed' ? (

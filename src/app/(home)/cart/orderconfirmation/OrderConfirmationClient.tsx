@@ -37,7 +37,7 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
         // Simulate processing time for better UX
         setTimeout(() => {
           axios
-            .get(`/api/order/${paymentIntent}`)
+            .get(`/api/orders?paymentIntentId=${paymentIntent}`)
             .then(res => {
               if (res.data) {
                 setOrder(res.data);

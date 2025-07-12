@@ -107,7 +107,8 @@ type CartProductType {
   description String
   category    String
   brand       String?
-  selectedImg String?  // URL ảnh đã chọn
+  selectedImg String   // URL ảnh đã chọn (required for backward compatibility)
+  thumbnail   String?  // New thumbnail field
   quantity    Int
   price       Float
   inStock     Int

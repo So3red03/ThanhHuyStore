@@ -14,12 +14,12 @@ const OrderItem: React.FC<OrderItemProps> = ({ item }) => {
         <div className='flex'>
           <div className='w-1/6 flex items-center justify-stretch'>
             <Image
-              src={item.selectedImg || '/images/placeholder.jpg'}
+              src={item.selectedImg || '/noavatar.png'}
               width={80}
               height={80}
               alt={item.name}
               onError={e => {
-                e.currentTarget.src = '/images/placeholder.jpg';
+                e.currentTarget.src = '/noavatar.png';
               }}
             />
           </div>

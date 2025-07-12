@@ -1,14 +1,11 @@
 'use client';
 
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
-import { categories } from '../../../../../utils/Categories';
-import { colors } from '../../../../../utils/Color';
 import { Product } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { formatPrice } from '../../../../../utils/formatPrice';
-import { MdCached, MdClose, MdDelete, MdDone, MdEdit } from 'react-icons/md';
+import { MdCached, MdClose, MdDelete, MdDone, MdEdit, MdRefresh } from 'react-icons/md';
 // TODO: Add back when soft delete is implemented: MdRestore, MdVisibility
-import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteObject, getStorage, ref } from 'firebase/storage';
 import { SafeUser } from '../../../../../types';
@@ -17,22 +14,13 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import Status from '@/app/components/Status';
 import firebase from '../../../libs/firebase';
-import AdminModal from '@/app/components/admin/AdminModal';
-import FormWarp from '@/app/components/FormWrap';
-import Heading from '@/app/components/Heading';
-import Input from '@/app/components/inputs/Input';
-import Button from '@/app/components/Button';
-import SelectColor from '@/app/components/inputs/SelectColor';
-import TextArea from '@/app/components/inputs/TextArea';
-import CheckBox from '@/app/components/inputs/CheckBox';
-import CategoryInput from '@/app/components/inputs/CategoryInput';
 import 'moment/locale/vi';
 import NullData from '@/app/components/NullData';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
+import { useEffect } from 'react';
 import SendNewProductEmail from '@/app/components/admin/SendNewProductEmail';
 import Image from 'next/image';
-import { Editor } from 'primereact/editor';
-import { Rating, Button as MuiButton } from '@mui/material';
+import { Rating, Button as MuiButton, CircularProgress } from '@mui/material';
 import { MdAdd } from 'react-icons/md';
 import { FaDollarSign, FaRegBuilding, FaRegEnvelope, FaRegListAlt, FaRegWindowMaximize } from 'react-icons/fa';
 import * as SlIcons from 'react-icons/sl';
@@ -42,6 +30,8 @@ import * as MdIcons from 'react-icons/md';
 import Link from 'next/link';
 import { slugConvert } from '../../../../../utils/Slug';
 import AddProductModalNew from './AddProductModalNew';
+import { useState } from 'react';
+import { set } from 'nprogress';
 
 interface ManageProductsClientProps {
   products: Product[];
@@ -70,10 +60,10 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [addProductModalOpen, setAddProductModalOpen] = useState(false);
   const [editProductModalOpen, setEditProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [currentProducts, setCurrentProducts] = useState(products);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [text, setText] = useState('');
-  // const [images, setImages] = useState<any[] | null>(products.images);
-
   const {
     register,
     handleSubmit,
@@ -98,6 +88,24 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
   const toggleDelete = () => {
     setIsDelete(!isDelete);
+  };
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await fetch('/api/product?admin=true');
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentProducts(data.products || data); // Handle both paginated and direct response
+      } else {
+        toast.error('Lỗi khi tải danh sách sản phẩm');
+        router.refresh(); // Fallback to full page refresh
+      }
+    } catch (error) {
+      toast.error('Lỗi khi làm mới danh sách sản phẩm');
+      router.refresh(); // Fallback to full page refresh
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // TODO: Enable when soft delete is implemented
@@ -129,7 +137,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   //     toast.error('Lỗi khi khôi phục sản phẩm');
   //   }
   // };
-  console.log(products);
 
   const onTextChange = (e: any) => {
     const newText = e.htmlValue;
@@ -138,37 +145,22 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   };
 
   const handleOpenModal = async (product: Product) => {
-    console.log('🔍 ManageProductsClient - Opening edit modal for product:', product.id, product.productType);
-
     // For variant products, fetch full data from API to get complete variant info
     if (product.productType === 'VARIANT') {
       try {
-        console.log('📡 Fetching full variant product data from API...');
-
         // Try variant API first
         let fullProductData;
         try {
           const variantResponse = await axios.get(`/api/product/variant/${product.id}`);
           fullProductData = variantResponse.data;
-          console.log('✅ Got data from variant API');
         } catch (variantError) {
-          console.log('⚠️ Variant API failed, trying regular API...');
           // Fallback to regular product API
           const regularResponse = await axios.get(`/api/product/simple/${product.id}`);
           fullProductData = regularResponse.data;
-          console.log('✅ Got data from regular API');
         }
-
-        console.log('✅ Full variant product data:', {
-          id: fullProductData.id,
-          variants: fullProductData.variants?.length || 0,
-          variantSample: fullProductData.variants?.[0],
-          allVariants: JSON.stringify(fullProductData.variants, null, 2)
-        });
 
         setEditingProduct(fullProductData);
       } catch (error) {
-        console.error('❌ Error fetching full product data:', error);
         // Fallback to original product data
         setEditingProduct(product);
       }
@@ -187,8 +179,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
   const category = watch('category');
 
-  // For now, just show active products
-  const currentProducts = products || [];
+  // Use state for current products instead of props directly
 
   let rows: any = [];
   if (currentProducts?.length > 0) {
@@ -247,7 +238,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       width: 80,
       renderCell: params => {
         const product = params.row;
-        console.log(product);
         let imageSrc = '/noavatar.png'; // Default fallback
 
         // Đơn giản hóa logic: ưu tiên thumbnail, sau đó galleryImages[0]
@@ -405,7 +395,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
       await axios.delete(endpoint);
       toast.success('Xóa sản phẩm thành công');
-      router.refresh();
+      handleRefresh();
     } catch (error) {
       console.error('Error in handleDelete:', error);
       throw error;
@@ -524,23 +514,44 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         {/* Header with Add Product Button */}
         <div className='mb-4 mt-5 flex justify-between items-center'>
           <h2 className='text-xl font-semibold text-gray-800'>Danh sách sản phẩm</h2>
-          <MuiButton
-            variant='contained'
-            startIcon={<MdAdd />}
-            onClick={() => setAddProductModalOpen(true)}
-            sx={{
-              backgroundColor: '#3b82f6',
-              '&:hover': { backgroundColor: '#2563eb' },
-              borderRadius: '12px',
-              px: 3,
-              py: 1.5,
-              textTransform: 'none',
-              fontWeight: 600,
-              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-            }}
-          >
-            Thêm sản phẩm
-          </MuiButton>
+          <div className='flex gap-3 items-center'>
+            <MuiButton
+              variant='contained'
+              startIcon={<MdAdd />}
+              onClick={() => setAddProductModalOpen(true)}
+              sx={{
+                backgroundColor: '#3b82f6',
+                '&:hover': { backgroundColor: '#2563eb' },
+                borderRadius: '12px',
+                px: 3,
+                py: 1.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+              }}
+            >
+              Thêm sản phẩm
+            </MuiButton>
+
+            <MuiButton
+              variant='contained'
+              startIcon={isRefreshing ? <CircularProgress size={16} color='inherit' /> : <MdRefresh />}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              sx={{
+                backgroundColor: '#3b82f6',
+                '&:hover': { backgroundColor: '#2563eb' },
+                borderRadius: '12px',
+                px: 3,
+                py: 1.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+              }}
+            >
+              {isRefreshing ? 'Đang tải...' : 'Làm mới'}
+            </MuiButton>
+          </div>
         </div>
 
         <div className='h-[600px] w-full'>
@@ -603,7 +614,10 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         onClose={() => setAddProductModalOpen(false)}
         subCategories={subCategories}
         parentCategories={parentCategories}
-        onSuccess={() => router.refresh()}
+        onSuccess={() => {
+          setAddProductModalOpen(false);
+          handleRefresh();
+        }}
       />
 
       {/* Edit Product Modal */}
@@ -616,9 +630,9 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         mode='edit'
         initialData={editingProduct}
         onSuccess={() => {
-          router.refresh();
           setEditProductModalOpen(false);
           setEditingProduct(null);
+          handleRefresh();
         }}
         parentCategories={parentCategories}
         subCategories={subCategories}

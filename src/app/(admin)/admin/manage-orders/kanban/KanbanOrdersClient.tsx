@@ -7,13 +7,21 @@ import KanbanBoard from '@/app/components/admin/kanban/KanbanBoard';
 import { Button, TextField, InputAdornment, Select, MenuItem, FormControl, InputLabel, Chip, Box } from '@mui/material';
 import { MdRefresh, MdViewList, MdClear, MdAdd } from 'react-icons/md';
 import Link from 'next/link';
+import AddOrderModal from '../AddOrderModal';
 
 interface KanbanOrdersClientProps {
   orders: any[];
   currentUser: SafeUser | null | undefined;
+  users?: any[];
+  products?: any[];
 }
 
-const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({ orders: initialOrders, currentUser }) => {
+const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({
+  orders: initialOrders,
+  currentUser,
+  users = [],
+  products = []
+}) => {
   const [orders, setOrders] = useState(initialOrders);
   const [filteredOrders, setFilteredOrders] = useState(initialOrders);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +36,7 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({ orders: initial
   const [salesStaff, setSalesStaff] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [shippingMethod, setShippingMethod] = useState('');
+  const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
 
   // Helper function for consistent shipping method
   const getShippingMethod = (orderId: string) => {
@@ -72,7 +81,7 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({ orders: initial
     // Filter by date range
     if (dateFrom || dateTo) {
       filtered = filtered.filter(order => {
-        const orderDate = new Date(order.createDate);
+        const orderDate = new Date(order.createdAt);
         const fromDate = dateFrom ? new Date(dateFrom) : null;
         const toDate = dateTo ? new Date(dateTo) : null;
 
@@ -189,6 +198,23 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({ orders: initial
                   Xem danh sách
                 </Button>
               </Link>
+              {/* Add Order Button */}
+              <Button
+                variant='contained'
+                startIcon={<MdAdd />}
+                onClick={() => setIsAddOrderModalOpen(true)}
+                size='medium'
+                sx={{
+                  backgroundColor: '#10b981',
+                  '&:hover': { backgroundColor: '#059669' },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)'
+                }}
+              >
+                Thêm đơn hàng
+              </Button>
               <Button
                 variant='contained'
                 startIcon={<MdRefresh />}
@@ -492,6 +518,14 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({ orders: initial
 
       {/* Kanban Board */}
       <KanbanBoard orders={filteredOrders} onOrderUpdate={handleOrderUpdate} />
+
+      {/* Add Order Modal */}
+      <AddOrderModal
+        isOpen={isAddOrderModalOpen}
+        toggleOpen={() => setIsAddOrderModalOpen(false)}
+        users={users}
+        products={products}
+      />
     </div>
   );
 };

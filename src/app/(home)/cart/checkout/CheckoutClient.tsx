@@ -45,19 +45,24 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
   // Settings hook
   const { getEnabledPaymentMethods, isPaymentMethodEnabled } = useSettings();
 
+  // Sync paymentMethod với cartInfo.payment khi component mount
+  useEffect(() => {
+    if (cartInfo?.payment) {
+      setPaymentMethod(cartInfo.payment);
+    }
+  }, [cartInfo?.payment]);
+
   let value: any;
   const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     value = e.target.value;
-    // Lưu phương thức thanh toán vào localStorage
-    // @ts-ignore
-    const savedInfo = JSON.parse(localStorage.getItem('CartInfo') || '{}');
+    // Sử dụng cartInfo hiện tại thay vì đọc từ localStorage
     const updatedInfo = {
-      ...savedInfo,
-      payment: value
+      ...cartInfo, // Giữ nguyên thông tin hiện tại
+      payment: value // Chỉ cập nhật payment method
     };
     setPaymentMethod(value);
     setCartInfo(updatedInfo);
-    localStorage.setItem('CartInfo', JSON.stringify(updatedInfo));
+    // Không cần localStorage.setItem vì cartStore đã handle persistence
   };
   const handleNext = async () => {
     if (!currentUser) {
@@ -85,8 +90,15 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
       return;
     }
 
-    if (!cartInfo || !cartInfo.phone || !cartInfo.address) {
-      toast.error('Thông tin giao hàng không đầy đủ!');
+    // Kiểm tra thông tin giao hàng đầy đủ
+    if (!cartInfo || !cartInfo.phone || !cartInfo.address || !cartInfo.name || !cartInfo.city) {
+      toast.error('Vui lòng điền đầy đủ thông tin giao hàng (Họ tên, SĐT, Địa chỉ, Thành phố)!');
+      return;
+    }
+
+    // Kiểm tra phương thức thanh toán đã được set trong cartInfo
+    if (!cartInfo.payment) {
+      toast.error('Vui lòng chọn phương thức thanh toán!');
       return;
     }
 
@@ -104,7 +116,7 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
     setIsLoading(true);
     if (paymentMethod === 'cod') {
       try {
-        const response = await axios.post('/api/create-payment-intent', {
+        const response = await axios.post('/api/orders/create-payment-intent', {
           products: cartProducts,
           payment_intent_id: paymentIntent,
           phoneNumber: cartInfo.phone,
@@ -142,7 +154,7 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
       router.push('/stripecheckout');
     } else if (paymentMethod === 'momo') {
       try {
-        const response = await axios.post('/api/create-payment-intent', {
+        const response = await axios.post('/api/orders/create-payment-intent', {
           products: cartProducts,
           payment_intent_id: paymentIntent,
           phoneNumber: cartInfo.phone,

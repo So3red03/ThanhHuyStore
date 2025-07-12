@@ -101,7 +101,6 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
       return recommendations.length > 0 ? recommendations : getRandomProducts();
     } catch (error) {
-      console.error('Error in getPersonalizedRecommendations:', error);
       return getRandomProducts();
     }
   };

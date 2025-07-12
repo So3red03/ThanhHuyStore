@@ -38,6 +38,9 @@ export interface CartStore {
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
 
+  // Helper functions
+  isSameCartItem: (item1: CartProductType, item2: CartProductType) => boolean;
+
   // Actions
   addProduct: (product: CartProductType) => void;
   removeProduct: (product: CartProductType) => void;
@@ -80,12 +83,46 @@ export const useCartStore = create<CartStore>()(
         set({ _hasHydrated: state });
       },
 
+      // Helper function to compare cart items (handles both simple and variant products)
+      isSameCartItem: (item1: CartProductType, item2: CartProductType): boolean => {
+        // For variant products, compare both productId and variantId
+        if (item1.variantId && item2.variantId) {
+          return item1.id === item2.id && item1.variantId === item2.variantId;
+        }
+        // For simple products or mixed comparison, just compare productId
+        return item1.id === item2.id && !item1.variantId && !item2.variantId;
+      },
+
       // Actions
       addProduct: (product: CartProductType) => {
         set(state => {
-          const updatedCart = state.cartProducts ? [...state.cartProducts, product] : [product];
+          if (!state.cartProducts) {
+            return { cartProducts: [product] };
+          }
 
-          return { cartProducts: updatedCart };
+          // Check if product already exists in cart
+          const existingIndex = state.cartProducts.findIndex(item => get().isSameCartItem(item, product));
+
+          if (existingIndex > -1) {
+            // Product exists, increase quantity
+            const updatedCart = [...state.cartProducts];
+            const existingItem = updatedCart[existingIndex];
+
+            if (existingItem.quantity >= product.inStock) {
+              toast.error(`${product.name} chỉ còn ${product.inStock} sản phẩm`);
+              return state;
+            }
+
+            updatedCart[existingIndex] = {
+              ...existingItem,
+              quantity: existingItem.quantity + product.quantity
+            };
+
+            return { cartProducts: updatedCart };
+          } else {
+            // New product, add to cart
+            return { cartProducts: [...state.cartProducts, product] };
+          }
         });
 
         // Calculate totals after state update
@@ -97,7 +134,7 @@ export const useCartStore = create<CartStore>()(
         set(state => {
           if (!state.cartProducts) return state;
 
-          const updatedCart = state.cartProducts.filter(item => item.id !== product.id);
+          const updatedCart = state.cartProducts.filter(item => !get().isSameCartItem(item, product));
           return { cartProducts: updatedCart };
         });
 
@@ -110,7 +147,7 @@ export const useCartStore = create<CartStore>()(
           if (!state.cartProducts) return state;
 
           const updatedCart = [...state.cartProducts];
-          const existsIndex = updatedCart.findIndex(item => item.id === product.id);
+          const existsIndex = updatedCart.findIndex(item => get().isSameCartItem(item, product));
 
           if (existsIndex > -1) {
             if (updatedCart[existsIndex].quantity >= product.inStock) {
@@ -131,7 +168,7 @@ export const useCartStore = create<CartStore>()(
           if (!state.cartProducts) return state;
 
           const updatedCart = [...state.cartProducts];
-          const existsIndex = updatedCart.findIndex(item => item.id === product.id);
+          const existsIndex = updatedCart.findIndex(item => get().isSameCartItem(item, product));
 
           if (existsIndex > -1) {
             if (updatedCart[existsIndex].quantity <= 1) {

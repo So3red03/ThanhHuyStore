@@ -93,14 +93,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     description: data.description,
     category: data.category,
     selectedImg: defaultImageData?.selectedImg || '/noavatar.png',
+    thumbnail: data.thumbnail || defaultImageData?.selectedImg || '/noavatar.png',
     quantity: 1,
     price: data.price,
-    inStock: data.inStock
+    inStock: data.inStock,
+    variantId: defaultImageData?.variantId,
+    attributes: defaultImageData?.attributes
   });
 
   // Check if product is new (created within last 30 days)
   const isNewProduct = () => {
-    const productDate = new Date(data.createDate || data.createdAt || Date.now());
+    const productDate = new Date(data.createdAt || Date.now());
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     return productDate >= thirtyDaysAgo;
@@ -146,7 +149,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
 
   const handleColorSelect = useCallback((value: selectedImgType) => {
     setCartProduct(prev => {
-      return { ...prev, selectedImg: value.selectedImg || value.images?.[0] || '/noavatar.png' };
+      return {
+        ...prev,
+        selectedImg: value.selectedImg || value.images?.[0] || '/noavatar.png',
+        thumbnail: value.selectedImg || value.images?.[0] || '/noavatar.png',
+        variantId: value.variantId,
+        attributes: value.attributes
+      };
     });
   }, []);
 
@@ -236,7 +245,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
         </div>
       </Link>
       {/* Only show ProductVariantSelector for VARIANT products, not SIMPLE products */}
-      {data.productType === 'VARIANT' && (
+      {/* {data.productType === 'VARIANT' && (
         <div className='py-4 px-14'>
           <ProductVariantSelector
             cartProduct={cartProduct}
@@ -245,7 +254,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
             performance={true}
           />
         </div>
-      )}
+      )} */}
       {/* <div>
 		<Rating value={productRating} />
 	</div> */}

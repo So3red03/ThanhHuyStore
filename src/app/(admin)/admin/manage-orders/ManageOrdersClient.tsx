@@ -5,7 +5,7 @@ import ActionBtn from '@/app/components/ActionBtn';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import AdminModal from '@/app/components/admin/AdminModal';
-import { MdAccessTimeFilled, MdDeliveryDining, MdDone, MdRefresh, MdRemoveRedEye } from 'react-icons/md';
+import { MdAccessTimeFilled, MdDeliveryDining, MdDone, MdRefresh, MdRemoveRedEye, MdAdd } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DeliveryStatus, Order, OrderStatus } from '@prisma/client';
@@ -21,20 +21,29 @@ import { MdViewKanban } from 'react-icons/md';
 import { Button } from '@mui/material';
 import Link from 'next/link';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
+import AddOrderModal from './AddOrderModal';
 
 interface ManageOrdersClientProps {
   orders: Order[];
   currentUser: SafeUser | null | undefined;
+  users?: any[];
+  products?: any[];
 }
 
 // Custom tabs - no longer using MUI styled components
 
-const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initialOrders, currentUser }) => {
+const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
+  orders: initialOrders,
+  currentUser,
+  users = [],
+  products = []
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState(initialOrders);
   const [filteredOrders, setFilteredOrders] = useState(initialOrders);
   const [tabValue, setTabValue] = useState(0);
+  const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
 
   const router = useRouter();
 
@@ -94,10 +103,9 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
         paymentMethod: order.paymentMethod,
         deliveryStatus: order.deliveryStatus,
         products: order.products,
-        date: order.createDate,
+        createdAt: order.createdAt,
         address: order.address,
         phoneNumber: order.phoneNumber,
-        createDate: order.createDate,
         // Include cancel fields for OrderDetails
         cancelReason: order.cancelReason,
         cancelDate: order.cancelDate,
@@ -178,7 +186,14 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
         );
       }
     },
-    { field: 'date', headerName: 'Thời gian', width: 200 },
+    {
+      field: 'createdAt',
+      headerName: 'Thời gian',
+      width: 200,
+      renderCell: params => {
+        return <div>{formatDate(params.row.createdAt)}</div>;
+      }
+    },
     {
       field: 'action',
       headerName: '',
@@ -229,7 +244,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
 
   const handleUpdateOrderStatus = (id: string, newStatus: any) => {
     axios
-      .put(`/api/order/${id}`, { status: newStatus })
+      .put(`/api/orders/${id}`, { status: newStatus })
       .then(() => {
         toast.success('Cập nhật đơn hàng thành công');
         router.refresh(); // Làm mới dữ liệu trong bảng
@@ -242,7 +257,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
 
   const handleDispatch = (id: string) => {
     axios
-      .put('/api/order', {
+      .put('/api/orders', {
         id,
         deliveryStatus: DeliveryStatus.in_transit
       })
@@ -259,8 +274,8 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
   const handleDeliver = async (id: string) => {
     try {
       await Promise.all([
-        axios.put(`/api/order/${id}`, { status: OrderStatus.completed }),
-        axios.put('/api/order', { id, deliveryStatus: DeliveryStatus.delivered })
+        axios.put(`/api/orders/${id}`, { status: OrderStatus.completed }),
+        axios.put('/api/orders', { id, deliveryStatus: DeliveryStatus.delivered })
       ]);
 
       toast.success('Cập nhật và giao hàng thành công');
@@ -295,6 +310,23 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
                 Xem Kanban
               </Button>
             </Link>
+            {/* Add Order Button */}
+            <Button
+              variant='contained'
+              startIcon={<MdAdd />}
+              onClick={() => setIsAddOrderModalOpen(true)}
+              size='medium'
+              sx={{
+                backgroundColor: '#10b981',
+                '&:hover': { backgroundColor: '#059669' },
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)'
+              }}
+            >
+              Thêm đơn hàng
+            </Button>
             {/* Manual Refresh */}
             <Button
               variant='contained'
@@ -505,6 +537,14 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({ orders: initial
           />
         </AdminModal>
       )}
+
+      {/* Add Order Modal */}
+      <AddOrderModal
+        isOpen={isAddOrderModalOpen}
+        toggleOpen={() => setIsAddOrderModalOpen(false)}
+        users={users}
+        products={products}
+      />
     </>
   );
 };

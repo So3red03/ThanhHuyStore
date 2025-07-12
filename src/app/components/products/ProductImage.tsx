@@ -60,7 +60,7 @@ const ProductImage: React.FC<ProductImageProps> = ({ cartProduct, availableImage
                 onClick={() => handleThumbnailClick(index)}
                 className={`relative aspect-square cursor-pointer rounded-lg border-2 transition-all duration-200 overflow-hidden ${
                   selectedImageIndex === index
-                    ? 'border-red-500 ring-2 ring-red-200'
+                    ? 'border-blue-500 ring-2 ring-blue-200'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -76,9 +76,7 @@ const ProductImage: React.FC<ProductImageProps> = ({ cartProduct, availableImage
                 />
                 {/* Selection indicator */}
                 {selectedImageIndex === index && (
-                  <div className='absolute inset-0 bg-red-500 bg-opacity-10 flex items-center justify-center'>
-                    <div className='w-3 h-3 bg-red-500 rounded-full'></div>
-                  </div>
+                  <div className='absolute inset-0 bg-blue-500 bg-opacity-10 flex items-center justify-center'></div>
                 )}
               </div>
             ))}

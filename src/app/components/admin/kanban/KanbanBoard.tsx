@@ -54,10 +54,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<any>(null);
 
-  // Cập nhật orders khi prop thay đổi
+  // Cập nhật orders khi prop thay đổi, nhưng không ghi đè khi đang loading
   useEffect(() => {
-    setOrders(initialOrders);
-  }, [initialOrders]);
+    if (!isLoading && !showCancelDialog) {
+      setOrders(initialOrders);
+    }
+  }, [initialOrders, isLoading, showCancelDialog]);
 
   // Phân loại đơn hàng theo cột (đã cập nhật logic)
   const getOrdersByColumn = (columnId: string) => {
@@ -109,6 +111,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
 
     setIsLoading(true);
 
+    // Lưu trạng thái ban đầu để rollback nếu cần
+    const originalOrders = [...orders];
+
     try {
       // Xác định trạng thái mới dựa trên cột đích
       let newStatus: OrderStatus = OrderStatus.pending;
@@ -133,7 +138,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
           break;
       }
 
-      // Cập nhật UI trước khi gọi API
+      // Cập nhật UI trước khi gọi API (optimistic update)
       const updatedOrders = orders.map(order => {
         if (order.id === orderId) {
           return {
@@ -148,8 +153,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
 
       // Gọi API cập nhật trạng thái
       await Promise.all([
-        axios.put(`/api/order/${orderId}`, { status: newStatus }),
-        axios.put('/api/order', { id: orderId, deliveryStatus: newDeliveryStatus })
+        axios.put(`/api/orders/${orderId}`, { status: newStatus }),
+        axios.put('/api/orders', { id: orderId, deliveryStatus: newDeliveryStatus })
       ]);
 
       toast.success('Cập nhật đơn hàng thành công');
@@ -158,17 +163,38 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
       console.error('Error updating order:', error);
       toast.error('Có lỗi xảy ra khi cập nhật đơn hàng');
 
-      // Rollback optimistic update
-      setOrders(initialOrders);
+      // Rollback optimistic update to original state
+      setOrders(originalOrders);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCancelSuccess = () => {
+    // Cập nhật state local để move order sang cột cancelled ngay lập tức
+    if (orderToCancel) {
+      setOrders(prevOrders =>
+        prevOrders.map(order => {
+          if (order.id === orderToCancel.id) {
+            return {
+              ...order,
+              status: OrderStatus.canceled,
+              cancelDate: new Date(),
+              cancelReason: 'Admin cancelled' // This will be updated by the API response
+            };
+          }
+          return order;
+        })
+      );
+    }
+
     setShowCancelDialog(false);
     setOrderToCancel(null);
-    onOrderUpdate();
+
+    // Delay the onOrderUpdate to prevent race condition
+    setTimeout(() => {
+      onOrderUpdate();
+    }, 100);
   };
 
   return (

@@ -187,7 +187,7 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
 
   const handleUpdateOrderStatus = (id: string, newStatus: any) => {
     axios
-      .put(`/api/order/${id}`, { status: newStatus })
+      .put(`/api/orders/${id}`, { status: newStatus })
       .then(() => {
         toast.success('Cập nhật đơn hàng thành công');
         router.refresh(); // Làm mới dữ liệu trong bảng
@@ -200,7 +200,7 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
 
   const handleDispatch = (id: string) => {
     axios
-      .put('/api/order', {
+      .put('/api/orders', {
         id,
         deliveryStatus: DeliveryStatus.in_transit
       })
@@ -217,8 +217,8 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
   const handleDeliver = async (id: string) => {
     try {
       await Promise.all([
-        axios.put(`/api/order/${id}`, { status: OrderStatus.completed }),
-        axios.put('/api/order', { id, deliveryStatus: DeliveryStatus.delivered })
+        axios.put(`/api/orders/${id}`, { status: OrderStatus.completed }),
+        axios.put('/api/orders', { id, deliveryStatus: DeliveryStatus.delivered })
       ]);
 
       toast.success('Cập nhật và giao hàng thành công');

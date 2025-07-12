@@ -10,7 +10,6 @@ import Button from './Button';
 import { useState } from 'react';
 import CancelOrderDialog from './CancelOrderDialog';
 import ReturnRequestForm from './returns/ReturnRequestForm';
-
 import { formatDate } from '../(home)/account/orders/OrdersClient';
 
 interface OrderDetailsProps {
@@ -98,7 +97,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
       onOrderCancelled();
     }
   };
-
+  console.log(order);
   return (
     <>
       <div className='max-w-4xl mx-auto p-3'>
@@ -119,7 +118,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
         )}
 
         {/* Action Buttons */}
-        <div className='flex gap-4 mb-6'>
+        {/* <div className='flex gap-4 mb-6'>
           {showCancelButton && canCancelOrder() && (
             <>
               <Button label='Thông tin đơn hàng' onClick={() => {}} outline />
@@ -140,7 +139,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
               custom='border-orange-500 text-orange-500 hover:bg-orange-50'
             />
           )}
-        </div>
+        </div> */}
 
         {/* Order Info */}
         <div className='grid grid-cols-4 gap-4 border-b pb-4 mb-8'>

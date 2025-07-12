@@ -22,7 +22,7 @@ const ItemContent: React.FC<ItemContentProps> = ({ item }) => {
         <Link href={`/product/${slugConvert(item.name)}-${item.id}`}>
           <div className='relative w-24 h-24 rounded-lg object-cover mr-4'>
             <Image
-              src={item.selectedImg || '/noavatar.png'}
+              src={item.selectedImg || item.thumbnail || '/noavatar.png'}
               alt={item.name}
               fill
               className='object-fill'

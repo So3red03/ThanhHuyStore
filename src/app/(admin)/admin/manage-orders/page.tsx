@@ -2,13 +2,20 @@ import Container from '@/app/components/Container';
 import ManageOrdersClient from './ManageOrdersClient';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import { getOrders } from '@/app/actions/getOrders';
+import { getUsers } from '@/app/actions/getUsers';
+import { getAllProducts } from '@/app/actions/getAllProducts';
 import { Suspense } from 'react';
 
 export const dynamic = 'force-dynamic';
 
 const ManageOrders = async () => {
-  const orders = await getOrders();
-  const currentUser = await getCurrentUser();
+  const [orders, currentUser, users, products] = await Promise.all([
+    getOrders(),
+    getCurrentUser(),
+    getUsers(),
+    getAllProducts()
+  ]);
+
   return (
     <Suspense
       fallback={
@@ -18,7 +25,7 @@ const ManageOrders = async () => {
       }
     >
       <Container custom='!p-0'>
-        <ManageOrdersClient orders={orders} currentUser={currentUser} />
+        <ManageOrdersClient orders={orders} currentUser={currentUser} users={users || []} products={products || []} />
       </Container>
     </Suspense>
   );

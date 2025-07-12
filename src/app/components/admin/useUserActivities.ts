@@ -102,7 +102,7 @@ export const useUserActivities = ({ user }: UseUserActivitiesProps) => {
           type: 'order_created',
           title: 'Đơn hàng được tạo',
           description: `Tài khoản này vừa đặt hàng ${order.products?.length || 0} sản phẩm`,
-          timestamp: new Date(order.createDate),
+          timestamp: new Date(order.createdAt),
           data: {
             orderId: order.id,
             products:

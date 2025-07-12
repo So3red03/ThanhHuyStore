@@ -86,9 +86,7 @@ const CartBuyClient: React.FC<CartBuyClientProps> = ({ currentUser }) => {
         )}
         <div className='flex justify-between'>
           <span className='font-bold'>Tổng tiền:</span>
-          <span className='text-indigo-600 font-semibold text-xl'>
-            {formatPrice(discountAmount > 0 ? finalAmount : cartTotalAmount + 40000)}
-          </span>
+          <span className='text-indigo-600 font-semibold text-xl'>{formatPrice(finalAmount)}</span>
         </div>
         <div className='mt-5 pb-3'>
           <Button label='ĐẶT HÀNG NGAY' isLoading={isLoading} onClick={handleCheckout} />

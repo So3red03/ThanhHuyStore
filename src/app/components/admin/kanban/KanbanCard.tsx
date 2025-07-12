@@ -7,8 +7,16 @@ interface KanbanCardProps {
 }
 
 const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
-  const formatDate = (date: string) => {
-    return format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: vi });
+  const formatDate = (date: string | Date | null | undefined) => {
+    if (!date) return 'N/A';
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return 'N/A';
+      return format(dateObj, 'dd/MM/yyyy HH:mm', { locale: vi });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'N/A';
+    }
   };
 
   // Determine shipping method based on order ID (consistent)
@@ -25,7 +33,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
       {/* Order ID */}
       <div className='flex items-center justify-between mb-2'>
         <span className='text-blue-600 font-medium text-sm'>#{order.id.slice(-8)}</span>
-        <span className='text-xs text-gray-500'>{formatDate(order.createDate)}</span>
+        <span className='text-xs text-gray-500'>{formatDate(order.createdAt)}</span>
       </div>
 
       {/* Customer Info */}
