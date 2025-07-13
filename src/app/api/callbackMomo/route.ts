@@ -9,7 +9,6 @@ export async function POST(req: any) {
     const body = await req.json();
     const { orderId, resultCode, signature, amount, requestId } = body;
 
-    console.log('MoMo Callback Received:', body);
 
     // Get client IP for rate limiting
     const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';

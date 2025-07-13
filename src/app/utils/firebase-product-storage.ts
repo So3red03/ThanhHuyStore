@@ -241,7 +241,6 @@ export const deleteProductImages = async (imagePaths: string[]): Promise<void> =
     try {
       const imageRef = ref(storage, path);
       await deleteObject(imageRef);
-      console.log(`Deleted: ${path}`);
     } catch (error) {
       console.error(`Error deleting ${path}:`, error);
       // Don't throw error for individual file deletion failures
@@ -297,7 +296,6 @@ export const deleteAllProductImages = async (productName: string): Promise<void>
     const fileDeletePromises = listResult.items.map(async itemRef => {
       try {
         await deleteObject(itemRef);
-        console.log(`Deleted: ${itemRef.fullPath}`);
       } catch (error) {
         console.error(`Error deleting ${itemRef.fullPath}:`, error);
       }
@@ -309,7 +307,6 @@ export const deleteAllProductImages = async (productName: string): Promise<void>
       const folderFileDeletePromises = folderListResult.items.map(async itemRef => {
         try {
           await deleteObject(itemRef);
-          console.log(`Deleted: ${itemRef.fullPath}`);
         } catch (error) {
           console.error(`Error deleting ${itemRef.fullPath}:`, error);
         }

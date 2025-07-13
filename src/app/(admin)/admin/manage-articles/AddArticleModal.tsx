@@ -113,10 +113,8 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
             'state_changed',
             snapshot => {
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              console.log('Upload is ' + progress + '% done');
             },
             error => {
-              console.log('Lỗi upload ảnh', error);
               reject(error);
             },
             () => {
@@ -126,7 +124,6 @@ const AddArticleModal: React.FC<AddArticleModalProps> = ({ isOpen, toggleOpen, a
                   resolve(downloadURL);
                 })
                 .catch((error: any) => {
-                  console.log('Lỗi lấy download URL', error);
                   reject(error);
                 });
             }

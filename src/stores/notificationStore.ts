@@ -187,7 +187,6 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
       const response = await fetch('/api/admin/settings/public');
       const settings = await response.json();
       if (!settings.pushNotifications) {
-        console.log('Push notifications disabled in admin settings');
         return;
       }
     } catch (error) {

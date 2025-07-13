@@ -51,7 +51,6 @@ export async function POST(request: Request) {
     });
 
     if (existingEvent) {
-      console.log(`[ANALYTICS] Duplicate event prevented: ${eventType} for ${entityType}:${processedEntityId}`);
       return NextResponse.json({
         success: true,
         eventId: existingEvent.id,

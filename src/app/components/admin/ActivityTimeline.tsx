@@ -40,7 +40,6 @@ export interface ActivityItem {
     amount?: number;
     status?: string;
     rating?: number;
-    pdfFileId?: string;
     paymentIntentId?: string;
     products?: Array<{
       id: string;
@@ -156,23 +155,6 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
                 )}
               </div>
             )}
-            {activity.data?.pdfFileId && (
-              <div className='flex items-center w-fit bg-neutral-200 p-1 px-3 rounded-md'>
-                <img
-                  src='https://demos.themeselection.com/materio-vuetify-vuejs-laravel-admin-template/demo-1/build/assets/pdf-tnlsS08R.png'
-                  alt='invoice'
-                  className='w-5 h-5 mr-2'
-                />
-                <a
-                  href={`/api/pdf/${activity.data.pdfFileId}`}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='text-blue-500 hover:underline'
-                >
-                  invoice.pdf
-                </a>
-              </div>
-            )}
           </div>
         );
 
@@ -183,23 +165,6 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
               Đã thanh toán đơn hàng #{activity.data?.paymentIntentId?.slice(-6).toUpperCase()} – tổng tiền{' '}
               {formatPrice(activity.data?.amount || 0)}
             </p>
-            {activity.data?.pdfFileId && (
-              <div className='flex items-center w-fit bg-neutral-200 p-1 px-3 rounded-md'>
-                <img
-                  src='https://demos.themeselection.com/materio-vuetify-vuejs-laravel-admin-template/demo-1/build/assets/pdf-tnlsS08R.png'
-                  alt='invoice'
-                  className='w-5 h-5 mr-2'
-                />
-                <a
-                  href={`/api/pdf/${activity.data.pdfFileId}`}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='text-blue-500 hover:underline'
-                >
-                  invoice.pdf
-                </a>
-              </div>
-            )}
           </div>
         );
 

@@ -28,8 +28,8 @@ export async function POST(request: Request) {
         const daysAgo = Math.floor(Math.random() * 30);
         const timestamp = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 
-        // Random event type
-        const eventTypes = [EventType.PAGE_VIEW, EventType.PRODUCT_VIEW, EventType.PURCHASE, EventType.ARTICLE_VIEW];
+        // Random event type (simplified)
+        const eventTypes = [EventType.PRODUCT_VIEW, EventType.ARTICLE_VIEW];
         const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
 
         // Random user (some anonymous)
@@ -68,19 +68,6 @@ export async function POST(request: Request) {
               };
             }
             break;
-
-          case EventType.PURCHASE:
-            path = '/checkout';
-            metadata = {
-              amount: Math.floor(Math.random() * 50000000) + 1000000, // 1M - 50M VND
-              currency: 'VND'
-            };
-            break;
-
-          case EventType.PAGE_VIEW:
-            const pages = ['/', '/products', '/news', '/about', '/contact'];
-            path = pages[Math.floor(Math.random() * pages.length)];
-            break;
         }
 
         events.push({
@@ -110,8 +97,6 @@ export async function POST(request: Request) {
     } else if (action === 'clear') {
       // Clear all analytics events
       const result = await prisma.analyticsEvent.deleteMany({});
-
-      console.log(`🗑️ Cleared ${result.count} analytics events (including mock data)`);
 
       return NextResponse.json({
         message: `Cleared ${result.count} analytics events`,

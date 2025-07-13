@@ -140,7 +140,6 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
           router.push('/cart/checkout');
         },
         formErrors => {
-          console.log('Form validation errors:', formErrors);
           toast.error('Vui lòng nhập đầy đủ thông tin!');
         }
       )();

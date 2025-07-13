@@ -48,14 +48,12 @@ const StripeCheckout = () => {
       // 	})
       // 	.then((data) => {
       // 		if (data) {
-      // 			console.log('API response data:', data); // Thêm nhật ký kiểm tra dữ liệu API trả về
       // 			setClientSecret(data.paymentIntent.client_secret);
       // 			handleSetPaymentIntent(data.paymentIntent.id);
       // 		}
       // 	})
       // 	.catch((error) => {
       // 		setError(true);
-      // 		console.log('Error', error);
       // 		toast.error('Something went wrong');
       // 	});
 
@@ -83,7 +81,6 @@ const StripeCheckout = () => {
         })
         .then(data => {
           if (data) {
-            console.log('API response data:', data);
             setIsPaymentCreated(true);
             clientSecretRef.current = data.paymentIntent.client_secret;
             handleSetPaymentIntent(data.paymentIntent.id);

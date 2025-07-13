@@ -48,8 +48,6 @@ export async function POST(request: Request) {
     });
 
     // Admin hủy đơn hàng không gửi Discord notification
-    // Chỉ log để tracking
-    console.log(`✅ Admin ${currentUser.name} cancelled order ${updatedOrder.id} - Reason: ${reason}`);
 
     // 🎯 AUDIT LOG: Order Cancelled by Admin
     await AuditLogger.log({

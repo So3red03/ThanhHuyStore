@@ -54,12 +54,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   const { handleAddProductToCart, cartProducts } = useCart();
   const [isProductInCart, setIsProductInCart] = useState(false);
 
-  // DEBUG: Log product data to understand structure
-  console.log('🔍 ProductDetails received product:', product);
-  console.log('🔍 Product type:', product.productType);
-  console.log('🔍 Product images:', product.images);
-  console.log('🔍 Product variants:', product.variants);
-
   // Helper function to create display label for variant
   const getVariantDisplayLabel = (attributes: Record<string, string> = {}): string => {
     const attributeValues = Object.values(attributes).filter(Boolean);
@@ -68,12 +62,8 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
 
   // Helper function to get default image for both Simple and Variant products
   const getDefaultImage = () => {
-    console.log('🖼️ getDefaultImage called for product type:', product.productType);
-
     // Handle Simple products - use new thumbnail/galleryImages structure
     if (product.productType === 'SIMPLE') {
-      console.log('🖼️ Simple product - checking thumbnail and galleryImages');
-
       // Use thumbnail first, then gallery images as fallback
       if (product.thumbnail) {
         return {
@@ -89,7 +79,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
 
       // Fallback to old images structure if new structure not available
       else if (product.images && product.images.length > 0) {
-        console.log('🖼️ Fallback to old images structure:', product.images);
         if (product.images[0] && product.images[0].images && product.images[0].images.length > 0) {
           return {
             images: product.images[0].images,
@@ -100,8 +89,6 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
     }
     // Handle Variant products - use new thumbnail/galleryImages structure
     else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
-      console.log('🖼️ Variant product - checking variants for images');
-
       // Try to find a variant with thumbnail or galleryImages
       const variantWithImage = product.variants.find((variant: any) => {
         return variant.thumbnail || (variant.galleryImages && variant.galleryImages.length > 0);

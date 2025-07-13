@@ -93,7 +93,6 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    console.log('🔍 Received payload:', JSON.stringify(body, null, 2));
 
     const { name, description, brand = 'Apple', categoryId, attributes = [], variants = [] } = body;
 
@@ -116,8 +115,6 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('✅ Creating variant product:', { name, description, categoryId });
-
     // Create product with attributes and variants in transaction
     const result = await prisma.$transaction(async tx => {
       // 1. Create the product
@@ -134,8 +131,6 @@ export async function POST(request: Request) {
           price: null // Variant products don't have direct price
         }
       });
-
-      console.log('✅ Product created:', product.id);
 
       // 2. Create product attributes
       const createdAttributes = [];
@@ -180,22 +175,13 @@ export async function POST(request: Request) {
         });
       }
 
-      console.log('✅ Attributes created:', createdAttributes.length);
-
       // 4. Create product variants
       const createdVariants = [];
       let minPrice = null;
       let totalStock = 0;
 
-      console.log('🔍 Processing variants:', variants.length);
       for (const variant of variants) {
-        console.log('🔍 Processing variant:', {
-          sku: variant.sku,
-          attributes: variant.attributes,
-          price: variant.price
-        });
         if (!variant.sku || !variant.attributes || !variant.price) {
-          console.log('❌ Skipping invalid variant:', variant);
           continue; // Skip invalid variants
         }
 
@@ -264,7 +250,6 @@ export async function POST(request: Request) {
       resourceType: 'Product'
     });
 
-    console.log('✅ Variant product created successfully:', result.product.id);
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error creating variant product:', error);

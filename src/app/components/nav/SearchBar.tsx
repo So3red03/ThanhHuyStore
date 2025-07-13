@@ -34,25 +34,37 @@ const createSearchKeywords = (productName: string): string => {
   const normalized = normalizeString(productName);
   const words = normalized.split(' ');
 
-  // Tạo các từ khóa bổ sung và biến thể
+  // Tạo các từ khóa bổ sung và biến thể (đồng bộ với backend)
   const keywords = [
     normalized,
     ...words,
-    // Thêm các từ khóa phổ biến
-    normalized.includes('iphone') || normalized.includes('i phone') ? 'dien thoai iphone apple' : '',
-    normalized.includes('samsung') ? 'dien thoai samsung' : '',
-    normalized.includes('galaxy') ? 'dien thoai samsung galaxy' : '',
-    normalized.includes('macbook') ? 'laptop macbook apple' : '',
-    normalized.includes('ipad') ? 'may tinh bang ipad apple' : '',
-    normalized.includes('airpods') ? 'tai nghe airpods apple' : '',
-    normalized.includes('watch') ? 'dong ho apple watch' : '',
-    // Thêm biến thể cho iPhone
-    normalized.includes('iphone') ? normalized.replace('iphone', 'i phone') : '',
-    normalized.includes('i phone') ? normalized.replace('i phone', 'iphone') : '',
-    // Thêm từ khóa chung
-    'dien thoai',
-    'smartphone',
-    'phone'
+    // Điện thoại variants
+    normalized.includes('iphone') || normalized.includes('i phone') ? 'dien thoai điện thoại phone smartphone' : '',
+    normalized.includes('samsung') ? 'dien thoai điện thoại samsung' : '',
+    normalized.includes('galaxy') ? 'dien thoai điện thoại samsung galaxy' : '',
+
+    // Laptop variants
+    normalized.includes('macbook') ? 'laptop may tinh máy tính computer' : '',
+
+    // iPad variants
+    normalized.includes('ipad') ? 'may tinh bang máy tính bảng tablet' : '',
+
+    // AirPods variants
+    normalized.includes('airpods') ? 'tai nghe tainghe headphone earphone' : '',
+
+    // Watch variants
+    normalized.includes('watch') ? 'dong ho đồng hồ dongho' : '',
+
+    // iPhone biến thể
+    normalized.includes('iphone') ? normalized.replace('iphone', 'i phone') + ' ip iph' : '',
+    normalized.includes('i phone') ? normalized.replace('i phone', 'iphone') + ' ip iph' : '',
+
+    // Xử lý lỗi chính tả phổ biến
+    normalized.includes('dien thoai') ? 'điện thoại đien thoai dienj thoai' : '',
+    normalized.includes('điện thoại') ? 'dien thoai đien thoai dienj thoai' : '',
+
+    // Từ khóa chung
+    'apple'
   ]
     .filter(Boolean)
     .join(' ');
@@ -61,8 +73,6 @@ const createSearchKeywords = (productName: string): string => {
 };
 
 const SearchBar: React.FC<SearchBarProps> = ({ products }) => {
-  console.log(products);
-
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();

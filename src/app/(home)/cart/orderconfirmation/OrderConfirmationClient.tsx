@@ -24,7 +24,6 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
   const [orderStatus, setOrderStatus] = useState<'processing' | 'success' | 'failed'>('processing');
 
   useEffect(() => {
-    console.log(paymentIntent);
     if (!currentUser) {
       router.push('/login');
       return;

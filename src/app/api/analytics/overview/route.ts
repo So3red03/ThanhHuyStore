@@ -26,25 +26,7 @@ export async function GET(request: Request) {
       }
     });
 
-    // Get page views
-    const pageViews = await prisma.analyticsEvent.count({
-      where: {
-        eventType: EventType.PAGE_VIEW,
-        timestamp: {
-          gte: startDate
-        }
-      }
-    });
-
-    // Get unique visitors
-    const uniqueVisitors = await prisma.analyticsEvent.groupBy({
-      by: ['userId', 'sessionId'],
-      where: {
-        timestamp: {
-          gte: startDate
-        }
-      }
-    });
+    // Page views removed from analytics
 
     // Get product views
     const productViews = await prisma.analyticsEvent.count({
@@ -66,21 +48,7 @@ export async function GET(request: Request) {
       }
     });
 
-    // Debug logging for article views
-    console.log(`[ANALYTICS_OVERVIEW] Article views count: ${articleViews} for period from ${startDate.toISOString()}`);
-
-    // Get searches - removed as SEARCH event type no longer exists
-    const searches = 0;
-
-    // Get purchases
-    const purchases = await prisma.analyticsEvent.count({
-      where: {
-        eventType: EventType.PURCHASE,
-        timestamp: {
-          gte: startDate
-        }
-      }
-    });
+    // Removed metrics: unique visitors, searches, purchases
 
     // Get daily trends
     const dailyTrends = await prisma.analyticsEvent.groupBy({
@@ -112,12 +80,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       overview: {
         totalEvents,
-        pageViews,
-        uniqueVisitors: uniqueVisitors.length,
         productViews,
-        articleViews,
-        searches,
-        purchases
+        articleViews
       },
       trends,
       period: {

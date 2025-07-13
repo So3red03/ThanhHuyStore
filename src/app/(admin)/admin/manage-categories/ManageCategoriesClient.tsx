@@ -188,7 +188,6 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
           await deleteObject(imageRef);
         }
       } catch (error) {
-        return console.log('Xóa ảnh thất bại');
       }
     };
     await handleImageDelete();
@@ -221,7 +220,6 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
         // Tải ảnh mới lên Firebase
         newImageUrl = await uploadNewImageToFirebase(newImageUrl);
 
-        console.log('Ảnh đã được tải lên thành công:', newImageUrl);
       }
 
       // Gọi API để cập nhật bài viết sau khi ảnh mới đã được xử lý
@@ -245,7 +243,6 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
 
       // Xóa ảnh khỏi Firebase Storage
       await deleteObject(imageRef);
-      console.log('Đã xóa ảnh cũ khỏi Firebase.');
     } catch (error) {
       console.error('Lỗi khi xóa ảnh cũ khỏi Firebase:', error);
       throw error;
@@ -263,7 +260,6 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
         'state_changed',
         snapshot => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log(`Upload is ${progress}% done`);
         },
         error => {
           console.error('Lỗi khi tải ảnh lên Firebase:', error);
@@ -272,7 +268,6 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
         () => {
           getDownloadURL(uploadTask.snapshot.ref)
             .then(downloadURL => {
-              console.log('Tải ảnh thành công: ', downloadURL);
               resolve(downloadURL);
             })
             .catch(error => {

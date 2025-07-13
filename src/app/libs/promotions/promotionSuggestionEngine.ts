@@ -36,30 +36,21 @@ export class PromotionSuggestionEngine {
     const suggestions: PromotionSuggestion[] = [];
 
     try {
-      console.log('🚀 Starting promotion analysis...');
-
       // 1. Phân tích sản phẩm tồn kho cao
-      console.log('📦 Analyzing high stock products...');
       const highStockSuggestions = await this.analyzeHighStockProducts();
-      console.log(`Found ${highStockSuggestions.length} high stock suggestions`);
       suggestions.push(...highStockSuggestions);
 
       // 2. Phân tích sản phẩm ít bán
-      console.log('📉 Analyzing low sales products...');
       const lowSalesSuggestions = await this.analyzeLowSalesProducts();
-      console.log(`Found ${lowSalesSuggestions.length} low sales suggestions`);
       suggestions.push(...lowSalesSuggestions);
 
       // 3. Phân tích danh mục có hiệu suất thấp
-      console.log('🏷️ Analyzing low performing categories...');
       const categorySuggestions = await this.analyzeLowPerformingCategories();
-      console.log(`Found ${categorySuggestions.length} category suggestions`);
       suggestions.push(...categorySuggestions);
 
       // 4. Sắp xếp theo độ ưu tiên
       const sortedSuggestions = this.prioritizeSuggestions(suggestions);
 
-      console.log(`✅ Generated ${sortedSuggestions.length} total suggestions`);
       return sortedSuggestions;
     } catch (error) {
       console.error('❌ Error generating promotion suggestions:', error);
@@ -256,12 +247,8 @@ export class PromotionSuggestionEngine {
 
   // Test function để kiểm tra engine
   public async testEngine(): Promise<void> {
-    console.log('🧪 Testing Promotion Suggestion Engine...');
     const suggestions = await this.generateSuggestions();
-    console.log(`Generated ${suggestions.length} suggestions for testing`);
 
-    suggestions.forEach((suggestion, index) => {
-      console.log(`${index + 1}. [${suggestion.priority}] ${suggestion.title}`);
-    });
+    suggestions.forEach((suggestion, index) => {});
   }
 }

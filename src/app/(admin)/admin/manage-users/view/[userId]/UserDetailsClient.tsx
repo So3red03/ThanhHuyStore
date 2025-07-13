@@ -284,7 +284,6 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
 
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     setIsLoading(true);
-    console.log(data);
 
     axios
       .put(`/api/user/${data.id}`, {

@@ -79,10 +79,34 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     setIsLoading(true);
     try {
-      await axios.put(`/api/voucher/${id}`, { isActive: !currentStatus });
+      // Tìm voucher hiện tại để lấy thông tin đầy đủ
+      const currentVoucher = vouchers.find(v => v.id === id);
+      if (!currentVoucher) {
+        toast.error('Không tìm thấy voucher');
+        return;
+      }
+
+      // Gửi đầy đủ thông tin voucher với trạng thái mới
+      await axios.put(`/api/voucher/${id}`, {
+        code: currentVoucher.code,
+        description: currentVoucher.description,
+        image: currentVoucher.image,
+        discountType: currentVoucher.discountType,
+        discountValue: currentVoucher.discountValue,
+        minOrderValue: currentVoucher.minOrderValue,
+        quantity: currentVoucher.quantity,
+        maxUsagePerUser: currentVoucher.maxUsagePerUser,
+        startDate: currentVoucher.startDate,
+        endDate: currentVoucher.endDate,
+        isActive: !currentStatus,
+        voucherType: currentVoucher.voucherType,
+        targetUserIds: currentVoucher.targetUserIds
+      });
+
       toast.success(`${!currentStatus ? 'Kích hoạt' : 'Tạm dừng'} voucher thành công`);
       router.refresh();
     } catch (error) {
+      console.error('Toggle voucher status error:', error);
       toast.error('Có lỗi xảy ra khi cập nhật trạng thái voucher');
     } finally {
       setIsLoading(false);
@@ -376,10 +400,10 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
           <div className='grid grid-cols-1 lg:grid-cols-5 gap-6'>
             {/* Search Input */}
             <div className='lg:col-span-2'>
-              <label className='block text-sm font-semibold text-gray-700 mb-3'>🔍 Tìm kiếm</label>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Tìm kiếm</label>
               <TextField
                 size='medium'
-                placeholder='Tìm theo mã voucher hoặc mô tả...'
+                placeholder='Tìm theo tên hoặc mô tả voucher...'
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
@@ -388,15 +412,23 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '8px',
                     backgroundColor: '#f9fafb',
+                    color: '#111827', // ✅ màu chữ mặc định
                     '& fieldset': {
                       borderColor: '#e5e7eb'
                     },
                     '&:hover fieldset': {
                       borderColor: '#d1d5db'
                     },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#8b5cf6',
-                      backgroundColor: '#ffffff'
+                    '&.Mui-focused': {
+                      backgroundColor: '#ffffff',
+                      color: '#111827', // ✅ giữ màu chữ khi focus
+                      '& fieldset': {
+                        borderColor: '#8b5cf6'
+                      }
+                    },
+                    '& input::placeholder': {
+                      color: '#9ca3af', // ✅ màu placeholder (text-gray-400)
+                      opacity: 1 // ✅ đảm bảo không bị mờ
                     }
                   }
                 }}
@@ -413,7 +445,7 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
                           px: 2,
                           backgroundColor: '#8b5cf6',
                           '&:hover': {
-                            backgroundColor: '#7c3aed'
+                            backgroundColor: '#8b5cf6'
                           },
                           borderRadius: '6px'
                         }}
@@ -428,16 +460,17 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
 
             {/* Status Filter */}
             <div>
-              <label className='block text-sm font-semibold text-gray-700 mb-3'>📊 Trạng thái</label>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Trạng thái</label>
               <FormControl fullWidth size='medium'>
                 <Select
                   value={statusFilter}
                   onChange={e => setStatusFilter(e.target.value)}
                   displayEmpty
                   sx={{
-                    borderRadius: '8px',
-                    backgroundColor: '#f9fafb',
+                    width: '100%',
                     '& .MuiOutlinedInput-root': {
+                      borderRadius: '8px',
+                      backgroundColor: '#f9fafb',
                       '& fieldset': {
                         borderColor: '#e5e7eb'
                       },
@@ -446,7 +479,7 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
                       },
                       '&.Mui-focused fieldset': {
                         borderColor: '#8b5cf6',
-                        backgroundColor: '#ffffff'
+                        backgroundColor: '#f9fafb' // Thêm thuộc tính này
                       }
                     }
                   }}
@@ -460,7 +493,7 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
 
             {/* Voucher Type Filter */}
             <div>
-              <label className='block text-sm font-semibold text-gray-700 mb-3'>🏷️ Loại voucher</label>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Loại voucher</label>
               <FormControl fullWidth size='medium'>
                 <Select
                   value={typeFilter}

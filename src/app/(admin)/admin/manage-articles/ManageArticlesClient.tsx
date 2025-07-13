@@ -174,9 +174,7 @@ const ManageArticlesClient: React.FC<ManageArticlesClientProps> = ({ currentUser
           const imageRef = ref(storage, image);
           await deleteObject(imageRef);
         }
-      } catch (error) {
-        return console.log('Xóa ảnh thất bại');
-      }
+      } catch (error) {}
     };
     await handleImageDelete();
 

@@ -36,7 +36,6 @@ const PasswordRecoveryModal = () => {
         reset();
       })
       .catch(error => {
-        console.log(error);
         const errorMessage = error.response?.data?.message || 'Tài khoản này không tồn tại';
         toast.error(errorMessage);
       })

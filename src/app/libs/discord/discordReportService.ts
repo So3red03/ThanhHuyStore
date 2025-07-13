@@ -250,12 +250,10 @@ export class DiscordReportService {
       // Kiểm tra xem Discord reports có được bật không
       const settings = await prisma.adminSettings.findFirst();
       if (!settings?.dailyReports) {
-        console.log('Discord reports are disabled');
         return;
       }
 
       if (!this.DISCORD_ORDER_WEBHOOK_URL) {
-        console.error('Discord report webhook URL not configured');
         return;
       }
 
@@ -273,12 +271,10 @@ export class DiscordReportService {
       });
 
       if (!response.ok) {
-        console.error('Discord report webhook failed:', response.status, response.statusText);
-      } else {
-        console.log('Discord report sent successfully');
+        throw new Error(`Discord webhook failed: ${response.status} ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('Error sending Discord report:', error);
+    } catch (error: any) {
+      throw new Error('Error sending Discord report');
     }
   }
 }

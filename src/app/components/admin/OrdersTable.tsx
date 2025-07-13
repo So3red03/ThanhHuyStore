@@ -1,7 +1,7 @@
 'use client';
 
 import Status from '@/app/components/Status';
-import { MdAccessTimeFilled, MdDone, MdPictureAsPdf } from 'react-icons/md';
+import { MdAccessTimeFilled, MdDone } from 'react-icons/md';
 import { truncateText } from '../../../../utils/truncateText';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import NullData from '../NullData';
@@ -11,30 +11,6 @@ interface OrdersTableProps {
 }
 
 const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
-  // Function to download PDF
-  const downloadPDF = async (orderId: string, paymentIntentId: string) => {
-    try {
-      const response = await fetch(`/api/orders/${orderId}/pdf`);
-
-      if (!response.ok) {
-        throw new Error('Failed to download PDF');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `invoice-${paymentIntentId.slice(-6).toUpperCase()}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      alert('Không thể tải PDF. Vui lòng thử lại.');
-    }
-  };
-
   if (!orders || orders.length === 0) {
     return <NullData title='Không có đơn hàng nào' />;
   }
@@ -59,7 +35,6 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
               <th className='p-4'>Khách hàng</th>
               <th className='p-4'>Thời gian</th>
               <th className='p-4'>Trạng thái</th>
-              <th className='p-4'>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -76,16 +51,6 @@ const OrdersTable: React.FC<OrdersTableProps> = ({ orders }) => {
                       <Status text='Đang chờ' icon={MdAccessTimeFilled} bg='bg-slate-200' color='text-slate-700' />
                     )}
                   </span>
-                </td>
-                <td className='py-2 px-4'>
-                  <button
-                    onClick={() => downloadPDF(order.id, order.paymentIntentId)}
-                    className='flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors'
-                    title='Tải hóa đơn PDF'
-                  >
-                    <MdPictureAsPdf size={14} />
-                    PDF
-                  </button>
                 </td>
               </tr>
             ))}

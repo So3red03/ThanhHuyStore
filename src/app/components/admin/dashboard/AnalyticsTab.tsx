@@ -13,29 +13,17 @@ import {
   InputLabel,
   Grid
 } from '@mui/material';
-import { MdRefresh, MdDateRange, MdVisibility, MdShoppingCart, MdPeople, MdSearch, MdPercent } from 'react-icons/md';
+import { MdRefresh, MdDateRange, MdVisibility, MdArticle } from 'react-icons/md';
 import { useAnalyticsOverview, useProductAnalytics, useArticleAnalytics } from '@/app/hooks/useAnalytics';
 import AnalyticsTrendChart from '../../analytics/AnalyticsTrendChart';
 import TopProductsTable from '../../analytics/TopProductsTable';
 import TopArticlesTable from '../../analytics/TopArticlesTable';
 
 interface AnalyticsTabProps {
-  orders: any[];
-  users: any[];
-  totalRevenue: any;
-  columnData: any;
-  salesWeeklyData?: any;
   onRefresh?: () => void;
 }
 
-const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
-  orders,
-  users,
-  totalRevenue,
-  columnData,
-  salesWeeklyData,
-  onRefresh
-}) => {
+const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ onRefresh }) => {
   // State for time filter
   const [timeFilter, setTimeFilter] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -76,43 +64,19 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({
   // Create real analytics stats from API data
   const analyticsStatsData = [
     {
-      title: 'Lượt xem trang',
-      value: overviewData?.overview?.pageViews || 0,
-      change: overviewLoading ? '...' : `${overviewData?.overview?.pageViews || 0}`,
-      icon: MdVisibility,
-      color: '#3b82f6',
-      loading: overviewLoading
-    },
-    {
-      title: 'Khách truy cập',
-      value: overviewData?.overview?.uniqueVisitors || 0,
-      change: overviewLoading ? '...' : `${overviewData?.overview?.uniqueVisitors || 0}`,
-      icon: MdPeople,
-      color: '#10b981',
-      loading: overviewLoading
-    },
-    {
       title: 'Xem sản phẩm',
       value: overviewData?.overview?.productViews || 0,
       change: overviewLoading ? '...' : `${overviewData?.overview?.productViews || 0}`,
-      icon: MdShoppingCart,
-      color: '#8b5cf6',
+      icon: MdVisibility,
+      color: '#3b82f6',
       loading: overviewLoading
     },
     {
       title: 'Xem bài viết',
       value: overviewData?.overview?.articleViews || 0,
       change: overviewLoading ? '...' : `${overviewData?.overview?.articleViews || 0}`,
-      icon: MdSearch,
-      color: '#f59e0b',
-      loading: overviewLoading
-    },
-    {
-      title: 'Đơn hàng',
-      value: overviewData?.overview?.purchases || 0,
-      change: overviewLoading ? '...' : `${overviewData?.overview?.purchases || 0}`,
-      icon: MdShoppingCart,
-      color: '#8b5cf6',
+      icon: MdArticle,
+      color: '#10b981',
       loading: overviewLoading
     }
   ];

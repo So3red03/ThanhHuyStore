@@ -11,7 +11,6 @@ const sendDiscordNotification = async (orderData: any, currentUser: any, reason:
     const webhookUrl = process.env.DISCORD_ORDER_WEBHOOK_URL;
 
     if (!webhookUrl) {
-      console.log('Discord webhook URL not configured');
       return;
     }
 

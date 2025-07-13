@@ -14,14 +14,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('🔄 Starting automated promotion analysis...');
-
     // Chạy phân tích
     const engine = PromotionSuggestionEngine.getInstance();
     const suggestions = await engine.generateSuggestions();
 
     if (suggestions.length === 0) {
-      console.log('✅ No promotion suggestions found');
       return NextResponse.json({
         success: true,
         message: 'No suggestions found',
@@ -88,14 +85,7 @@ export async function GET(request: NextRequest) {
       );
 
       await discordService.sendPromotionSuggestions(newSuggestions);
-
-      console.log(`✅ Sent ${newSuggestions.length} new promotion suggestions to Discord`);
     }
-
-    // Log kết quả
-    console.log(
-      `✅ Promotion analysis completed: ${suggestions.length} total suggestions, ${notifications.length} new notifications`
-    );
 
     return NextResponse.json({
       success: true,

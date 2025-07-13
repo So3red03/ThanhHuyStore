@@ -9,7 +9,6 @@ import Image from 'next/image';
 import Button from './Button';
 import { useState } from 'react';
 import CancelOrderDialog from './CancelOrderDialog';
-import ReturnRequestForm from './returns/ReturnRequestForm';
 import { formatDate } from '../(home)/account/orders/OrdersClient';
 
 interface OrderDetailsProps {
@@ -29,7 +28,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
   onOrderCancelled
 }) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [showReturnForm, setShowReturnForm] = useState(false);
 
   const getOrderStatusText = (status: OrderStatus) => {
     switch (status) {
@@ -97,7 +95,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
       onOrderCancelled();
     }
   };
-  console.log(order);
   return (
     <>
       <div className='max-w-4xl mx-auto p-3'>
@@ -256,19 +253,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
           order={order}
           currentUser={currentUser}
           onSuccess={handleCancelSuccess}
-        />
-      )}
-
-      {/* Return Request Form */}
-      {showReturnForm && (
-        <ReturnRequestForm
-          orderId={order.id}
-          orderCode={order.paymentIntentId.slice(-6).toUpperCase()}
-          onClose={() => setShowReturnForm(false)}
-          onSuccess={() => {
-            setShowReturnForm(false);
-            // Refresh page or update state
-          }}
         />
       )}
     </>

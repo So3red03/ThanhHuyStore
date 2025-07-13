@@ -135,16 +135,18 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
           return router.push('/login');
         }
 
-        if (response.data.createdOrder) {
-          handleSetPaymentIntent(response.data.createdOrder.paymentIntentId);
+        if (response.data.paymentIntentId && response.data.orderId) {
+          handleSetPaymentIntent(response.data.paymentIntentId);
           handleNextStep();
           toast.success('Đặt hàng thành công!');
           router.push('/cart/orderconfirmation');
         } else {
+          console.error('Missing data in response:', response.data);
           throw new Error('Không nhận được thông tin đơn hàng');
         }
       } catch (error: any) {
         console.error('Error creating COD order:', error);
+        console.error('Error details:', error.response?.data);
         toast.error('Đặt đơn thất bại. Vui lòng thử lại!');
       } finally {
         setIsLoading(false);
@@ -174,7 +176,6 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
         }
 
         if (response.data.payUrl && response.data.createdOrder) {
-          console.log('API response:', response.data);
           handleSetPaymentIntent(response.data.createdOrder.paymentIntentId);
           handleNextStep();
           toast.success('Đang chuyển hướng đến MoMo...');

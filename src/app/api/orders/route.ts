@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
+import { validateDeliveryStatusTransition } from '@/app/utils/orderStatusValidation';
 
 export async function GET(request: Request) {
   try {
@@ -68,6 +69,12 @@ export async function PUT(request: Request) {
 
   if (!oldOrder) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+  }
+
+  // Validate delivery status transition
+  const validation = validateDeliveryStatusTransition(oldOrder.deliveryStatus, deliveryStatus, oldOrder.status);
+  if (!validation.isValid) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
   // update order in db by Prisma

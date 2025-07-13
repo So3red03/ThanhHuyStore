@@ -29,6 +29,6 @@ export async function getCurrentUser() {
       lastLogin: currentUser?.lastLogin?.toISOString() || null
     };
   } catch (error: any) {
-    console.log(error);
+    throw new Error(error);
   }
 }

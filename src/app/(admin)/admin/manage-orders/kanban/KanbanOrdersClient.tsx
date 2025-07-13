@@ -8,6 +8,7 @@ import { Button, TextField, InputAdornment, Select, MenuItem, FormControl, Input
 import { MdRefresh, MdViewList, MdClear, MdAdd } from 'react-icons/md';
 import Link from 'next/link';
 import AddOrderModal from '../AddOrderModal';
+import { canTransitionOrderStatus, canTransitionDeliveryStatus } from '@/app/utils/orderStatusValidation';
 
 interface KanbanOrdersClientProps {
   orders: any[];
@@ -517,7 +518,12 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({
       </div>
 
       {/* Kanban Board */}
-      <KanbanBoard orders={filteredOrders} onOrderUpdate={handleOrderUpdate} />
+      <KanbanBoard
+        orders={filteredOrders}
+        onOrderUpdate={handleOrderUpdate}
+        canTransitionOrderStatus={canTransitionOrderStatus}
+        canTransitionDeliveryStatus={canTransitionDeliveryStatus}
+      />
 
       {/* Add Order Modal */}
       <AddOrderModal

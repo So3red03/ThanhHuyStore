@@ -28,6 +28,37 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   } = body;
 
   try {
+    // Validate required fields
+    if (!code || !discountType || !discountValue || !quantity || !startDate || !endDate) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Validate and parse dates
+    const parsedStartDate = new Date(startDate);
+    const parsedEndDate = new Date(endDate);
+
+    if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
+    }
+
+    if (parsedStartDate >= parsedEndDate) {
+      return NextResponse.json({ error: 'Start date must be before end date' }, { status: 400 });
+    }
+
+    // Validate numeric values
+    const parsedDiscountValue = parseFloat(discountValue);
+    const parsedQuantity = parseInt(quantity);
+    const parsedMinOrderValue = minOrderValue ? parseFloat(minOrderValue) : null;
+    const parsedMaxUsagePerUser = maxUsagePerUser ? parseInt(maxUsagePerUser) : 1;
+
+    if (isNaN(parsedDiscountValue) || parsedDiscountValue <= 0) {
+      return NextResponse.json({ error: 'Invalid discount value' }, { status: 400 });
+    }
+
+    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+      return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 });
+    }
+
     // Get old voucher data for audit trail
     const oldVoucher = await prisma.voucher.findUnique({
       where: { id: params.id }
@@ -44,13 +75,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         description,
         image,
         discountType,
-        discountValue: parseFloat(discountValue),
-        minOrderValue: minOrderValue ? parseFloat(minOrderValue) : null,
-        quantity: parseInt(quantity),
-        maxUsagePerUser: maxUsagePerUser ? parseInt(maxUsagePerUser) : 1,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        isActive,
+        discountValue: parsedDiscountValue,
+        minOrderValue: parsedMinOrderValue,
+        quantity: parsedQuantity,
+        maxUsagePerUser: parsedMaxUsagePerUser,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+        isActive: Boolean(isActive),
         voucherType,
         targetUserIds: targetUserIds || []
       }

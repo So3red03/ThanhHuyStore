@@ -53,8 +53,10 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   // Lấy gợi ý cá nhân hóa cho người dùng đã đăng nhập
   const getPersonalizedRecommendations = async (): Promise<Product[]> => {
     try {
-      // Lấy lịch sử xem từ localStorage
-      const viewHistory: ViewHistory[] = JSON.parse(localStorage.getItem('productViewHistory') || '[]');
+      // Lấy lịch sử xem từ database analytics
+      const analyticsResponse = await fetch('/api/user/analytics');
+      const analyticsData = analyticsResponse.ok ? await analyticsResponse.json() : { viewHistory: [] };
+      const viewHistory: ViewHistory[] = analyticsData.viewHistory || [];
 
       // Lấy lịch sử mua hàng từ API
       const purchaseHistoryResponse = await fetch('/api/user/purchase-history');
@@ -64,14 +66,11 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       const interestedCategories = new Set<string>();
       const interestedBrands = new Set<string>();
 
-      // Từ lịch sử xem (30 ngày gần nhất)
-      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-      viewHistory
-        .filter(item => item.viewedAt > thirtyDaysAgo)
-        .forEach(item => {
-          interestedCategories.add(item.category);
-          interestedBrands.add(item.brand);
-        });
+      // Từ lịch sử xem (đã được filter 30 ngày trong API)
+      viewHistory.forEach(item => {
+        interestedCategories.add(item.category);
+        interestedBrands.add(item.brand);
+      });
 
       // Từ lịch sử mua hàng
       purchaseHistory.forEach((order: any) => {
@@ -125,30 +124,6 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       .slice(0, 8);
 
     return recentProducts.length > 0 ? recentProducts : [];
-  };
-
-  // Lưu lịch sử xem sản phẩm
-  const saveProductView = (product: Product) => {
-    try {
-      const viewHistory: ViewHistory[] = JSON.parse(localStorage.getItem('productViewHistory') || '[]');
-
-      const newView: ViewHistory = {
-        productId: product.id,
-        category: product.categoryId,
-        brand: product.brand || 'Apple',
-        viewedAt: Date.now()
-      };
-
-      // Loại bỏ view cũ của cùng sản phẩm
-      const filteredHistory = viewHistory.filter(item => item.productId !== product.id);
-
-      // Thêm view mới và giữ tối đa 50 records
-      const updatedHistory = [newView, ...filteredHistory].slice(0, 50);
-
-      localStorage.setItem('productViewHistory', JSON.stringify(updatedHistory));
-    } catch (error) {
-      console.error('Error saving product view:', error);
-    }
   };
 
   if (loading) {
@@ -280,9 +255,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
             >
               {recommendedProducts.map(product => (
                 <SwiperSlide key={product.id} className='transition-transform duration-300 hover:-translate-y-1'>
-                  <div onClick={() => saveProductView(product)}>
-                    <ProductCard data={product} className='rounded-lg shadow-sm' />
-                  </div>
+                  <ProductCard data={product} className='rounded-lg shadow-sm' />
                 </SwiperSlide>
               ))}
 

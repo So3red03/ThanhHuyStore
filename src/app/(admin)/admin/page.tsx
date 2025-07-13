@@ -45,9 +45,7 @@ const AdminDashboard = async () => {
             salesWeeklyData={columnChartData}
           />
         }
-        analyticsContent={
-          <AnalyticsTab orders={orders} users={users} totalRevenue={totalRevenue} columnData={columnChartData} />
-        }
+        analyticsContent={<AnalyticsTab />}
         reportsContent={<ReportsTab orders={orders} users={users} totalRevenue={totalRevenue} />}
         notificationsContent={<AuditTab orders={orders} users={users} />}
       />

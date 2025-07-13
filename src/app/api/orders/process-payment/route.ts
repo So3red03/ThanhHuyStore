@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/app/libs/prismadb';
-import { PDFGenerator } from '@/app/services/pdfGenerator';
-import MongoService from '@/app/services/mongoService';
-import EmailService from '@/app/services/emailService';
-import { AuditLogger } from '@/app/utils/auditLogger';
+import { OrderEmailService } from '@/app/utils/orderEmailService';
+import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,83 +38,48 @@ export async function POST(request: NextRequest) {
             usedAt: new Date()
           }
         });
-        console.log(`Voucher usage confirmed for order ${order.id}`);
       } catch (voucherError) {
-        console.error('Error confirming voucher usage:', voucherError);
-        // Don't fail the payment process for voucher confirmation errors
+        throw voucherError;
       }
     }
 
-    // Kiểm tra xem PDF đã tồn tại chưa
-    const pdfExists = await MongoService.pdfExists(orderId, 'invoice');
-    let pdfFileId: string | null = null;
+    // 🚀 MIGRATED: Track payment success với đầy đủ user context
+    const user = await prisma.user.findUnique({
+      where: { id: order.userId },
+      select: { email: true, role: true, name: true }
+    });
 
-    if (!pdfExists) {
-      try {
-        // Tạo PDF
-        const pdfGenerator = new PDFGenerator();
-        const pdfBuffer = await pdfGenerator.generateOrderInvoice({
-          id: order.id,
+    if (user) {
+      await AuditLogger.log({
+        eventType: AuditEventType.PAYMENT_SUCCESS,
+        severity: AuditSeverity.LOW,
+        userId: order.userId,
+        userEmail: user.email!,
+        userRole: user.role || 'USER',
+        ipAddress: 'system', // Process-payment được gọi từ server
+        userAgent: 'system',
+        description: `Đã thanh toán đơn hàng #${order.id}`,
+        details: {
+          orderId: order.id,
           amount: order.amount,
-          createDate: order.createdAt,
-          paymentIntentId: order.paymentIntentId,
-          phoneNumber: order.phoneNumber || undefined,
-          address: order.address
-            ? {
-                line1: order.address.line1,
-                line2: order.address.line2 || undefined,
-                city: order.address.city,
-                postal_code: order.address.postal_code,
-                country: order.address.country
-              }
-            : undefined,
-          paymentMethod: order.paymentMethod || undefined,
-          shippingFee: order.shippingFee || undefined,
-          discountAmount: order.discountAmount || undefined,
-          originalAmount: order.originalAmount || undefined,
-          voucherCode: order.voucherCode || undefined,
-          user: {
-            name: order.user.name || 'Unknown',
-            email: order.user.email
+          paymentMethod: order.paymentMethod || 'unknown',
+          title: 'Thanh toán thành công',
+          uiData: {
+            orderId: order.id,
+            amount: order.amount,
+            paymentMethod: order.paymentMethod
           },
-          products: (order.products || []).map((product: any) => ({
-            id: product.id,
-            name: product.name,
-            description: product.description,
-            price: product.price,
-            quantity: product.quantity,
-            selectedImg: product.selectedImg
-          }))
-        });
-
-        // Lưu PDF vào MongoDB
-        const fileId = await MongoService.savePDF(pdfBuffer, orderId, order.paymentIntentId, order.userId, 'invoice');
-
-        pdfFileId = fileId.toString();
-
-        console.log('PDF created successfully:', pdfFileId);
-      } catch (pdfError) {
-        console.error('Error creating PDF:', pdfError);
-        // Tiếp tục xử lý mà không có PDF
-      }
-    } else {
-      // Lấy PDF đã tồn tại
-      const existingPdfs = await MongoService.getPDFsByOrderId(orderId);
-      if (existingPdfs.length > 0) {
-        pdfFileId = existingPdfs[0]._id?.toString() || null;
-      }
+          isUserActivity: true
+        },
+        resourceId: order.id,
+        resourceType: 'Order'
+      });
     }
 
-    // 🚀 MIGRATED: Track payment success with AuditLogger
-    await AuditLogger.trackPaymentSuccess(order.userId, order.id, order.amount, 'stripe');
-
-    // 🚀 MIGRATED: PDF tracking now handled in AuditLog details
-    // PDF file ID is automatically included in payment success tracking
-
-    // Gửi email xác nhận với PDF đính kèm
+    // Gửi email xác nhận
     try {
-      const emailService = new EmailService();
-      await emailService.sendOrderConfirmationWithPDF({
+      const emailService = new OrderEmailService();
+      await emailService.sendOrderConfirmation({
         orderId: order.id,
         paymentIntentId: order.paymentIntentId,
         customerName: order.user.name || 'Khách hàng',
@@ -126,8 +89,7 @@ export async function POST(request: NextRequest) {
           name: product.name,
           quantity: product.quantity,
           price: product.price
-        })),
-        pdfFileId: pdfFileId || undefined
+        }))
       });
 
       console.log('Order confirmation email sent successfully');
@@ -156,7 +118,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: 'Payment processed successfully',
       orderId,
-      pdfFileId,
       activityCreated: true,
       emailSent: true
     });

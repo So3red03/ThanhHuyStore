@@ -57,8 +57,6 @@ export async function POST(request: NextRequest) {
           where: { id: product.id },
           data: { inStock: { increment: product.quantity } }
         });
-
-        console.log(`Restored ${product.quantity} units of ${product.name} to inventory`);
       }
 
       // Rollback voucher reservation if exists
@@ -80,8 +78,6 @@ export async function POST(request: NextRequest) {
           where: { id: voucherReservation.voucherId },
           data: { usedCount: { decrement: 1 } }
         });
-
-        console.log(`Rolled back voucher reservation for order ${order.id}`);
       }
 
       // Mark order as cancelled
@@ -98,8 +94,6 @@ export async function POST(request: NextRequest) {
       // Note: This runs outside transaction since AuditLogger has its own transaction
       await AuditLogger.trackOrderCancelled(order.userId, order.id, reason || 'Payment failed - inventory restored');
     });
-
-    console.log(`Successfully rolled back inventory for order ${orderId}`);
 
     return NextResponse.json({
       success: true,

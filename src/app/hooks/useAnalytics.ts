@@ -266,23 +266,7 @@ const trackEvent = async (eventData: {
   }
 };
 
-// Helper function to track purchase events
-export const trackPurchase = async (orderId: string, userId?: string, orderData?: any) => {
-  await trackEvent({
-    eventType: 'PURCHASE',
-    entityType: 'order',
-    entityId: orderId,
-    path: '/checkout',
-    metadata: {
-      orderId,
-      userId,
-      amount: orderData?.amount,
-      currency: orderData?.currency || 'VND',
-      products: orderData?.products || [],
-      timestamp: new Date().toISOString()
-    }
-  });
-};
+// Purchase tracking removed - simplified analytics system
 
 // Helper function to track product interactions (unified as PRODUCT_VIEW)
 export const trackProductInteraction = async (productId: string, additionalData?: any) => {
@@ -331,7 +315,6 @@ export const trackArticleView = async (articleId: string, additionalData?: any) 
 export const useAnalyticsTracker = () => {
   return {
     trackEvent,
-    trackPurchase,
     trackProductInteraction,
     trackSearch,
     trackArticleView

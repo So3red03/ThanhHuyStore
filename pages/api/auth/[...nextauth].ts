@@ -196,7 +196,6 @@ export const authOptions: AuthOptions = {
       if (user && account) {
         // First login - set initial expiration
         token.exp = now + config.sessionMaxAge;
-        console.log('JWT - First login, setting exp:', token.exp, 'timeout:', config.sessionMaxAge);
       } else {
         // Subsequent requests - check if we need to update expiration based on current settings
         const timeRemaining = (token.exp as number) - now;
@@ -204,7 +203,6 @@ export const authOptions: AuthOptions = {
         // If token expires in less than 5 minutes, refresh it with current settings
         if (timeRemaining < 5 * 60) {
           token.exp = now + config.sessionMaxAge;
-          console.log('JWT - Refreshing token, new exp:', token.exp, 'timeout:', config.sessionMaxAge);
         }
       }
 

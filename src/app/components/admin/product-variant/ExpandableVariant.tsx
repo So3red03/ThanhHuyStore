@@ -259,17 +259,8 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
       const variantId = variant.databaseId;
       const isEditMode = variantId && /^[0-9a-fA-F]{24}$/.test(variantId);
 
-      console.log('🔄 Save mode:', {
-        mode: isEditMode ? 'EDIT' : 'CREATE',
-        variantId,
-        displayId: variant.id,
-        hasValidObjectId: isEditMode
-      });
-
       if (!isEditMode) {
         // CREATE MODE: Just update local state, don't call API
-        console.log('📝 CREATE mode: Updating local state only');
-
         // Update parent component state with current edit data
         onUpdate(variant.id, {
           ...editData,
@@ -284,7 +275,6 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
       }
 
       // EDIT MODE: Call API to update existing variant in database
-      console.log('🔄 EDIT mode: Calling API to update variant in database');
 
       // Check if we need to upload new images to Firebase
       const hasNewThumbnail = editData.thumbnailFile instanceof File;
@@ -301,32 +291,16 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
           const productName = variant.name || 'variant-product';
           const variantIdForFirebase = `variant-${Date.now()}`;
 
-          console.log('🔄 Uploading images to Firebase...');
           const uploadedImages = await uploadImagesToFirebase(productName, variantIdForFirebase);
 
           thumbnailToSend = uploadedImages.thumbnail;
           galleryImagesToSend = uploadedImages.galleryImages;
-
-          console.log('✅ Images uploaded successfully:', {
-            thumbnail: thumbnailToSend ? 'uploaded' : 'no change',
-            galleryImages: `${galleryImagesToSend.length} images`
-          });
         } catch (error) {
           console.error('❌ Firebase upload failed:', error);
           setErrors([error instanceof Error ? error.message : 'Lỗi upload ảnh lên Firebase']);
           return;
         }
       }
-
-      console.log('🔄 Updating variant:', {
-        variantId,
-        displayId: variant.id,
-        sku: editData.sku,
-        price: editData.price,
-        stock: editData.stock,
-        thumbnail: thumbnailToSend ? 'provided' : 'not provided',
-        galleryImages: `${galleryImagesToSend.length} URLs`
-      });
 
       // Call API to update variant
       const response = await fetch(`/api/product/variant/variants/${variantId}`, {
@@ -350,7 +324,6 @@ const ExpandableVariant: React.FC<ExpandableVariantProps> = ({ variant, onUpdate
       }
 
       const result = await response.json();
-      console.log('✅ Variant updated successfully:', result);
 
       // Update parent component state
       onUpdate(variant.id, {

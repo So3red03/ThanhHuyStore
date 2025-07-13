@@ -65,7 +65,6 @@ const UserInfoClient: React.FC<UserInfoClientProps> = ({ currentUser }) => {
         'state_changed',
         snapshot => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log(`Upload is ${progress}% done`);
         },
         error => {
           console.error('Lỗi khi tải ảnh lên Firebase:', error);
@@ -74,11 +73,9 @@ const UserInfoClient: React.FC<UserInfoClientProps> = ({ currentUser }) => {
         () => {
           getDownloadURL(uploadTask.snapshot.ref)
             .then(downloadURL => {
-              console.log('Tải ảnh thành công: ', downloadURL);
               resolve(downloadURL);
             })
             .catch(error => {
-              console.error('Lỗi khi lấy download URL:', error);
               reject(error);
             });
         }
@@ -112,7 +109,6 @@ const UserInfoClient: React.FC<UserInfoClientProps> = ({ currentUser }) => {
         toast.loading('Đang tải ảnh lên...', { id: 'upload' });
         newImageUrl = await uploadImageToFirebase(userImage);
         toast.success('Tải ảnh thành công!', { id: 'upload' });
-        console.log('Ảnh đã được tải lên thành công:', newImageUrl);
       }
 
       // Cập nhật thông tin user với ảnh mới (nếu có)
@@ -207,7 +203,6 @@ const UserInfoClient: React.FC<UserInfoClientProps> = ({ currentUser }) => {
   // 			toast.success('OTP sended successfully!');
   // 		})
   // 		.catch((error) => {
-  // 			console.log(error);
   // 			setIsLoading(false);
   // 		});
   // }
@@ -217,12 +212,10 @@ const UserInfoClient: React.FC<UserInfoClientProps> = ({ currentUser }) => {
   // 	window.confirmationResult
   // 		.confirm(otp)
   // 		.then(async (res: any) => {
-  // 			console.log(res);
   // 			setUser(res.user);
   // 			setIsLoading(false);
   // 		})
   // 		.catch((err: any) => {
-  // 			console.log(err);
   // 			setIsLoading(false);
   // 		});
   // }

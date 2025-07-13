@@ -164,7 +164,6 @@ const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = 
   // TODO: Remove unused code
   /*
   const onSubmit: SubmitHandler<FieldValues> = data => {
-    console.log(data);
     setIsLoading(true);
     axios
       .put(`/api/category/${data.id}`, {

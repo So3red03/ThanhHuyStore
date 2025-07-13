@@ -33,10 +33,12 @@ const RecentlyViewedProducts: React.FC<RecentlyViewedProductsProps> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const getRecentlyViewedProducts = () => {
+    const getRecentlyViewedProducts = async () => {
       try {
-        // Lấy lịch sử xem từ localStorage
-        const viewHistory: ViewHistory[] = JSON.parse(localStorage.getItem('productViewHistory') || '[]');
+        // Lấy lịch sử xem từ database analytics
+        const analyticsResponse = await fetch('/api/user/analytics');
+        const analyticsData = analyticsResponse.ok ? await analyticsResponse.json() : { viewHistory: [] };
+        const viewHistory: ViewHistory[] = analyticsData.viewHistory || [];
 
         if (viewHistory.length === 0) {
           setRecentlyViewedProducts([]);
@@ -69,6 +71,7 @@ const RecentlyViewedProducts: React.FC<RecentlyViewedProductsProps> = ({
       }
     };
 
+    // Gọi async function
     getRecentlyViewedProducts();
   }, [allProducts, maxProducts]);
 

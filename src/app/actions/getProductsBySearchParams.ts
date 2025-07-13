@@ -19,19 +19,42 @@ const expandSearchTerms = (searchTerm: string): string[] => {
   const normalized = normalizeSearchTerm(searchTerm);
   const terms = [searchTerm, normalized];
 
-  // Thêm các biến thể phổ biến
+  // Thêm các biến thể phổ biến và xử lý lỗi chính tả
   const expansions: { [key: string]: string[] } = {
-    'dien thoai': ['iphone', 'samsung', 'galaxy', 'phone', 'smartphone'],
-    'điện thoại': ['iphone', 'samsung', 'galaxy', 'phone', 'smartphone'],
-    dienthoai: ['iphone', 'samsung', 'galaxy', 'phone', 'smartphone'],
-    iphone: ['i phone', 'điện thoại', 'dien thoai', 'apple'],
+    // Điện thoại variants
+    'dien thoai': ['iphone', 'samsung', 'galaxy', 'phone', 'smartphone', 'điện thoại'],
+    'điện thoại': ['iphone', 'samsung', 'galaxy', 'phone', 'smartphone', 'dien thoai'],
+    dienthoai: ['iphone', 'samsung', 'galaxy', 'phone', 'smartphone', 'điện thoại'],
+    'đien thoai': ['iphone', 'samsung', 'galaxy', 'phone', 'smartphone', 'điện thoại'], // Lỗi chính tả
+    'dien  thoai': ['iphone', 'samsung', 'galaxy', 'phone', 'smartphone', 'điện thoại'], // Nhiều space
+    'dienj thoai': ['iphone', 'samsung', 'galaxy', 'phone', 'smartphone', 'điện thoại'], // Lỗi gõ
+
+    // iPhone variants
+    iphone: ['i phone', 'điện thoại', 'dien thoai', 'apple', 'ip', 'iph'],
     'i phone': ['iphone', 'điện thoại', 'dien thoai', 'apple'],
-    laptop: ['macbook', 'may tinh', 'máy tính'],
-    'may tinh': ['laptop', 'macbook', 'computer'],
-    'máy tính': ['laptop', 'macbook', 'computer'],
-    'tai nghe': ['airpods', 'headphone', 'earphone'],
-    'dong ho': ['watch', 'apple watch'],
-    'đồng hồ': ['watch', 'apple watch']
+    ip: ['iphone', 'i phone', 'apple'],
+    iph: ['iphone', 'i phone', 'apple'],
+
+    // Laptop variants
+    laptop: ['macbook', 'may tinh', 'máy tính', 'lap top'],
+    'lap top': ['laptop', 'macbook', 'may tinh', 'máy tính'],
+    'may tinh': ['laptop', 'macbook', 'computer', 'máy tính'],
+    'máy tính': ['laptop', 'macbook', 'computer', 'may tinh'],
+
+    // Tai nghe variants
+    'tai nghe': ['airpods', 'headphone', 'earphone', 'tainghe'],
+    tainghe: ['airpods', 'headphone', 'earphone', 'tai nghe'],
+    airpods: ['tai nghe', 'headphone', 'earphone'],
+
+    // Dong ho variants
+    'dong ho': ['watch', 'apple watch', 'đồng hồ'],
+    'đồng hồ': ['watch', 'apple watch', 'dong ho'],
+    dongho: ['watch', 'apple watch', 'đồng hồ'],
+
+    // iPad variants
+    ipad: ['may tinh bang', 'máy tính bảng', 'tablet'],
+    'may tinh bang': ['ipad', 'tablet', 'máy tính bảng'],
+    'máy tính bảng': ['ipad', 'tablet', 'may tinh bang']
   };
 
   // Thêm các từ mở rộng
@@ -42,8 +65,13 @@ const expandSearchTerms = (searchTerm: string): string[] => {
   });
 
   // Thêm các từ riêng lẻ
-  const words = normalized.split(/\s+/);
+  const words = normalized.split(/\s+/).filter(word => word.length > 1); // Bỏ từ quá ngắn
   terms.push(...words);
+
+  // Xử lý các pattern phổ biến
+  if (normalized.includes('16') && (normalized.includes('pro') || normalized.includes('max'))) {
+    terms.push('iphone 16 pro max', 'iphone', 'apple');
+  }
 
   return [...new Set(terms)]; // Loại bỏ duplicate
 };
@@ -51,6 +79,7 @@ const expandSearchTerms = (searchTerm: string): string[] => {
 export async function getProductsBySearchParams(params: IParams) {
   try {
     const { searchTerm } = params;
+
     if (!searchTerm || searchTerm.trim() === '') {
       return [];
     }
@@ -81,7 +110,14 @@ export async function getProductsBySearchParams(params: IParams) {
 
     const products = await prisma.product.findMany({
       where: {
-        OR: orConditions
+        AND: [
+          {
+            OR: orConditions
+          },
+          {
+            isDeleted: false // Chỉ lấy sản phẩm chưa bị xóa
+          }
+        ]
       },
       orderBy: {
         createdAt: 'desc'
@@ -120,7 +156,6 @@ export async function getProductsBySearchParams(params: IParams) {
 
     return uniqueProducts;
   } catch (error) {
-    console.log('Error in getProductsBySearchParams:', error);
     return [];
   }
 }

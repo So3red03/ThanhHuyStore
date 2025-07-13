@@ -17,8 +17,6 @@ export async function POST(request: Request) {
       }
     });
 
-    console.log(`Found ${nullTitleNotifications.length} notifications with null title`);
-
     // Cập nhật từng notification với title mặc định dựa trên type
     const updatePromises = nullTitleNotifications.map(async notification => {
       let defaultTitle = 'Thông báo';

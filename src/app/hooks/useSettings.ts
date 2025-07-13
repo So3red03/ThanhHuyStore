@@ -63,7 +63,7 @@ export const useSettings = () => {
             }
           }
         } catch (apiError) {
-          console.log('API settings not available, trying localStorage...');
+          throw new Error('API request failed');
         }
 
         // Fallback: Load từ localStorage nếu API không khả dụng

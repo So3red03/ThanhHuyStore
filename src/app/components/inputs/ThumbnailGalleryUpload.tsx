@@ -43,16 +43,6 @@ const ThumbnailGalleryUpload: React.FC<ThumbnailGalleryUploadProps> = ({
 
   // Reset component state when existing images change (for edit mode)
   useEffect(() => {
-    console.log('🖼️ ThumbnailGalleryUpload Debug:', {
-      existingThumbnail,
-      existingGalleryImages,
-      thumbnail,
-      galleryImages: galleryImages.length,
-      'existingThumbnail type': typeof existingThumbnail,
-      'existingGalleryImages type': typeof existingGalleryImages,
-      'existingGalleryImages length': existingGalleryImages?.length
-    });
-
     // Reset upload progress when switching between products
     setUploadProgress(0);
     setIsUploading(false);

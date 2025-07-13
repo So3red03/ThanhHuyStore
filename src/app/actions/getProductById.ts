@@ -49,7 +49,7 @@ export async function getProductById(params: IParams) {
       }
     });
     return product;
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    throw new Error(error);
   }
 }

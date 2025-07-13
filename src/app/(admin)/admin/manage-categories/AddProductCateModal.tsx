@@ -98,10 +98,8 @@ const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggl
             'state_changed',
             snapshot => {
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              console.log('Upload is ' + progress + '% done');
             },
             error => {
-              console.log('Lỗi upload ảnh', error);
               reject(error);
             },
             () => {
@@ -111,7 +109,6 @@ const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggl
                   resolve(downloadURL); // Trả về URL ảnh
                 })
                 .catch(error => {
-                  console.log('Lỗi lấy download URL', error);
                   reject(error);
                 });
             }

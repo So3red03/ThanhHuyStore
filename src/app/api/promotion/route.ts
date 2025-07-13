@@ -64,14 +64,28 @@ export async function POST(request: Request) {
         // Ensure promotional price is not negative
         promotionalPrice = Math.max(0, promotionalPrice);
 
-        await prisma.productPromotion.create({
-          data: {
+        // Use upsert to handle existing records
+        await prisma.productPromotion.upsert({
+          where: {
+            productId_promotionId: {
+              productId: product.id,
+              promotionId: promotion.id
+            }
+          },
+          update: {
+            promotionalPrice,
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
+            priority: 1,
+            isActive: true
+          },
+          create: {
             productId: product.id,
             promotionId: promotion.id,
             promotionalPrice,
             startDate: new Date(startDate),
             endDate: new Date(endDate),
-            priority: 1 // Default priority
+            priority: 1
           }
         });
       }
@@ -108,14 +122,28 @@ export async function POST(request: Request) {
         // Ensure promotional price is not negative
         promotionalPrice = Math.max(0, promotionalPrice);
 
-        await prisma.productPromotion.create({
-          data: {
+        // Use upsert to handle existing records
+        await prisma.productPromotion.upsert({
+          where: {
+            productId_promotionId: {
+              productId: product.id,
+              promotionId: promotion.id
+            }
+          },
+          update: {
+            promotionalPrice,
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
+            priority: 2,
+            isActive: true
+          },
+          create: {
             productId: product.id,
             promotionId: promotion.id,
             promotionalPrice,
             startDate: new Date(startDate),
             endDate: new Date(endDate),
-            priority: 2 // Category promotions have higher priority
+            priority: 2
           }
         });
       }

@@ -14,8 +14,6 @@ export async function clearExpiredPromotions() {
       }
     });
 
-    console.log(`Found ${expiredPromotions.length} expired promotions to clear`);
-
     // Clear promotional pricing for each expired promotion
     for (const promotion of expiredPromotions) {
       // Clear promotional pricing from products
@@ -29,7 +27,6 @@ export async function clearExpiredPromotions() {
             // TODO: Implement when ProductPromotion table is ready
           }
         });
-        console.log(`Cleared promotional pricing for ${promotion.productIds.length} products`);
       }
 
       // Clear promotional pricing from category products
@@ -53,7 +50,6 @@ export async function clearExpiredPromotions() {
               // TODO: Implement when ProductPromotion table is ready
             }
           });
-          console.log(`Cleared promotional pricing for ${productIds.length} category products`);
         }
       }
 
@@ -64,7 +60,6 @@ export async function clearExpiredPromotions() {
       });
     }
 
-    console.log('Expired promotions cleared successfully');
     return { success: true, clearedCount: expiredPromotions.length };
   } catch (error) {
     console.error('Error clearing expired promotions:', error);

@@ -134,8 +134,6 @@ const updateUserPurchasedCategories = async (userId: string, products: any[]) =>
         where: { id: userId },
         data: { purchasedCategories: allCategories }
       });
-
-      console.log(`Updated purchased categories for user ${userId}:`, allCategories);
     }
   } catch (error) {
     console.error('Error updating user purchased categories:', error);
@@ -171,7 +169,6 @@ export async function POST(request: Request) {
     });
 
     if (existingNotification) {
-      console.log(`Notifications already sent for order ${order.id}`);
       return NextResponse.json({ message: 'Notifications already sent' });
     }
 
@@ -200,8 +197,6 @@ export async function POST(request: Request) {
         data: { orderId: order.id, paymentMethod: order.paymentMethod }
       });
     }
-
-    console.log(`✅ Order notifications sent for order ${order.id}`);
 
     return NextResponse.json({
       success: true,

@@ -13,11 +13,6 @@ export const AccountItems = [
     icon: CiViewList
   },
   {
-    title: 'Đổi/Trả hàng',
-    path: '/account/returns',
-    icon: MdAssignmentReturn
-  },
-  {
     title: 'Sản phẩm đã xem',
     path: '/account/viewed',
     icon: CiRead

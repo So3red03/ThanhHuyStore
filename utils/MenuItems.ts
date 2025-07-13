@@ -115,7 +115,7 @@ export const MenuItems = [
               path: '/admin/manage-vouchers'
             },
             {
-              title: 'Promotion',
+              title: 'Chiến dịch',
               path: '/admin/manage-promotions'
             }
           ]

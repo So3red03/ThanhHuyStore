@@ -70,12 +70,8 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
       // Lưu lại vào localStorage
       localStorage.setItem('articleViewCounts', JSON.stringify(viewCounts));
 
-      // Log để kiểm tra
-      console.log(`Bài viết ${articleId} đã được xem ${viewCounts[articleId]} lần`);
-
       // Vẫn giữ nguyên API call để update trên server
       const response = await axios.post(`/api/articleViewCount/${articleId}`);
-      console.log('Bài viết đã được cập nhật:', response.data);
     } catch (error) {
       console.error('Có lỗi xảy ra khi tăng viewCount:', error);
     }

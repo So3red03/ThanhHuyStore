@@ -12,18 +12,81 @@ import Link from 'next/link';
 import { slugConvert } from '../../../../../utils/Slug';
 
 const UserViewedClient = () => {
-  const [viewedProducts, setViewedProducts] = useState<[]>([]);
+  const [viewedProducts, setViewedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
   useEffect(() => {
-    const storedViewed = localStorage.getItem('viewedProducts');
-    if (storedViewed) {
-      setViewedProducts(JSON.parse(storedViewed));
-    }
+    const getViewedProducts = async () => {
+      try {
+        // Lấy analytics data từ API
+        const analyticsResponse = await fetch('/api/user/analytics');
+        if (!analyticsResponse.ok) {
+          setViewedProducts([]);
+          return;
+        }
+
+        const analyticsData = await analyticsResponse.json();
+        const viewHistory = analyticsData.viewHistory || [];
+
+        if (viewHistory.length === 0) {
+          setViewedProducts([]);
+          return;
+        }
+
+        // Lấy danh sách products để match với analytics
+        const productsResponse = await fetch('/api/product');
+        if (!productsResponse.ok) {
+          setViewedProducts([]);
+          return;
+        }
+
+        const allProducts = await productsResponse.json();
+
+        // Lấy các sản phẩm đã xem
+        const recentProductIds = viewHistory
+          .sort((a: any, b: any) => b.viewedAt - a.viewedAt)
+          .map((item: any) => item.productId);
+
+        const recentProducts = allProducts.filter(
+          (product: Product) => recentProductIds.includes(product.id) && (product.inStock ?? 0) > 0
+        );
+
+        // Sắp xếp theo thứ tự trong viewHistory
+        const sortedProducts = recentProductIds
+          .map((id: string) => recentProducts.find((product: Product) => product.id === id))
+          .filter(Boolean);
+
+        setViewedProducts(sortedProducts);
+      } catch (error) {
+        console.error('Error fetching viewed products:', error);
+        setViewedProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getViewedProducts();
   }, []);
+
+  if (loading) {
+    return (
+      <div className='px-6'>
+        <div className='animate-pulse'>
+          <div className='h-8 bg-gray-200 rounded w-64 mb-6'></div>
+          <div className='grid grid-cols-2 sm:grid-cols-3 xl:!grid-cols-4 gap-8 mt-8'>
+            {[...Array(8)].map((_, index) => (
+              <div key={index} className='bg-gray-200 h-64 rounded'></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='px-6'>
-      {viewedProducts ? (
+      {viewedProducts.length > 0 ? (
         <>
           <Heading title='SẢN PHẨM ĐÃ XEM'>
             <></>

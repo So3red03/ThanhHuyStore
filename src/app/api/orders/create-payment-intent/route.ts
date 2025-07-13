@@ -302,8 +302,6 @@ export async function POST(request: NextRequest) {
   const originalAmount = totalVND + (shippingFee || 0);
   let finalAmount = originalAmount;
 
-  console.log('Order validation passed for user', currentUser.id);
-
   // 1. Validate products exist and are available
   for (const product of products) {
     try {
@@ -440,7 +438,7 @@ export async function POST(request: NextRequest) {
           });
           return NextResponse.json({ paymentIntent: updated_intent });
         } catch (error) {
-          console.log('Error updating payment intent:', error);
+          throw error;
         }
       }
 
@@ -458,46 +456,18 @@ export async function POST(request: NextRequest) {
       // Create order with inventory reservation
       const createdOrder = await createOrderWithInventoryReservation(orderData, products);
 
-      // Track purchase analytics for Stripe
-      try {
-        await prisma.analyticsEvent.create({
-          data: {
-            userId: currentUser.id,
-            eventType: 'PURCHASE',
-            entityType: 'order',
-            entityId: createdOrder.id,
-            metadata: {
-              orderId: createdOrder.id,
-              paymentIntentId: paymentIntent.id,
-              amount: finalAmount,
-              currency: 'VND',
-              paymentMethod: 'stripe',
-              productCount: products.length,
-              products: products.map((p: any) => ({
-                id: p.id,
-                name: p.name,
-                price: p.price,
-                quantity: p.quantity
-              }))
-            },
-            path: '/checkout',
-            timestamp: new Date()
-          }
-        });
-      } catch (error) {
-        console.error('Error tracking Stripe purchase analytics:', error);
-      }
+      // Purchase analytics removed - simplified to only track product_view and article_view
 
-      // 🎯 AUDIT LOG: Stripe Payment Intent Created (includes order creation)
+      // 🎯 AUDIT LOG: Order Created (Stripe)
       await AuditLogger.log({
-        eventType: AuditEventType.PAYMENT_INTENT_CREATED,
-        severity: AuditSeverity.HIGH,
+        eventType: AuditEventType.ORDER_CREATED,
+        severity: AuditSeverity.MEDIUM,
         userId: currentUser.id,
         userEmail: currentUser.email!,
         userRole: currentUser.role || 'USER',
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown',
-        description: `Tạo thanh toán Stripe: ${finalAmount.toLocaleString()} VND`,
+        description: `Khách hàng đặt hàng thành công (Stripe): ${createdOrder.paymentIntentId}`,
         details: {
           paymentIntentId: paymentIntent.id,
           paymentMethod: 'stripe',
@@ -549,34 +519,7 @@ export async function POST(request: NextRequest) {
         resourceType: 'Order'
       });
 
-      // Track purchase analytics
-      try {
-        await prisma.analyticsEvent.create({
-          data: {
-            userId: currentUser.id,
-            eventType: 'PURCHASE',
-            entityType: 'order',
-            entityId: createdOrder.id,
-            metadata: {
-              orderId: createdOrder.id,
-              amount: orderData.amount,
-              currency: orderData.currency || 'VND',
-              paymentMethod: 'cod',
-              productCount: orderData.products.length,
-              products: orderData.products.map((p: any) => ({
-                id: p.id,
-                name: p.name,
-                price: p.price,
-                quantity: p.quantity
-              }))
-            },
-            path: '/checkout',
-            timestamp: new Date()
-          }
-        });
-      } catch (error) {
-        console.error('Error tracking purchase analytics:', error);
-      }
+      // Purchase analytics removed - simplified to only track product_view and article_view
 
       // Send notifications (Discord only, email handled by process-payment)
       try {
@@ -625,16 +568,16 @@ export async function POST(request: NextRequest) {
       // MoMo Order Creation
       const createdOrder = await createOrderWithInventoryReservation(orderData, products);
 
-      // 🎯 AUDIT LOG: MoMo Order Created (includes order creation)
+      // 🎯 AUDIT LOG: Order Created (MoMo)
       await AuditLogger.log({
-        eventType: AuditEventType.PAYMENT_INTENT_CREATED,
-        severity: AuditSeverity.HIGH,
+        eventType: AuditEventType.ORDER_CREATED,
+        severity: AuditSeverity.MEDIUM,
         userId: currentUser.id,
         userEmail: currentUser.email!,
         userRole: currentUser.role || 'USER',
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown',
-        description: `Tạo thanh toán MoMo: ${finalAmount.toLocaleString()} VND`,
+        description: `Khách hàng đặt hàng thành công (MoMo): ${createdOrder.paymentIntentId}`,
         details: {
           paymentIntentId: createdOrder.paymentIntentId,
           paymentMethod: 'momo',
@@ -722,7 +665,15 @@ export async function POST(request: NextRequest) {
           res.on('end', () => {
             try {
               const jsonResponse = JSON.parse(body);
-              resolve(NextResponse.json(jsonResponse));
+              // Thêm thông tin order vào response
+              const responseWithOrder = {
+                ...jsonResponse,
+                createdOrder: {
+                  id: createdOrder.id,
+                  paymentIntentId: createdOrder.paymentIntentId
+                }
+              };
+              resolve(NextResponse.json(responseWithOrder));
             } catch (error) {
               reject(NextResponse.json({ error: 'Invalid response from MoMo' }, { status: 500 }));
             }

@@ -77,8 +77,8 @@ export async function getProducts(params: IProductParams) {
       }
     });
     return products;
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    throw new Error(error);
   }
 }
 
@@ -142,8 +142,8 @@ export async function getParentCategoryAndProductsBySlug(parentSlug: string) {
     const products = parentCategory.subcategories.flatMap(subcategory => subcategory.products);
 
     return { parentCategory, products };
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    throw new Error(error);
   }
 }
 

@@ -16,8 +16,8 @@ export interface EmailVerificationResult {
  * @returns Promise<EmailVerificationResult>
  */
 export async function sendVerificationEmail(
-  email: string, 
-  token: string, 
+  email: string,
+  token: string,
   userName: string
 ): Promise<EmailVerificationResult> {
   try {
@@ -104,7 +104,7 @@ export async function sendVerificationEmail(
     };
 
     // Gửi email (không dùng await như create-payment-intent)
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       transporter.sendMail(mailOptions, (error: any, info: any) => {
         if (error) {
           console.error('Lỗi khi gửi email xác thực:', error);
@@ -114,7 +114,6 @@ export async function sendVerificationEmail(
             error: error.message
           });
         } else {
-          console.log(`Verification email sent to ${email}:`, info.response);
           resolve({
             success: true,
             message: 'Email xác thực đã được gửi thành công'

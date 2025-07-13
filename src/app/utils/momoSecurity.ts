@@ -39,13 +39,10 @@ export class MoMoSecurity {
         `transId=${data.transId || ''}`
       ].join('&');
 
-      const expectedSignature = crypto
-        .createHmac('sha256', this.SECRET_KEY)
-        .update(signatureString)
-        .digest('hex');
+      const expectedSignature = crypto.createHmac('sha256', this.SECRET_KEY).update(signatureString).digest('hex');
 
       const isValid = expectedSignature === receivedSignature;
-      
+
       if (!isValid) {
         console.error('Signature verification failed:', {
           expected: expectedSignature,
@@ -73,8 +70,6 @@ export class MoMoSecurity {
       ...data
     };
 
-    console.log(`[SECURITY] ${event}:`, logEntry);
-
     // In production, you might want to send this to a security monitoring service
     // or store in a dedicated security log database
   }
@@ -85,15 +80,10 @@ export class MoMoSecurity {
    * @returns object with validation result and missing fields
    */
   static validateRequiredFields(data: any): { isValid: boolean; missingFields: string[] } {
-    const requiredFields = [
-      'orderId',
-      'resultCode',
-      'partnerCode',
-      'requestId'
-    ];
+    const requiredFields = ['orderId', 'resultCode', 'partnerCode', 'requestId'];
 
-    const missingFields = requiredFields.filter(field => 
-      data[field] === undefined || data[field] === null || data[field] === ''
+    const missingFields = requiredFields.filter(
+      field => data[field] === undefined || data[field] === null || data[field] === ''
     );
 
     return {
@@ -111,15 +101,15 @@ export class MoMoSecurity {
   static async checkReplayAttack(requestId: string, orderId: string): Promise<boolean> {
     // In a production environment, you would store processed request IDs
     // in Redis or a database with TTL to prevent replay attacks
-    
+
     // For now, we'll implement a simple in-memory check
     // This should be replaced with a proper persistent storage solution
-    
+
     try {
       // Check if this requestId has been processed before
       // This is a simplified implementation - in production use Redis/DB
       const cacheKey = `momo_request_${requestId}_${orderId}`;
-      
+
       // For now, just log the check - implement proper storage later
       this.logSecurityEvent('REPLAY_CHECK', {
         requestId,
@@ -143,9 +133,9 @@ export class MoMoSecurity {
   static validateAmount(orderAmount: number, callbackAmount: number): boolean {
     const tolerance = 0.01; // Allow 1 cent difference for floating point precision
     const difference = Math.abs(orderAmount - callbackAmount);
-    
+
     const isValid = difference <= tolerance;
-    
+
     if (!isValid) {
       this.logSecurityEvent('AMOUNT_MISMATCH', {
         orderAmount,
@@ -165,7 +155,7 @@ export class MoMoSecurity {
   static checkRateLimit(identifier: string): boolean {
     // Implement rate limiting logic here
     // For production, use Redis with sliding window or token bucket
-    
+
     this.logSecurityEvent('RATE_LIMIT_CHECK', {
       identifier,
       timestamp: Date.now()

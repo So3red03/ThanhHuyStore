@@ -30,12 +30,10 @@ export const sendDiscordNotificationIfEnabled = async (webhookUrl: string, embed
     const isEnabled = await isDiscordNotificationEnabled();
 
     if (!isEnabled) {
-      console.log('Discord notifications are disabled in settings');
       return;
     }
 
     if (!webhookUrl) {
-      console.error('Discord webhook URL not configured');
       return;
     }
 
@@ -50,11 +48,9 @@ export const sendDiscordNotificationIfEnabled = async (webhookUrl: string, embed
     });
 
     if (!response.ok) {
-      console.error('Discord webhook failed:', response.status, response.statusText);
-    } else {
-      console.log('Discord notification sent successfully');
+      throw new Error(`Discord webhook failed: ${response.status} ${response.statusText}`);
     }
-  } catch (error) {
-    console.error('Error sending Discord notification:', error);
+  } catch (error: any) {
+    throw new error();
   }
 };

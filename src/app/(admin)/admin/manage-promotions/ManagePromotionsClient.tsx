@@ -361,7 +361,7 @@ const ManagePromotionsClient: React.FC<ManagePromotionsClientProps> = ({
               <label className='block text-sm font-semibold text-gray-700 mb-3'>Tìm kiếm</label>
               <TextField
                 size='medium'
-                placeholder='Tìm theo tên hoặc mô tả promotion...'
+                placeholder='Tìm theo tên hoặc mô tả chiến dịch...'
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}

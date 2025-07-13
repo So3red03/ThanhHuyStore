@@ -5,14 +5,11 @@ import prisma from '../../../libs/prismadb';
 // GET: Cron job để gửi báo cáo tự động
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔄 Cron job started - Checking for scheduled reports...');
-
     // Lấy settings hoặc tạo default settings
     let settings = await prisma.adminSettings.findFirst();
 
     if (!settings) {
       // Tạo default settings
-      console.log('🔧 Creating default admin settings...');
       settings = await prisma.adminSettings.create({
         data: {
           dailyReports: true,
@@ -30,7 +27,6 @@ export async function GET(request: NextRequest) {
     }
 
     if (!settings.dailyReports) {
-      console.log('📋 Daily reports are disabled in settings');
       return NextResponse.json({
         message: 'Daily reports disabled',
         success: true
@@ -40,7 +36,6 @@ export async function GET(request: NextRequest) {
     // 🧪 TESTING: Override để gửi báo cáo mỗi phút thay vì theo settings
     const reportIntervalMinutes = 1; // 1 phút cho testing
     const reportInterval = reportIntervalMinutes / 60; // Convert to hours
-    console.log(`📊 Report interval: ${reportInterval} hours (${reportIntervalMinutes} minutes) - TESTING MODE`);
 
     // Kiểm tra báo cáo cuối cùng
     const lastReport = await prisma.reportLog.findFirst({
@@ -53,7 +48,6 @@ export async function GET(request: NextRequest) {
     if (!lastReport) {
       // Chưa có báo cáo nào, gửi báo cáo đầu tiên
       shouldSendReport = true;
-      console.log('📋 No previous reports found, sending first report');
     } else {
       // Kiểm tra thời gian từ báo cáo cuối
       const timeSinceLastReport = now.getTime() - lastReport.createdAt.getTime();
@@ -61,16 +55,12 @@ export async function GET(request: NextRequest) {
 
       if (timeSinceLastReport >= intervalMs) {
         shouldSendReport = true;
-        console.log(`📋 Time for next report (${Math.round(timeSinceLastReport / 1000 / 60)} minutes since last)`);
       } else {
         const remainingTime = Math.round((intervalMs - timeSinceLastReport) / 1000 / 60);
-        console.log(`⏰ Next report in ${remainingTime} minutes`);
       }
     }
 
     if (shouldSendReport) {
-      console.log('📤 Sending scheduled report...');
-
       // Gửi báo cáo
       await DiscordReportService.sendReport(reportInterval);
       const success = true;
@@ -85,8 +75,6 @@ export async function GET(request: NextRequest) {
             sentAt: now
           }
         });
-
-        console.log('✅ Scheduled report sent successfully');
 
         return NextResponse.json({
           message: 'Report sent successfully',
@@ -105,8 +93,6 @@ export async function GET(request: NextRequest) {
             error: 'Failed to send Discord report'
           }
         });
-
-        console.log('❌ Failed to send scheduled report');
 
         return NextResponse.json(
           {
@@ -157,8 +143,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { force } = await request.json();
-
-    console.log('🧪 Manual cron trigger started...');
 
     if (force) {
       // Force send report regardless of interval

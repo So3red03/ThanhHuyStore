@@ -243,7 +243,6 @@ const ManageBanner: React.FC<ManageBannerProps> = ({ currentUser, bannerData }) 
           }
         }
       } catch (error) {
-        return console.log('Xóa ảnh thất bại');
       }
     };
     await handleImageDelete();

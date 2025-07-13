@@ -125,39 +125,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     });
   }, []);
 
-  const saveViewedProduct = useCallback(
+  const handleProductClick = useCallback(
     (product: any) => {
       if (!product) return;
 
       try {
-        // Track product view analytics (merged from click)
+        // Track product view analytics only
         trackProductInteraction(product.id, {
           productName: product.name,
           category: product.category,
           price: product.price,
           clickSource: 'ProductCard',
-          interactionType: 'click'
+          interactionType: 'view'
         });
-
-        // Lưu theo format mới cho RecentlyViewedProducts
-        const viewHistory = JSON.parse(localStorage.getItem('productViewHistory') || '[]');
-
-        const newView = {
-          productId: product.id,
-          category: product.categoryId,
-          brand: product.brand || 'Apple',
-          viewedAt: Date.now()
-        };
-
-        // Loại bỏ view cũ của cùng sản phẩm
-        const filteredHistory = viewHistory.filter((item: any) => item.productId !== product.id);
-
-        // Thêm view mới và giữ tối đa 50 records
-        const updatedHistory = [newView, ...filteredHistory].slice(0, 50);
-
-        localStorage.setItem('productViewHistory', JSON.stringify(updatedHistory));
       } catch (error) {
-        console.error('Error saving viewed product:', error);
+        console.error('Error tracking product view:', error);
       }
     },
     [trackProductInteraction]
@@ -169,7 +151,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     >
       <Link
         href={`/product/${slugConvert(data.name)}-${data.id}`}
-        onClick={() => saveViewedProduct(data)}
+        onClick={() => handleProductClick(data)}
         className='flex flex-col items-center gap-1 w-full'
       >
         <div className='aspect-square overflow-hidden relative w-full'>
@@ -187,13 +169,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
 
           {/* Product Tags */}
           <div className='absolute top-2 left-2 flex flex-col gap-1 z-10'>
-            {isNewProduct() && (
+            {/* {isNewProduct() && (
               <div className='bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg transform -rotate-12 border border-green-400'>
                 NEW
               </div>
-            )}
+            )} */}
             {isOnSale() && (
-              <div className='bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg transform rotate-12 border border-red-400'>
+              <div className='bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg transform -rotate-12 border border-red-400'>
                 SALE
               </div>
             )}

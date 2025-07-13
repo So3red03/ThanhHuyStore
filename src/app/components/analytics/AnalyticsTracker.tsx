@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAnalyticsTracker } from '@/app/hooks/useAnalytics';
 
@@ -12,101 +12,97 @@ const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) => {
   const pathname = usePathname();
   const { trackEvent } = useAnalyticsTracker();
 
-  // Track page views (exclude product and article pages as they have specific tracking)
-  useEffect(() => {
-    const trackPageView = () => {
-      if (!pathname) return;
+  // Refs để tránh duplicate tracking
+  const lastTrackedPath = useRef<string>('');
+  const trackingTimeout = useRef<NodeJS.Timeout | null>(null);
 
-      // Skip PAGE_VIEW for product pages (use PRODUCT_VIEW instead)
-      const isProductPage = pathname.match(/\/product\/(.+)-([a-f0-9]{24})$/);
-      // Skip PAGE_VIEW for article pages (use ARTICLE_VIEW instead)
-      const isArticlePage = pathname.match(/\/article\/([^\/]+)/);
-
-      if (isProductPage || isArticlePage) {
-        return; // Skip PAGE_VIEW for these specific pages
-      }
-
-      trackEvent({
-        eventType: 'PAGE_VIEW',
-        path: pathname,
-        referrer: document.referrer || undefined,
-        metadata: {
-          title: document.title,
-          timestamp: new Date().toISOString()
-        }
-      });
-    };
-
-    // Track immediately
-    trackPageView();
-
-    // Track on pathname change
-    const handleRouteChange = () => {
-      setTimeout(trackPageView, 100); // Small delay to ensure page is loaded
-    };
-
-    // Listen for route changes (for client-side navigation)
-    window.addEventListener('popstate', handleRouteChange);
-
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange);
-    };
-  }, [pathname, trackEvent]);
+  // Page view tracking removed - simplified to only track product_view and article_view
 
   // Track product views
   useEffect(() => {
     const trackProductView = () => {
-      if (!pathname) return;
+      if (!pathname || pathname === lastTrackedPath.current) return;
 
       // Check if we're on a product page - format: /product/slug-productId
       const productMatch = pathname.match(/\/product\/(.+)-([a-f0-9]{24})$/);
       if (productMatch) {
         const fullSlug = productMatch[1];
-        const productId = productMatch[2]; // Extract actual MongoDB ObjectId
+        const productId = productMatch[2];
 
-        console.log('🔍 Tracking product view:', { fullSlug, productId, pathname });
+        // Clear previous timeout
+        if (trackingTimeout.current) {
+          clearTimeout(trackingTimeout.current);
+        }
 
-        trackEvent({
-          eventType: 'PRODUCT_VIEW',
-          entityType: 'product',
-          entityId: productId, // Use actual product ID
-          path: pathname,
-          metadata: {
-            productSlug: fullSlug,
-            productId: productId,
-            fullPath: pathname,
-            timestamp: new Date().toISOString()
-          }
-        });
+        // Debounce tracking để tránh duplicate
+        trackingTimeout.current = setTimeout(() => {
+          trackEvent({
+            eventType: 'PRODUCT_VIEW',
+            entityType: 'product',
+            entityId: productId,
+            path: pathname,
+            metadata: {
+              productSlug: fullSlug,
+              productId: productId,
+              fullPath: pathname,
+              timestamp: new Date().toISOString()
+            }
+          });
+          lastTrackedPath.current = pathname;
+        }, 500); // 500ms debounce
       }
     };
 
     trackProductView();
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (trackingTimeout.current) {
+        clearTimeout(trackingTimeout.current);
+      }
+    };
   }, [pathname, trackEvent]);
 
-  // Track article views
+  // Track article views với debounce
   useEffect(() => {
     const trackArticleView = () => {
-      if (!pathname) return;
+      if (!pathname || pathname === lastTrackedPath.current) return;
 
       // Check if we're on an article page
       const articleMatch = pathname.match(/\/article\/([^\/]+)/);
       if (articleMatch) {
         const articleId = articleMatch[1];
-        trackEvent({
-          eventType: 'ARTICLE_VIEW',
-          entityType: 'article',
-          entityId: articleId,
-          path: pathname,
-          metadata: {
-            articleSlug: articleId,
-            timestamp: new Date().toISOString()
-          }
-        });
+
+        // Clear previous timeout
+        if (trackingTimeout.current) {
+          clearTimeout(trackingTimeout.current);
+        }
+
+        // Debounce tracking để tránh duplicate
+        trackingTimeout.current = setTimeout(() => {
+          trackEvent({
+            eventType: 'ARTICLE_VIEW',
+            entityType: 'article',
+            entityId: articleId,
+            path: pathname,
+            metadata: {
+              articleSlug: articleId,
+              timestamp: new Date().toISOString()
+            }
+          });
+          lastTrackedPath.current = pathname;
+        }, 500); // 500ms debounce
       }
     };
 
     trackArticleView();
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (trackingTimeout.current) {
+        clearTimeout(trackingTimeout.current);
+      }
+    };
   }, [pathname, trackEvent]);
 
   // Track clicks on products (merged with PRODUCT_VIEW)
@@ -123,8 +119,6 @@ const AnalyticsTracker: React.FC<AnalyticsTrackerProps> = ({ children }) => {
         if (productMatch) {
           const fullSlug = productMatch[1];
           const productId = productMatch[2]; // Extract actual MongoDB ObjectId
-
-          console.log('🖱️ Tracking product interaction:', { fullSlug, productId, href, clickedFrom: pathname });
 
           // Use PRODUCT_VIEW instead of PRODUCT_CLICK to merge events
           trackEvent({

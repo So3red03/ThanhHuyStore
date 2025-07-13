@@ -79,7 +79,6 @@ const AddArticleCateModal: React.FC<AddArticleCateModalProps> = ({ isOpen, toggl
       ...data,
       isActive: data.isActive === 'true'
     };
-    console.log(formattedData);
     setIsLoading(true);
 
     const apiCall = isEditMode

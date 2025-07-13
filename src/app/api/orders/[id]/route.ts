@@ -2,6 +2,7 @@ import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '../../../libs/prismadb';
 import { NextResponse } from 'next/server';
 import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
+import { validateOrderStatusTransition, validateDeliveryStatusTransition } from '@/app/utils/orderStatusValidation';
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   const currentUser = await getCurrentUser();
@@ -28,6 +29,22 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     if (!oldOrder) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    // Validate status transition if status is being updated
+    if (status !== undefined) {
+      const validation = validateOrderStatusTransition(oldOrder.status, status, oldOrder.deliveryStatus);
+      if (!validation.isValid) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
+    }
+
+    // Validate delivery status transition if deliveryStatus is being updated
+    if (deliveryStatus !== undefined) {
+      const validation = validateDeliveryStatusTransition(oldOrder.deliveryStatus, deliveryStatus, oldOrder.status);
+      if (!validation.isValid) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
     }
 
     const order = await prisma.order.update({

@@ -46,10 +46,8 @@ export class DiscordWebhookService {
           embeds: embeds
         })
       });
-
-      console.log(`✅ Sent ${suggestions.length} promotion suggestions to Discord`);
-    } catch (error) {
-      console.error('❌ Error sending Discord notification:', error);
+    } catch (error: any) {
+      throw new Error('Error sending Discord message');
     }
   }
 

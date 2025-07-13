@@ -18,8 +18,6 @@ export async function getAdminSessionConfig(): Promise<{ sessionMaxAge: number }
     });
     const sessionTimeout = settings?.sessionTimeout || 30; // Default 30 minutes
 
-    // console.log('getAdminSessionConfig - DB value:', settings?.sessionTimeout, 'final:', sessionTimeout);
-
     // Update cache
     cachedConfig = {
       sessionTimeout,

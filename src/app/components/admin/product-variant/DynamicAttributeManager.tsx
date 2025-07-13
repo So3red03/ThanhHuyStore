@@ -74,7 +74,6 @@ const DynamicAttributeManager: React.FC<DynamicAttributeManagerProps> = ({
       const attributeIds = attributes.filter(attr => usedAttributeKeys.has(attr.slug)).map(attr => attr.id);
 
       if (attributeIds.length > 0) {
-        console.log('🔧 Auto-selecting attributes for edit mode:', attributeIds);
         setSelectedAttributes(attributeIds);
       }
     }

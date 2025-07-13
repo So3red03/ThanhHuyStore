@@ -12,6 +12,16 @@ import AdminCancelOrderDialog from '../AdminCancelOrderDialog';
 interface KanbanBoardProps {
   orders: any[];
   onOrderUpdate: () => void;
+  canTransitionOrderStatus?: (
+    currentStatus: OrderStatus,
+    newStatus: OrderStatus,
+    deliveryStatus?: DeliveryStatus | null
+  ) => boolean;
+  canTransitionDeliveryStatus?: (
+    currentDelivery: DeliveryStatus | null,
+    newDelivery: DeliveryStatus,
+    orderStatus: OrderStatus
+  ) => boolean;
 }
 
 // Định nghĩa các cột Kanban
@@ -48,7 +58,12 @@ const KANBAN_COLUMNS = [
   }
 ];
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrderUpdate }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({
+  orders: initialOrders,
+  onOrderUpdate,
+  canTransitionOrderStatus,
+  canTransitionDeliveryStatus
+}) => {
   const [orders, setOrders] = useState(initialOrders);
   const [isLoading, setIsLoading] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -99,13 +114,57 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
     const orderId = draggableId;
     const newColumnId = destination.droppableId;
 
+    // Tìm order hiện tại
+    const currentOrder = orders.find(o => o.id === orderId);
+    if (!currentOrder) {
+      toast.error('Không tìm thấy đơn hàng');
+      return;
+    }
+
     // Nếu kéo sang cột "cancelled", hiển thị dialog để nhập lý do
     if (newColumnId === 'cancelled') {
-      const order = orders.find(o => o.id === orderId);
-      if (order) {
-        setOrderToCancel(order);
-        setShowCancelDialog(true);
-      }
+      setOrderToCancel(currentOrder);
+      setShowCancelDialog(true);
+      return;
+    }
+
+    // Xác định trạng thái mới dựa trên cột đích
+    let newStatus: OrderStatus = OrderStatus.pending;
+    let newDeliveryStatus: DeliveryStatus = DeliveryStatus.not_shipped;
+
+    switch (newColumnId) {
+      case 'pending':
+        newStatus = OrderStatus.pending;
+        newDeliveryStatus = DeliveryStatus.not_shipped;
+        break;
+      case 'preparing':
+        newStatus = OrderStatus.confirmed;
+        newDeliveryStatus = DeliveryStatus.not_shipped;
+        break;
+      case 'shipping':
+        newStatus = OrderStatus.confirmed;
+        newDeliveryStatus = DeliveryStatus.in_transit;
+        break;
+      case 'completed':
+        newStatus = OrderStatus.completed;
+        newDeliveryStatus = DeliveryStatus.delivered;
+        break;
+    }
+
+    // Validation: Kiểm tra xem có thể chuyển trạng thái không
+    if (
+      canTransitionOrderStatus &&
+      !canTransitionOrderStatus(currentOrder.status, newStatus, currentOrder.deliveryStatus)
+    ) {
+      toast.error('Không thể chuyển đơn hàng sang trạng thái này');
+      return;
+    }
+
+    if (
+      canTransitionDeliveryStatus &&
+      !canTransitionDeliveryStatus(currentOrder.deliveryStatus, newDeliveryStatus, currentOrder.status)
+    ) {
+      toast.error('Không thể chuyển trạng thái giao hàng này');
       return;
     }
 
@@ -115,29 +174,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ orders: initialOrders, onOrde
     const originalOrders = [...orders];
 
     try {
-      // Xác định trạng thái mới dựa trên cột đích
-      let newStatus: OrderStatus = OrderStatus.pending;
-      let newDeliveryStatus: DeliveryStatus = DeliveryStatus.not_shipped;
-
-      switch (newColumnId) {
-        case 'pending':
-          newStatus = OrderStatus.pending;
-          newDeliveryStatus = DeliveryStatus.not_shipped;
-          break;
-        case 'preparing':
-          newStatus = OrderStatus.confirmed;
-          newDeliveryStatus = DeliveryStatus.not_shipped;
-          break;
-        case 'shipping':
-          newStatus = OrderStatus.confirmed;
-          newDeliveryStatus = DeliveryStatus.in_transit;
-          break;
-        case 'completed':
-          newStatus = OrderStatus.completed;
-          newDeliveryStatus = DeliveryStatus.delivered;
-          break;
-      }
-
       // Cập nhật UI trước khi gọi API (optimistic update)
       const updatedOrders = orders.map(order => {
         if (order.id === orderId) {

@@ -41,8 +41,7 @@ export async function getAllProducts() {
       }
     });
     return products;
-  } catch (error) {
-    console.log('Error fetching all products:', error);
-    return [];
+  } catch (error: any) {
+    throw new Error(error);
   }
 }

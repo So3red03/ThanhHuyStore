@@ -183,15 +183,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   // Initialize form with initialData
   useEffect(() => {
     if (initialData && mode === 'edit') {
-      console.log('🔍 AddProductModalNew - initialData:', {
-        id: initialData.id,
-        name: initialData.name,
-        thumbnail: initialData.thumbnail,
-        galleryImages: initialData.galleryImages,
-        images: initialData.images,
-        productType: initialData.productType
-      });
-
       // Reset all states first
       setUploadProgress(0);
       setIsUploading(false);
@@ -227,20 +218,18 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       // Set existing images for edit mode - prioritize new structure
       // NEW STRUCTURE: thumbnail + galleryImages (preferred)
       if (initialData.thumbnail || (initialData.galleryImages && initialData.galleryImages.length > 0)) {
-        console.log('📸 Using NEW structure (thumbnail + galleryImages)');
+        ('📸 Using NEW structure (thumbnail + galleryImages)');
         if (initialData.thumbnail) {
           setExistingThumbnail(initialData.thumbnail);
-          console.log('✅ Set existingThumbnail:', initialData.thumbnail);
         }
 
         if (initialData.galleryImages && initialData.galleryImages.length > 0) {
           setExistingGalleryImages(initialData.galleryImages);
-          console.log('✅ Set existingGalleryImages:', initialData.galleryImages.length, 'images');
         }
       }
       // OLD STRUCTURE: images (fallback for backward compatibility)
       else if (initialData.images && initialData.images.length > 0) {
-        console.log('📸 Using OLD structure (images) as fallback');
+        ('📸 Using OLD structure (images) as fallback');
         setExistingImages(initialData.images);
       }
 
@@ -493,14 +482,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               priceAdjustment: parseFloat(value.priceAdjustment || '0')
             }))
           }));
-
-          console.log('🚀 Sending variant product data:', {
-            name: submitData.name,
-            description: submitData.description,
-            categoryId: submitData.categoryId,
-            attributesCount: attributes.length,
-            variationsCount: uploadedVariations.length
-          });
         } catch (error) {
           console.error('Firebase upload failed for variant products:', error);
           toast.error('Lỗi upload ảnh Firebase. Không thể tạo sản phẩm biến thể.');
@@ -1347,13 +1328,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                         // Only set databaseId if variation.id is a valid ObjectID (24 char hex)
                         const objectIdRegex = /^[0-9a-fA-F]{24}$/;
                         const databaseId = variation.id && objectIdRegex.test(variation.id) ? variation.id : undefined;
-
-                        console.log('🔍 Variant mapping:', {
-                          displayId,
-                          variationId: variation.id,
-                          databaseId,
-                          isValidObjectId: databaseId ? true : false
-                        });
 
                         const variant = {
                           id: displayId,

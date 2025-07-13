@@ -10,18 +10,20 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DeliveryStatus, Order, OrderStatus } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
-import { formatPrice } from '../../../../../utils/formatPrice';
 import 'moment/locale/vi';
 import { SafeUser } from '../../../../../types';
 import OrderDetails from '@/app/components/OrderDetails';
 import NullData from '@/app/components/NullData';
-import { FaRegFaceFrown } from 'react-icons/fa6';
-import { FaCheckDouble, FaRegCalendarAlt } from 'react-icons/fa';
 import { MdViewKanban } from 'react-icons/md';
 import { Button } from '@mui/material';
 import Link from 'next/link';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import AddOrderModal from './AddOrderModal';
+import {
+  canTransitionOrderStatus,
+  getValidOrderStatusTransitions,
+  canTransitionDeliveryStatus
+} from '@/app/utils/orderStatusValidation';
 
 interface ManageOrdersClientProps {
   orders: Order[];
@@ -150,6 +152,37 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
           }
         };
 
+        const getStatusLabel = (status: OrderStatus) => {
+          switch (status) {
+            case OrderStatus.pending:
+              return 'Chờ thanh toán';
+            case OrderStatus.confirmed:
+              return 'Đã thanh toán';
+            case OrderStatus.completed:
+              return 'Hoàn thành';
+            case OrderStatus.canceled:
+              return 'Đã hủy';
+            default:
+              return 'Không xác định';
+          }
+        };
+
+        // Lấy danh sách trạng thái hợp lệ có thể chuyển đến
+        const validTransitions = getValidOrderStatusTransitions(params.row.paymentStatus, params.row.deliveryStatus);
+
+        // Nếu không có trạng thái nào có thể chuyển, chỉ hiển thị text
+        if (validTransitions.length === 0) {
+          return (
+            <div className='flex justify-center items-center h-full'>
+              <span
+                className={`border rounded-md px-2 py-1 text-sm shadow-sm ${getStatusColor(params.row.paymentStatus)}`}
+              >
+                {getStatusLabel(params.row.paymentStatus)}
+              </span>
+            </div>
+          );
+        }
+
         return (
           <div className='flex justify-center items-center h-full'>
             <select
@@ -157,10 +190,15 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
               onChange={event => handleUpdateOrderStatus(params.row.id, event.target.value)}
               className={`border rounded-md px-2 py-1 text-sm shadow-sm ${getStatusColor(params.row.paymentStatus)}`}
             >
-              <option value={OrderStatus.pending}>Chờ thanh toán</option>
-              <option value={OrderStatus.confirmed}>Đã thanh toán</option>
-              <option value={OrderStatus.completed}>Hoàn thành</option>
-              <option value={OrderStatus.canceled}>Đã hủy</option>
+              {/* Trạng thái hiện tại */}
+              <option value={params.row.paymentStatus}>{getStatusLabel(params.row.paymentStatus)}</option>
+
+              {/* Các trạng thái có thể chuyển đến */}
+              {validTransitions.map(status => (
+                <option key={status} value={status}>
+                  → {getStatusLabel(status)}
+                </option>
+              ))}
             </select>
           </div>
         );
@@ -199,25 +237,46 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
       headerName: '',
       width: 180,
       renderCell: params => {
+        const canDispatch = canTransitionDeliveryStatus(
+          params.row.deliveryStatus,
+          DeliveryStatus.in_transit,
+          params.row.status
+        );
+
+        const canDeliver = canTransitionDeliveryStatus(
+          params.row.deliveryStatus,
+          DeliveryStatus.delivered,
+          params.row.status
+        );
+
         return (
           <div className='flex items-center justify-center gap-4 h-full'>
-            <ActionBtn
-              icon={MdDeliveryDining}
-              onClick={() => {
-                handleDispatch(params.row.id);
-              }}
-            />
-            <ActionBtn
-              icon={MdDone}
-              onClick={() => {
-                handleDeliver(params.row.id);
-              }}
-            />
+            {/* Nút gửi hàng - chỉ hiện khi có thể chuyển sang in_transit */}
+            {canDispatch && (
+              <ActionBtn
+                icon={MdDeliveryDining}
+                onClick={() => {
+                  handleDispatch(params.row.id);
+                }}
+              />
+            )}
+
+            {/* Nút giao hàng - chỉ hiện khi có thể chuyển sang delivered */}
+            {canDeliver && (
+              <ActionBtn
+                icon={MdDone}
+                onClick={() => {
+                  handleDeliver(params.row.id);
+                }}
+              />
+            )}
+
+            {/* Nút xem chi tiết - luôn hiển thị */}
             <ActionBtn
               icon={MdRemoveRedEye}
               onClick={() => {
                 setSelectedOrder(params.row);
-                console.log(params.row);
+                params.row;
                 toggleOpen();
               }}
             />
@@ -243,11 +302,24 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
   };
 
   const handleUpdateOrderStatus = (id: string, newStatus: any) => {
+    // Tìm order hiện tại để validate
+    const currentOrder = orders.find(order => order.id === id);
+    if (!currentOrder) {
+      toast.error('Không tìm thấy đơn hàng');
+      return;
+    }
+
+    // Kiểm tra xem có thể chuyển trạng thái không
+    if (!canTransitionOrderStatus(currentOrder.status, newStatus, currentOrder.deliveryStatus)) {
+      toast.error('Không thể chuyển sang trạng thái này');
+      return;
+    }
+
     axios
       .put(`/api/orders/${id}`, { status: newStatus })
       .then(() => {
         toast.success('Cập nhật đơn hàng thành công');
-        router.refresh(); // Làm mới dữ liệu trong bảng
+        handleRefresh(); // Sử dụng handleRefresh thay vì router.refresh
       })
       .catch(error => {
         toast.error('Có lỗi xảy ra khi cập nhật đơn hàng');
@@ -256,6 +328,19 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
   };
 
   const handleDispatch = (id: string) => {
+    // Tìm order hiện tại để validate
+    const currentOrder = orders.find(order => order.id === id);
+    if (!currentOrder) {
+      toast.error('Không tìm thấy đơn hàng');
+      return;
+    }
+
+    // Kiểm tra xem có thể chuyển sang in_transit không
+    if (!canTransitionDeliveryStatus(currentOrder.deliveryStatus, DeliveryStatus.in_transit, currentOrder.status)) {
+      toast.error('Không thể gửi đơn hàng này');
+      return;
+    }
+
     axios
       .put('/api/orders', {
         id,
@@ -263,7 +348,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
       })
       .then(() => {
         toast.success('Đơn hàng đã được gửi đi');
-        router.refresh();
+        handleRefresh();
       })
       .catch(error => {
         toast.error('Có lỗi xảy ra khi gửi đơn hàng');
@@ -272,16 +357,28 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
   };
 
   const handleDeliver = async (id: string) => {
-    try {
-      await Promise.all([
-        axios.put(`/api/orders/${id}`, { status: OrderStatus.completed }),
-        axios.put('/api/orders', { id, deliveryStatus: DeliveryStatus.delivered })
-      ]);
+    // Tìm order hiện tại để validate
+    const currentOrder = orders.find(order => order.id === id);
+    if (!currentOrder) {
+      toast.error('Không tìm thấy đơn hàng');
+      return;
+    }
 
-      toast.success('Cập nhật và giao hàng thành công');
-      router.refresh(); // Làm mới dữ liệu trong bảng
+    // Kiểm tra xem có thể giao hàng không
+    if (!canTransitionDeliveryStatus(currentOrder.deliveryStatus, DeliveryStatus.delivered, currentOrder.status)) {
+      toast.error('Không thể giao đơn hàng này');
+      return;
+    }
+
+    try {
+      // Cập nhật tuần tự thay vì song song để tránh race condition
+      await axios.put('/api/orders', { id, deliveryStatus: DeliveryStatus.delivered });
+      await axios.put(`/api/orders/${id}`, { status: OrderStatus.completed });
+
+      toast.success('Giao hàng thành công');
+      handleRefresh();
     } catch (error) {
-      toast.error('Có lỗi xảy ra khi cập nhật đơn hàng hoặc giao hàng');
+      toast.error('Có lỗi xảy ra khi giao hàng');
       console.error(error);
     }
   };

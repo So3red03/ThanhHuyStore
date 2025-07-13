@@ -57,7 +57,6 @@ export async function POST(request: Request) {
       try {
         await sendNewProductEmail(user.email, user.name || 'Khách hàng', product);
         sentCount++;
-        console.log(`Email sent to ${user.email}`);
       } catch (error) {
         console.error(`Failed to send email to ${user.email}:`, error);
       }
@@ -170,7 +169,6 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`New product email sent to ${email}`);
   } catch (error) {
     console.error('Error sending new product email:', error);
     throw error;

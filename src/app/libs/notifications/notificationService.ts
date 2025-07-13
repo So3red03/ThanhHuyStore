@@ -293,7 +293,6 @@ export class NotificationService {
         }
       });
 
-      console.log(`Cleaned up ${result.count} old notifications`);
       return result;
     } catch (error) {
       console.error('Error cleaning up old notifications:', error);
