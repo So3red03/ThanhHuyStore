@@ -24,33 +24,50 @@ export const isDiscordNotificationEnabled = async (): Promise<boolean> => {
 /**
  * Send Discord notification only if enabled in settings
  */
-export const sendDiscordNotificationIfEnabled = async (webhookUrl: string, embed: any): Promise<void> => {
+export const sendDiscordNotificationIfEnabled = async (webhookUrl: string, messageData: any): Promise<void> => {
   try {
     // Check if notifications are enabled
     const isEnabled = await isDiscordNotificationEnabled();
 
     if (!isEnabled) {
+      console.log('Discord notifications disabled in settings');
       return;
     }
 
     if (!webhookUrl) {
+      console.log('Discord webhook URL not configured');
       return;
     }
+
+    // Handle both single embed and full message data
+    let payload;
+    if (messageData.embeds || messageData.components) {
+      // Full message data with embeds and components
+      payload = messageData;
+    } else {
+      // Single embed (backward compatibility)
+      payload = { embeds: [messageData] };
+    }
+
+    console.log('Sending Discord notification:', JSON.stringify(payload, null, 2));
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        embeds: [embed]
-      })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Discord webhook failed:', response.status, response.statusText, errorText);
       throw new Error(`Discord webhook failed: ${response.status} ${response.statusText}`);
     }
+
+    console.log('Discord notification sent successfully');
   } catch (error: any) {
-    throw new error();
+    console.error('Discord webhook error:', error);
+    throw error;
   }
 };

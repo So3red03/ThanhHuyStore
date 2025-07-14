@@ -125,25 +125,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     });
   }, []);
 
-  const handleProductClick = useCallback(
-    (product: any) => {
-      if (!product) return;
+  const handleProductClick = (product: any) => {
+    if (!product) return;
 
-      try {
-        // Track product view analytics only
-        trackProductInteraction(product.id, {
-          productName: product.name,
-          category: product.category,
-          price: product.price,
-          clickSource: 'ProductCard',
-          interactionType: 'view'
-        });
-      } catch (error) {
-        console.error('Error tracking product view:', error);
-      }
-    },
-    [trackProductInteraction]
-  );
+    try {
+      // Track product view analytics only
+      trackProductInteraction(product.id, {
+        productName: product.name,
+        category: product.category,
+        price: product.price,
+        clickSource: 'ProductCard',
+        interactionType: 'view'
+      });
+    } catch (error) {
+      console.error('Error tracking product view:', error);
+    }
+  };
 
   return (
     <div

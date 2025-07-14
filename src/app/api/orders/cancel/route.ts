@@ -78,7 +78,7 @@ const sendDiscordNotification = async (orderData: any, currentUser: any, reason:
     };
 
     // Sử dụng helper function để kiểm tra settings
-    await sendDiscordNotificationIfEnabled(webhookUrl, embed);
+    await sendDiscordNotificationIfEnabled(webhookUrl, { embeds: [embed] });
   } catch (error) {
     console.error('Error sending Discord notification:', error);
   }
