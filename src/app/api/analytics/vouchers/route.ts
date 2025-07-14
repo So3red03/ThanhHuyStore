@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
-    if (!currentUser || currentUser.role !== 'ADMIN') {
+    if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

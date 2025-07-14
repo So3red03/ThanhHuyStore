@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import { Drawer, List, ListItemButton, ListItemIcon, ListItemText, Collapse, Typography, Box } from '@mui/material';
 import { MdLogout, MdExpandLess, MdExpandMore, MdOutlineSettings } from 'react-icons/md';
-import { MenuItems } from '../../../../utils/MenuItems';
-import { signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSidebar } from '@/app/providers/SidebarProvider';
 import { redressed } from '../../theme/adminTheme';
+import { useSession } from 'next-auth/react';
+import { MenuItems } from '@/app/utils/MenuItems';
+import { signOut } from 'next-auth/react';
 
 /**
  * Professional MUI-based AdminSideBar component
@@ -20,6 +21,7 @@ const AdminSideBarNew = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { toggleSidebar, isOpen, isCollapsed } = useSidebar();
+  const { data: session } = useSession();
 
   const handleSetting = () => {
     router.push('/admin/settings');
@@ -230,7 +232,7 @@ const AdminSideBarNew = () => {
               {item.subItem && !isCollapsed && (
                 <>
                   <ListItemButton
-                    onClick={() => toggleSubItem(item.subItem.title)}
+                    onClick={() => toggleSubItem(item.subItem?.title || '')}
                     sx={{
                       mx: 1,
                       borderRadius: 3,
@@ -278,7 +280,7 @@ const AdminSideBarNew = () => {
                             onClick={e => {
                               if (subItem.list && subItem.list.length > 0) {
                                 e.preventDefault();
-                                toggleChildItem(item.subItem.title, subItem.title);
+                                toggleChildItem(item.subItem?.title || '', subItem.title);
                               } else if (subItem.path) {
                                 // Navigate to the path if no children
                                 window.location.href = subItem.path;
@@ -331,7 +333,7 @@ const AdminSideBarNew = () => {
                             />
                             {subItem.list && subItem.list.length > 0 && (
                               <>
-                                {openChildItems[`${item.subItem.title}-${subItem.title}`] ? (
+                                {openChildItems[`${item.subItem?.title || ''}-${subItem.title}`] ? (
                                   <MdExpandLess size={16} />
                                 ) : (
                                   <MdExpandMore size={16} />
@@ -343,7 +345,7 @@ const AdminSideBarNew = () => {
                           {/* Child Items */}
                           {subItem.list && subItem.list.length > 0 && (
                             <Collapse
-                              in={openChildItems[`${item.subItem.title}-${subItem.title}`]}
+                              in={openChildItems[`${item.subItem?.title || ''}-${subItem.title}`]}
                               timeout='auto'
                               unmountOnExit
                             >
@@ -408,7 +410,7 @@ const AdminSideBarNew = () => {
               {/* Collapsed Sub Items - Show as icons only with expand indicator */}
               {item.subItem && isCollapsed && (
                 <ListItemButton
-                  onClick={() => toggleSubItem(item.subItem.title)}
+                  onClick={() => toggleSubItem(item.subItem?.title || '')}
                   sx={{
                     mx: 1,
                     borderRadius: 3,
@@ -505,7 +507,6 @@ const AdminSideBarNew = () => {
               />
             )}
           </ListItemButton>
-
           <ListItemButton
             onClick={handleSignOut}
             sx={{

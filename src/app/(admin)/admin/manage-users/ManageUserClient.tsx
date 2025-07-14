@@ -75,6 +75,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
         password: user.hashedPassword,
         createAt: formatDate(user.createAt),
         updateAt: formatDate(user.updateAt),
+        lastLogin: user.lastLogin ? formatDate(user.lastLogin) : 'Chưa đăng nhập',
         role: user.role
       };
     });
@@ -112,6 +113,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
     // { field: 'password', headerName: 'Mật khẩu', width: 140 },
     { field: 'createAt', headerName: 'Ngày tạo', width: 200 },
     { field: 'updateAt', headerName: 'Ngày cập nhật', width: 200 },
+    { field: 'lastLogin', headerName: 'Lần cuối đăng nhập', width: 200 },
     {
       field: 'action',
       headerName: '',

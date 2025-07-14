@@ -10,6 +10,8 @@ import { CssBaseline, Box } from '@mui/material';
 import { adminTheme } from '../theme/adminTheme';
 import AdminSideBarNew from '../components/admin/AdminSideBarNew';
 import AdminNavNew from '../components/admin/AdminNavNew';
+// Removed complex permission imports - using simple role check
+import { redirect } from 'next/navigation';
 export const metadata = {
   title: 'ThanhHuy Store - Dashboard',
   description: 'Apple Shop Admin Dashboard',
@@ -59,6 +61,12 @@ const LayoutContent = ({ children, currentUser }: { children: React.ReactNode; c
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   const currentUser = await getCurrentUser();
+
+  // Simple check: only ADMIN and STAFF can access admin panel
+  if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
+    redirect('/');
+  }
+
   return (
     <html lang='en'>
       <head>

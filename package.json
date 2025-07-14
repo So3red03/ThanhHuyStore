@@ -44,6 +44,7 @@
     "bcrypt": "^5.1.1",
     "chart.js": "^4.4.3",
     "date-fns": "^3.6.0",
+    "discord-interactions": "^4.3.0",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.3",
     "exact": "^1.0.1",

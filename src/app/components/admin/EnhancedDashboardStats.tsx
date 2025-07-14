@@ -1,14 +1,6 @@
 'use client';
 
-import {
-  FaFileInvoiceDollar,
-  FaSearchDollar,
-  FaUsers,
-  FaNewspaper,
-  FaExclamationTriangle,
-  FaPercentage,
-  FaShoppingCart
-} from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaSearchDollar, FaUsers, FaExclamationTriangle, FaShoppingCart } from 'react-icons/fa';
 import { formatPrice } from '../../../../utils/formatPrice';
 import Link from 'next/link';
 
@@ -16,22 +8,18 @@ interface EnhancedDashboardStatsProps {
   ordersCount: number;
   totalRevenue: number;
   clientsCount: number;
-  newsData?: any;
-  businessAlerts?: any[];
-  conversionRate?: number;
   avgOrderValue?: number;
-  returnRequestsCount?: number;
+  cancelledOrdersCount?: number;
+  cancelledRevenue?: number;
 }
 
 const EnhancedDashboardStats: React.FC<EnhancedDashboardStatsProps> = ({
   ordersCount,
   totalRevenue,
   clientsCount,
-  newsData,
-  businessAlerts = [],
-  conversionRate = 0,
   avgOrderValue = 0,
-  returnRequestsCount = 0
+  cancelledOrdersCount = 0,
+  cancelledRevenue = 0
 }) => {
   return (
     <div className='space-y-6'>
@@ -98,21 +86,21 @@ const EnhancedDashboardStats: React.FC<EnhancedDashboardStatsProps> = ({
 
       {/* Enhanced Stats Row */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-4 lg:gap-y-0'>
-        {/* News Performance */}
+        {/* Cancelled Revenue */}
         <div className='bg-white p-6 rounded-lg border border-gray-200'>
           <div className='flex justify-between items-center'>
-            <h3 className='text-gray-500 text-sm 3xl:text-base'>Tin tức hôm nay</h3>
-            <Link href={'/admin/manage-articles'} className='hover:underline text-sm text-purple-600 3xl:text-base'>
+            <h3 className='text-gray-500 text-sm 3xl:text-base'>Doanh thu bị hủy</h3>
+            <Link href={'/admin/manage-orders'} className='hover:underline text-sm text-red-600 3xl:text-base'>
               View All
             </Link>
           </div>
           <div className='flex justify-center items-center mt-4 gap-4'>
-            <div className='p-4 bg-purple-100 rounded-full'>
-              <FaNewspaper className='text-3xl text-purple-600' />
+            <div className='p-4 bg-red-100 rounded-full'>
+              <FaSearchDollar className='text-3xl text-red-600' />
             </div>
             <div className='flex items-center flex-col'>
-              <div className='text-2xl font-bold text-purple-600'>{newsData?.totalViews || 0}</div>
-              <div className='text-xs text-gray-500'>lượt đọc</div>
+              <div className='text-2xl font-bold text-red-600'>{formatPrice(cancelledRevenue)}</div>
+              <div className='text-xs text-gray-500'>VND</div>
             </div>
           </div>
         </div>
@@ -145,11 +133,11 @@ const EnhancedDashboardStats: React.FC<EnhancedDashboardStatsProps> = ({
           </div>
         </div>
 
-        {/* Business Alerts */}
+        {/* Cancelled Orders */}
         <div className='bg-white p-6 rounded-lg border border-gray-200'>
           <div className='flex justify-between items-center'>
-            <h3 className='text-gray-500 text-sm 3xl:text-base'>Cảnh báo</h3>
-            <Link href={'/admin/manage-returns'} className='hover:underline text-sm text-red-600 3xl:text-base'>
+            <h3 className='text-gray-500 text-sm 3xl:text-base'>Đơn hàng bị hủy</h3>
+            <Link href={'/admin/manage-orders'} className='hover:underline text-sm text-red-600 3xl:text-base'>
               View All
             </Link>
           </div>
@@ -158,55 +146,12 @@ const EnhancedDashboardStats: React.FC<EnhancedDashboardStatsProps> = ({
               <FaExclamationTriangle className='text-3xl text-red-600' />
             </div>
             <div className='flex items-center flex-col'>
-              <div className='text-2xl font-bold text-red-600'>{businessAlerts.length}</div>
-              <div className='text-xs text-gray-500'>thông báo</div>
+              <div className='text-2xl font-bold text-red-600'>{cancelledOrdersCount}</div>
+              <div className='text-xs text-gray-500'>đơn hàng</div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Business Alerts Details */}
-      {businessAlerts.length > 0 && (
-        <div className='bg-white p-4 rounded-lg border border-gray-200'>
-          <h4 className='text-sm font-medium text-gray-700 mb-3'>Thông báo quan trọng:</h4>
-          <div className='space-y-2'>
-            {businessAlerts.slice(0, 3).map((alert, index) => (
-              <div
-                key={index}
-                className={`flex items-center gap-3 p-2 rounded text-sm ${
-                  alert.type === 'warning'
-                    ? 'bg-yellow-50 text-yellow-800'
-                    : alert.type === 'info'
-                    ? 'bg-blue-50 text-blue-800'
-                    : 'bg-green-50 text-green-800'
-                }`}
-              >
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    alert.type === 'warning' ? 'bg-yellow-500' : alert.type === 'info' ? 'bg-blue-500' : 'bg-green-500'
-                  }`}
-                />
-                <span>{alert.message}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Top Articles Today */}
-      {newsData?.topArticles && newsData.topArticles.length > 0 && (
-        <div className='bg-white p-4 rounded-lg border border-gray-200'>
-          <h4 className='text-sm font-medium text-gray-700 mb-3'>Bài viết được đọc nhiều nhất hôm nay:</h4>
-          <div className='space-y-2'>
-            {newsData.topArticles.slice(0, 3).map((article: any, index: number) => (
-              <div key={index} className='flex items-center justify-between p-2 bg-gray-50 rounded text-sm'>
-                <span className='truncate flex-1'>{article.title}</span>
-                <span className='text-purple-600 font-medium ml-2'>{article.views} lượt đọc</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

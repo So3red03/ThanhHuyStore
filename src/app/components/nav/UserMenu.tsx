@@ -64,14 +64,14 @@ const UserMenu: React.FC<UserMenuProps> = ({ currentUser }) => {
                 <Link href={'/account'}>Xin chào, {currentUser.name}</Link>
               </h2>
               <hr />
-              {/* Chỉ có admin mới hiện dashboard */}
-              {currentUser.role === 'ADMIN' && (
+              {/* Admin và Staff có thể truy cập dashboard */}
+              {(currentUser.role === 'ADMIN' || currentUser.role === 'STAFF') && (
                 <Link href='/admin'>
                   <MenuItem onClick={handleMouseLeave}>
                     <span className='text-xl'>
                       <CiUser />
                     </span>
-                    Dashboard
+                    {currentUser.role === 'ADMIN' ? 'Dashboard Quản trị' : 'Dashboard Nhân viên'}
                   </MenuItem>
                 </Link>
               )}

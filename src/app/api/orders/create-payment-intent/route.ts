@@ -4,12 +4,14 @@ import prisma from '@/app/libs/prismadb';
 import Stripe from 'stripe';
 import { OrderStatus, DeliveryStatus } from '@prisma/client';
 import { CartProductType } from '@/app/(home)/product/[productId]/ProductDetails';
-import { NotificationService } from '@/app/libs/notifications/notificationService';
-import { sendDiscordNotificationIfEnabled } from '@/app/libs/discord/discordNotificationHelper';
 import crypto from 'crypto';
 import https from 'https';
-import axios from 'axios';
 import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
+import {
+  sendOrderDiscordNotification,
+  updateUserPurchasedCategories,
+  createAdminOrderNotifications
+} from '@/app/utils/orderNotifications';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2024-04-10'
@@ -97,68 +99,6 @@ const validateAndReserveVoucher = async (
       discountAmount: Math.round(discountAmount)
     };
   });
-};
-
-// Discord notification function
-const sendDiscordNotification = async (orderData: any, currentUser: any) => {
-  try {
-    const discordData = {
-      title: '🛒 **ĐƠN HÀNG MỚI**',
-      color: 0x00ff00, // Màu xanh lá
-      fields: [
-        {
-          name: '👤 **Thông tin khách hàng**',
-          value: `**Tên:** ${currentUser.name || 'N/A'}\n**Email:** ${currentUser.email}\n**SĐT:** ${
-            orderData.phoneNumber
-          }`,
-          inline: false
-        },
-        {
-          name: '📦 **Chi tiết đơn hàng**',
-          value: `**Mã đơn:** ${orderData.paymentIntentId}\n**Tổng tiền:** ${orderData.amount.toLocaleString(
-            'vi-VN'
-          )} VNĐ\n**Phương thức:** ${orderData.paymentMethod?.toUpperCase()}`,
-          inline: false
-        },
-        {
-          name: '📍 **Địa chỉ giao hàng**',
-          value: `${orderData.address?.line1 || 'N/A'}\n${orderData.address?.city || 'N/A'}`,
-          inline: false
-        },
-        {
-          name: '🛍️ **Sản phẩm**',
-          value: orderData.products
-            .slice(0, 3)
-            .map((product: any) => `• ${product.name} (x${product.quantity})`)
-            .join('\n'),
-          inline: false
-        }
-      ],
-      timestamp: new Date().toISOString()
-    };
-
-    await sendDiscordNotificationIfEnabled(process.env.DISCORD_ORDER_WEBHOOK_URL || '', discordData);
-  } catch (error) {
-    console.error('Error sending Discord notification:', error);
-  }
-};
-
-// Update user purchased categories
-const updateUserPurchasedCategories = async (userId: string, products: any[]) => {
-  try {
-    const categoryIds = [...new Set(products.map(product => product.category))];
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        purchasedCategories: {
-          push: categoryIds
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error updating user purchased categories:', error);
-  }
 };
 
 // Clean products data for database storage (remove fields not in Prisma schema)
@@ -500,7 +440,7 @@ export async function POST(request: NextRequest) {
         userRole: currentUser.role || 'USER',
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown',
-        description: `Tạo đơn hàng COD: ${finalAmount.toLocaleString()} VND`,
+        description: `Đơn hàng mới COD: ${finalAmount.toLocaleString()} VND`,
         details: {
           paymentIntentId: createdOrder.paymentIntentId,
           paymentMethod: 'cod',
@@ -523,23 +463,9 @@ export async function POST(request: NextRequest) {
 
       // Send notifications (Discord only, email handled by process-payment)
       try {
-        await sendDiscordNotification(orderData, currentUser);
+        await sendOrderDiscordNotification(orderData, currentUser);
         await updateUserPurchasedCategories(currentUser.id, orderData.products);
-
-        // Create admin notifications
-        const admins = await prisma.user.findMany({
-          where: { role: 'ADMIN' }
-        });
-
-        for (const admin of admins) {
-          await NotificationService.createNotification({
-            userId: admin.id,
-            title: 'Đơn hàng mới',
-            message: `Đơn hàng COD mới từ ${currentUser.name || currentUser.email}`,
-            type: 'ORDER_PLACED',
-            orderId: createdOrder.id
-          });
-        }
+        await createAdminOrderNotifications(createdOrder, currentUser);
       } catch (error) {
         console.error('Error sending notifications:', error);
       }
@@ -598,7 +524,7 @@ export async function POST(request: NextRequest) {
 
       // Send notifications (Discord only, email handled by process-payment)
       try {
-        await sendDiscordNotification(orderData, currentUser);
+        await sendOrderDiscordNotification(orderData, currentUser);
         await updateUserPurchasedCategories(currentUser.id, orderData.products);
       } catch (error) {
         console.error('Error sending notifications:', error);

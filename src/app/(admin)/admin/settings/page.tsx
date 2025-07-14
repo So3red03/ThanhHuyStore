@@ -29,7 +29,7 @@ const AdminSettings = async () => {
   // Check authentication
   const currentUser = await getCurrentUser();
 
-  if (!currentUser || currentUser.role !== 'ADMIN') {
+  if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
     redirect('/');
   }
 

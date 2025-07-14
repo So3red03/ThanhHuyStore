@@ -3,7 +3,14 @@ import { getSession } from './getCurrentUser';
 
 export async function getUsers() {
   try {
-    const users = await prisma.user.findMany();
+    const users = await prisma.user.findMany({
+      where: {
+        role: 'USER' // Only get regular users, not STAFF or ADMIN
+      },
+      orderBy: {
+        createAt: 'desc'
+      }
+    });
     return users || [];
   } catch (error: any) {
     console.error('Error fetching users:', error);

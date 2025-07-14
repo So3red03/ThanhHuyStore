@@ -212,7 +212,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded,
                 onChange={e => setFormData({ ...formData, role: e.target.value })}
                 sx={{ borderRadius: '12px' }}
               >
-                <MenuItem value='USER'>Người dùng</MenuItem>
+                <MenuItem value='USER'>Khách hàng</MenuItem>
+                <MenuItem value='STAFF'>Nhân viên</MenuItem>
                 <MenuItem value='ADMIN'>Quản trị viên</MenuItem>
               </Select>
             </FormControl>

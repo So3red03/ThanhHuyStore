@@ -12,7 +12,7 @@ const ManageVouchers = async () => {
   const vouchers = await getVouchers();
   const users = await getUsers();
 
-  if (!currentUser || currentUser.role !== 'ADMIN') {
+  if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
     return <NullData title='Oops! Access denied' />;
   }
 

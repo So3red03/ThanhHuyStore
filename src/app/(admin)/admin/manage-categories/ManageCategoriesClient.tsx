@@ -295,12 +295,12 @@ const ManageCategoriesClient: React.FC<ManageCategoriesClientProps> = ({ categor
   */
 
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'ADMIN') {
+    if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
       router.push('/login');
     }
   }, [currentUser, router]);
 
-  if (!currentUser || currentUser.role !== 'ADMIN') {
+  if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
     return <NullData title='Từ chối đăng nhập' />;
   }
   return (

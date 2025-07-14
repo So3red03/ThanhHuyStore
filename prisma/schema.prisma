@@ -311,6 +311,7 @@ enum NotificationType {
 
 enum Role {
     USER
+    STAFF
     ADMIN
 }
 

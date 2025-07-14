@@ -3,12 +3,14 @@ import prisma from '../../../libs/prismadb';
 import { NextResponse } from 'next/server';
 import { OrderStatus } from '@prisma/client';
 import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
+import { hasPermission } from '@/app/utils/admin/permissionUtils';
+import { PERMISSIONS } from '@/app/utils/admin/permissions';
 
 export async function POST(request: Request) {
   try {
     const currentUser = await getCurrentUser();
 
-    if (!currentUser || currentUser.role !== 'ADMIN') {
+    if (!currentUser || !hasPermission(currentUser.role, PERMISSIONS.ORDERS_CANCEL)) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 

@@ -28,11 +28,7 @@ interface OverviewTabProps {
   reviews?: any;
   conversations?: any[];
   userInSession?: any[];
-  newsData?: any;
-  businessAlerts?: any[];
-  conversionRate?: number;
   avgOrderValue?: number;
-  returnRequestsCount?: number;
   orderPieData?: any;
   salesWeeklyData?: any;
   onRefresh?: () => void;
@@ -46,11 +42,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   reviews,
   conversations = [],
   userInSession = [],
-  newsData,
-  businessAlerts = [],
-  conversionRate = 0,
   avgOrderValue = 0,
-  returnRequestsCount = 0,
   orderPieData,
   salesWeeklyData,
   onRefresh
@@ -144,6 +136,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 
   // Filter client users
   const filteredClient = filteredData.users.filter(user => user.role === 'USER') || [];
+
+  // Calculate cancelled orders metrics
+  const cancelledOrders = filteredData.orders.filter(order => order.status === 'cancelled') || [];
+  const cancelledOrdersCount = cancelledOrders.length;
+  const cancelledRevenue = cancelledOrders.reduce((total, order) => total + (order.amount || 0), 0);
 
   // Convert salesWeeklyData to chart format
   const chartWeeklyData =
@@ -268,11 +265,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           ordersCount={filteredData.orders?.length || 0}
           totalRevenue={totalRevenue}
           clientsCount={filteredClient.length}
-          newsData={newsData}
-          businessAlerts={businessAlerts}
-          conversionRate={conversionRate}
           avgOrderValue={avgOrderValue}
-          returnRequestsCount={returnRequestsCount}
+          cancelledOrdersCount={cancelledOrdersCount}
+          cancelledRevenue={cancelledRevenue}
         />
       </div>
 
