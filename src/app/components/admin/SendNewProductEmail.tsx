@@ -26,7 +26,17 @@ import {
   Tabs,
   CircularProgress,
   Paper,
-  Grid
+  Grid,
+  IconButton,
+  Checkbox,
+  FormControlLabel,
+  Switch,
+  Collapse,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Avatar
 } from '@mui/material';
 import {
   MdEmail,
@@ -45,6 +55,7 @@ import {
 interface SendNewProductEmailProps {
   products: Product[];
   onClose?: () => void;
+  open?: boolean;
 }
 
 interface Customer {
@@ -83,7 +94,7 @@ interface CategoryAnalyticsData {
   };
 }
 
-const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onClose }) => {
+const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onClose, open = true }) => {
   const [selectedProductId, setSelectedProductId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
@@ -95,6 +106,14 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
   const [viewMode, setViewMode] = useState<'hierarchical' | 'flat'>('hierarchical');
   const [selectedCategory, setSelectedCategory] = useState<CategoryStat | null>(null);
   const [customerViewMode, setCustomerViewMode] = useState<'recent' | 'medium' | 'older' | 'all'>('all');
+  const [showResult, setShowResult] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [selectedUserDetail, setSelectedUserDetail] = useState<any>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [customerDetailData, setCustomerDetailData] = useState<any>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Lấy thông tin về khách hàng theo danh mục
   useEffect(() => {
@@ -128,8 +147,73 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
     });
   };
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  // Auto-hide result after 5 seconds
+  useEffect(() => {
+    if (lastResult) {
+      setShowResult(true);
+      const timer = setTimeout(() => {
+        setShowResult(false);
+        setTimeout(() => setLastResult(null), 300); // Wait for animation to complete
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [lastResult]);
+
+  // Load all users for manual selection
+  useEffect(() => {
+    const fetchAllUsers = async () => {
+      try {
+        const response = await axios.get('/api/analytics/customer-categories');
+        if (response.data.success) {
+          // Extract all unique customers from all categories
+          const allCustomers = new Map();
+          response.data.data.flat.forEach((category: CategoryStat) => {
+            if (category.customers) {
+              [...category.customers.recent, ...category.customers.medium, ...category.customers.older].forEach(
+                customer => {
+                  if (!allCustomers.has(customer.id)) {
+                    allCustomers.set(customer.id, {
+                      ...customer,
+                      categories: [category.categoryName]
+                    });
+                  } else {
+                    const existing = allCustomers.get(customer.id);
+                    existing.categories.push(category.categoryName);
+                  }
+                }
+              );
+            }
+          });
+          setAllUsers(Array.from(allCustomers.values()));
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+
+    if (open) {
+      fetchAllUsers();
+    }
+  }, [open]);
+
+  // Fetch customer detail
+  const fetchCustomerDetail = async (userId: string) => {
+    setLoadingDetail(true);
+    try {
+      const response = await axios.get(`/api/analytics/customer-detail?userId=${userId}`);
+      if (response.data.success) {
+        setCustomerDetailData(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching customer detail:', error);
+      toast.error('Không thể tải thông tin chi tiết khách hàng');
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const handleSendEmails = async () => {
@@ -138,11 +222,18 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
       return;
     }
 
+    if (manualMode && selectedUsers.length === 0) {
+      toast.error('Vui lòng chọn ít nhất một khách hàng');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await axios.post('/api/send-new-product-emails', {
         productId: selectedProductId,
-        timeframe: selectedTimeframe
+        timeframe: selectedTimeframe,
+        manualMode,
+        selectedUserIds: manualMode ? selectedUsers : undefined
       });
 
       const result = response.data;
@@ -281,25 +372,54 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                 </Select>
               </FormControl>
 
-              {/* Timeframe Selection */}
-              <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel>Lọc khách hàng theo thời gian mua hàng</InputLabel>
-                <Select
-                  value={selectedTimeframe}
-                  label='Lọc khách hàng theo thời gian mua hàng'
-                  onChange={e => setSelectedTimeframe(e.target.value as any)}
-                  disabled={isLoading}
-                  sx={{ borderRadius: '12px' }}
-                >
-                  <MenuItem value='all'>Tất cả khách hàng</MenuItem>
-                  <MenuItem value='recent'>Mua hàng trong 30 ngày gần đây</MenuItem>
-                  <MenuItem value='medium'>Mua hàng trong 30-90 ngày trước</MenuItem>
-                  <MenuItem value='older'>Mua hàng trên 90 ngày trước</MenuItem>
-                </Select>
-              </FormControl>
+              {/* Timeframe Selection - Only show in auto mode */}
+              <Collapse in={!manualMode}>
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                  <InputLabel>Lọc khách hàng theo thời gian mua hàng</InputLabel>
+                  <Select
+                    value={selectedTimeframe}
+                    label='Lọc khách hàng theo thời gian mua hàng'
+                    onChange={e => setSelectedTimeframe(e.target.value as any)}
+                    disabled={isLoading}
+                    sx={{ borderRadius: '12px' }}
+                  >
+                    <MenuItem value='all'>Tất cả khách hàng đã mua cùng danh mục</MenuItem>
+                    <MenuItem value='recent'>Khách hàng mua trong 30 ngày gần đây</MenuItem>
+                    <MenuItem value='medium'>Khách hàng mua trong 30-90 ngày trước</MenuItem>
+                    <MenuItem value='older'>Khách hàng mua trên 90 ngày trước</MenuItem>
+                  </Select>
+                </FormControl>
+              </Collapse>
+
+              {/* Manual Customer Selection Toggle */}
+              <Box sx={{ mb: 3 }}>
+                <FormControlLabel
+                  control={
+                    <Switch checked={manualMode} onChange={e => setManualMode(e.target.checked)} color='primary' />
+                  }
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <MdPeople size={20} />
+                      <Typography variant='body1' sx={{ fontWeight: 500 }}>
+                        Chọn khách hàng thủ công
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{
+                    '& .MuiFormControlLabel-label': {
+                      color: manualMode ? '#3b82f6' : 'text.primary'
+                    }
+                  }}
+                />
+                <Typography variant='body2' color='text.secondary' sx={{ ml: 4, mt: 0.5 }}>
+                  {manualMode
+                    ? 'Tự chọn khách hàng từ danh sách bên dưới (bỏ qua filter thời gian)'
+                    : 'Hệ thống tự động tìm khách hàng đã mua sản phẩm cùng danh mục theo filter thời gian'}
+                </Typography>
+              </Box>
 
               {/* Info Alert */}
-              {selectedProductId && (
+              {selectedProductId && !manualMode && (
                 <Alert icon={<MdInfo />} severity='info' sx={{ mb: 3, borderRadius: '12px' }}>
                   <Typography variant='body2'>
                     <strong>Lưu ý:</strong> Email sẽ được gửi đến những khách hàng đã từng mua sản phẩm trong cùng danh
@@ -315,6 +435,121 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                   </Typography>
                 </Alert>
               )}
+
+              {/* Manual Customer Selection List */}
+              <Collapse in={manualMode}>
+                <Paper
+                  sx={{
+                    mb: 3,
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    maxHeight: '400px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <Box sx={{ p: 2, borderBottom: '1px solid #e5e7eb', backgroundColor: '#f8fafc' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant='h6' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                        Danh sách khách hàng ({allUsers.length})
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          size='small'
+                          variant='outlined'
+                          onClick={() => setSelectedUsers(allUsers.map(u => u.id))}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          Chọn tất cả
+                        </Button>
+                        <Button
+                          size='small'
+                          variant='outlined'
+                          onClick={() => setSelectedUsers([])}
+                          sx={{ textTransform: 'none' }}
+                        >
+                          Bỏ chọn
+                        </Button>
+                      </Box>
+                    </Box>
+                    <Typography variant='body2' color='text.secondary' sx={{ mt: 1 }}>
+                      Đã chọn: {selectedUsers.length} khách hàng
+                    </Typography>
+                  </Box>
+
+                  <List sx={{ maxHeight: '300px', overflow: 'auto', p: 0 }}>
+                    {allUsers.map(user => (
+                      <ListItem
+                        key={user.id}
+                        sx={{
+                          borderBottom: '1px solid #f3f4f6',
+                          '&:hover': { backgroundColor: '#f9fafb' }
+                        }}
+                      >
+                        <Checkbox
+                          checked={selectedUsers.includes(user.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedUsers([...selectedUsers, user.id]);
+                            } else {
+                              setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                            }
+                          }}
+                          color='primary'
+                        />
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>
+                                {user.name}
+                              </Typography>
+                              <Chip
+                                label={user.role === 'ADMIN' ? 'Admin' : user.role === 'STAFF' ? 'Staff' : 'Khách hàng'}
+                                size='small'
+                                color={user.role === 'ADMIN' ? 'error' : user.role === 'STAFF' ? 'warning' : 'default'}
+                                variant='outlined'
+                              />
+                            </Box>
+                          }
+                          secondary={
+                            <Box sx={{ mt: 0.5 }}>
+                              <Typography variant='body2' color='text.secondary'>
+                                {user.email}
+                              </Typography>
+                              {user.lastOrderDate && (
+                                <Typography variant='caption' color='text.secondary'>
+                                  Mua gần nhất: {new Date(user.lastOrderDate).toLocaleDateString('vi-VN')}
+                                </Typography>
+                              )}
+                            </Box>
+                          }
+                        />
+                        <ListItemSecondaryAction>
+                          <Button
+                            size='small'
+                            variant='outlined'
+                            onClick={() => {
+                              setSelectedUserDetail(user);
+                              setDetailModalOpen(true);
+                              fetchCustomerDetail(user.id);
+                            }}
+                            sx={{
+                              textTransform: 'none',
+                              borderColor: '#3b82f6',
+                              color: '#3b82f6',
+                              '&:hover': {
+                                backgroundColor: '#eff6ff',
+                                borderColor: '#2563eb'
+                              }
+                            }}
+                          >
+                            Chi tiết
+                          </Button>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Paper>
+              </Collapse>
             </Box>
           )}
 
@@ -894,14 +1129,56 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
 
       {/* Results Modal/Alert */}
       {lastResult && (
-        <Box sx={{ position: 'absolute', bottom: 20, right: 20, zIndex: 1000 }}>
-          <Card sx={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', minWidth: 300 }}>
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 1300,
+            transform: showResult ? 'translateY(0)' : 'translateY(100%)',
+            opacity: showResult ? 1 : 0,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            maxWidth: '400px'
+          }}
+        >
+          <Card
+            sx={{
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+              border: '1px solid #bbf7d0',
+              borderRadius: '16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
             <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <MdCheckCircle color='#16a34a' size={20} />
-                <Typography variant='h6' sx={{ color: '#16a34a', fontWeight: 600 }}>
-                  Kết quả gửi email
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    sx={{
+                      backgroundColor: '#16a34a',
+                      borderRadius: '50%',
+                      p: 0.5,
+                      '@keyframes pulse': {
+                        '0%': { transform: 'scale(1)', opacity: 1 },
+                        '50%': { transform: 'scale(1.1)', opacity: 0.8 },
+                        '100%': { transform: 'scale(1)', opacity: 1 }
+                      },
+                      animation: 'pulse 2s infinite'
+                    }}
+                  >
+                    <MdCheckCircle color='white' size={16} />
+                  </Box>
+                  <Typography variant='h6' sx={{ color: '#16a34a', fontWeight: 600, fontSize: '1rem' }}>
+                    Gửi email thành công!
+                  </Typography>
+                </Box>
+                <IconButton
+                  size='small'
+                  onClick={() => setShowResult(false)}
+                  sx={{ color: '#16a34a', '&:hover': { backgroundColor: 'rgba(22, 163, 74, 0.1)' } }}
+                >
+                  <MdClose size={16} />
+                </IconButton>
               </Box>
 
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, mt: 2 }}>
@@ -956,6 +1233,194 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
           </Alert>
         </Box>
       )}
+
+      {/* Customer Detail Modal */}
+      <Dialog
+        open={detailModalOpen}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setSelectedUserDetail(null);
+          setCustomerDetailData(null);
+        }}
+        maxWidth='md'
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: '16px', maxHeight: '90vh' }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Avatar sx={{ bgcolor: '#3b82f6', width: 48, height: 48 }}>
+              {selectedUserDetail?.name?.charAt(0) || selectedUserDetail?.email?.charAt(0) || 'U'}
+            </Avatar>
+            <Box>
+              <Typography variant='h6' sx={{ fontWeight: 600 }}>
+                Chi tiết khách hàng
+              </Typography>
+              <Typography variant='body2' color='text.secondary'>
+                {selectedUserDetail?.name} ({selectedUserDetail?.email})
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 2 }}>
+          {loadingDetail ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : customerDetailData ? (
+            <Box>
+              {/* Customer Summary */}
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={3}>
+                  <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#f0f9ff' }}>
+                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#3b82f6' }}>
+                      {customerDetailData.user.totalOrders}
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Tổng đơn hàng
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#f0fdf4' }}>
+                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#22c55e' }}>
+                      {customerDetailData.products.length}
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Sản phẩm đã mua
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#fef3c7' }}>
+                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#f59e0b' }}>
+                      {customerDetailData.categories.length}
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Danh mục
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#fce7f3' }}>
+                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#ec4899' }}>
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                        customerDetailData.user.totalSpent
+                      )}
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Tổng chi tiêu
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              {/* Categories */}
+              <Typography variant='h6' sx={{ fontWeight: 600, mb: 2 }}>
+                Danh mục đã mua
+              </Typography>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                {customerDetailData.categories.map((category: any, index: number) => (
+                  <Grid item xs={12} md={6} key={index}>
+                    <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                      <Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 1 }}>
+                        {category.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant='body2' color='text.secondary'>
+                          Số sản phẩm:
+                        </Typography>
+                        <Typography variant='body2' fontWeight={600}>
+                          {category.productCount}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant='body2' color='text.secondary'>
+                          Tổng chi:
+                        </Typography>
+                        <Typography variant='body2' fontWeight={600} color='success.main'>
+                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                            category.totalSpent
+                          )}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant='body2' color='text.secondary'>
+                          Mua gần nhất:
+                        </Typography>
+                        <Typography variant='body2' fontWeight={600}>
+                          {new Date(category.lastPurchased).toLocaleDateString('vi-VN')}
+                        </Typography>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+
+              {/* Recent Products */}
+              <Typography variant='h6' sx={{ fontWeight: 600, mb: 2 }}>
+                Sản phẩm đã mua ({customerDetailData.products.length})
+              </Typography>
+              <Box sx={{ maxHeight: '300px', overflow: 'auto' }}>
+                <Grid container spacing={2}>
+                  {customerDetailData.products.map((product: any) => (
+                    <Grid item xs={12} md={6} key={product.id}>
+                      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #e5e7eb', display: 'flex', gap: 2 }}>
+                        <Box
+                          component='img'
+                          src={product.thumbnail || '/noavatar.png'}
+                          alt={product.name}
+                          sx={{ width: 60, height: 60, borderRadius: '8px', objectFit: 'cover' }}
+                        />
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant='subtitle2' sx={{ fontWeight: 600, mb: 0.5 }}>
+                            {product.name}
+                          </Typography>
+                          <Chip
+                            label={product.category}
+                            size='small'
+                            color='primary'
+                            variant='outlined'
+                            sx={{ mb: 0.5 }}
+                          />
+                          <Typography variant='body2' color='text.secondary'>
+                            Mua lần đầu: {new Date(product.firstPurchased).toLocaleDateString('vi-VN')}
+                          </Typography>
+                          <Typography variant='body2' color='success.main' sx={{ fontWeight: 600 }}>
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                              product.price
+                            )}
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            </Box>
+          ) : (
+            <Alert severity='error' sx={{ borderRadius: '12px' }}>
+              Không thể tải thông tin chi tiết khách hàng.
+            </Alert>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button
+            onClick={() => {
+              setDetailModalOpen(false);
+              setSelectedUserDetail(null);
+              setCustomerDetailData(null);
+            }}
+            variant='outlined'
+            sx={{ textTransform: 'none' }}
+          >
+            Đóng
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 };

@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { productId, timeframe = 'all' } = body;
+    const { productId, timeframe = 'all', manualMode = false, selectedUserIds = [] } = body;
 
     if (!productId) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
@@ -22,7 +22,9 @@ export async function POST(request: Request) {
     // Lấy thông tin sản phẩm mới
     const product = await prisma.product.findUnique({
       where: { id: productId },
-      include: { category: true }
+      include: {
+        category: true
+      }
     });
 
     if (!product) {
@@ -70,21 +72,39 @@ export async function POST(request: Request) {
       };
     }
 
-    // Lấy danh sách user đã từng mua sản phẩm trong cùng danh mục với filter thời gian
-    const interestedUsers = await prisma.user.findMany({
-      where: {
-        purchasedCategories: {
-          has: product.category.id
+    // Lấy danh sách user để gửi email
+    let interestedUsers;
+
+    if (manualMode && selectedUserIds.length > 0) {
+      // Manual mode: get selected users
+      interestedUsers = await prisma.user.findMany({
+        where: {
+          id: { in: selectedUserIds },
+          email: { not: '' }
         },
-        email: { not: '' },
-        ...timeFilter
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true
-      }
-    });
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      });
+    } else {
+      // Auto mode: get users who bought products in same category
+      interestedUsers = await prisma.user.findMany({
+        where: {
+          purchasedCategories: {
+            has: product.category.id
+          },
+          email: { not: '' },
+          ...timeFilter
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      });
+    }
 
     if (interestedUsers.length === 0) {
       return NextResponse.json({
@@ -164,7 +184,7 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎉 Sản phẩm mới đã có mặt!</h1>
+            <h1>Sản phẩm mới đã có mặt!</h1>
             <p>Xin chào ${userName},</p>
           </div>
           
@@ -177,9 +197,8 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
               <img src="${
                 product.thumbnail ||
                 (product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages[0] : '') ||
-                (product.images && product.images[0]?.images && product.images[0].images[0]) ||
-                ''
-              }" alt="${product.name}" class="product-image">
+                '/noavatar.png'
+              }" alt="${product.name}" class="product-image" style="max-width: 100%; height: auto; border-radius: 8px;">
               <h2>${product.name}</h2>
               <p>${product.description}</p>
               <div class="price">${product.price.toLocaleString('vi-VN')}₫</div>
