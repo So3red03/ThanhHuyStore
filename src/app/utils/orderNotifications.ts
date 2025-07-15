@@ -1,6 +1,6 @@
 import prisma from '@/app/libs/prismadb';
 import { NotificationService } from '@/app/libs/notifications/notificationService';
-import { sendDiscordNotificationIfEnabled } from '@/app/libs/discord/discordNotificationHelper';
+import { DiscordBotService } from '@/app/libs/discord/discordBotService';
 import { NotificationType } from '@prisma/client';
 
 const nodemailer = require('nodemailer');
@@ -8,9 +8,15 @@ const nodemailer = require('nodemailer');
 // Unified Discord notification function for orders
 export const sendOrderDiscordNotification = async (orderData: any, currentUser: any) => {
   try {
-    const webhookUrl = process.env.DISCORD_ORDER_WEBHOOK_URL;
-    if (!webhookUrl) {
-      console.error('Discord webhook URL not configured');
+    console.log('=== DISCORD NOTIFICATION DEBUG ===');
+    console.log('orderData.id:', orderData.id);
+    console.log('orderData.id type:', typeof orderData.id);
+    console.log('orderData keys:', Object.keys(orderData));
+
+    const botService = DiscordBotService.getInstance();
+
+    if (!botService.isConfigured()) {
+      console.error('Discord bot not configured');
       return;
     }
 
@@ -34,7 +40,7 @@ export const sendOrderDiscordNotification = async (orderData: any, currentUser: 
       : 'Không có thông tin địa chỉ';
 
     const embed = {
-      title: '🛒 **ĐƠN HÀNG MỚI**',
+      title: `🛒 **ĐƠN HÀNG MỚI #${orderData.id}**`,
       color: 0x00ff00, // Màu xanh lá
       fields: [
         {
@@ -73,6 +79,13 @@ export const sendOrderDiscordNotification = async (orderData: any, currentUser: 
     };
 
     // Create action buttons for order approval
+    const approveCustomId = `approve_${orderData.id}`;
+    const rejectCustomId = `reject_${orderData.id}`;
+
+    console.log('=== BUTTON CUSTOM_IDS ===');
+    console.log('Approve custom_id:', approveCustomId);
+    console.log('Reject custom_id:', rejectCustomId);
+
     const components = [
       {
         type: 1, // Action Row
@@ -80,20 +93,14 @@ export const sendOrderDiscordNotification = async (orderData: any, currentUser: 
           {
             type: 2, // Button
             style: 3, // Success (Green)
-            label: 'Duyệt Đơn',
-            emoji: {
-              name: '✅'
-            },
-            custom_id: `approve_${orderData.id}`
+            label: 'CONFIRM',
+            custom_id: approveCustomId
           },
           {
             type: 2, // Button
             style: 4, // Danger (Red)
-            label: 'Hủy Đơn',
-            emoji: {
-              name: '❌'
-            },
-            custom_id: `reject_${orderData.id}`
+            label: 'CANCEL',
+            custom_id: rejectCustomId
           }
         ]
       }
@@ -105,8 +112,18 @@ export const sendOrderDiscordNotification = async (orderData: any, currentUser: 
       components: components
     };
 
-    // Sử dụng helper function để kiểm tra settings
-    await sendDiscordNotificationIfEnabled(webhookUrl, messageData);
+    console.log('Sending Discord message with components via Bot API:', JSON.stringify(messageData, null, 2));
+
+    // Check if Discord notifications are enabled in settings
+    const settings = await prisma.adminSettings.findFirst();
+    if (!settings?.discordNotifications) {
+      console.log('Discord notifications disabled in settings');
+      return;
+    }
+
+    // Send via Discord Bot API instead of webhook
+    await botService.sendMessage(messageData);
+    console.log('Discord order notification sent successfully via Bot API');
   } catch (error) {
     console.error('Error sending Discord notification:', error);
   }

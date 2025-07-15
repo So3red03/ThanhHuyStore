@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { OrderStatus } from '@prisma/client';
-import { sendDiscordNotificationIfEnabled } from '@/app/libs/discord/discordNotificationHelper';
+import { DiscordBotService } from '@/app/libs/discord/discordBotService';
 import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';
 
 // Function để gửi thông báo Discord với format giống đơn hàng mới
 const sendDiscordNotification = async (orderData: any, currentUser: any, reason: string) => {
   try {
-    const webhookUrl = process.env.DISCORD_ORDER_WEBHOOK_URL;
+    const botService = DiscordBotService.getInstance();
 
-    if (!webhookUrl) {
+    if (!botService.isConfigured()) {
+      console.error('Discord bot not configured');
       return;
     }
 
@@ -77,8 +78,16 @@ const sendDiscordNotification = async (orderData: any, currentUser: any, reason:
       }
     };
 
-    // Sử dụng helper function để kiểm tra settings
-    await sendDiscordNotificationIfEnabled(webhookUrl, { embeds: [embed] });
+    // Check if Discord notifications are enabled in settings
+    const settings = await prisma.adminSettings.findFirst();
+    if (!settings?.discordNotifications) {
+      console.log('Discord notifications disabled in settings');
+      return;
+    }
+
+    // Send via Discord Bot API instead of webhook
+    await botService.sendMessage({ embeds: [embed] });
+    console.log('Discord order cancellation notification sent successfully via Bot API');
   } catch (error) {
     console.error('Error sending Discord notification:', error);
   }

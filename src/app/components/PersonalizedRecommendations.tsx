@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Product } from '@prisma/client';
 import Container from './Container';
 import ProductCard from './products/ProductCard';
@@ -21,6 +21,22 @@ interface ViewHistory {
   viewedAt: number;
 }
 
+interface GlobalTrendsData {
+  trendingProducts: any[];
+  collaborativeFiltering: Record<string, string[]>;
+  categoryTrends: any[];
+  period: {
+    days: number;
+    startDate: string;
+    endDate: string;
+  };
+  metadata: {
+    totalProducts: number;
+    avgRating: number;
+    totalViews: number;
+  };
+}
+
 const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = ({ allProducts, currentUser }) => {
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,13 +45,13 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
     const getRecommendations = async () => {
       try {
         if (currentUser) {
-          // Người dùng đã đăng nhập - gợi ý dựa trên lịch sử mua hàng và xem
-          const recommendations = await getPersonalizedRecommendations();
+          // Người dùng đã đăng nhập - gợi ý nâng cao với global trends
+          const recommendations = await getEnhancedPersonalizedRecommendations();
           setRecommendedProducts(recommendations);
         } else {
-          // Người dùng chưa đăng nhập - hiển thị sản phẩm tồn kho thấp
-          const lowStockProducts = getLowStockProducts();
-          setRecommendedProducts(lowStockProducts);
+          // Người dùng chưa đăng nhập - hiển thị trending products từ global analytics
+          const trendingProducts = await getGlobalTrendingProducts();
+          setRecommendedProducts(trendingProducts);
         }
       } catch (error) {
         console.error('Error getting recommendations:', error);
@@ -50,81 +66,131 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
     getRecommendations();
   }, [currentUser, allProducts]);
 
-  // Lấy gợi ý cá nhân hóa cho người dùng đã đăng nhập
-  const getPersonalizedRecommendations = async (): Promise<Product[]> => {
+  // Lấy sản phẩm ngẫu nhiên (fallback) - giới hạn 6 sản phẩm
+  const getRecentProducts = useCallback((): Product[] => {
+    const recentProducts = allProducts
+      .filter(product => (product.inStock ?? 0) > 0)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 6); // Limit to 6 products
+
+    return recentProducts.length > 0 ? recentProducts : [];
+  }, [allProducts]);
+
+  // Lấy sản phẩm trending toàn cầu (cho người dùng chưa đăng nhập)
+  const getGlobalTrendingProducts = useCallback(async (): Promise<Product[]> => {
     try {
-      // Lấy lịch sử xem từ database analytics
+      const globalTrendsResponse = await fetch('/api/analytics/global-trends?days=7&limit=15');
+      if (!globalTrendsResponse.ok) {
+        return getRecentProducts();
+      }
+
+      const globalTrendsData: GlobalTrendsData = (await globalTrendsResponse.json()).data;
+      const trendingProducts = globalTrendsData.trendingProducts || [];
+
+      // Map trending products to local products and limit to 6
+      const mappedProducts = trendingProducts
+        .map(trendingProduct => {
+          const localProduct = allProducts.find(p => p.id === trendingProduct.id);
+          return localProduct ? { ...localProduct, recommendationScore: trendingProduct.recommendationScore } : null;
+        })
+        .filter(Boolean)
+        .slice(0, 6) as Product[];
+
+      return mappedProducts.length > 0 ? mappedProducts : getRecentProducts();
+    } catch (error) {
+      console.error('Error fetching global trending products:', error);
+      return getRecentProducts();
+    }
+  }, [allProducts, getRecentProducts]);
+
+  // Lấy gợi ý nâng cao cho người dùng đã đăng nhập (sử dụng global trends + personal data)
+  const getEnhancedPersonalizedRecommendations = useCallback(async (): Promise<Product[]> => {
+    try {
+      // 1. Lấy global trends data
+      const globalTrendsResponse = await fetch('/api/analytics/global-trends?days=30&limit=20');
+      const globalTrendsData: GlobalTrendsData = globalTrendsResponse.ok
+        ? (await globalTrendsResponse.json()).data
+        : {
+            trendingProducts: [],
+            collaborativeFiltering: {},
+            categoryTrends: [],
+            period: { days: 30, startDate: '', endDate: '' },
+            metadata: { totalProducts: 0, avgRating: 0, totalViews: 0 }
+          };
+
+      // 2. Lấy lịch sử cá nhân
       const analyticsResponse = await fetch('/api/user/analytics');
       const analyticsData = analyticsResponse.ok ? await analyticsResponse.json() : { viewHistory: [] };
       const viewHistory: ViewHistory[] = analyticsData.viewHistory || [];
 
-      // Lấy lịch sử mua hàng từ API
+      // 3. Lấy lịch sử mua hàng
       const purchaseHistoryResponse = await fetch('/api/user/purchase-history');
       const purchaseHistory = purchaseHistoryResponse.ok ? await purchaseHistoryResponse.json() : [];
 
-      // Tạo danh sách danh mục và brand đã quan tâm
+      // 4. Tạo scoring system
+      const productScores = new Map<string, number>();
       const interestedCategories = new Set<string>();
       const interestedBrands = new Set<string>();
 
-      // Từ lịch sử xem (đã được filter 30 ngày trong API)
+      // 5. Score từ lịch sử xem cá nhân (weight: 3)
       viewHistory.forEach(item => {
         interestedCategories.add(item.category);
         interestedBrands.add(item.brand);
+        const currentScore = productScores.get(item.productId) || 0;
+        productScores.set(item.productId, currentScore + 3);
       });
 
-      // Từ lịch sử mua hàng
+      // 6. Score từ lịch sử mua hàng (weight: 5)
       purchaseHistory.forEach((order: any) => {
         order.products.forEach((product: any) => {
           interestedCategories.add(product.category);
-          interestedBrands.add(product.brand || 'Apple'); // Handle null brand
+          interestedBrands.add(product.brand || 'Apple');
+          const currentScore = productScores.get(product.id) || 0;
+          productScores.set(product.id, currentScore + 5);
         });
       });
 
-      // Lọc sản phẩm gợi ý
-      const recommendations = allProducts
-        .filter(product => {
-          // Lấy categoryId từ product
-          const productCategoryId = product.categoryId;
+      // 7. Score từ collaborative filtering (weight: 2)
+      viewHistory.forEach(item => {
+        const relatedProducts = globalTrendsData.collaborativeFiltering[item.productId] || [];
+        relatedProducts.forEach(relatedId => {
+          const currentScore = productScores.get(relatedId) || 0;
+          productScores.set(relatedId, currentScore + 2);
+        });
+      });
 
-          // Kiểm tra nếu categoryId có trong danh sách categories quan tâm
-          return interestedCategories.has(productCategoryId) || interestedBrands.has(product.brand || 'Apple');
-        })
+      // 8. Lọc và score sản phẩm
+      const scoredProducts = allProducts
         .filter(product => (product.inStock ?? 0) > 0) // Chỉ sản phẩm còn hàng
-        .sort((a, b) => {
-          // Ưu tiên sản phẩm mới
-          const dateA = new Date(a.createdAt);
-          const dateB = new Date(b.createdAt);
-          return dateB.getTime() - dateA.getTime();
-        })
-        .slice(0, 8);
+        .map(product => {
+          let score = 0;
 
-      return recommendations.length > 0 ? recommendations : getRecentProducts();
+          // Personal interest score
+          const personalScore = productScores.get(product.id) || 0;
+          score += personalScore;
+
+          // Category/brand interest score
+          if (interestedCategories.has(product.categoryId) || interestedBrands.has(product.brand || 'Apple')) {
+            score += 1;
+          }
+
+          // Global trending score (from global analytics)
+          const trendingProduct = globalTrendsData.trendingProducts.find(tp => tp.id === product.id);
+          if (trendingProduct) {
+            score += trendingProduct.recommendationScore * 0.1; // Scale down global score
+          }
+
+          return { ...product, recommendationScore: score };
+        })
+        .sort((a, b) => b.recommendationScore - a.recommendationScore)
+        .slice(0, 6); // Limit to 6 products
+
+      return scoredProducts.length > 0 ? scoredProducts : getRecentProducts();
     } catch (error) {
+      console.error('Error in enhanced recommendations:', error);
       return getRecentProducts();
     }
-  };
-
-  // Lấy sản phẩm tồn kho thấp (cho người dùng chưa đăng nhập)
-  const getLowStockProducts = (): Product[] => {
-    const lowStockProducts = allProducts
-      .filter(product => (product.inStock ?? 0) > 0 && (product.inStock ?? 0) <= 10) // Tồn kho <= 10
-      .sort((a, b) => (a.inStock ?? 0) - (b.inStock ?? 0)) // Sắp xếp theo tồn kho tăng dần
-      .slice(0, 8);
-
-    // Nếu không có sản phẩm tồn kho thấp, lấy sản phẩm ngẫu nhiên
-    return lowStockProducts.length > 0 ? lowStockProducts : getRecentProducts();
-  };
-
-  // Lấy sản phẩm ngẫu nhiên (fallback)
-
-  const getRecentProducts = (): Product[] => {
-    const recentProducts = allProducts
-      .filter(product => (product.inStock ?? 0) > 0)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 8);
-
-    return recentProducts.length > 0 ? recentProducts : [];
-  };
+  }, [allProducts, getRecentProducts]);
 
   if (loading) {
     return (
@@ -132,8 +198,8 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         <div className='xl:px-[50px]'>
           <div className='animate-pulse'>
             <div className='h-8 bg-gray-200 rounded w-64 mb-6'></div>
-            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-8'>
-              {[...Array(8)].map((_, index) => (
+            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-8'>
+              {[...Array(6)].map((_, index) => (
                 <div key={index} className='bg-gray-200 h-64 rounded'></div>
               ))}
             </div>
@@ -219,16 +285,16 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
             <Swiper
               modules={[Navigation, Autoplay]}
               spaceBetween={10}
-              slidesPerView={5}
+              slidesPerView={6}
               navigation={{
                 nextEl: '.swiper-button-next-recommendations',
                 prevEl: '.swiper-button-prev-recommendations'
               }}
               autoplay={{
-                delay: 3000,
+                delay: 3500,
                 disableOnInteraction: false
               }}
-              loop={recommendedProducts.length > 5}
+              loop={recommendedProducts.length > 4}
               breakpoints={{
                 320: {
                   slidesPerView: 1,
@@ -248,6 +314,10 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
                 },
                 1280: {
                   slidesPerView: 5,
+                  spaceBetween: 10
+                },
+                1536: {
+                  slidesPerView: 6,
                   spaceBetween: 10
                 }
               }}

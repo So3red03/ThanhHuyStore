@@ -35,6 +35,7 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-orders/kanban': 'Kanban Đơn hàng',
   '/admin/manage-returns': 'Quản lý đổi/trả hàng',
   '/admin/manage-users': 'Quản lý người dùng',
+  '/admin/manage-staff': 'Quản lý nhân viên',
   '/admin/manage-categories': 'Quản lý danh mục cha',
   '/admin/manage-childCategories': 'Quản lý danh mục con',
   '/admin/manage-banner': 'Quản lý slider',
@@ -42,6 +43,7 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-articlesCategory': 'Quản lý danh mục',
   '/admin/manage-vouchers': 'Quản lý Voucher',
   '/admin/manage-promotions': 'Quản lý Promotion',
+  '/admin/discord-test': 'Discord Test',
   '/admin/news-dashboard': 'Phân tích',
   '/admin/settings': 'Cài đặt hệ thống'
 };

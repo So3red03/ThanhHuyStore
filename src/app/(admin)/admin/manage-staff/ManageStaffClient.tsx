@@ -1,6 +1,6 @@
 'use client';
 
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 // import { User } from '@prisma/client';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -15,9 +15,9 @@ import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Button as MuiButton, Chip } from '@mui/material';
+import { Button as MuiButton } from '@mui/material';
 import AddUserModal from '../manage-users/AddUserModal';
-import { hasPermission, getRoleDisplayName } from '@/app/utils/admin/permissionUtils';
+import { hasPermission } from '@/app/utils/admin/permissionUtils';
 import { PERMISSIONS } from '@/app/utils/admin/permissions';
 
 interface ManageStaffClientProps {
@@ -37,6 +37,17 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
   const canUpdateStaff = hasPermission(currentUser?.role || 'USER', PERMISSIONS.STAFF_UPDATE);
   const canDeleteStaff = hasPermission(currentUser?.role || 'USER', PERMISSIONS.STAFF_DELETE);
   const canViewStaff = hasPermission(currentUser?.role || 'USER', PERMISSIONS.STAFF_VIEW);
+
+  // Calculate statistics
+  const totalStaff = staffUsers.length;
+  const adminStaff = staffUsers.filter(user => user.role === 'ADMIN').length;
+  const regularStaff = staffUsers.filter(user => user.role === 'STAFF').length;
+  const recentStaff = staffUsers.filter(user => {
+    const userDate = new Date(user.createAt);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return userDate >= weekAgo;
+  }).length;
 
   const handleDelete = async (id: string) => {
     setIsDelete(false);
@@ -118,37 +129,25 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
         );
       }
     },
-    { field: 'email', headerName: 'Email', width: 200 },
+    { field: 'email', headerName: 'Email', width: 210 },
     {
       field: 'role',
       headerName: 'Vai trò',
-      width: 120,
+      width: 90,
       renderCell: params => {
-        const roleColor = params.row.role === 'ADMIN' ? 'error' : 'primary';
-        return <Chip label={getRoleDisplayName(params.row.role)} color={roleColor} size='small' variant='outlined' />;
-      }
-    },
-    { field: 'phoneNumber', headerName: 'Số điện thoại', width: 140 },
-    {
-      field: 'emailVerified',
-      headerName: 'Email xác thực',
-      width: 120,
-      renderCell: params => {
-        return (
-          <Chip
-            label={params.row.emailVerified ? 'Đã xác thực' : 'Chưa xác thực'}
-            color={params.row.emailVerified ? 'success' : 'warning'}
-            size='small'
-            variant='outlined'
-          />
+        return params.row.role === 'ADMIN' ? (
+          <span className='bg-red-200 text-rose-500 text-xs font-semibold px-2 py-1 rounded-full mt-4'>ADMIN</span>
+        ) : (
+          <span className='bg-blue-200 text-blue-500 text-xs font-semibold px-2 py-1 rounded-full mt-4'>STAFF</span>
         );
       }
     },
-    { field: 'createAt', headerName: 'Ngày tạo', width: 150 },
-    { field: 'lastLogin', headerName: 'Đăng nhập cuối', width: 150 },
+    { field: 'createAt', headerName: 'Ngày tạo', width: 200 },
+    { field: 'updateAt', headerName: 'Ngày cập nhật', width: 200 },
+    { field: 'lastLogin', headerName: 'Lần cuối đăng nhập', width: 200 },
     {
       field: 'action',
-      headerName: 'Thao tác',
+      headerName: '',
       width: 180,
       renderCell: params => {
         return (
@@ -182,24 +181,89 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
     }
   ];
 
+  const stats = [
+    {
+      title: 'Tổng nhân viên',
+      count: totalStaff.toLocaleString(),
+      change: '+12%',
+      description: 'Tổng số nhân viên trong hệ thống',
+      icon: 'fa fa-user',
+      iconColor: 'text-blue-500',
+      changeColor: 'text-green-500'
+    },
+    {
+      title: 'Quản trị viên',
+      count: adminStaff.toLocaleString(),
+      change: '+5%',
+      description: 'Số lượng quản trị viên',
+      icon: 'ri-user-add-line',
+      iconColor: 'text-red-500',
+      changeColor: 'text-green-500'
+    },
+    {
+      title: 'Nhân viên',
+      count: regularStaff.toLocaleString(),
+      change: '+8%',
+      description: 'Số lượng nhân viên thường',
+      icon: 'ri-user-follow-line',
+      iconColor: 'text-green-500',
+      changeColor: 'text-green-500'
+    },
+    {
+      title: 'Nhân viên mới',
+      count: recentStaff.toLocaleString(),
+      change: '+15%',
+      description: 'Nhân viên được thêm trong 7 ngày qua',
+      icon: 'ri-user-search-line',
+      iconColor: 'text-yellow-500',
+      changeColor: 'text-green-500'
+    }
+  ];
+
   return (
-    <div className='max-w-[1150px] m-auto text-xl'>
-      <div className='mb-4 mt-8'>
-        <div className='flex items-center justify-between mb-4'>
-          <h1 className='text-2xl font-bold text-slate-700'>Quản lý nhân viên</h1>
+    <>
+      <div className='w-[78.5vw] m-auto text-xl mt-6'>
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-3 pr-0 border border-r-0 border-gray-200 rounded-lg'>
+          {stats.map((stat, index) => (
+            <div
+              key={index}
+              className='bg-white p-4 border-r border-r-gray-200 border-b border-b-gray-200 md:border-b-0'
+            >
+              <div className='flex justify-between'>
+                <div className='flex flex-col gap-y-2'>
+                  <h5 className='text-gray-500 text-sm'>{stat.title}</h5>
+                  <div className='text-2xl'>
+                    {stat.count}
+                    <span className={`ml-2 text-base font-medium ${stat.changeColor}`}>{stat.change}</span>
+                  </div>
+                  <p className='text-gray-400 text-sm'>{stat.description}</p>
+                </div>
+                <div
+                  className={`flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 ${stat.iconColor}`}
+                >
+                  <i className={`${stat.icon} text-2xl`} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Header with Add Staff Button */}
+        <div className='mb-4 mt-5 flex justify-between items-center'>
+          <h2 className='text-xl font-semibold text-gray-800'>Quản lý nhân viên</h2>
           {canCreateStaff && (
             <MuiButton
               variant='contained'
               startIcon={<MdPersonAdd />}
-              onClick={() => {
-                setEditStaffData(null);
-                setAddStaffModalOpen(true);
-              }}
+              onClick={() => setAddStaffModalOpen(true)}
               sx={{
-                backgroundColor: '#2563eb',
-                '&:hover': {
-                  backgroundColor: '#1d4ed8'
-                }
+                backgroundColor: '#3b82f6',
+                '&:hover': { backgroundColor: '#2563eb' },
+                borderRadius: '12px',
+                px: 3,
+                py: 1.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
               }}
             >
               Thêm nhân viên
@@ -207,24 +271,49 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
           )}
         </div>
 
-        {staffUsers && staffUsers.length > 0 ? (
-          <div style={{ height: 600, width: '100%' }}>
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              initialState={{
-                pagination: {
-                  paginationModel: { page: 0, pageSize: 10 }
-                }
-              }}
-              pageSizeOptions={[5, 10, 20]}
-              checkboxSelection={false}
-              disableRowSelectionOnClick
-            />
-          </div>
-        ) : (
-          <NullData title='Không có nhân viên nào' />
-        )}
+        <div className='h-[600px] w-full'>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            className='py-5'
+            initialState={{
+              pagination: {
+                paginationModel: { page: 0, pageSize: 10 }
+              }
+            }}
+            slots={{ toolbar: GridToolbar }}
+            slotProps={{
+              toolbar: {
+                showQuickFilter: true,
+                quickFilterProps: { debounceMs: 500 }
+              }
+            }}
+            pageSizeOptions={[10, 20, 30]}
+            checkboxSelection
+            disableRowSelectionOnClick
+            disableColumnFilter
+            disableDensitySelector
+            disableColumnSelector
+            sx={{
+              border: '1px solid #e5e7eb',
+              borderRadius: 2,
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #e5e7eb'
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f8fafc', // slate-50
+                borderBottom: '1px solid #e2e8f0'
+              },
+              '& .MuiDataGrid-toolbarContainer': {
+                flexDirection: 'row-reverse',
+                padding: '15px'
+              },
+              '& .MuiDataGrid-columnHeaderRow': {
+                backgroundColor: '#f6f7fb'
+              }
+            }}
+          />
+        </div>
       </div>
 
       {/* Add/Edit Staff Modal */}
@@ -245,7 +334,7 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
           <p>{`Bạn có chắc chắn muốn xóa nhân viên "${selectedUser?.name}"? Hành động này không thể hoàn tác.`}</p>
         </div>
       </ConfirmDialog>
-    </div>
+    </>
   );
 };
 

@@ -20,7 +20,6 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
   const { isHydrated } = useHydration();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [gender, setGender] = useState<string | null>(null);
   const [shippingFeeCheck, setShippingFeeCheck] = useState(0);
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
@@ -114,23 +113,12 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
       return;
     }
 
-    // Validate gender
-    if (!gender) {
-      toast.error('Vui lòng chọn giới tính!');
-      setIsLoading(false);
-      return;
-    }
-
-    // Đảm bảo rằng giá trị shippingFee, gender được cập nhật trước khi submit
-    setCustomValue('gender', gender);
-
     // Kiểm tra tính hợp lệ của form
     setTimeout(() => {
       handleSubmit(
         data => {
           const subData = {
             ...data,
-            gender: gender,
             city: provinceName,
             district: districtName,
             ward: wardName
@@ -160,32 +148,6 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
     <div className='w-full bg-white p-2 mt-4'>
       {/* Thông tin khách hàng */}
       <h2 className='text-lg font-semibold mb-4'>Thông tin khách mua hàng</h2>
-      <div className='flex items-center mb-4'>
-        <div className='flex items-center mr-4'>
-          <input
-            type='radio'
-            id='male'
-            name='gender'
-            value='male'
-            className='mr-2'
-            checked={gender === 'male'}
-            onChange={e => setGender(e.target.value)}
-          />
-          <label htmlFor='male'>Anh</label>
-        </div>
-        <div className='flex items-center'>
-          <input
-            type='radio'
-            id='female'
-            name='gender'
-            value='female'
-            className='mr-2'
-            checked={gender === 'female'}
-            onChange={e => setGender(e.target.value)}
-          />
-          <label htmlFor='female'>Chị</label>
-        </div>
-      </div>
       <div className='flex flex-col lg:flex-row gap-4 mb-8 lg:col-span-2'>
         <Input
           id='name'
@@ -205,10 +167,6 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
               // Auto-fill phone if available
               if (currentUser.phoneNumber) {
                 setValue('phone', currentUser.phoneNumber);
-              }
-              // Set default gender
-              if (!gender) {
-                setGender('male');
               }
             }
           }}
@@ -232,10 +190,6 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
 
       {/* Chọn cách nhận hàng */}
       <h2 className='text-lg font-semibold my-4'>Chọn cách nhận hàng</h2>
-      {/* <div className='my-2'>
-        <input type='radio' id='delivery' name='deliveryMethod' value='delivery' className='mr-2' />
-        <label htmlFor='delivery'>Giao hàng tận nơi</label>
-      </div> */}
       <div className='bg-[#ececec] p-4 mb-6 rounded-md'>
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4'>
           <div>
@@ -314,10 +268,6 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
         errors={errors}
         className='!max-h-[80px] !min-h-[80px]'
       />
-      {/* <div className="flex items-center my-4">
-				<input type="checkbox" id="invoice" name="invoice" className="mr-2" />
-				<label htmlFor="invoice">Xuất hóa đơn cho đơn hàng</label>
-			</div> */}
 
       {/* Dịch vụ giao hàng */}
       <h2 className='text-lg font-semibold my-4'>Dịch vụ giao hàng</h2>

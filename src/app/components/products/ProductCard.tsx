@@ -129,13 +129,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
     if (!product) return;
 
     try {
-      // Track product view analytics only
+      // Track product view analytics only - upsert will prevent duplicates
       trackProductInteraction(product.id, {
         productName: product.name,
-        category: product.category,
+        category: product.categoryId || product.category, // Use categoryId for consistency
+        brand: product.brand || 'Unknown',
         price: product.price,
         clickSource: 'ProductCard',
-        interactionType: 'view'
+        interactionType: 'click', // Distinguish from page view
+        productType: product.type || 'simple',
+        inStock: product.inStock
       });
     } catch (error) {
       console.error('Error tracking product view:', error);

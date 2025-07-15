@@ -463,8 +463,8 @@ export async function POST(request: NextRequest) {
 
       // Send notifications (Discord only, email handled by process-payment)
       try {
-        await sendOrderDiscordNotification(orderData, currentUser);
-        await updateUserPurchasedCategories(currentUser.id, orderData.products);
+        await sendOrderDiscordNotification(createdOrder, currentUser);
+        await updateUserPurchasedCategories(currentUser.id, createdOrder.products);
         await createAdminOrderNotifications(createdOrder, currentUser);
       } catch (error) {
         console.error('Error sending notifications:', error);
@@ -524,8 +524,8 @@ export async function POST(request: NextRequest) {
 
       // Send notifications (Discord only, email handled by process-payment)
       try {
-        await sendOrderDiscordNotification(orderData, currentUser);
-        await updateUserPurchasedCategories(currentUser.id, orderData.products);
+        await sendOrderDiscordNotification(createdOrder, currentUser);
+        await updateUserPurchasedCategories(currentUser.id, createdOrder.products);
       } catch (error) {
         console.error('Error sending notifications:', error);
       }

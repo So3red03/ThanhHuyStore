@@ -55,12 +55,16 @@ export const MenuItems = [
           ]
         },
         {
-          title: 'Người dùng',
+          title: 'Tài khoản',
           icon: MdSupervisedUserCircle,
           list: [
             {
-              title: 'Danh sách',
+              title: 'Khách hàng',
               path: '/admin/manage-users'
+            },
+            {
+              title: 'Nhân viên',
+              path: '/admin/manage-staff'
             }
           ]
         },
@@ -122,19 +126,19 @@ export const MenuItems = [
         }
       ]
     }
+  },
+  {
+    title: 'Khác',
+    subItem: {
+      title: 'Khác',
+      icon: MdOutlineSettings,
+      list: [
+        {
+          title: '🧪 Discord Test',
+          path: '/admin/discord-test',
+          icon: MdBugReport
+        }
+      ]
+    }
   }
-  // {
-  //   title: 'Khác',
-  //   subItem: {
-  //     title: 'Khác',
-  //     icon: MdOutlineSettings,
-  //     list: [
-  //       {
-  //         title: '🧪 Test Features',
-  //         path: '/admin/test-features',
-  //         icon: MdBugReport
-  //       }
-  //     ]
-  //   }
-  // }
 ];

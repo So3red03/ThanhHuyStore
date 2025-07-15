@@ -440,12 +440,15 @@ model AnalyticsEvent {
   referrer    String?
   path        String
   timestamp   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   user        User?     @relation(fields: [userId], references: [id])
 
   @@index([eventType])
   @@index([timestamp])
   @@index([userId])
+  @@index([entityId])
+  @@unique([userId, entityId, eventType], name: "user_entity_event_unique")
 }
 
 enum EventType {

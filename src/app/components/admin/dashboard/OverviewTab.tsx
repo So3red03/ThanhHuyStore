@@ -138,7 +138,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   const filteredClient = filteredData.users.filter(user => user.role === 'USER') || [];
 
   // Calculate cancelled orders metrics
-  const cancelledOrders = filteredData.orders.filter(order => order.status === 'cancelled') || [];
+  const cancelledOrders = filteredData.orders.filter(order => order.status === 'canceled') || [];
   const cancelledOrdersCount = cancelledOrders.length;
   const cancelledRevenue = cancelledOrders.reduce((total, order) => total + (order.amount || 0), 0);
 
