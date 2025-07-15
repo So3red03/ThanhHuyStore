@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   Card,
@@ -13,7 +14,16 @@ import {
   InputLabel,
   Grid
 } from '@mui/material';
-import { MdRefresh, MdDateRange, MdVisibility, MdArticle } from 'react-icons/md';
+import {
+  MdRefresh,
+  MdDateRange,
+  MdVisibility,
+  MdArticle,
+  MdEmail,
+  MdSend,
+  MdTrendingUp,
+  MdPeople
+} from 'react-icons/md';
 import { useAnalyticsOverview, useProductAnalytics, useArticleAnalytics } from '@/app/hooks/useAnalytics';
 import AnalyticsTrendChart from '../../analytics/AnalyticsTrendChart';
 import TopProductsTable from '../../analytics/TopProductsTable';
@@ -24,6 +34,8 @@ interface AnalyticsTabProps {
 }
 
 const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ onRefresh }) => {
+  const router = useRouter();
+
   // State for time filter
   const [timeFilter, setTimeFilter] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -205,6 +217,108 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ onRefresh }) => {
           )}
         </div>
       </div>
+
+      {/* Marketing Action Card */}
+      <Box sx={{ mt: 4, mb: 4 }}>
+        <Card
+          sx={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            position: 'relative',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: '200px',
+              height: '200px',
+              background: 'rgba(255,255,255,0.1)',
+              borderRadius: '50%',
+              transform: 'translate(50%, -50%)'
+            }
+          }}
+        >
+          <CardContent sx={{ p: 4, position: 'relative', zIndex: 1 }}>
+            <Grid container spacing={3} alignItems='center'>
+              <Grid item xs={12} md={8}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                  <Box
+                    sx={{
+                      backgroundColor: 'rgba(255,255,255,0.2)',
+                      borderRadius: '12px',
+                      p: 1.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <MdEmail size={24} />
+                  </Box>
+                  <Typography variant='h5' sx={{ fontWeight: 700 }}>
+                    Email Marketing
+                  </Typography>
+                </Box>
+
+                <Typography variant='body1' sx={{ mb: 2, opacity: 0.9 }}>
+                  Tăng doanh số bằng cách gửi email thông báo sản phẩm mới đến khách hàng đã quan tâm
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 3, mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <MdTrendingUp size={18} />
+                    <Typography variant='body2' sx={{ opacity: 0.9 }}>
+                      Tăng conversion rate
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <MdPeople size={18} />
+                    <Typography variant='body2' sx={{ opacity: 0.9 }}>
+                      Targeting thông minh
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} md={4} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
+                <Button
+                  variant='contained'
+                  size='large'
+                  onClick={() => {
+                    router.push('/admin/manage-products?openEmailModal=true');
+                  }}
+                  startIcon={<MdSend />}
+                  sx={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    borderRadius: '12px',
+                    px: 3,
+                    py: 1.5,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.3)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 25px rgba(0,0,0,0.2)'
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                >
+                  Gửi Email Marketing
+                </Button>
+
+                <Typography variant='caption' sx={{ display: 'block', mt: 1, opacity: 0.8 }}>
+                  Chọn sản phẩm và khách hàng để gửi
+                </Typography>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      </Box>
 
       {/* Loading States */}
       {(overviewLoading || productLoading || articleLoading) && (

@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
             id: product.id,
             name: product.name,
             category: product.category || 'Không có danh mục',
-            thumbnail: product.thumbnail,
+            thumbnail: product.thumbnail || product.selectedImg || null,
             price: product.price,
             firstPurchased: order.createdAt,
             totalQuantity: product.quantity

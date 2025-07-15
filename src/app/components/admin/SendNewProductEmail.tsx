@@ -1372,7 +1372,18 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                           component='img'
                           src={product.thumbnail || '/noavatar.png'}
                           alt={product.name}
-                          sx={{ width: 60, height: 60, borderRadius: '8px', objectFit: 'cover' }}
+                          onError={e => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/noavatar.png';
+                          }}
+                          sx={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: '8px',
+                            objectFit: 'cover',
+                            backgroundColor: '#f3f4f6',
+                            border: '1px solid #e5e7eb'
+                          }}
                         />
                         <Box sx={{ flex: 1 }}>
                           <Typography variant='subtitle2' sx={{ fontWeight: 600, mb: 0.5 }}>

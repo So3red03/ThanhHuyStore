@@ -6,7 +6,7 @@ import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { formatPrice } from '../../../../../utils/formatPrice';
 import { MdCached, MdClose, MdDelete, MdDone, MdEdit, MdRefresh } from 'react-icons/md';
 // TODO: Add back when soft delete is implemented: MdRestore, MdVisibility
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { deleteObject, getStorage, ref } from 'firebase/storage';
 import { SafeUser } from '../../../../../types';
 import ActionBtn from '@/app/components/ActionBtn';
@@ -46,6 +46,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   parentCategories
 }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const storage = getStorage(firebase);
   const [isOpen, setIsOpen] = useState(false);
   const [isDelete, setIsDelete] = useState(false);
@@ -436,6 +437,20 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     }
   }, [currentUser, router]);
 
+  // Check for openEmailModal query parameter
+  useEffect(() => {
+    if (searchParams) {
+      const openEmailModal = searchParams.get('openEmailModal');
+      if (openEmailModal === 'true') {
+        setShowEmailModal(true);
+        // Clean up URL without triggering navigation
+        const url = new URL(window.location.href);
+        url.searchParams.delete('openEmailModal');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [searchParams]);
+
   if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
     return <NullData title='Từ chối đăng nhập' />;
   }
@@ -649,7 +664,13 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       />
 
       {/* Email Marketing Modal */}
-      {showEmailModal && <SendNewProductEmail products={currentProducts} onClose={() => setShowEmailModal(false)} />}
+      {showEmailModal && (
+        <SendNewProductEmail
+          products={currentProducts}
+          onClose={() => setShowEmailModal(false)}
+          open={showEmailModal}
+        />
+      )}
     </>
   );
 };
