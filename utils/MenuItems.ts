@@ -55,12 +55,16 @@ export const MenuItems = [
           ]
         },
         {
-          title: 'Người dùng',
+          title: 'Tài khoản',
           icon: MdSupervisedUserCircle,
           list: [
             {
-              title: 'Danh sách',
+              title: 'Khách hàng',
               path: '/admin/manage-users'
+            },
+            {
+              title: 'Nhân viên',
+              path: '/admin/manage-staff'
             }
           ]
         },

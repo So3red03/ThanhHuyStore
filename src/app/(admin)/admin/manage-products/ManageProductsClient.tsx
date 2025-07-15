@@ -17,7 +17,7 @@ import firebase from '../../../libs/firebase';
 import 'moment/locale/vi';
 import NullData from '@/app/components/NullData';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import SendNewProductEmail from '@/app/components/admin/SendNewProductEmail';
 import Image from 'next/image';
 import { Rating, Button as MuiButton, CircularProgress } from '@mui/material';
@@ -30,7 +30,6 @@ import * as MdIcons from 'react-icons/md';
 import Link from 'next/link';
 import { slugConvert } from '../../../../../utils/Slug';
 import AddProductModalNew from './AddProductModalNew';
-import { useState } from 'react';
 import { set } from 'nprogress';
 
 interface ManageProductsClientProps {
@@ -62,6 +61,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [currentProducts, setCurrentProducts] = useState(products);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   const [text, setText] = useState('');
   const {
@@ -507,32 +507,42 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
             </div>
           ))}
         </div>
-        <div className='mb-4 mt-5'>
-          <SendNewProductEmail products={products} />
-        </div>
-
-        {/* Header with Add Product Button */}
+        {/* Header with Add Product Button and Email Marketing */}
         <div className='mb-4 mt-5 flex justify-between items-center'>
           <h2 className='text-xl font-semibold text-gray-800'>Danh sách sản phẩm</h2>
-          <div className='flex gap-3 items-center'>
+          <div className='flex gap-3'>
             <MuiButton
-              variant='contained'
-              startIcon={<MdAdd />}
-              onClick={() => setAddProductModalOpen(true)}
+              onClick={() => setShowEmailModal(true)}
+              startIcon={<FaRegEnvelope />}
+              variant='outlined'
               sx={{
-                backgroundColor: '#3b82f6',
-                '&:hover': { backgroundColor: '#2563eb' },
-                borderRadius: '12px',
-                px: 3,
-                py: 1.5,
                 textTransform: 'none',
                 fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                borderColor: '#3b82f6',
+                color: '#3b82f6',
+                '&:hover': {
+                  borderColor: '#2563eb',
+                  backgroundColor: '#eff6ff'
+                }
+              }}
+            >
+              Email Marketing
+            </MuiButton>
+            <MuiButton
+              onClick={() => setAddProductModalOpen(true)}
+              startIcon={<MdAdd />}
+              variant='contained'
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                backgroundColor: '#3b82f6',
+                '&:hover': {
+                  backgroundColor: '#2563eb'
+                }
               }}
             >
               Thêm sản phẩm
             </MuiButton>
-
             <MuiButton
               variant='contained'
               startIcon={isRefreshing ? <CircularProgress size={16} color='inherit' /> : <MdRefresh />}
@@ -637,6 +647,9 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         parentCategories={parentCategories}
         subCategories={subCategories}
       />
+
+      {/* Email Marketing Modal */}
+      {showEmailModal && <SendNewProductEmail products={currentProducts} onClose={() => setShowEmailModal(false)} />}
     </>
   );
 };

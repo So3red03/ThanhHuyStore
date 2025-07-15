@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useSidebar } from '@/app/providers/SidebarProvider';
 import { redressed } from '../../theme/adminTheme';
 import { useSession } from 'next-auth/react';
-import { MenuItems } from '@/app/utils/MenuItems';
+import { MenuItems } from '../../../../utils/MenuItems';
 import { signOut } from 'next-auth/react';
 
 /**

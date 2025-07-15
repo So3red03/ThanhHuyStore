@@ -132,8 +132,8 @@ export const sendOrderDiscordNotification = async (orderData: any, currentUser: 
 // Unified function to update user purchased categories
 export const updateUserPurchasedCategories = async (userId: string, products: any[]) => {
   try {
-    // Lấy danh mục từ các sản phẩm đã mua
-    const categories = products.map(product => product.category);
+    // Lấy danh mục từ các sản phẩm đã mua (lấy category.id thay vì category object)
+    const categories = products.map(product => product.category?.id || product.categoryId).filter(Boolean);
     const uniqueCategories = [...new Set(categories)];
 
     // Lấy danh mục đã mua trước đó của user

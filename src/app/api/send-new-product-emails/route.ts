@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { productId } = body;
+    const { productId, timeframe = 'all' } = body;
 
     if (!productId) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
@@ -29,13 +29,55 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    // Lấy danh sách user đã từng mua sản phẩm trong cùng danh mục
+    // Tính toán thời gian filter dựa trên timeframe
+    let timeFilter = {};
+    if (timeframe !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date;
+
+      switch (timeframe) {
+        case 'recent':
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 30);
+          endDate = now;
+          break;
+        case 'medium':
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 90);
+          endDate = new Date(now);
+          endDate.setDate(endDate.getDate() - 30);
+          break;
+        case 'older':
+          endDate = new Date(now);
+          endDate.setDate(endDate.getDate() - 90);
+          startDate = new Date('2020-01-01'); // Ngày rất xa trong quá khứ
+          break;
+        default:
+          startDate = new Date('2020-01-01');
+          endDate = now;
+      }
+
+      timeFilter = {
+        orders: {
+          some: {
+            createdAt: {
+              gte: startDate,
+              lte: endDate
+            }
+          }
+        }
+      };
+    }
+
+    // Lấy danh sách user đã từng mua sản phẩm trong cùng danh mục với filter thời gian
     const interestedUsers = await prisma.user.findMany({
       where: {
         purchasedCategories: {
-          has: product.category.name
+          has: product.category.id
         },
-        email: { not: '' }
+        email: { not: '' },
+        ...timeFilter
       },
       select: {
         id: true,
