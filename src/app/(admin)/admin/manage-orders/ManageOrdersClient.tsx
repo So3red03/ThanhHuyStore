@@ -394,7 +394,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
   }
   return (
     <>
-      <div className='w-[78.5vw] m-auto text-xl mt-6'>
+      <div className='w-full m-auto text-xl mt-6'>
         <div className='mb-4 mt-10 flex justify-between items-center'>
           <div></div>
           <div className='flex items-center gap-3'>

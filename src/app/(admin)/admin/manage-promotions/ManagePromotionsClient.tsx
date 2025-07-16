@@ -253,7 +253,7 @@ const ManagePromotionsClient: React.FC<ManagePromotionsClientProps> = ({
 
   if (!promotions || promotions.length === 0) {
     return (
-      <div className='w-[78.5vw] m-auto text-xl mt-6'>
+      <div className='w-full m-auto text-xl mt-6'>
         {/* Header */}
         <div className='px-6 py-5'>
           <div className='flex items-center justify-between mb-6'>
@@ -298,7 +298,7 @@ const ManagePromotionsClient: React.FC<ManagePromotionsClientProps> = ({
   }
 
   return (
-    <div className='w-[78.5vw] m-auto text-xl mt-6'>
+    <div className='w-full m-auto text-xl mt-6'>
       {/* Header */}
       <div className='px-6 py-5'>
         <div className='flex items-center justify-between mb-6'>

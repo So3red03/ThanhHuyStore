@@ -197,10 +197,10 @@ const ManageChildCategoriesClient: React.FC<ManageChildCategoriesClientProps> = 
 
   return (
     <>
-      <div className='w-[78.5vw] m-auto text-xl'>
+      <div className='w-full m-auto text-xl'>
         {/* Header with Add Child Category Button */}
         <div className='mb-4 mt-5 flex justify-between items-center'>
-          <h2 className='text-xl font-semibold text-gray-800'>Quản lý danh mục con</h2>
+          <h2 className='text-xl font-semibold text-gray-800'></h2>
           <MuiButton
             variant='contained'
             startIcon={<MdAdd />}

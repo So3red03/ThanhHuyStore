@@ -493,7 +493,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
   return (
     <>
-      <div className='w-[78.5vw] m-auto text-xl mt-6'>
+      <div className='w-full m-auto text-xl mt-6'>
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-3 pr-0 border border-r-0 border-gray-200 rounded-lg'>
           {stats.map((stat, index) => (
             <div
@@ -524,7 +524,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         </div>
         {/* Header with Add Product Button and Email Marketing */}
         <div className='mb-4 mt-5 flex justify-between items-center'>
-          <h2 className='text-xl font-semibold text-gray-800'>Danh sách sản phẩm</h2>
+          <h2 className='text-xl font-semibold text-gray-800'></h2>
           <div className='flex gap-3'>
             <MuiButton
               onClick={() => setShowEmailModal(true)}

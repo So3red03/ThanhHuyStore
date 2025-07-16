@@ -183,7 +183,7 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({
   }
 
   return (
-    <div className='w-[78.5vw] m-auto text-xl mt-6'>
+    <div className='w-full m-auto text-xl mt-6'>
       {/* Advanced Search Form */}
       <div>
         <div className='px-6 py-5'>

@@ -300,12 +300,12 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
 
   if (!vouchers || vouchers.length === 0) {
     return (
-      <div className='w-[78.5vw] m-auto text-xl mt-6'>
+      <div className='w-full m-auto text-xl mt-6'>
         {/* Header */}
         <div className='px-6 py-5'>
           <div className='flex items-center justify-between mb-6'>
             <div className='flex items-center gap-3'>
-              <h1 className='text-3xl font-bold text-gray-800'>🎫 Quản lý Voucher</h1>
+              <h1 className='text-3xl font-bold text-gray-800'>Hiện có</h1>
             </div>
             <div className='flex items-center gap-3'>
               <Button
@@ -340,7 +340,7 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
   }
 
   return (
-    <div className='w-[78.5vw] m-auto text-xl mt-6'>
+    <div className='w-full m-auto text-xl mt-6'>
       {/* Header */}
       <div className='px-6 py-5'>
         <div className='flex items-center justify-between mb-6'>
