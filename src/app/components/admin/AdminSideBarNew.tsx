@@ -1,30 +1,44 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Drawer, List, ListItemButton, ListItemIcon, ListItemText, Collapse, Typography, Box } from '@mui/material';
-import { MdLogout, MdExpandLess, MdExpandMore, MdOutlineSettings } from 'react-icons/md';
+import {
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Collapse,
+  Typography,
+  Box,
+  Menu,
+  MenuItem,
+  Divider,
+  Avatar
+} from '@mui/material';
+import { MdExpandLess, MdExpandMore, MdSettings, MdLogout, MdPerson, MdNotifications } from 'react-icons/md';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSidebar } from '@/app/providers/SidebarProvider';
 import { redressed } from '../../theme/adminTheme';
-import { useSession } from 'next-auth/react';
+
 import { MenuItems } from '../../../../utils/MenuItems';
 import { signOut } from 'next-auth/react';
+import { SafeUser } from '../../../../types';
+
+interface AdminSideBarNewProps {
+  currentUser?: SafeUser | null;
+}
 
 /**
  * Professional MUI-based AdminSideBar component
  * Replaces hand-coded sidebar with Material-UI Drawer and List components
  */
-const AdminSideBarNew = () => {
+const AdminSideBarNew: React.FC<AdminSideBarNewProps> = ({ currentUser }) => {
   const [openSubItems, setOpenSubItems] = useState<Record<string, boolean>>({});
+  const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(null);
   const router = useRouter();
   const pathname = usePathname();
   const { toggleSidebar, isOpen, isCollapsed } = useSidebar();
-  const { data: session } = useSession();
-
-  const handleSetting = () => {
-    router.push('/admin/settings');
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -36,6 +50,19 @@ const AdminSideBarNew = () => {
       ...prev,
       [title]: !prev[title]
     }));
+  };
+
+  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setProfileAnchorEl(event.currentTarget);
+  };
+
+  const handleProfileMenuClose = () => {
+    setProfileAnchorEl(null);
+  };
+
+  const handleSettings = () => {
+    router.push('/admin/settings');
+    handleProfileMenuClose();
   };
 
   // Drawer content
@@ -59,8 +86,6 @@ const AdminSideBarNew = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
           minHeight: '70px'
         }}
       >
@@ -99,39 +124,9 @@ const AdminSideBarNew = () => {
               >
                 THANHHUY STORE
               </Typography>
-              <Typography
-                variant='caption'
-                sx={{
-                  color: 'text.secondary',
-                  fontSize: '0.75rem',
-                  fontWeight: 500
-                }}
-              >
-                VND • BRAND-89X1
-              </Typography>
             </Box>
           )}
         </Box>
-
-        {/* Expand/Collapse Icon */}
-        {!isCollapsed && (
-          <Box
-            sx={{
-              width: 24,
-              height: 24,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: 'action.hover',
-                borderRadius: 1
-              }
-            }}
-          >
-            <MdExpandMore size={16} />
-          </Box>
-        )}
       </Box>
 
       {/* Navigation Menu */}
@@ -180,9 +175,15 @@ const AdminSideBarNew = () => {
               {section.items?.map(item => (
                 <Box key={item.title}>
                   <ListItemButton
-                    component={(item as any).path ? Link : 'div'}
-                    href={(item as any).path || '#'}
-                    onClick={(item as any).hasSubmenu ? () => toggleSubItem(item.title) : undefined}
+                    component={(item as any).path && !(item as any).hasSubmenu ? Link : 'div'}
+                    href={(item as any).path && !(item as any).hasSubmenu ? (item as any).path : undefined}
+                    onClick={
+                      (item as any).hasSubmenu
+                        ? () => toggleSubItem(item.title)
+                        : (item as any).action === 'logout'
+                        ? handleSignOut
+                        : undefined
+                    }
                     selected={pathname === (item as any).path}
                     sx={{
                       mx: 1,
@@ -321,157 +322,156 @@ const AdminSideBarNew = () => {
       </Box>
 
       {/* User Profile Footer */}
-      <Box sx={{ borderTop: '1px solid', borderColor: 'divider', p: 2 }}>
+      <Box sx={{ p: 2 }}>
         {!isCollapsed && (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-              p: 1.5,
-              borderRadius: 2,
-              backgroundColor: 'rgba(0, 0, 0, 0.02)',
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.04)'
-              }
-            }}
-          >
-            {/* User Avatar */}
+          <>
             <Box
+              onClick={handleProfileMenuOpen}
               sx={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #ff6b6b, #4ecdc4, #45b7d1)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontWeight: 'bold',
-                fontSize: '1rem'
-              }}
-            >
-              {session?.user?.name?.charAt(0)?.toUpperCase() || 'A'}
-            </Box>
-
-            {/* User Info */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                variant='body2'
-                sx={{
-                  fontWeight: 600,
-                  color: 'text.primary',
-                  fontSize: '0.875rem',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}
-              >
-                {session?.user?.name || 'Anh Tính'}
-              </Typography>
-              <Typography
-                variant='caption'
-                sx={{
-                  color: 'text.secondary',
-                  fontSize: '0.75rem',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}
-              >
-                {session?.user?.email || 'tinhiq94@gmail.com'}
-              </Typography>
-            </Box>
-
-            {/* Expand Icon */}
-            <Box sx={{ color: 'text.secondary' }}>
-              <MdExpandMore size={16} />
-            </Box>
-          </Box>
-        )}
-
-        {/* Action Buttons */}
-        <Box sx={{ mt: isCollapsed ? 0 : 2 }}>
-          <List sx={{ py: 0 }}>
-            <ListItemButton
-              onClick={handleSetting}
-              sx={{
-                mx: 0,
+                gap: 1.5,
+                p: 1.5,
                 borderRadius: 2,
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
-                px: isCollapsed ? 1 : 2,
-                py: 1,
+                backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                cursor: 'pointer',
                 '&:hover': {
                   backgroundColor: 'rgba(0, 0, 0, 0.04)'
                 }
               }}
-              title={isCollapsed ? 'Cài đặt' : undefined}
             >
-              <ListItemIcon
+              {/* User Avatar */}
+              <Avatar
+                src={currentUser?.image ?? '/no-avatar-2.jpg'}
+                alt={currentUser?.name ?? 'User'}
                 sx={{
-                  minWidth: isCollapsed ? 'auto' : 40,
-                  color: 'text.secondary',
-                  justifyContent: 'center'
+                  width: 40,
+                  height: 40,
+                  border: '2px solid rgba(255, 255, 255, 0.2)'
                 }}
-              >
-                <MdOutlineSettings size={20} />
-              </ListItemIcon>
-              {!isCollapsed && (
-                <ListItemText
-                  primary='Cài đặt'
+              />
+
+              {/* User Info */}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  variant='body2'
                   sx={{
-                    '& .MuiListItemText-primary': {
-                      fontSize: '0.875rem',
-                      fontWeight: 500
-                    }
+                    fontWeight: 600,
+                    color: 'text.primary',
+                    fontSize: '0.875rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
                   }}
-                />
-              )}
-            </ListItemButton>
-            <ListItemButton
-              onClick={handleSignOut}
-              sx={{
-                mx: 0,
-                borderRadius: 2,
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
-                px: isCollapsed ? 1 : 2,
-                py: 1,
-                '&:hover': {
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                  '& .MuiListItemIcon-root': {
-                    color: 'error.main'
-                  },
-                  '& .MuiListItemText-primary': {
-                    color: 'error.main'
+                >
+                  {currentUser?.name || 'Unknow'}
+                </Typography>
+                <Typography
+                  variant='caption'
+                  sx={{
+                    color: 'text.secondary',
+                    fontSize: '0.75rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {currentUser?.email || 'Unknow'}
+                </Typography>
+              </Box>
+
+              {/* Expand Icon */}
+              <Box sx={{ color: 'text.secondary' }}>
+                <MdExpandMore size={16} />
+              </Box>
+            </Box>
+
+            {/* Profile Dropdown Menu */}
+            <Menu
+              anchorEl={profileAnchorEl}
+              open={Boolean(profileAnchorEl)}
+              onClose={handleProfileMenuClose}
+              anchorOrigin={{
+                vertical: 'top',
+                horizontal: 'right'
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right'
+              }}
+              sx={{ left: '225px' }}
+              slotProps={{
+                paper: {
+                  sx: {
+                    width: 280,
+                    mt: 1,
+                    borderRadius: 2,
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
                   }
                 }
               }}
-              title={isCollapsed ? 'Đăng xuất' : undefined}
             >
-              <ListItemIcon
+              {/* User Info Header */}
+              <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Avatar
+                    src={currentUser?.image ?? '/no-avatar-2.jpg'}
+                    alt={currentUser?.name ?? 'User'}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      border: '2px solid rgba(255, 255, 255, 0.2)'
+                    }}
+                  />
+                  <Box>
+                    <Typography variant='body2' fontWeight={600}>
+                      {currentUser?.name || 'Unknow'}
+                    </Typography>
+                    <Typography variant='caption' color='text.secondary'>
+                      {currentUser?.email || 'Unknow'}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* Menu Items */}
+              <MenuItem onClick={handleSettings} sx={{ py: 1.5 }}>
+                <ListItemIcon>
+                  <MdSettings size={20} />
+                </ListItemIcon>
+                <ListItemText primary='Cài đặt tài khoản' />
+              </MenuItem>
+
+              <MenuItem onClick={() => router.push('/admin/notifications')} sx={{ py: 1.5 }}>
+                <ListItemIcon>
+                  <MdNotifications size={20} />
+                </ListItemIcon>
+                <ListItemText primary='Thông báo' />
+              </MenuItem>
+
+              <Divider />
+
+              <MenuItem
+                onClick={() => {
+                  handleSignOut();
+                  handleProfileMenuClose();
+                }}
                 sx={{
-                  minWidth: isCollapsed ? 'auto' : 40,
-                  color: 'text.secondary',
-                  justifyContent: 'center'
+                  py: 1.5,
+                  color: 'error.main',
+                  '&:hover': {
+                    backgroundColor: 'error.50'
+                  }
                 }}
               >
-                <MdLogout size={20} />
-              </ListItemIcon>
-              {!isCollapsed && (
-                <ListItemText
-                  primary='Đăng xuất'
-                  sx={{
-                    '& .MuiListItemText-primary': {
-                      fontSize: '0.875rem',
-                      fontWeight: 500
-                    }
-                  }}
-                />
-              )}
-            </ListItemButton>
-          </List>
-        </Box>
+                <ListItemIcon>
+                  <MdLogout size={20} color='inherit' />
+                </ListItemIcon>
+                <ListItemText primary='Đăng xuất' />
+              </MenuItem>
+            </Menu>
+          </>
+        )}
       </Box>
     </Box>
   );
@@ -521,7 +521,7 @@ const AdminSideBarNew = () => {
             zIndex: { xs: 1300, xl: 1200 },
             // Remove default border and add custom styling
             border: 'none',
-            backgroundColor: '#ffffff',
+            backgroundColor: '#ffffff', // white background
             boxShadow: {
               xs: '0 8px 32px rgba(0, 0, 0, 0.12)',
               xl: '2px 0 8px rgba(0, 0, 0, 0.1)'

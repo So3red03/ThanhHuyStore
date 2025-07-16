@@ -1,29 +1,19 @@
 import {
-  MdCategory,
-  MdChat,
-  MdCropOriginal,
-  MdDashboard,
-  MdDns,
   MdFormatListBulleted,
   MdOutlineChat,
-  MdOutlineContentPasteSearch,
   MdOutlineDeveloperBoard,
   MdOutlineFeed,
-  MdOutlineGridView,
   MdOutlineHome,
   MdSupervisedUserCircle,
   MdLocalOffer,
-  MdCardGiftcard,
   MdOutlineSettings,
-  MdAssignmentReturn,
-  MdBugReport
+  MdLogout
 } from 'react-icons/md';
-import { BiCategory, BiNews, BiSolidCategory } from 'react-icons/bi';
-import { CiViewList } from 'react-icons/ci';
+import { BiSolidCategory } from 'react-icons/bi';
 
 export const MenuItems = [
   {
-    title: 'General',
+    title: 'Chung',
     items: [
       {
         title: 'Trang Chủ',
@@ -31,7 +21,7 @@ export const MenuItems = [
         path: '/admin'
       },
       {
-        title: 'Cửa Hàng',
+        title: 'Sản Phẩm',
         icon: MdFormatListBulleted,
         hasSubmenu: true,
         submenu: [
@@ -50,7 +40,7 @@ export const MenuItems = [
         ]
       },
       {
-        title: 'Thực Đơn',
+        title: 'Bài Viết',
         icon: BiSolidCategory,
         hasSubmenu: true,
         submenu: [
@@ -65,7 +55,7 @@ export const MenuItems = [
         ]
       },
       {
-        title: 'Chương Trình',
+        title: 'Khuyến Mãi',
         icon: MdLocalOffer,
         badge: 3,
         hasSubmenu: true,
@@ -81,7 +71,7 @@ export const MenuItems = [
         ]
       },
       {
-        title: 'Kênh Bán Hàng',
+        title: 'Đơn Hàng',
         icon: MdOutlineFeed,
         badge: 3,
         hasSubmenu: true,
@@ -93,76 +83,55 @@ export const MenuItems = [
           {
             title: 'Kanban',
             path: '/admin/manage-orders/kanban'
-          },
-          {
-            title: 'Đổi/Trả hàng',
-            path: '/admin/manage-returns'
           }
         ]
       },
       {
-        title: 'Thiết Bị',
+        title: 'Giao Diện',
         icon: MdOutlineDeveloperBoard,
-        badge: 3,
         hasSubmenu: true,
         submenu: [
           {
             title: 'Slide',
             path: '/admin/manage-banner'
-          },
-          {
-            title: 'Tin nhắn',
-            path: '/admin/chat'
           }
         ]
       },
       {
-        title: 'Nhân Viên',
-        icon: MdSupervisedUserCircle,
-        path: '/admin/manage-staff'
+        title: 'Tin Nhắn',
+        icon: MdOutlineChat,
+        path: '/admin/chat'
       },
       {
-        title: 'Ứng Dụng',
-        icon: MdOutlineGridView,
+        title: 'Tài Khoản',
+        icon: MdSupervisedUserCircle,
         badge: 3,
         hasSubmenu: true,
         submenu: [
           {
+            title: 'Nhân viên',
+            path: '/admin/manage-staff'
+          },
+          {
             title: 'Khách hàng',
             path: '/admin/manage-users'
-          }
-        ]
-      },
-      {
-        title: 'Báo Cáo',
-        icon: MdAssignmentReturn,
-        hasSubmenu: true,
-        submenu: [
-          {
-            title: 'Thống kê',
-            path: '/admin/analytics'
           }
         ]
       }
     ]
   },
   {
-    title: 'Pages',
+    title: 'Hệ Thống',
     items: [
       {
-        title: 'Secured by Clerk',
+        title: 'Cài Đặt',
         icon: MdOutlineSettings,
-        hasSubmenu: true
+        path: '/admin/settings'
       },
       {
-        title: 'Auth',
-        icon: MdSupervisedUserCircle,
-        hasSubmenu: true
-      },
-      {
-        title: 'Errors',
-        icon: MdBugReport,
-        hasSubmenu: true
+        title: 'Đăng Xuất',
+        icon: MdLogout,
+        action: 'logout'
       }
     ]
   }

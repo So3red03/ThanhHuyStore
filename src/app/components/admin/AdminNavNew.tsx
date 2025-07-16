@@ -185,7 +185,16 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
               <MdMenu />
             </IconButton>
 
-            <Typography variant='h5' component='h1' fontWeight={700} sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Typography
+              variant='h5'
+              component='h1'
+              fontWeight={600}
+              sx={{
+                display: { xs: 'none', sm: 'block' },
+                color: 'text.primary',
+                fontSize: '1.5rem'
+              }}
+            >
               {title}
             </Typography>
           </Box>
@@ -199,29 +208,54 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position='start'>
-                    <MdSearch size={18} />
+                    <MdSearch size={18} color='#6b7280' />
                   </InputAdornment>
                 )
               }}
               sx={{
                 width: { xs: 120, lg: 240 },
                 '& .MuiOutlinedInput-root': {
-                  backgroundColor: 'background.paper'
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                  },
+                  '&.Mui-focused': {
+                    backgroundColor: 'background.paper'
+                  }
                 }
               }}
             />
 
             {/* Messages */}
-            <IconButton color='inherit' onClick={handleMessagesOpen}>
+            <IconButton
+              color='inherit'
+              onClick={handleMessagesOpen}
+              sx={{
+                borderRadius: 2,
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+            >
               <Badge badgeContent={messages.length} color='error'>
-                <MdOutlineChat />
+                <MdOutlineChat size={20} />
               </Badge>
             </IconButton>
 
             {/* Notifications */}
-            <IconButton color='inherit' onClick={handleNotificationsOpen}>
+            <IconButton
+              color='inherit'
+              onClick={handleNotificationsOpen}
+              sx={{
+                borderRadius: 2,
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+            >
               <Badge badgeContent={unreadCount} color='error'>
-                <MdNotifications />
+                <MdNotifications size={20} />
               </Badge>
             </IconButton>
 
@@ -235,11 +269,24 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
                   Administrator
                 </Typography>
               </Box>
-              <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0 }}>
+              <IconButton
+                onClick={handleProfileMenuOpen}
+                sx={{
+                  p: 0.5,
+                  borderRadius: 2,
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
                 <Avatar
                   src={currentUser?.image ?? '/no-avatar-2.jpg'}
                   alt={currentUser?.name ?? 'User'}
-                  sx={{ width: 40, height: 40 }}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    border: '2px solid rgba(255, 255, 255, 0.2)'
+                  }}
                 />
               </IconButton>
             </Box>

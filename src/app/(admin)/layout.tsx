@@ -26,7 +26,7 @@ const LayoutContent = ({ children, currentUser }: { children: React.ReactNode; c
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
       {/* New MUI-based Sidebar */}
-      <AdminSideBarNew />
+      <AdminSideBarNew currentUser={currentUser} />
 
       {/* Main Content Area */}
       <Box
