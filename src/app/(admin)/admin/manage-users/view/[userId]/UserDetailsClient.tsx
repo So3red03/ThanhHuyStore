@@ -1,6 +1,6 @@
 'use client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
-import { CartProductType, DeliveryStatus, Order, OrderStatus, Review, Role, User } from '@prisma/client';
+import { CartProductType, DeliveryStatus, OrderStatus, Role } from '@prisma/client';
 import { formatPrice } from '../../../../../../../utils/formatPrice';
 import Status from '@/app/components/Status';
 import { MdAccessTimeFilled, MdDelete, MdDeliveryDining, MdDone, MdRemoveRedEye } from 'react-icons/md';
@@ -27,14 +27,17 @@ import OrderDetails from '@/app/components/OrderDetails';
 import { SafeUser } from '../../../../../../../types';
 
 const formatDate = (date: any) => {
-  return format(date, "dd 'tháng' M yyyy '|' HH:mm:ss", { locale: vi });
+  if (!date) return 'N/A';
+  try {
+    return format(new Date(date), "dd 'tháng' M yyyy '|' HH:mm:ss", { locale: vi });
+  } catch (error) {
+    console.error('Invalid date format:', date);
+    return 'Invalid date';
+  }
 };
 
 interface UserDetailsClientProps {
-  user: User & {
-    orders: Order[];
-    reviews?: Review[];
-  };
+  user: any; // Simplified to avoid type conflicts with serialized data
 }
 
 const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
@@ -51,7 +54,7 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdatedModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isDelete, setIsDelete] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Early return nếu không có user
@@ -64,8 +67,8 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
   }
 
   const total = user.orders
-    .filter(order => order.status === OrderStatus.completed && order.deliveryStatus === DeliveryStatus.delivered)
-    .reduce((accumulator, currentValue) => accumulator + currentValue.amount, 0);
+    .filter((order: any) => order.status === OrderStatus.completed && order.deliveryStatus === DeliveryStatus.delivered)
+    .reduce((accumulator: number, currentValue: any) => accumulator + currentValue.amount, 0);
   let rows: any = [];
   if (user.orders) {
     rows = user.orders.map((invoice: any) => {
@@ -523,20 +526,20 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
               ...selectedOrder,
               user: {
                 ...user,
-                createAt: user.createAt.toISOString(),
-                updateAt: user.updateAt.toISOString(),
+                createAt: user.createAt,
+                updateAt: user.updateAt,
                 emailVerified: user.emailVerified?.toString() || null,
-                lastLogin: user.lastLogin?.toISOString() || null
-              } as SafeUser
+                lastLogin: user.lastLogin || null
+              } as unknown as SafeUser
             }}
             currentUser={
               {
                 ...user,
-                createAt: user.createAt.toISOString(),
-                updateAt: user.updateAt.toISOString(),
+                createAt: user.createAt,
+                updateAt: user.updateAt,
                 emailVerified: user.emailVerified?.toString() || null,
-                lastLogin: user.lastLogin?.toISOString() || null
-              } as SafeUser
+                lastLogin: user.lastLogin || null
+              } as unknown as SafeUser
             }
             showCancelButton={false}
             onOrderCancelled={() => {

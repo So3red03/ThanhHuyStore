@@ -1,100 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ActivityItem } from './ActivityTimeline';
-import { Order, Review, User } from '@prisma/client';
-// ActivityTracker class removed - now using AuditLog API directly
 
 interface UseUserActivitiesProps {
-  user: User & {
-    orders: Order[];
-    reviews?: Review[];
-  };
+  user: any; // Simplified to handle serialized data
 }
 
 export const useUserActivities = ({ user }: UseUserActivitiesProps) => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Không chạy nếu không có user
-    if (!user || !user.id) {
-      setLoading(false);
-      return;
-    }
-    const fetchActivities = async () => {
-      setLoading(true);
-      try {
-        // 🚀 NEW: Fetch from AuditLog instead of Activity table
-        const response = await fetch(`/api/audit-logs?userId=${user.id}&category=BUSINESS&limit=20`);
-        const data = await response.json();
+  // Memoize user ID to prevent unnecessary re-renders
+  const userId = useMemo(() => user?.id, [user?.id]);
 
-        // Transform AuditLog format → ActivityItem format
-        const auditActivities =
-          data.auditLogs?.map((log: any) => ({
-            id: log.id,
-            type: mapEventTypeToActivityType(log.eventType),
-            title: log.details?.title || log.description,
-            description: log.description,
-            timestamp: new Date(log.timestamp),
-            data: log.details?.uiData || {}
-          })) || [];
+  // 🚀 OPTIMIZED: Memoize generateActivitiesFromUserData function với better performance
+  const generateActivitiesFromUserData = useCallback((): ActivityItem[] => {
+    if (!user) return [];
 
-        // Generate activities từ database data (keep existing logic)
-        const generatedActivities = generateActivitiesFromUserData();
+    const activityList: ActivityItem[] = [];
 
-        // Combine và remove duplicates
-        const allActivities: ActivityItem[] = [...auditActivities, ...generatedActivities];
-        const uniqueActivities = allActivities.reduce((acc: ActivityItem[], current: ActivityItem) => {
-          const exists = acc.find(
-            (item: ActivityItem) =>
-              item.type === current.type &&
-              item.data?.orderId === current.data?.orderId &&
-              Math.abs(item.timestamp.getTime() - current.timestamp.getTime()) < 60000 // Within 1 minute
-          );
-          if (!exists) {
-            acc.push(current);
-          }
-          return acc;
-        }, [] as ActivityItem[]);
-
-        const sortedActivities = uniqueActivities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-        setActivities(sortedActivities);
-      } catch (error) {
-        console.error('Error fetching activities:', error);
-        // Fallback to generated activities
-        setActivities(generateActivitiesFromUserData());
-      } finally {
-        setLoading(false);
+    // 🎯 Helper function để safely get image URL
+    const getSafeImageUrl = (product: any): string => {
+      if (product.thumbnail && product.thumbnail !== 'placeholder.png') {
+        return product.thumbnail;
       }
+      if (product.galleryImages && Array.isArray(product.galleryImages) && product.galleryImages.length > 0) {
+        const firstImage = product.galleryImages[0];
+        if (firstImage && firstImage !== 'placeholder.png') {
+          return firstImage;
+        }
+      }
+      if (product.selectedImg?.images?.[0] && product.selectedImg.images[0] !== 'placeholder.png') {
+        return product.selectedImg.images[0];
+      }
+      return '/noavatar.png';
     };
 
-    // Map AuditLog eventType to ActivityItem type
-    const mapEventTypeToActivityType = (eventType: string): string => {
-      const mapping: Record<string, string> = {
-        // Phase 1 & 2
-        PROFILE_UPDATED: 'profile_updated',
-        PASSWORD_CHANGED: 'password_changed',
-        PRODUCT_REVIEWED: 'comment_review',
-        ORDER_CREATED: 'order_created',
-        ORDER_STATUS_CHANGED: 'order_updated',
-        ORDER_CANCELLED: 'order_cancelled',
-        PAYMENT_SUCCESS: 'payment_success',
+    // 🎯 Helper function để format product data
+    const formatProductData = (products: any[]) =>
+      products?.slice(0, 3).map((product: any) => ({
+        id: product.id,
+        name: product.name || 'Unknown Product',
+        image: getSafeImageUrl(product)
+      })) || [];
 
-        // Phase 3: Complex Events
-        USER_REGISTRATION: 'user_registration',
-        USER_LOGIN: 'user_login',
-        CART_UPDATED: 'cart_updated',
-        WISHLIST_UPDATED: 'wishlist_updated',
-        NEWSLETTER_SUBSCRIBED: 'newsletter_subscribed',
-        SEARCH_PERFORMED: 'search_performed'
-      };
-      return mapping[eventType] || eventType.toLowerCase();
-    };
-
-    const generateActivitiesFromUserData = (): ActivityItem[] => {
-      const activityList: ActivityItem[] = [];
-
-      // Tạo activities từ orders
+    // Tạo activities từ orders (optimized)
+    if (user.orders && Array.isArray(user.orders)) {
       user.orders.forEach((order: any) => {
         // Order created
         activityList.push({
@@ -102,26 +52,28 @@ export const useUserActivities = ({ user }: UseUserActivitiesProps) => {
           type: 'order_created',
           title: 'Đơn hàng được tạo',
           description: `Tài khoản này vừa đặt hàng ${order.products?.length || 0} sản phẩm`,
-          timestamp: new Date(order.createdAt),
+          timestamp: new Date(order.createdAt || order.createDate),
           data: {
             orderId: order.id,
-            products:
-              order.products?.slice(0, 3).map((product: any) => ({
-                id: product.id,
-                name: product.name,
-                image: product.selectedImg?.images?.[0] || '/placeholder.png'
-              })) || []
+            amount: order.amount,
+            status: order.status,
+            products: formatProductData(order.products)
           }
         });
 
-        // Payment success (nếu đã thanh toán)
+        // 🎯 OPTIMIZED: Chỉ tạo activities từ data thực, không fake timestamps
+        const orderDate = new Date(order.createdAt || order.createDate);
+
+        // Payment success (chỉ khi có thông tin thanh toán thực)
         if (order.status === 'confirmed' || order.status === 'completed') {
+          // Sử dụng updatedAt nếu có, nếu không thì createdAt
+          const paymentDate = order.updatedAt ? new Date(order.updatedAt) : orderDate;
           activityList.push({
             id: `payment-${order.id}`,
             type: 'payment_success',
             title: 'Thanh toán thành công',
             description: `Đã thanh toán đơn hàng #${order.id}`,
-            timestamp: new Date(order.createDate.getTime() + 5 * 60 * 1000), // 5 phút sau khi tạo đơn
+            timestamp: paymentDate,
             data: {
               orderId: order.id,
               amount: order.amount
@@ -129,82 +81,110 @@ export const useUserActivities = ({ user }: UseUserActivitiesProps) => {
           });
         }
 
-        // Order cancelled
+        // Order cancelled (chỉ khi thực sự bị hủy)
         if (order.status === 'canceled') {
+          const cancelDate = order.updatedAt ? new Date(order.updatedAt) : orderDate;
           activityList.push({
             id: `order-cancelled-${order.id}`,
             type: 'order_cancelled',
             title: 'Hủy đơn hàng',
             description: `Tài khoản vừa hủy đơn hàng #${order.id}`,
-            timestamp: new Date(order.createDate.getTime() + 10 * 60 * 1000), // 10 phút sau khi tạo
+            timestamp: cancelDate,
             data: {
               orderId: order.id
             }
           });
         }
 
-        // Order status updates
-        if (order.deliveryStatus === 'in_transit') {
-          activityList.push({
-            id: `order-updated-${order.id}`,
-            type: 'order_updated',
-            title: 'Cập nhật đơn hàng',
-            description: `Đơn hàng #${order.id} vừa được cập nhật trạng thái thành "Đang giao hàng"`,
-            timestamp: new Date(order.createDate.getTime() + 24 * 60 * 60 * 1000), // 1 ngày sau
-            data: {
-              orderId: order.id,
-              status: 'Đang giao hàng'
-            }
-          });
-        }
+        // Order status updates (chỉ khi có delivery status thực)
+        if (order.deliveryStatus && order.deliveryStatus !== 'pending') {
+          const updateDate = order.updatedAt ? new Date(order.updatedAt) : orderDate;
+          let statusText = '';
+          let title = '';
 
-        if (order.deliveryStatus === 'delivered') {
-          activityList.push({
-            id: `order-delivered-${order.id}`,
-            type: 'order_updated',
-            title: 'Giao hàng thành công',
-            description: `Đơn hàng #${order.id} đã được giao thành công`,
-            timestamp: new Date(order.createDate.getTime() + 48 * 60 * 60 * 1000), // 2 ngày sau
-            data: {
-              orderId: order.id,
-              status: 'Đã giao'
-            }
-          });
-        }
-      });
-
-      // Tạo activities từ reviews (gộp comment và review)
-      user.reviews?.forEach((review: any) => {
-        const hasComment = review.comment && review.comment.trim() !== '';
-        const productName = review.product?.name || 'N/A';
-        activityList.push({
-          id: `comment-review-${review.id}`,
-          type: 'comment_review',
-          title: 'Bình luận và đánh giá sản phẩm',
-          description: `Đã bình luận và đánh giá sản phẩm ${productName}`,
-          timestamp: new Date(review.createdDate),
-          data: {
-            productName: productName,
-            rating: review.rating
+          switch (order.deliveryStatus) {
+            case 'in_transit':
+              statusText = 'Đang giao hàng';
+              title = 'Cập nhật đơn hàng';
+              break;
+            case 'delivered':
+              statusText = 'Đã giao';
+              title = 'Giao hàng thành công';
+              break;
+            default:
+              statusText = order.deliveryStatus;
+              title = 'Cập nhật đơn hàng';
           }
-        });
-      });
 
-      // Thêm một số activities mẫu cho profile updates
-      const profileUpdateDate = new Date(user.createAt.getTime() + 7 * 24 * 60 * 60 * 1000); // 1 tuần sau tạo tài khoản
+          activityList.push({
+            id: `order-status-${order.id}-${order.deliveryStatus}`,
+            type: 'order_updated',
+            title: title,
+            description: `Đơn hàng #${order.id} vừa được cập nhật trạng thái thành "${statusText}"`,
+            timestamp: updateDate,
+            data: {
+              orderId: order.id,
+              status: statusText
+            }
+          });
+        }
+      });
+    }
+
+    // Tạo activities từ reviews (gộp comment và review)
+    user.reviews?.forEach((review: any) => {
+      const productName = review.product?.name || 'N/A';
       activityList.push({
-        id: `profile-updated-${user.id}`,
-        type: 'profile_updated',
-        title: 'Cập nhật thông tin cá nhân',
-        description: 'Tài khoản vừa cập nhật hồ sơ',
-        timestamp: profileUpdateDate
+        id: `comment-review-${review.id}`,
+        type: 'comment_review',
+        title: 'Bình luận và đánh giá sản phẩm',
+        description: `Đã bình luận và đánh giá sản phẩm ${productName}`,
+        timestamp: new Date(review.createdDate),
+        data: {
+          productName: productName,
+          rating: review.rating
+        }
       });
+    });
 
-      return activityList.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-    };
+    // 🎯 OPTIMIZED: Chỉ thêm user registration activity từ data thực
+    if (user.createAt) {
+      const userCreateDate = new Date(user.createAt);
+      activityList.push({
+        id: `user-registration-${user.id}`,
+        type: 'user_registration',
+        title: 'Tạo tài khoản',
+        description: 'Tài khoản được tạo thành công',
+        timestamp: userCreateDate
+      });
+    }
 
-    fetchActivities();
+    // console.log('✅ Generated activities:', activityList.length);
+    return activityList.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }, [user]);
+
+  useEffect(() => {
+    // Không chạy nếu không có user
+    if (!userId) {
+      setActivities([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // 🎯 OPTIMIZED: Chỉ dùng data reconstruction (Option 2)
+      // Không fetch từ AuditLog nữa vì AuditLog chỉ cho admin actions
+      const generatedActivities = generateActivitiesFromUserData();
+      setActivities(generatedActivities);
+    } catch (error) {
+      console.error('Error generating user activities:', error);
+      setActivities([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, generateActivitiesFromUserData]); // Depend on userId and the memoized function
 
   return { activities, loading };
 };

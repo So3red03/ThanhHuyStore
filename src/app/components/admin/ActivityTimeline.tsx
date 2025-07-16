@@ -7,6 +7,7 @@ const formatPrice = (price: number): string => {
     currency: 'VND'
   }).format(price);
 };
+import React, { memo, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { FaChartBar } from 'react-icons/fa';
@@ -71,11 +72,11 @@ interface ActivityTimelineProps {
 }
 
 const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userName }) => {
-  const formatDate = (date: Date) => {
+  const formatDate = useCallback((date: Date) => {
     return format(date, "dd 'tháng' M yyyy '|' HH:mm:ss", { locale: vi });
-  };
+  }, []);
 
-  const getActivityIcon = (type: string) => {
+  const getActivityIcon = useCallback((type: string) => {
     switch (type) {
       // Phase 1 & 2 Events
       case 'order_created':
@@ -110,9 +111,9 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
       default:
         return '📋';
     }
-  };
+  }, []);
 
-  const getActivityColor = (type: string) => {
+  const getActivityColor = useCallback((type: string) => {
     switch (type) {
       case 'order_created':
       case 'order_updated':
@@ -130,153 +131,180 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
       default:
         return { bg: 'bg-[#F5F5F5]', dot: 'bg-[#6B7280]' };
     }
-  };
+  }, []);
 
-  const renderActivityContent = (activity: ActivityItem) => {
-    switch (activity.type) {
-      case 'order_created':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>{activity.description}</p>
-            {activity.data?.products && (
-              <div className='flex mb-2'>
-                {activity.data.products.slice(0, 3).map((product, index) => (
-                  <img
-                    key={index}
-                    src={product.image}
-                    alt={product.name}
-                    className='w-10 h-10 rounded-full border-2 border-white -ml-2 first:ml-0'
-                  />
-                ))}
-                {activity.data.products.length > 3 && (
-                  <div className='w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 text-black text-xs -ml-2'>
-                    +{activity.data.products.length - 3}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
+  const renderActivityContent = useCallback(
+    (activity: ActivityItem) => {
+      switch (activity.type) {
+        case 'order_created':
+          return (
+            <div>
+              <p className='text-gray-500 mb-2'>{activity.description}</p>
+              {activity.data?.products && (
+                <div className='flex mb-2'>
+                  {activity.data.products.slice(0, 3).map((product, index) => {
+                    // Safely handle image URL
+                    const imageUrl =
+                      product.image && product.image !== 'placeholder.png' ? product.image : '/noavatar.png';
 
-      case 'payment_success':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>
-              Đã thanh toán đơn hàng #{activity.data?.paymentIntentId?.slice(-6).toUpperCase()} – tổng tiền{' '}
-              {formatPrice(activity.data?.amount || 0)}
-            </p>
-          </div>
-        );
-
-      case 'comment_review':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>{activity.description}</p>
-            <div className='flex items-center mb-2'>
-              <img src='/dog-meme.png' alt={userName} className='w-8 h-8 rounded-full mr-3' />
-              <div>
-                <p className='text-sm font-medium'>{userName}</p>
-              </div>
+                    return (
+                      <img
+                        key={`${product.id}-${index}`}
+                        src={imageUrl}
+                        alt={product.name || 'Product'}
+                        className='w-10 h-10 rounded-full border-2 border-white -ml-2 first:ml-0 object-cover'
+                        onError={e => {
+                          e.currentTarget.src = '/noavatar.png';
+                        }}
+                      />
+                    );
+                  })}
+                  {activity.data.products.length > 3 && (
+                    <div className='w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 text-black text-xs -ml-2'>
+                      +{activity.data.products.length - 3}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            {activity.data?.rating && (
-              <div className='flex items-center mt-2'>
-                {[...Array(5)].map((_, i) => (
-                  <span
-                    key={i}
-                    className={`text-lg ${i < (activity.data?.rating || 0) ? 'text-yellow-400' : 'text-gray-300'}`}
-                  >
-                    ⭐
+          );
+
+        case 'payment_success':
+          return (
+            <div>
+              <p className='text-gray-500 mb-2'>
+                Đã thanh toán đơn hàng #{activity.data?.paymentIntentId?.slice(-6).toUpperCase()} – tổng tiền{' '}
+                {formatPrice(activity.data?.amount || 0)}
+              </p>
+            </div>
+          );
+
+        case 'comment_review':
+          return (
+            <div>
+              <p className='text-gray-500 mb-2'>{activity.description}</p>
+              <div className='flex items-center mb-2'>
+                <img
+                  src='/dog-meme.png'
+                  alt={userName}
+                  className='w-8 h-8 rounded-full mr-3 object-cover'
+                  onError={e => {
+                    e.currentTarget.src = '/no-avatar-2.jpg';
+                  }}
+                />
+                <div>
+                  <p className='text-sm font-medium'>{userName}</p>
+                </div>
+              </div>
+              {activity.data?.rating && (
+                <div className='flex items-center mt-2'>
+                  {[...Array(5)].map((_, i) => (
+                    <span
+                      key={i}
+                      className={`text-lg ${i < (activity.data?.rating || 0) ? 'text-yellow-400' : 'text-gray-300'}`}
+                    >
+                      ⭐
+                    </span>
+                  ))}
+                  <span className='ml-2 text-sm text-gray-600'>({activity.data?.rating}/5)</span>
+                </div>
+              )}
+            </div>
+          );
+
+        // Phase 3: Complex Events UI
+        case 'user_registration':
+          return (
+            <div>
+              <p className='text-gray-500 mb-2'>{activity.description}</p>
+              {activity.data?.registrationMethod && (
+                <div className='flex items-center'>
+                  <span className='text-xs bg-green-100 text-green-800 px-2 py-1 rounded'>
+                    {activity.data.registrationMethod}
                   </span>
-                ))}
-                <span className='ml-2 text-sm text-gray-600'>({activity.data?.rating}/5)</span>
-              </div>
-            )}
-          </div>
-        );
+                </div>
+              )}
+            </div>
+          );
 
-      // Phase 3: Complex Events UI
-      case 'user_registration':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>{activity.description}</p>
-            {activity.data?.registrationMethod && (
-              <div className='flex items-center'>
-                <span className='text-xs bg-green-100 text-green-800 px-2 py-1 rounded'>
-                  {activity.data.registrationMethod}
-                </span>
-              </div>
-            )}
-          </div>
-        );
+        case 'user_login':
+          return (
+            <div>
+              <p className='text-gray-500 mb-2'>{activity.description}</p>
+              {activity.data?.deviceInfo && (
+                <p className='text-xs text-gray-400'>Thiết bị: {activity.data.deviceInfo}</p>
+              )}
+            </div>
+          );
 
-      case 'user_login':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>{activity.description}</p>
-            {activity.data?.deviceInfo && <p className='text-xs text-gray-400'>Thiết bị: {activity.data.deviceInfo}</p>}
-          </div>
-        );
+        case 'cart_updated':
+          return (
+            <div>
+              <p className='text-gray-500 mb-2'>{activity.description}</p>
+              {activity.data?.quantity && <p className='text-xs text-gray-600'>Số lượng: {activity.data.quantity}</p>}
+            </div>
+          );
 
-      case 'cart_updated':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>{activity.description}</p>
-            {activity.data?.quantity && <p className='text-xs text-gray-600'>Số lượng: {activity.data.quantity}</p>}
-          </div>
-        );
+        case 'wishlist_updated':
+          return (
+            <div>
+              <p className='text-gray-500 mb-2'>{activity.description}</p>
+              {activity.data?.productImage && activity.data.productImage !== 'placeholder.png' && (
+                <img
+                  src={activity.data.productImage}
+                  alt={activity.data?.productName || 'Product'}
+                  className='w-12 h-12 rounded object-cover'
+                  onError={e => {
+                    e.currentTarget.src = '/noavatar.png';
+                  }}
+                />
+              )}
+            </div>
+          );
 
-      case 'wishlist_updated':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>{activity.description}</p>
-            {activity.data?.productImage && (
-              <img
-                src={activity.data.productImage}
-                alt={activity.data?.productName || 'Product'}
-                className='w-12 h-12 rounded object-cover'
-              />
-            )}
-          </div>
-        );
+        case 'search_performed':
+          return (
+            <div>
+              <p className='text-gray-500 mb-2'>{activity.description}</p>
+              {activity.data?.resultsCount !== undefined && (
+                <p className='text-xs text-gray-600'>Kết quả: {activity.data.resultsCount} sản phẩm</p>
+              )}
+            </div>
+          );
 
-      case 'search_performed':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>{activity.description}</p>
-            {activity.data?.resultsCount !== undefined && (
-              <p className='text-xs text-gray-600'>Kết quả: {activity.data.resultsCount} sản phẩm</p>
-            )}
-          </div>
-        );
+        case 'newsletter_subscribed':
+          return (
+            <div>
+              <p className='text-gray-500 mb-2'>{activity.description}</p>
+              <span className='text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded'>📧 Newsletter</span>
+            </div>
+          );
 
-      case 'newsletter_subscribed':
-        return (
-          <div>
-            <p className='text-gray-500 mb-2'>{activity.description}</p>
-            <span className='text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded'>📧 Newsletter</span>
-          </div>
-        );
+        default:
+          return <p className='text-gray-500 mb-2'>{activity.description}</p>;
+      }
+    },
+    [userName]
+  );
 
-      default:
-        return <p className='text-gray-500 mb-2'>{activity.description}</p>;
-    }
-  };
+  const getTimeAgo = useCallback(
+    (date: Date) => {
+      const now = new Date();
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
-  const getTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+      if (diffInMinutes < 1) return 'Vừa xong';
+      if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
 
-    if (diffInMinutes < 1) return 'Vừa xong';
-    if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      if (diffInHours < 24) return `${diffInHours} giờ trước`;
 
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours} giờ trước`;
+      const diffInDays = Math.floor(diffInHours / 24);
+      if (diffInDays < 7) return `${diffInDays} ngày trước`;
 
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays} ngày trước`;
-
-    return formatDate(date);
-  };
+      return formatDate(date);
+    },
+    [formatDate]
+  );
 
   return (
     <div className='bg-white p-6 pb-10 rounded border border-neutral-200'>
@@ -327,4 +355,4 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, userNam
   );
 };
 
-export default ActivityTimeline;
+export default memo(ActivityTimeline);

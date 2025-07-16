@@ -315,10 +315,6 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
                 1280: {
                   slidesPerView: 5,
                   spaceBetween: 10
-                },
-                1536: {
-                  slidesPerView: 6,
-                  spaceBetween: 10
                 }
               }}
               className='w-full'

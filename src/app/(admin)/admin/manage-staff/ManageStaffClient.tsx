@@ -12,10 +12,10 @@ import 'moment/locale/vi';
 import { SafeUser } from '../../../../../types';
 import NullData from '@/app/components/NullData';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
-import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button as MuiButton } from '@mui/material';
+import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import AddUserModal from '../manage-users/AddUserModal';
 import { hasPermission } from '@/app/utils/admin/permissionUtils';
 import { PERMISSIONS } from '@/app/utils/admin/permissions';
@@ -124,7 +124,7 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
                 alt={params.row.name}
               />
             </div>
-            <Link href={`/admin/manage-staff/view/${params.row.id}`}>{params.row.name}</Link>
+            <Link href={`/admin/manage-users/view/${params.row.id}`}>{params.row.name}</Link>
           </div>
         );
       }
@@ -172,7 +172,7 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
             <ActionBtn
               icon={MdRemoveRedEye}
               onClick={() => {
-                router.push(`/admin/manage-staff/view/${params.row.id}`);
+                router.push(`/admin/manage-users/view/${params.row.id}`);
               }}
             />
           </div>

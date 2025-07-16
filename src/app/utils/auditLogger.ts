@@ -491,7 +491,11 @@ export class AuditLogger {
         products: products.slice(0, 3).map(product => ({
           id: product.id,
           name: product.name,
-          image: product.selectedImg?.images?.[0] || '/placeholder.png'
+          image:
+            product.thumbnail ||
+            (product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages[0] : null) ||
+            product.selectedImg?.images?.[0] ||
+            '/noavatar.png'
         }))
       }
     });
@@ -701,7 +705,11 @@ export class AuditLogger {
                 order.products?.slice(0, 3).map((product: any) => ({
                   id: product.id,
                   name: product.name,
-                  image: product.selectedImg?.images?.[0] || '/placeholder.png'
+                  image:
+                    product.thumbnail ||
+                    (product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages[0] : null) ||
+                    product.selectedImg?.images?.[0] ||
+                    '/noavatar.png'
                 })) || []
             },
             timestamp: new Date(order.createDate)
