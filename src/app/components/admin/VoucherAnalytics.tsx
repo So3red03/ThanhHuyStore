@@ -104,7 +104,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
 
   if (loading) {
     return (
-      <Card sx={{ mb: 4, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+      <Card sx={{ mb: 6, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
         <CardContent sx={{ p: 6 }}>
           <div className='flex items-center gap-3 mb-6'>
             <div className='p-3 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl'>

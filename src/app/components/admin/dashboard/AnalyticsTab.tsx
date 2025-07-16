@@ -30,10 +30,10 @@ import TopProductsTable from '../../analytics/TopProductsTable';
 import TopArticlesTable from '../../analytics/TopArticlesTable';
 
 interface AnalyticsTabProps {
-  onRefresh?: () => void;
+  // onRefresh prop removed - now using direct axios refetch
 }
 
-const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ onRefresh }) => {
+const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
   const router = useRouter();
 
   // State for time filter
@@ -56,18 +56,35 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ onRefresh }) => {
     }
   };
 
-  // Analytics hooks từ AdminNewsDashboard
-  const { data: overviewData, loading: overviewLoading } = useAnalyticsOverview(getDaysFromFilter(timeFilter));
-  const { data: productData, loading: productLoading } = useProductAnalytics(getDaysFromFilter(timeFilter));
-  const { data: articleData, loading: articleLoading } = useArticleAnalytics(getDaysFromFilter(timeFilter));
+  // Analytics hooks từ AdminNewsDashboard với refetch functions
+  const {
+    data: overviewData,
+    loading: overviewLoading,
+    refetch: refetchOverview
+  } = useAnalyticsOverview(getDaysFromFilter(timeFilter));
 
-  // Handle refresh function
+  const {
+    data: productData,
+    loading: productLoading,
+    refetch: refetchProducts
+  } = useProductAnalytics(getDaysFromFilter(timeFilter));
+
+  const {
+    data: articleData,
+    loading: articleLoading,
+    refetch: refetchArticles
+  } = useArticleAnalytics(getDaysFromFilter(timeFilter));
+
+  // 🎯 IMPROVED: Handle refresh function using axios refetch instead of onRefresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      if (onRefresh) {
-        await onRefresh();
-      }
+      // Refresh all analytics data simultaneously
+      await Promise.all([refetchOverview(), refetchProducts(), refetchArticles()]);
+
+      console.log('✅ Analytics data refreshed successfully');
+    } catch (error) {
+      console.error('❌ Error refreshing analytics data:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -119,12 +136,25 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ onRefresh }) => {
 
               <Button
                 variant='contained'
-                startIcon={<MdRefresh />}
+                startIcon={
+                  isRefreshing ? (
+                    <div className='animate-spin'>
+                      <MdRefresh />
+                    </div>
+                  ) : (
+                    <MdRefresh />
+                  )
+                }
                 onClick={handleRefresh}
+                disabled={isRefreshing}
                 size='medium'
                 sx={{
                   backgroundColor: '#3b82f6',
                   '&:hover': { backgroundColor: '#2563eb' },
+                  '&:disabled': {
+                    backgroundColor: '#9ca3af',
+                    color: '#ffffff'
+                  },
                   borderRadius: '8px',
                   textTransform: 'none',
                   fontWeight: 600,
@@ -219,7 +249,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ onRefresh }) => {
       </div>
 
       {/* Marketing Action Card */}
-      <Box sx={{ mt: 4, mb: 4 }}>
+      {/* <Box sx={{ mt: 4, mb: 4 }}>
         <Card
           sx={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -318,7 +348,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ onRefresh }) => {
             </Grid>
           </CardContent>
         </Card>
-      </Box>
+      </Box> */}
 
       {/* Loading States */}
       {(overviewLoading || productLoading || articleLoading) && (

@@ -28,10 +28,10 @@ interface ReportsTabProps {
   orders: any[];
   users: any[];
   totalRevenue: any;
-  onRefresh?: () => void;
+  // onRefresh prop removed - now using direct axios refetch
 }
 
-const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, onRefresh }) => {
+const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) => {
   // State for time filter
   const [timeFilter, setTimeFilter] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -52,21 +52,31 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, on
     }
   };
 
-  // Analytics hooks từ AdminNewsDashboard
-  const { data: paymentData, loading: paymentLoading } = usePaymentMethodAnalytics(getDaysFromFilter(timeFilter));
-  const { data: voucherData, loading: voucherLoading } = useVoucherAnalytics(getDaysFromFilter(timeFilter));
+  // Analytics hooks từ AdminNewsDashboard với refetch functions
+  const {
+    data: paymentData,
+    loading: paymentLoading,
+    refetch: refetchPayments
+  } = usePaymentMethodAnalytics(getDaysFromFilter(timeFilter));
+
+  const {
+    data: voucherData,
+    loading: voucherLoading,
+    refetch: refetchVouchers
+  } = useVoucherAnalytics(getDaysFromFilter(timeFilter));
 
   // Report sending state từ AdminNewsDashboard
   const [reportLoading, setReportLoading] = useState(false);
   const [showReportAlert, setShowReportAlert] = useState(false);
 
-  // Handle refresh function
+  // 🎯 IMPROVED: Handle refresh function using axios refetch instead of onRefresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      if (onRefresh) {
-        await onRefresh();
-      }
+      // Refresh all analytics data simultaneously
+      await Promise.all([refetchPayments(), refetchVouchers()]);
+    } catch (error) {
+      console.error(' Error refreshing reports data:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -85,7 +95,6 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, on
         toast.success('📊 Báo cáo đã được gửi thành công qua Discord!');
       }
     } catch (error) {
-      console.error('Discord report error:', error);
       toast.error('❌ Lỗi khi gửi báo cáo');
     } finally {
       setReportLoading(false);
@@ -123,12 +132,25 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, on
 
               <Button
                 variant='contained'
-                startIcon={<MdRefresh />}
+                startIcon={
+                  isRefreshing ? (
+                    <div className='animate-spin'>
+                      <MdRefresh />
+                    </div>
+                  ) : (
+                    <MdRefresh />
+                  )
+                }
                 onClick={handleRefresh}
+                disabled={isRefreshing}
                 size='medium'
                 sx={{
                   backgroundColor: '#3b82f6',
                   '&:hover': { backgroundColor: '#2563eb' },
+                  '&:disabled': {
+                    backgroundColor: '#9ca3af',
+                    color: '#ffffff'
+                  },
                   borderRadius: '8px',
                   textTransform: 'none',
                   fontWeight: 600,
@@ -292,18 +314,13 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, on
         </Card>
       </div>
 
+      {/* 🎯 ENHANCED: Best Selling Products with purchase quantities */}
+      <div className='mb-4'>
+        <BestSellingProducts uniqueProducts={uniqueProducts} orders={orders} />
+      </div>
+
       {/* Voucher Analytics Section */}
       <VoucherAnalytics timeFilter={timeFilter} />
-
-      {/* Best Selling Products từ AdminDashBoardForm */}
-      <div className='mb-6'>
-        <BestSellingProducts uniqueProducts={uniqueProducts} />
-      </div>
-
-      {/* Orders Table từ AdminDashBoardForm */}
-      <div className='mb-6'>
-        <OrdersTable orders={orders} />
-      </div>
 
       {/* Success Alert */}
       <Snackbar

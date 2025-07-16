@@ -31,7 +31,7 @@ interface OverviewTabProps {
   avgOrderValue?: number;
   orderPieData?: any;
   salesWeeklyData?: any;
-  onRefresh?: () => void;
+  // onRefresh prop removed - now using page refresh
 }
 
 const OverviewTab: React.FC<OverviewTabProps> = ({
@@ -44,8 +44,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   userInSession = [],
   avgOrderValue = 0,
   orderPieData,
-  salesWeeklyData,
-  onRefresh
+  salesWeeklyData
 }) => {
   // State for time filter
   const [timeFilter, setTimeFilter] = useState('7d');
@@ -54,16 +53,18 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // Handle refresh function
+  // 🎯 IMPROVED: Handle refresh function using page reload instead of onRefresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      if (onRefresh) {
-        await onRefresh();
-      }
-    } finally {
+      // Since OverviewTab receives data via props from parent page,
+      // we'll trigger a page refresh to reload all data
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Error refreshing overview data:', error);
       setIsRefreshing(false);
     }
+    // Note: setIsRefreshing(false) not needed here since page will reload
   };
 
   // Handle time filter change
@@ -240,12 +241,25 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
               {/* Manual Refresh */}
               <Button
                 variant='contained'
-                startIcon={<MdRefresh />}
+                startIcon={
+                  isRefreshing ? (
+                    <div className='animate-spin'>
+                      <MdRefresh />
+                    </div>
+                  ) : (
+                    <MdRefresh />
+                  )
+                }
                 onClick={handleRefresh}
+                disabled={isRefreshing}
                 size='medium'
                 sx={{
                   backgroundColor: '#3b82f6',
                   '&:hover': { backgroundColor: '#2563eb' },
+                  '&:disabled': {
+                    backgroundColor: '#9ca3af',
+                    color: '#ffffff'
+                  },
                   borderRadius: '8px',
                   textTransform: 'none',
                   fontWeight: 600,

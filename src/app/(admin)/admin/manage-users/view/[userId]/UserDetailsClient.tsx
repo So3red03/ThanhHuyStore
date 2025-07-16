@@ -31,7 +31,6 @@ const formatDate = (date: any) => {
   try {
     return format(new Date(date), "dd 'tháng' M yyyy '|' HH:mm:ss", { locale: vi });
   } catch (error) {
-    console.error('Invalid date format:', date);
     return 'Invalid date';
   }
 };
@@ -432,7 +431,12 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
               <p>Đang tải lịch sử hoạt động...</p>
             </div>
           ) : (
-            <ActivityTimeline activities={activities} userName={user.name || 'Unknown User'} />
+            <ActivityTimeline
+              activities={activities}
+              userName={user.name || 'Unknown User'}
+              showDateFilter={true}
+              showActivityCount={true}
+            />
           )}
           <div className='h-[600px] mt-5'>
             <DataGrid
