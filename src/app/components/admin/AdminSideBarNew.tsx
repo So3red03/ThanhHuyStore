@@ -189,12 +189,16 @@ const AdminSideBarNew: React.FC<AdminSideBarNewProps> = ({ currentUser }) => {
                       mx: 1,
                       borderRadius: 2,
                       justifyContent: isCollapsed ? 'center' : 'flex-start',
-                      px: isCollapsed ? 1 : 2,
-                      py: 1.5,
+                      px: isCollapsed ? 1 : 1.5,
+                      py: 1,
                       '&:hover': {
                         backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                        color: 'text.primary',
                         '& .MuiListItemIcon-root': {
                           color: 'primary.main'
+                        },
+                        '& .MuiListItemText-primary': {
+                          color: 'text.primary !important'
                         }
                       },
                       '&.Mui-selected': {
@@ -204,7 +208,11 @@ const AdminSideBarNew: React.FC<AdminSideBarNewProps> = ({ currentUser }) => {
                           color: 'primary.main'
                         },
                         '&:hover': {
-                          backgroundColor: 'rgba(59, 130, 246, 0.15)'
+                          backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                          color: 'primary.main',
+                          '& .MuiListItemText-primary': {
+                            color: 'primary.main !important'
+                          }
                         }
                       }
                     }}
@@ -284,15 +292,24 @@ const AdminSideBarNew: React.FC<AdminSideBarNewProps> = ({ currentUser }) => {
                             sx={{
                               mx: 1,
                               borderRadius: 2,
-                              py: 1,
+                              py: 0.75,
+                              px: 1,
                               '&:hover': {
-                                backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                color: 'text.primary',
+                                '& .MuiListItemText-primary': {
+                                  color: 'text.primary !important'
+                                }
                               },
                               '&.Mui-selected': {
                                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                                 color: 'primary.main',
                                 '&:hover': {
-                                  backgroundColor: 'rgba(59, 130, 246, 0.15)'
+                                  backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                                  color: 'primary.main',
+                                  '& .MuiListItemText-primary': {
+                                    color: 'primary.main !important'
+                                  }
                                 }
                               }
                             }}

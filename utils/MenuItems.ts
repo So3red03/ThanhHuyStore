@@ -57,7 +57,6 @@ export const MenuItems = [
       {
         title: 'Khuyến Mãi',
         icon: MdLocalOffer,
-        badge: 3,
         hasSubmenu: true,
         submenu: [
           {
@@ -73,7 +72,6 @@ export const MenuItems = [
       {
         title: 'Đơn Hàng',
         icon: MdOutlineFeed,
-        badge: 3,
         hasSubmenu: true,
         submenu: [
           {
@@ -105,7 +103,6 @@ export const MenuItems = [
       {
         title: 'Tài Khoản',
         icon: MdSupervisedUserCircle,
-        badge: 3,
         hasSubmenu: true,
         submenu: [
           {
