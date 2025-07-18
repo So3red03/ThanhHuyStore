@@ -111,19 +111,22 @@ const AdminSideBarNew: React.FC<AdminSideBarNewProps> = ({ currentUser }) => {
           {/* Brand Text */}
           {!isCollapsed && (
             <Box>
-              <Typography
-                variant='h6'
-                sx={{
-                  fontFamily: redressed.style.fontFamily,
-                  fontWeight: 700,
-                  color: 'text.primary',
-                  fontSize: '1.1rem',
-                  lineHeight: 1.2,
-                  mb: 0
-                }}
-              >
-                THANHHUY STORE
-              </Typography>
+              <Link href='/'>
+                <Typography
+                  variant='h6'
+                  sx={{
+                    fontFamily: redressed.style.fontFamily,
+                    fontWeight: 700,
+                    color: 'text.primary',
+                    fontSize: '1.1rem',
+                    lineHeight: 1.2,
+                    mb: 0,
+                    cursor: 'pointer' // Thêm thuộc tính cursor để hiển thị con trỏ chuột khi di chuột qua
+                  }}
+                >
+                  THANHHUY STORE
+                </Typography>
+              </Link>
             </Box>
           )}
         </Box>

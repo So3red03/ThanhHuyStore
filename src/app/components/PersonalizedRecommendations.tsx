@@ -41,31 +41,6 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const getRecommendations = async () => {
-      try {
-        if (currentUser) {
-          // Người dùng đã đăng nhập - gợi ý nâng cao với global trends
-          const recommendations = await getEnhancedPersonalizedRecommendations();
-          setRecommendedProducts(recommendations);
-        } else {
-          // Người dùng chưa đăng nhập - hiển thị trending products từ global analytics
-          const trendingProducts = await getGlobalTrendingProducts();
-          setRecommendedProducts(trendingProducts);
-        }
-      } catch (error) {
-        console.error('Error getting recommendations:', error);
-        // Fallback: hiển thị sản phẩm ngẫu nhiên
-        const recentProducts = getRecentProducts();
-        setRecommendedProducts(recentProducts);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getRecommendations();
-  }, [currentUser, allProducts]);
-
   // Lấy sản phẩm ngẫu nhiên (fallback) - giới hạn 6 sản phẩm
   const getRecentProducts = useCallback((): Product[] => {
     const recentProducts = allProducts
@@ -98,7 +73,6 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
       return mappedProducts.length > 0 ? mappedProducts : getRecentProducts();
     } catch (error) {
-      console.error('Error fetching global trending products:', error);
       return getRecentProducts();
     }
   }, [allProducts, getRecentProducts]);
@@ -106,15 +80,15 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   // Lấy gợi ý nâng cao cho người dùng đã đăng nhập (sử dụng global trends + personal data)
   const getEnhancedPersonalizedRecommendations = useCallback(async (): Promise<Product[]> => {
     try {
-      // 1. Lấy global trends data
-      const globalTrendsResponse = await fetch('/api/analytics/global-trends?days=30&limit=20');
+      // 1. Lấy global trends data (tái sử dụng logic có sẵn)
+      const globalTrendsResponse = await fetch('/api/analytics/global-trends?days=7&limit=15');
       const globalTrendsData: GlobalTrendsData = globalTrendsResponse.ok
         ? (await globalTrendsResponse.json()).data
         : {
             trendingProducts: [],
             collaborativeFiltering: {},
             categoryTrends: [],
-            period: { days: 30, startDate: '', endDate: '' },
+            period: { days: 7, startDate: '', endDate: '' },
             metadata: { totalProducts: 0, avgRating: 0, totalViews: 0 }
           };
 
@@ -127,39 +101,55 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       const purchaseHistoryResponse = await fetch('/api/user/purchase-history');
       const purchaseHistory = purchaseHistoryResponse.ok ? await purchaseHistoryResponse.json() : [];
 
-      // 4. Tạo scoring system
+      // 4. Kiểm tra nếu là người dùng mới (không có lịch sử xem và mua hàng)
+      const isNewUser = viewHistory.length === 0 && (!purchaseHistory || purchaseHistory.length === 0);
+
+      // Nếu là người dùng mới, sử dụng global trending products (tái sử dụng logic có sẵn)
+      if (isNewUser) {
+        return await getGlobalTrendingProducts();
+      }
+
+      // 5. Tạo scoring system cho người dùng có dữ liệu
       const productScores = new Map<string, number>();
       const interestedCategories = new Set<string>();
       const interestedBrands = new Set<string>();
 
-      // 5. Score từ lịch sử xem cá nhân (weight: 3)
-      viewHistory.forEach(item => {
-        interestedCategories.add(item.category);
-        interestedBrands.add(item.brand);
-        const currentScore = productScores.get(item.productId) || 0;
-        productScores.set(item.productId, currentScore + 3);
-      });
-
-      // 6. Score từ lịch sử mua hàng (weight: 5)
-      purchaseHistory.forEach((order: any) => {
-        order.products.forEach((product: any) => {
-          interestedCategories.add(product.category);
-          interestedBrands.add(product.brand || 'Apple');
-          const currentScore = productScores.get(product.id) || 0;
-          productScores.set(product.id, currentScore + 5);
+      // 6. Score từ lịch sử xem cá nhân (weight: 3)
+      if (viewHistory.length > 0) {
+        viewHistory.forEach(item => {
+          interestedCategories.add(item.category);
+          interestedBrands.add(item.brand);
+          const currentScore = productScores.get(item.productId) || 0;
+          productScores.set(item.productId, currentScore + 3);
         });
-      });
+      }
 
-      // 7. Score từ collaborative filtering (weight: 2)
-      viewHistory.forEach(item => {
-        const relatedProducts = globalTrendsData.collaborativeFiltering[item.productId] || [];
-        relatedProducts.forEach(relatedId => {
-          const currentScore = productScores.get(relatedId) || 0;
-          productScores.set(relatedId, currentScore + 2);
+      // 7. Score từ lịch sử mua hàng (weight: 5)
+      if (purchaseHistory && purchaseHistory.length > 0) {
+        purchaseHistory.forEach((order: any) => {
+          if (order.products && order.products.length > 0) {
+            order.products.forEach((product: any) => {
+              interestedCategories.add(product.category);
+              interestedBrands.add(product.brand || 'Apple');
+              const currentScore = productScores.get(product.id) || 0;
+              productScores.set(product.id, currentScore + 5);
+            });
+          }
         });
-      });
+      }
 
-      // 8. Lọc và score sản phẩm
+      // 8. Score từ collaborative filtering (weight: 2)
+      if (viewHistory.length > 0) {
+        viewHistory.forEach(item => {
+          const relatedProducts = globalTrendsData.collaborativeFiltering[item.productId] || [];
+          relatedProducts.forEach(relatedId => {
+            const currentScore = productScores.get(relatedId) || 0;
+            productScores.set(relatedId, currentScore + 2);
+          });
+        });
+      }
+
+      // 9. Lọc và score sản phẩm
       const scoredProducts = allProducts
         .filter(product => (product.inStock ?? 0) > 0) // Chỉ sản phẩm còn hàng
         .map(product => {
@@ -187,10 +177,33 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
       return scoredProducts.length > 0 ? scoredProducts : getRecentProducts();
     } catch (error) {
-      console.error('Error in enhanced recommendations:', error);
       return getRecentProducts();
     }
   }, [allProducts, getRecentProducts]);
+
+  useEffect(() => {
+    const getRecommendations = async () => {
+      try {
+        if (currentUser) {
+          // Người dùng đã đăng nhập - gợi ý nâng cao với global trends
+          const recommendations = await getEnhancedPersonalizedRecommendations();
+          setRecommendedProducts(recommendations);
+        } else {
+          // Người dùng chưa đăng nhập - hiển thị trending products từ global analytics
+          const trendingProducts = await getGlobalTrendingProducts();
+          setRecommendedProducts(trendingProducts);
+        }
+      } catch (error) {
+        // Fallback: hiển thị sản phẩm ngẫu nhiên
+        const recentProducts = getRecentProducts();
+        setRecommendedProducts(recentProducts);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getRecommendations();
+  }, [currentUser, getEnhancedPersonalizedRecommendations, getGlobalTrendingProducts, getRecentProducts]);
 
   if (loading) {
     return (
