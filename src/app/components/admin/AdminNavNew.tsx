@@ -42,7 +42,7 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-articles': 'Quản lý bài viết',
   '/admin/manage-articlesCategory': 'Quản lý danh mục',
   '/admin/manage-vouchers': 'Quản lý Voucher',
-  '/admin/manage-promotions': 'Quản lý Promotion',
+  '/admin/manage-promotions': 'Quản lý khuyến mãi',
   '/admin/discord-test': 'Discord Test',
   '/admin/news-dashboard': 'Phân tích',
   '/admin/settings': 'Cài đặt hệ thống'

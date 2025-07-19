@@ -41,7 +41,7 @@
     "@types/uuid": "^10.0.0",
     "autoprefixer": "10.4.19",
     "axios": "^1.7.2",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "chart.js": "^4.4.3",
     "date-fns": "^3.6.0",
     "discord-interactions": "^4.3.0",
@@ -83,6 +83,10 @@
     "tweetnacl": "^1.0.3",
     "typescript": "5.4.5",
     "uuid": "^11.1.0",
+    "xlsx": "^0.18.5",
     "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@types/xlsx": "^0.0.36"
   }
 }

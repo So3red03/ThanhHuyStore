@@ -48,6 +48,8 @@ const AdminDashboard = async () => {
         analyticsContent={<AnalyticsTab />}
         reportsContent={<ReportsTab orders={orders} users={users} totalRevenue={totalRevenue} />}
         notificationsContent={<AuditTab orders={orders} users={users} />}
+        orders={orders}
+        users={users}
       />
     </Suspense>
   );

@@ -104,21 +104,6 @@ const EnhancedDashboardStats: React.FC<EnhancedDashboardStatsProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Conversion Rate */}
-        {/* <div className='bg-white p-6 rounded-lg border border-gray-200'>
-          <h3 className='text-gray-500 text-sm 3xl:text-base'>Tỷ lệ chuyển đổi</h3>
-          <div className='flex justify-center items-center mt-4 gap-4'>
-            <div className='p-4 bg-indigo-100 rounded-full'>
-              <FaPercentage className='text-3xl text-indigo-600' />
-            </div>
-            <div className='flex items-center flex-col'>
-              <div className='text-2xl font-bold text-indigo-600'>{conversionRate.toFixed(1)}%</div>
-              <div className='text-xs text-gray-500'>khách/đơn</div>
-            </div>
-          </div>
-        </div> */}
-
         {/* Average Order Value */}
         <div className='bg-white p-6 rounded-lg border border-gray-200'>
           <h3 className='text-gray-500 text-sm 3xl:text-base'>Giá trị TB/đơn</h3>

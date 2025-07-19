@@ -25,7 +25,15 @@ import {
   Divider,
   Avatar,
   IconButton,
-  Tooltip
+  Tooltip,
+  TextField,
+  InputAdornment,
+  TablePagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
 } from '@mui/material';
 import {
   MdExpandMore,
@@ -38,7 +46,9 @@ import {
   MdTrendingDown,
   MdInfo,
   MdStar,
-  MdVerified
+  MdVerified,
+  MdSearch,
+  MdVisibility
 } from 'react-icons/md';
 import axios from 'axios';
 import { formatPrice } from '../../../../utils/formatPrice';
@@ -69,6 +79,13 @@ interface VoucherData {
 const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // State for voucher table
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [selectedVoucher, setSelectedVoucher] = useState<VoucherData | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   const getDaysFromFilter = (filter: string) => {
     switch (filter) {
@@ -102,6 +119,30 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
     fetchData();
   }, [timeFilter]);
 
+  // Helper functions for voucher table
+  const getFilteredVouchers = () => {
+    if (!data?.vouchers) return [];
+    return data.vouchers.filter(
+      (voucher: VoucherData) =>
+        voucher.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        voucher.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  const handleViewDetails = (voucher: VoucherData) => {
+    setSelectedVoucher(voucher);
+    setDetailDialogOpen(true);
+  };
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   if (loading) {
     return (
       <Card sx={{ mb: 6, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
@@ -112,7 +153,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
             </div>
             <div>
               <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937', mb: 1 }}>
-                📊 Phân tích Voucher & Khuyến mãi
+                Phân tích Voucher & Khuyến mãi
               </Typography>
               <Typography variant='body2' color='textSecondary'>
                 Đang tải dữ liệu chi tiết...
@@ -138,7 +179,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
               <MdLocalOffer size={40} className='text-gray-400' />
             </div>
             <Typography variant='h5' sx={{ fontWeight: 600, color: '#374151', mb: 2 }}>
-              📊 Phân tích Voucher & Khuyến mãi
+              Phân tích Voucher & Khuyến mãi
             </Typography>
             <Typography variant='body1' color='textSecondary' sx={{ mb: 4 }}>
               Không có dữ liệu voucher trong khoảng thời gian này
@@ -155,60 +196,60 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
   return (
     <Card sx={{ mb: 4, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
       <CardContent sx={{ p: 0 }}>
-        {/* Header Section */}
-        <div className='bg-gradient-to-r from-purple-600 via-purple-700 to-pink-600 p-6 text-white'>
+        {/* Compact Header Section */}
+        <div className='bg-gradient-to-r from-purple-600 via-purple-700 to-pink-600 p-4 text-white'>
           <div className='flex items-center justify-between'>
-            <div className='flex items-center gap-4'>
-              <div className='p-3 bg-white/20 backdrop-blur-sm rounded-xl'>
-                <MdLocalOffer size={28} className='text-white' />
+            <div className='flex items-center gap-3'>
+              <div className='p-2 bg-white/20 backdrop-blur-sm rounded-lg'>
+                <MdLocalOffer size={20} className='text-white' />
               </div>
               <div>
-                <Typography variant='h4' sx={{ fontWeight: 700, color: 'white', mb: 1 }}>
-                  📊 Phân tích Voucher & Khuyến mãi
+                <Typography variant='h5' sx={{ fontWeight: 700, color: 'white', mb: 0.5 }}>
+                  Phân tích Voucher & Khuyến mãi
                 </Typography>
-                <Typography variant='body1' sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                <Typography variant='body2' sx={{ color: 'rgba(255,255,255,0.9)' }}>
                   Báo cáo chi tiết hiệu suất voucher trong {getDaysFromFilter(timeFilter)} ngày qua
                 </Typography>
               </div>
             </div>
             <div className='text-right'>
-              <div className='text-3xl font-bold'>{data.vouchers.length}</div>
-              <div className='text-sm opacity-90'>Voucher đang theo dõi</div>
+              <div className='text-2xl font-bold'>{data.vouchers.length}</div>
+              <div className='text-xs opacity-90'>Voucher đang theo dõi</div>
             </div>
           </div>
         </div>
 
-        {/* Enhanced Summary Cards */}
-        <div className='p-6'>
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Compact Summary Cards */}
+        <div className='p-4'>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={3}>
               <Card
                 sx={{
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
-                  borderRadius: '16px',
+                  borderRadius: '12px',
                   border: 'none',
-                  boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
+                  boxShadow: '0 4px 16px rgba(102, 126, 234, 0.2)',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 40px rgba(102, 126, 234, 0.4)'
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 20px rgba(102, 126, 234, 0.3)'
                   }
                 }}
               >
-                <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <div className='flex justify-center mb-3'>
-                    <div className='p-3 bg-white/20 rounded-full'>
-                      <MdShoppingCart size={28} />
+                <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                  <div className='flex justify-center mb-2'>
+                    <div className='p-2 bg-white/20 rounded-full'>
+                      <MdShoppingCart size={20} />
                     </div>
                   </div>
-                  <Typography variant='h3' sx={{ fontWeight: 'bold', mb: 1 }}>
+                  <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
                     {data.summary.totalUsage?.toLocaleString() || '0'}
                   </Typography>
-                  <Typography variant='body2' sx={{ opacity: 0.9 }}>
+                  <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
                     Lượt sử dụng
                   </Typography>
-                  <div className='mt-2 text-xs bg-white/20 rounded-full px-3 py-1'>🎯 Tổng tương tác</div>
+                  <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>🎯 Tổng tương tác</div>
                 </CardContent>
               </Card>
             </Grid>
@@ -218,29 +259,29 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                 sx={{
                   background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
                   color: 'white',
-                  borderRadius: '16px',
+                  borderRadius: '12px',
                   border: 'none',
-                  boxShadow: '0 8px 32px rgba(17, 153, 142, 0.3)',
+                  boxShadow: '0 4px 16px rgba(17, 153, 142, 0.2)',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 40px rgba(17, 153, 142, 0.4)'
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 20px rgba(17, 153, 142, 0.3)'
                   }
                 }}
               >
-                <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <div className='flex justify-center mb-3'>
-                    <div className='p-3 bg-white/20 rounded-full'>
-                      <MdAttachMoney size={28} />
+                <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                  <div className='flex justify-center mb-2'>
+                    <div className='p-2 bg-white/20 rounded-full'>
+                      <MdAttachMoney size={20} />
                     </div>
                   </div>
-                  <Typography variant='h3' sx={{ fontWeight: 'bold', mb: 1, fontSize: '1.8rem' }}>
+                  <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
                     {formatPrice(data.summary.totalRevenue)}
                   </Typography>
-                  <Typography variant='body2' sx={{ opacity: 0.9 }}>
+                  <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
                     Doanh thu tạo ra
                   </Typography>
-                  <div className='mt-2 text-xs bg-white/20 rounded-full px-3 py-1'>💰 Tổng thu nhập</div>
+                  <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>💰 Tổng thu nhập</div>
                 </CardContent>
               </Card>
             </Grid>
@@ -250,29 +291,29 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                 sx={{
                   background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
                   color: 'white',
-                  borderRadius: '16px',
+                  borderRadius: '12px',
                   border: 'none',
-                  boxShadow: '0 8px 32px rgba(255, 154, 158, 0.3)',
+                  boxShadow: '0 4px 16px rgba(255, 154, 158, 0.2)',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 40px rgba(255, 154, 158, 0.4)'
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 20px rgba(255, 154, 158, 0.3)'
                   }
                 }}
               >
-                <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <div className='flex justify-center mb-3'>
-                    <div className='p-3 bg-white/20 rounded-full'>
-                      <MdTrendingDown size={28} />
+                <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                  <div className='flex justify-center mb-2'>
+                    <div className='p-2 bg-white/20 rounded-full'>
+                      <MdTrendingDown size={20} />
                     </div>
                   </div>
-                  <Typography variant='h3' sx={{ fontWeight: 'bold', mb: 1, fontSize: '1.8rem' }}>
+                  <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
                     {formatPrice(data.summary.totalDiscount)}
                   </Typography>
-                  <Typography variant='body2' sx={{ opacity: 0.9 }}>
+                  <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
                     Tổng giảm giá
                   </Typography>
-                  <div className='mt-2 text-xs bg-white/20 rounded-full px-3 py-1'>🎁 Tiết kiệm khách hàng</div>
+                  <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>🎁 Tiết kiệm khách hàng</div>
                 </CardContent>
               </Card>
             </Grid>
@@ -282,37 +323,37 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                 sx={{
                   background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
                   color: '#374151',
-                  borderRadius: '16px',
+                  borderRadius: '12px',
                   border: 'none',
-                  boxShadow: '0 8px 32px rgba(168, 237, 234, 0.3)',
+                  boxShadow: '0 4px 16px rgba(168, 237, 234, 0.2)',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 40px rgba(168, 237, 234, 0.4)'
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 20px rgba(168, 237, 234, 0.3)'
                   }
                 }}
               >
-                <CardContent sx={{ textAlign: 'center', p: 3 }}>
-                  <div className='flex justify-center mb-3'>
-                    <div className='p-3 bg-white/60 rounded-full'>
-                      <MdVerified size={28} className='text-purple-600' />
+                <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                  <div className='flex justify-center mb-2'>
+                    <div className='p-2 bg-white/60 rounded-full'>
+                      <MdVerified size={20} className='text-purple-600' />
                     </div>
                   </div>
-                  <Typography variant='h3' sx={{ fontWeight: 'bold', mb: 1 }}>
+                  <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
                     {data.summary.activeVouchers || '0'}
                   </Typography>
-                  <Typography variant='body2' sx={{ opacity: 0.8 }}>
+                  <Typography variant='body2' sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
                     Voucher hoạt động
                   </Typography>
-                  <div className='mt-2 text-xs bg-white/60 text-purple-700 rounded-full px-3 py-1'>✅ Đang chạy</div>
+                  <div className='mt-1 text-xs bg-white/60 text-purple-700 rounded-full px-2 py-0.5'>✅ Đang chạy</div>
                 </CardContent>
               </Card>
             </Grid>
           </Grid>
         </div>
 
-        {/* Enhanced Top Products Section */}
-        <div className='px-6 pb-4'>
+        {/* Compact Top Products Section */}
+        <div className='px-4 pb-3'>
           <Card
             sx={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
           >
@@ -323,7 +364,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                 </div>
                 <div>
                   <Typography variant='h6' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    🏆 Sản phẩm được áp dụng voucher nhiều nhất
+                    Sản phẩm được áp dụng voucher nhiều nhất
                   </Typography>
                   <Typography variant='body2' color='textSecondary'>
                     Top 10 sản phẩm có hiệu suất voucher tốt nhất
@@ -412,7 +453,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                 </div>
                 <div>
                   <Typography variant='h6' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    🎫 Chi tiết từng Voucher
+                    Chi tiết từng Voucher
                   </Typography>
                   <Typography variant='body2' color='textSecondary'>
                     Phân tích hiệu suất chi tiết cho từng voucher
@@ -420,135 +461,191 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                 </div>
               </div>
 
-              <div className='space-y-3'>
-                {data.vouchers.map((voucher: VoucherData, index: number) => (
-                  <Accordion
-                    key={voucher.id}
-                    sx={{
-                      borderRadius: '12px !important',
-                      border: '1px solid #e5e7eb',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                      '&:before': { display: 'none' },
-                      '&.Mui-expanded': {
-                        boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
-                        transform: 'translateY(-2px)'
-                      }
-                    }}
-                  >
-                    <AccordionSummary
-                      expandIcon={<MdExpandMore />}
-                      sx={{
-                        borderRadius: '12px',
-                        '&.Mui-expanded': {
-                          borderBottomLeftRadius: 0,
-                          borderBottomRightRadius: 0
-                        }
-                      }}
-                    >
-                      <div className='flex items-center justify-between w-full pr-4'>
-                        <div className='flex items-center gap-3'>
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                              voucher.isActive ? 'bg-green-500' : 'bg-gray-400'
-                            }`}
-                          >
-                            {index + 1}
-                          </div>
-                          <div>
-                            <Typography variant='subtitle1' sx={{ fontWeight: 'bold', color: '#1f2937' }}>
-                              {voucher.code}
-                            </Typography>
-                            <div className='flex items-center gap-2 mt-1'>
-                              <Chip
-                                label={voucher.isActive ? '✅ Hoạt động' : '⏸️ Tạm dừng'}
-                                color={voucher.isActive ? 'success' : 'default'}
-                                size='small'
-                                sx={{ fontSize: '0.75rem' }}
-                              />
-                              <span className='text-xs text-gray-500'>
-                                {voucher.discountType === 'PERCENTAGE'
-                                  ? `${voucher.discountValue}%`
-                                  : formatPrice(voucher.discountValue)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className='text-right'>
-                          <div className='text-lg font-bold text-blue-600'>{voucher.usageInPeriod}</div>
-                          <div className='text-xs text-gray-500'>lượt sử dụng</div>
-                          <div className='text-sm font-semibold text-green-600'>
-                            {formatPrice(voucher.totalRevenue)}
-                          </div>
-                        </div>
-                      </div>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ p: 4, backgroundColor: '#f8fafc' }}>
-                      <Grid container spacing={4}>
-                        <Grid item xs={12} md={6}>
-                          <div className='bg-white rounded-lg p-4 border border-gray-200'>
-                            <Typography
-                              variant='subtitle2'
-                              gutterBottom
-                              sx={{ fontWeight: 600, color: '#374151', mb: 3 }}
-                            >
-                              📈 Thống kê sử dụng
-                            </Typography>
-                            <div className='space-y-3'>
-                              <div className='flex justify-between items-center p-2 bg-blue-50 rounded-lg'>
-                                <span className='text-sm font-medium text-gray-700'>Tổng lượt sử dụng</span>
-                                <span className='font-bold text-blue-600'>{voucher.totalUsageCount} lượt</span>
-                              </div>
-                              <div className='flex justify-between items-center p-2 bg-green-50 rounded-lg'>
-                                <span className='text-sm font-medium text-gray-700'>Sử dụng trong kỳ</span>
-                                <span className='font-bold text-green-600'>{voucher.usageInPeriod} lượt</span>
-                              </div>
-                              <div className='flex justify-between items-center p-2 bg-purple-50 rounded-lg'>
-                                <span className='text-sm font-medium text-gray-700'>Tỷ lệ chuyển đổi</span>
-                                <span className='font-bold text-purple-600'>{voucher.conversionRate.toFixed(1)}%</span>
-                              </div>
-                              <div className='flex justify-between items-center p-2 bg-orange-50 rounded-lg'>
-                                <span className='text-sm font-medium text-gray-700'>Đơn hàng TB</span>
-                                <span className='font-bold text-orange-600'>
-                                  {formatPrice(voucher.averageOrderValue)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <div className='bg-white rounded-lg p-4 border border-gray-200'>
-                            <Typography
-                              variant='subtitle2'
-                              gutterBottom
-                              sx={{ fontWeight: 600, color: '#374151', mb: 3 }}
-                            >
-                              🛍️ Sản phẩm phổ biến
-                            </Typography>
-                            <div className='space-y-2'>
-                              {voucher.topProducts.slice(0, 3).map((product: any, productIndex: number) => (
-                                <div key={product.id} className='flex items-center gap-3 p-2 bg-gray-50 rounded-lg'>
-                                  <div className='w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold'>
-                                    {productIndex + 1}
-                                  </div>
-                                  <div className='flex-1'>
-                                    <div className='font-medium text-gray-900 text-sm'>{product.name}</div>
-                                    <div className='text-xs text-gray-500'>
-                                      {product.quantity} sản phẩm • {product.orderCount} đơn hàng
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </Grid>
-                      </Grid>
-                    </AccordionDetails>
-                  </Accordion>
-                ))}
+              {/* Search and Filter */}
+              <div className='mb-4'>
+                <TextField
+                  fullWidth
+                  size='small'
+                  placeholder='Tìm kiếm voucher theo mã hoặc mô tả...'
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position='start'>
+                        <MdSearch className='text-gray-400' />
+                      </InputAdornment>
+                    )
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '8px'
+                    }
+                  }}
+                />
               </div>
+
+              {/* Voucher Table */}
+              <TableContainer component={Paper} sx={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <Table size='small'>
+                  <TableHead sx={{ backgroundColor: '#f8fafc' }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600 }}>Mã Voucher</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Giảm giá</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Lượt sử dụng</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Doanh thu</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Tỷ lệ chuyển đổi</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Thao tác</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {getFilteredVouchers()
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((voucher: VoucherData, index: number) => (
+                        <TableRow key={voucher.id} hover>
+                          <TableCell>
+                            <div className='flex items-center gap-2'>
+                              <Typography variant='body2' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                                {voucher.code}
+                              </Typography>
+                            </div>
+                            <Typography variant='caption' color='textSecondary'>
+                              {voucher.description}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={voucher.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                              color={voucher.isActive ? 'success' : 'default'}
+                              size='small'
+                              sx={{ fontSize: '0.7rem' }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                              {voucher.discountType === 'PERCENTAGE'
+                                ? `${voucher.discountValue}%`
+                                : formatPrice(voucher.discountValue)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant='body2' sx={{ fontWeight: 600, color: '#3b82f6' }}>
+                              {voucher.usageInPeriod}
+                            </Typography>
+                            <Typography variant='caption' color='textSecondary'>
+                              / {voucher.totalUsageCount} tổng
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant='body2' sx={{ fontWeight: 600, color: '#10b981' }}>
+                              {formatPrice(voucher.totalRevenue)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                              {voucher.conversionRate.toFixed(1)}%
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <IconButton
+                              size='small'
+                              onClick={() => handleViewDetails(voucher)}
+                              sx={{ color: '#3b82f6' }}
+                            >
+                              <MdVisibility size={16} />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {/* Pagination */}
+              <TablePagination
+                component='div'
+                count={getFilteredVouchers().length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[5, 10, 25]}
+                labelRowsPerPage='Số dòng mỗi trang:'
+                labelDisplayedRows={({ from, to, count }) => `${from}-${to} của ${count}`}
+              />
             </CardContent>
           </Card>
         </div>
+
+        {/* Detail Dialog */}
+        <Dialog open={detailDialogOpen} onClose={() => setDetailDialogOpen(false)} maxWidth='md' fullWidth>
+          <DialogTitle>
+            <div className='flex items-center justify-between'>
+              <Typography variant='h6' sx={{ fontWeight: 600 }}>
+                Chi tiết Voucher: {selectedVoucher?.code}
+              </Typography>
+              <IconButton onClick={() => setDetailDialogOpen(false)}>
+                <MdExpandMore style={{ transform: 'rotate(180deg)' }} />
+              </IconButton>
+            </div>
+          </DialogTitle>
+          <DialogContent>
+            {selectedVoucher && (
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ p: 2, backgroundColor: '#f8fafc' }}>
+                    <Typography variant='subtitle2' sx={{ fontWeight: 600, mb: 2 }}>
+                      📈 Thống kê sử dụng
+                    </Typography>
+                    <div className='space-y-2'>
+                      <div className='flex justify-between'>
+                        <span>Tổng lượt sử dụng:</span>
+                        <strong>{selectedVoucher.totalUsageCount}</strong>
+                      </div>
+                      <div className='flex justify-between'>
+                        <span>Sử dụng trong kỳ:</span>
+                        <strong>{selectedVoucher.usageInPeriod}</strong>
+                      </div>
+                      <div className='flex justify-between'>
+                        <span>Tỷ lệ chuyển đổi:</span>
+                        <strong>{selectedVoucher.conversionRate.toFixed(1)}%</strong>
+                      </div>
+                      <div className='flex justify-between'>
+                        <span>Đơn hàng trung bình:</span>
+                        <strong>{formatPrice(selectedVoucher.averageOrderValue)}</strong>
+                      </div>
+                    </div>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ p: 2, backgroundColor: '#f8fafc' }}>
+                    <Typography variant='subtitle2' sx={{ fontWeight: 600, mb: 2 }}>
+                      🛍️ Sản phẩm phổ biến
+                    </Typography>
+                    <div className='space-y-2'>
+                      {selectedVoucher.topProducts.slice(0, 5).map((product: any, index: number) => (
+                        <div key={product.id} className='flex items-center gap-2 p-2 bg-white rounded'>
+                          <div className='w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold'>
+                            {index + 1}
+                          </div>
+                          <div className='flex-1'>
+                            <div className='font-medium text-sm'>{product.name}</div>
+                            <div className='text-xs text-gray-500'>
+                              {product.quantity} sản phẩm • {product.orderCount} đơn hàng
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </Grid>
+              </Grid>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDetailDialogOpen(false)}>Đóng</Button>
+          </DialogActions>
+        </Dialog>
       </CardContent>
     </Card>
   );

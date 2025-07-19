@@ -206,21 +206,34 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
       </Grid>
 
       {/* Charts Section */}
-      <div className='grid grid-cols-1 gap-6 mb-6'>
-        {/* Trend Chart từ AdminNewsDashboard */}
+      {/* Trend Charts - 50/50 Layout */}
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6'>
+        {/* Product Access Trends */}
         <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <CardContent sx={{ p: 3 }}>
             <div className='flex items-center gap-2 mb-4'>
               <Typography variant='h6' component='h3' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                📈 Xu hướng truy cập theo ngày
+                📈 Xu hướng truy cập sản phẩm theo ngày
               </Typography>
             </div>
             {overviewData && !overviewLoading && <AnalyticsTrendChart data={overviewData.trends} title='' />}
           </CardContent>
         </Card>
+
+        {/* Article Reading Trends */}
+        <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <CardContent sx={{ p: 3 }}>
+            <div className='flex items-center gap-2 mb-4'>
+              <Typography variant='h6' component='h3' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                📰 Xu hướng đọc bài viết theo ngày
+              </Typography>
+            </div>
+            {articleData && !articleLoading && <AnalyticsTrendChart data={articleData.articleTrends} title='' />}
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Products Analytics từ AdminNewsDashboard */}
+      {/* Top Products Table - Full Width */}
       <div className='grid grid-cols-1 gap-6 mb-6'>
         {productData && !productLoading && (
           <TopProductsTable
@@ -231,21 +244,11 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
         )}
       </div>
 
-      {/* Articles Analytics từ AdminNewsDashboard */}
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-        {/* Article Trends */}
-        <div className='lg:col-span-2'>
-          {articleData && !articleLoading && (
-            <AnalyticsTrendChart data={articleData.articleTrends} title='Xu hướng đọc bài viết theo ngày' />
-          )}
-        </div>
-
-        {/* Top Articles */}
-        <div className='lg:col-span-1'>
-          {articleData && !articleLoading && (
-            <TopArticlesTable articles={articleData.topArticles || []} title='Bài viết được đọc nhiều nhất' />
-          )}
-        </div>
+      {/* Top Articles Table - Full Width */}
+      <div className='grid grid-cols-1 gap-6 mb-6'>
+        {articleData && !articleLoading && (
+          <TopArticlesTable articles={articleData.topArticles || []} title='Bài viết được đọc nhiều nhất' />
+        )}
       </div>
 
       {/* Marketing Action Card */}

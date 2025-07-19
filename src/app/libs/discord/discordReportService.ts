@@ -95,14 +95,42 @@ export class DiscordReportService {
         take: 5
       });
 
-      // Top sản phẩm bán chạy (mock data vì orderItem table chưa có)
-      const topProductsWithDetails = [
-        { name: 'Sản phẩm A', quantity: 25 },
-        { name: 'Sản phẩm B', quantity: 20 },
-        { name: 'Sản phẩm C', quantity: 15 },
-        { name: 'Sản phẩm D', quantity: 12 },
-        { name: 'Sản phẩm E', quantity: 10 }
-      ];
+      // Top sản phẩm bán chạy từ Order.products
+      const ordersWithProducts = await prisma.order.findMany({
+        where: {
+          createdAt: {
+            gte: startTime
+          },
+          status: {
+            in: ['completed', 'confirmed']
+          }
+        },
+        select: {
+          products: true
+        }
+      });
+
+      // Tính tổng quantity cho mỗi sản phẩm
+      const productQuantityMap = new Map<string, { name: string; quantity: number }>();
+
+      ordersWithProducts.forEach(order => {
+        order.products.forEach(product => {
+          const existing = productQuantityMap.get(product.id);
+          if (existing) {
+            existing.quantity += product.quantity;
+          } else {
+            productQuantityMap.set(product.id, {
+              name: product.name,
+              quantity: product.quantity
+            });
+          }
+        });
+      });
+
+      // Sắp xếp và lấy top 5
+      const topProductsWithDetails = Array.from(productQuantityMap.values())
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 5);
 
       // Khách hàng mới
       const newCustomers = await prisma.user.count({
@@ -125,12 +153,47 @@ export class DiscordReportService {
         }
       });
 
-      // Top sản phẩm được xem nhiều (mock data vì chưa có analytics table)
-      const topViewedProducts = [
-        { name: 'Sản phẩm A', views: 150 },
-        { name: 'Sản phẩm B', views: 120 },
-        { name: 'Sản phẩm C', views: 100 }
-      ];
+      // Top sản phẩm được xem nhiều từ AnalyticsEvent
+      const topViewedProductsData = await prisma.analyticsEvent.groupBy({
+        by: ['entityId'],
+        where: {
+          eventType: 'PRODUCT_VIEW',
+          entityType: 'product',
+          entityId: { not: null },
+          timestamp: {
+            gte: startTime
+          }
+        },
+        _count: {
+          id: true
+        },
+        orderBy: {
+          _count: {
+            id: 'desc'
+          }
+        },
+        take: 5
+      });
+
+      // Lấy thông tin chi tiết sản phẩm được xem nhiều
+      const viewedProductIds = topViewedProductsData.map(item => item.entityId).filter(Boolean) as string[];
+      const viewedProducts = await prisma.product.findMany({
+        where: {
+          id: { in: viewedProductIds }
+        },
+        select: {
+          id: true,
+          name: true
+        }
+      });
+
+      const topViewedProducts = topViewedProductsData.map(item => {
+        const product = viewedProducts.find(p => p.id === item.entityId);
+        return {
+          name: product?.name || 'Unknown Product',
+          views: item._count.id
+        };
+      });
 
       const totalRevenue = revenueResult._sum?.amount || 0;
       const conversionRate = totalOrders > 0 ? (successfulOrders / totalOrders) * 100 : 0;
@@ -165,7 +228,7 @@ export class DiscordReportService {
     }
   ) {
     const embed = {
-      title: '📊 Báo cáo kinh doanh ThanhHuyStore',
+      title: 'Báo cáo kinh doanh ThanhHuyStore',
       description: `Báo cáo ${data.period} - ${new Date().toLocaleString('vi-VN')}`,
       color: 0x3b82f6,
       fields: [
@@ -202,11 +265,6 @@ export class DiscordReportService {
         {
           name: '👥 Khách hàng mới',
           value: data.newCustomers.toString(),
-          inline: true
-        },
-        {
-          name: '📈 Tỷ lệ chuyển đổi',
-          value: `${data.conversionRate.toFixed(1)}%`,
           inline: true
         }
       ],

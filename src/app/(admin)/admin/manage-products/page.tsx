@@ -4,6 +4,7 @@ import { getProducts } from '@/app/actions/getProducts';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import { Suspense } from 'react';
 import { getProductCategories, getSubCategories } from '@/app/actions/getProductCategories';
+import { getOrders } from '@/app/actions/getOrders';
 
 // Keep force-dynamic due to analytics tracking
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ const ManageProducts = async () => {
   const currentUser = await getCurrentUser();
   const parentCategories = await getProductCategories();
   const subCategories = await getSubCategories();
+  const orders = await getOrders();
   return (
     <Suspense
       fallback={
@@ -27,6 +29,7 @@ const ManageProducts = async () => {
           currentUser={currentUser}
           subCategories={subCategories}
           parentCategories={parentCategories}
+          orders={orders || []}
         />
       </Container>
     </Suspense>

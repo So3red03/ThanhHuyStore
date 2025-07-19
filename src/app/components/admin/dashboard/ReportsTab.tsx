@@ -17,12 +17,14 @@ import {
 import { MdSchedule, MdDownload, MdRefresh, MdDateRange } from 'react-icons/md';
 import OrdersTable from '../OrdersTable';
 import PaymentMethodChart from '../../analytics/PaymentMethodChart';
-import PromotionChart from '../../analytics/PromotionChart';
-import { usePaymentMethodAnalytics, useVoucherAnalytics } from '@/app/hooks/useAnalytics';
+import PaymentMethodStackedChart from '../../analytics/PaymentMethodStackedChart';
+
+import { usePaymentMethodAnalytics } from '@/app/hooks/useAnalytics';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import VoucherAnalytics from '../VoucherAnalytics';
+
 import BestSellingProducts from '../BestSellingProducts';
+import { ExcelExportService } from '@/app/utils/excelExport';
 
 interface ReportsTabProps {
   orders: any[];
@@ -35,6 +37,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
   // State for time filter
   const [timeFilter, setTimeFilter] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Convert timeFilter to days
   const getDaysFromFilter = (filter: string) => {
@@ -59,12 +62,6 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
     refetch: refetchPayments
   } = usePaymentMethodAnalytics(getDaysFromFilter(timeFilter));
 
-  const {
-    data: voucherData,
-    loading: voucherLoading,
-    refetch: refetchVouchers
-  } = useVoucherAnalytics(getDaysFromFilter(timeFilter));
-
   // Report sending state từ AdminNewsDashboard
   const [reportLoading, setReportLoading] = useState(false);
   const [showReportAlert, setShowReportAlert] = useState(false);
@@ -74,7 +71,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
     setIsRefreshing(true);
     try {
       // Refresh all analytics data simultaneously
-      await Promise.all([refetchPayments(), refetchVouchers()]);
+      await Promise.all([refetchPayments()]);
     } catch (error) {
       console.error(' Error refreshing reports data:', error);
     } finally {
@@ -98,6 +95,60 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
       toast.error('❌ Lỗi khi gửi báo cáo');
     } finally {
       setReportLoading(false);
+    }
+  };
+
+  // Handle Excel Export
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+
+      const reportData = {
+        orders,
+        users,
+        paymentData,
+        totalRevenue,
+        timeFilter
+      };
+
+      const fileName = ExcelExportService.exportOverviewReport(reportData);
+      toast.success(`📊 Xuất Excel thành công: ${fileName}`);
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast.error('❌ Lỗi khi xuất file Excel');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle Export Product Excel
+  const handleExportProductExcel = async () => {
+    try {
+      setIsExporting(true);
+
+      // Prepare product data with sales info
+      const productData = uniqueProducts.map((product: any) => {
+        const productOrders = orders.filter(order => order.products?.some((p: any) => p.id === product.id));
+
+        const soldQuantity = productOrders.reduce((sum, order) => {
+          const orderProduct = order.products.find((p: any) => p.id === product.id);
+          return sum + (orderProduct?.quantity || 0);
+        }, 0);
+
+        return {
+          ...product,
+          soldQuantity,
+          category: product.category || 'Không xác định'
+        };
+      });
+
+      const fileName = ExcelExportService.exportProductReport(productData, timeFilter);
+      toast.success(`📊 Xuất Excel sản phẩm thành công: ${fileName}`);
+    } catch (error) {
+      console.error('Product Excel export error:', error);
+      toast.error('❌ Lỗi khi xuất file Excel sản phẩm');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -131,6 +182,53 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
               </FormControl>
 
               <Button
+                variant='outlined'
+                startIcon={<MdDownload />}
+                onClick={handleExportExcel}
+                disabled={isExporting}
+                size='medium'
+                sx={{
+                  borderColor: '#10b981',
+                  color: '#10b981',
+                  '&:hover': {
+                    borderColor: '#059669',
+                    backgroundColor: 'rgba(16, 185, 129, 0.04)'
+                  },
+                  '&:disabled': {
+                    borderColor: '#9ca3af',
+                    color: '#9ca3af'
+                  },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: 600
+                }}
+              >
+                {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
+              </Button>
+
+              <Button
+                variant='contained'
+                startIcon={<MdSchedule />}
+                onClick={handleSendReport}
+                disabled={reportLoading}
+                size='medium'
+                sx={{
+                  backgroundColor: '#8b5cf6',
+                  '&:hover': { backgroundColor: '#7c3aed' },
+                  '&:disabled': {
+                    backgroundColor: '#9ca3af',
+                    color: '#ffffff'
+                  },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.3)'
+                }}
+              >
+                {reportLoading ? 'Đang gửi...' : 'Gửi Discord'}
+              </Button>
+
+              <Button
                 variant='contained'
                 startIcon={
                   isRefreshing ? (
@@ -158,39 +256,6 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
                 }}
               >
                 {isRefreshing ? 'Đang tải...' : 'Làm mới'}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Report Actions */}
-      <Card sx={{ mb: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-        <CardContent sx={{ p: 3 }}>
-          <div className='flex items-center justify-between'>
-            <Typography variant='body1' sx={{ color: '#6b7280' }}>
-              Gửi báo cáo tự động qua Discord hoặc xuất dữ liệu Excel
-            </Typography>
-
-            <div className='flex gap-3'>
-              <Button
-                variant='contained'
-                startIcon={<MdSchedule />}
-                onClick={handleSendReport}
-                disabled={reportLoading}
-                size='small'
-                sx={{
-                  backgroundColor: '#10b981',
-                  '&:hover': { backgroundColor: '#059669' },
-                  textTransform: 'none',
-                  fontWeight: 600
-                }}
-              >
-                {reportLoading ? 'Đang gửi...' : 'Gửi báo cáo Discord'}
-              </Button>
-
-              <Button variant='outlined' startIcon={<MdDownload />} size='small' sx={{ textTransform: 'none' }}>
-                Xuất Excel
               </Button>
             </div>
           </div>
@@ -233,7 +298,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
                 <PaymentMethodChart data={paymentData.data} />
                 <div className='mt-4 p-3 bg-gray-50 rounded-lg'>
                   <Typography variant='body2' color='textSecondary'>
-                    📊 Tổng {paymentData.summary?.totalOrders || 0} đơn hàng •{' '}
+                    Tổng {paymentData.summary?.totalOrders || 0} đơn hàng •{' '}
                     {paymentData.summary?.totalAmount
                       ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
                           paymentData.summary.totalAmount
@@ -256,71 +321,68 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
           </CardContent>
         </Card>
 
-        {/* Enhanced Voucher Chart */}
-        <Card
-          sx={{ borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-        >
-          <CardContent sx={{ p: 4 }}>
-            <div className='flex items-center gap-3 mb-4'>
-              <div className='p-2 bg-purple-100 rounded-lg'>
-                <svg className='w-6 h-6 text-purple-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z'
-                  />
-                </svg>
-              </div>
-              <div>
-                <Typography variant='h6' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                  Top 5 Voucher phổ biến
+        {/* Payment Method Stacked Chart */}
+        <div>
+          {paymentLoading ? (
+            <div className='flex justify-center items-center h-64'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600'></div>
+            </div>
+          ) : paymentData && paymentData.data && paymentData.data.length > 0 ? (
+            <PaymentMethodStackedChart data={paymentData.data} title='So sánh phương thức thanh toán' />
+          ) : (
+            <div className='bg-white p-6 rounded-lg border border-gray-200 shadow-sm'>
+              <h3 className='text-lg font-semibold text-gray-900 mb-4'>So sánh phương thức thanh toán</h3>
+              <div className='flex flex-col items-center justify-center h-64 text-gray-500'>
+                <div className='text-4xl mb-2'>📊</div>
+                <Typography variant='h6' color='textSecondary'>
+                  Không có dữ liệu thanh toán
                 </Typography>
                 <Typography variant='body2' color='textSecondary'>
-                  Voucher được sử dụng nhiều nhất
+                  Chưa có đơn hàng nào trong khoảng thời gian này
                 </Typography>
               </div>
             </div>
-            {voucherLoading ? (
-              <div className='flex justify-center items-center h-64'>
-                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600'></div>
-              </div>
-            ) : voucherData && voucherData.data && voucherData.data.length > 0 ? (
-              <div>
-                <PromotionChart data={voucherData.data} title='Top 5 Voucher được sử dụng nhiều nhất' />
-                <div className='mt-4 p-3 bg-gray-50 rounded-lg'>
-                  <Typography variant='body2' color='textSecondary'>
-                    🎫 {voucherData.summary?.totalUsage || 0} lượt sử dụng • Tiết kiệm{' '}
-                    {voucherData.summary?.totalDiscount
-                      ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                          voucherData.summary.totalDiscount
-                        )
-                      : '0 VNĐ'}
-                  </Typography>
-                </div>
-              </div>
-            ) : (
-              <div className='flex flex-col items-center justify-center h-64 text-gray-500'>
-                <div className='text-4xl mb-2'>🎫</div>
-                <Typography variant='h6' color='textSecondary'>
-                  Không có dữ liệu voucher
-                </Typography>
-                <Typography variant='body2' color='textSecondary'>
-                  Chưa có voucher nào được sử dụng trong khoảng thời gian này
-                </Typography>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </div>
       </div>
 
       {/* 🎯 ENHANCED: Best Selling Products with purchase quantities */}
       <div className='mb-4'>
-        <BestSellingProducts uniqueProducts={uniqueProducts} orders={orders} />
+        <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <CardContent sx={{ p: 3 }}>
+            <div className='flex items-center justify-between mb-4'>
+              <Typography variant='h6' component='h3' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                📈 Sản phẩm bán chạy
+              </Typography>
+              <Button
+                variant='outlined'
+                startIcon={<MdDownload />}
+                onClick={handleExportProductExcel}
+                disabled={isExporting}
+                size='small'
+                sx={{
+                  borderColor: '#10b981',
+                  color: '#10b981',
+                  '&:hover': {
+                    borderColor: '#059669',
+                    backgroundColor: 'rgba(16, 185, 129, 0.04)'
+                  },
+                  '&:disabled': {
+                    borderColor: '#9ca3af',
+                    color: '#9ca3af'
+                  },
+                  borderRadius: '6px',
+                  textTransform: 'none',
+                  fontWeight: 500
+                }}
+              >
+                {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
+              </Button>
+            </div>
+            <BestSellingProducts uniqueProducts={uniqueProducts} orders={orders} />
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Voucher Analytics Section */}
-      <VoucherAnalytics timeFilter={timeFilter} />
 
       {/* Success Alert */}
       <Snackbar
@@ -335,7 +397,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
       </Snackbar>
 
       {/* Loading States */}
-      {(paymentLoading || voucherLoading) && (
+      {paymentLoading && (
         <div className='flex justify-center items-center py-8'>
           <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600'></div>
         </div>

@@ -27,7 +27,7 @@ const COLORS = {
   default: '#8884D8'
 };
 
-const PaymentMethodChart: React.FC<PaymentMethodChartProps> = ({ data, title = 'Phương thức thanh toán' }) => {
+const PaymentMethodChart: React.FC<PaymentMethodChartProps> = ({ data, title }) => {
   if (!data || data.length === 0) {
     return (
       <div className='bg-white p-6 rounded-lg border border-gray-200 shadow-sm'>

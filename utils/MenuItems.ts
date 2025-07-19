@@ -40,17 +40,17 @@ export const MenuItems = [
         ]
       },
       {
-        title: 'Bài Viết',
-        icon: BiSolidCategory,
+        title: 'Đơn Hàng',
+        icon: MdOutlineFeed,
         hasSubmenu: true,
         submenu: [
           {
             title: 'Danh sách',
-            path: '/admin/manage-articles'
+            path: '/admin/manage-orders'
           },
           {
-            title: 'Danh mục',
-            path: '/admin/manage-articlesCategory'
+            title: 'Kanban',
+            path: '/admin/manage-orders/kanban'
           }
         ]
       },
@@ -70,17 +70,32 @@ export const MenuItems = [
         ]
       },
       {
-        title: 'Đơn Hàng',
-        icon: MdOutlineFeed,
+        title: 'Tài Khoản',
+        icon: MdSupervisedUserCircle,
+        hasSubmenu: true,
+        submenu: [
+          {
+            title: 'Nhân viên',
+            path: '/admin/manage-staff'
+          },
+          {
+            title: 'Khách hàng',
+            path: '/admin/manage-users'
+          }
+        ]
+      },
+      {
+        title: 'Bài Viết',
+        icon: BiSolidCategory,
         hasSubmenu: true,
         submenu: [
           {
             title: 'Danh sách',
-            path: '/admin/manage-orders'
+            path: '/admin/manage-articles'
           },
           {
-            title: 'Kanban',
-            path: '/admin/manage-orders/kanban'
+            title: 'Danh mục',
+            path: '/admin/manage-articlesCategory'
           }
         ]
       },
@@ -99,21 +114,6 @@ export const MenuItems = [
         title: 'Tin Nhắn',
         icon: MdOutlineChat,
         path: '/admin/chat'
-      },
-      {
-        title: 'Tài Khoản',
-        icon: MdSupervisedUserCircle,
-        hasSubmenu: true,
-        submenu: [
-          {
-            title: 'Nhân viên',
-            path: '/admin/manage-staff'
-          },
-          {
-            title: 'Khách hàng',
-            path: '/admin/manage-users'
-          }
-        ]
       }
     ]
   },

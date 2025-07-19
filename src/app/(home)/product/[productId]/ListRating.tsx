@@ -22,8 +22,8 @@ const ListRating: React.FC<ListRatingProps> = ({ product, user }) => {
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
-      // Chuyển sang tab 3 (tab có phần nhận xét)
-      setValue(2);
+      // Chuyển sang tab 1 (tab có phần nhận xét)
+      setValue(1);
       setTimeout(() => {
         const element = document.querySelector(hash);
         if (element) {

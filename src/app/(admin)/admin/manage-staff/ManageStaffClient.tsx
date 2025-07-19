@@ -181,74 +181,11 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
     }
   ];
 
-  const stats = [
-    {
-      title: 'Tổng nhân viên',
-      count: totalStaff.toLocaleString(),
-      change: '+12%',
-      description: 'Tổng số nhân viên trong hệ thống',
-      icon: 'fa fa-user',
-      iconColor: 'text-blue-500',
-      changeColor: 'text-green-500'
-    },
-    {
-      title: 'Quản trị viên',
-      count: adminStaff.toLocaleString(),
-      change: '+5%',
-      description: 'Số lượng quản trị viên',
-      icon: 'ri-user-add-line',
-      iconColor: 'text-red-500',
-      changeColor: 'text-green-500'
-    },
-    {
-      title: 'Nhân viên',
-      count: regularStaff.toLocaleString(),
-      change: '+8%',
-      description: 'Số lượng nhân viên thường',
-      icon: 'ri-user-follow-line',
-      iconColor: 'text-green-500',
-      changeColor: 'text-green-500'
-    },
-    {
-      title: 'Nhân viên mới',
-      count: recentStaff.toLocaleString(),
-      change: '+15%',
-      description: 'Nhân viên được thêm trong 7 ngày qua',
-      icon: 'ri-user-search-line',
-      iconColor: 'text-yellow-500',
-      changeColor: 'text-green-500'
-    }
-  ];
-
   return (
     <>
       <div className='w-full m-auto text-xl mt-6'>
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-3 pr-0 border border-r-0 border-gray-200 rounded-lg'>
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className='bg-white p-4 border-r border-r-gray-200 border-b border-b-gray-200 md:border-b-0'
-            >
-              <div className='flex justify-between'>
-                <div className='flex flex-col gap-y-2'>
-                  <h5 className='text-gray-500 text-sm'>{stat.title}</h5>
-                  <div className='text-2xl'>
-                    {stat.count}
-                    <span className={`ml-2 text-base font-medium ${stat.changeColor}`}>{stat.change}</span>
-                  </div>
-                  <p className='text-gray-400 text-sm'>{stat.description}</p>
-                </div>
-                <div
-                  className={`flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 ${stat.iconColor}`}
-                >
-                  <i className={`${stat.icon} text-2xl`} />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
         {/* Header with Add Staff Button */}
-        <div className='mb-4 mt-5 flex justify-between items-center'>
+        <div className='mb-4 mt-3 flex justify-between items-center'>
           <h2 className='text-xl font-semibold text-gray-800'></h2>
           {canCreateStaff && (
             <MuiButton

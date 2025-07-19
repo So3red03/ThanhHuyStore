@@ -403,7 +403,6 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                       <li>• Sản phẩm sắp hết hàng</li>
                       <li>• Top sản phẩm bán chạy</li>
                       <li>• Khách hàng mới đăng ký</li>
-                      <li>• Tỷ lệ chuyển đổi</li>
                     </ul>
 
                     <div className='mt-4 pt-4 border-t border-blue-200'>

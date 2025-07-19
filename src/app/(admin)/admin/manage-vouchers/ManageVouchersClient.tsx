@@ -345,9 +345,9 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
       <div className='px-6 py-5'>
         <div className='flex items-center justify-between mb-6'>
           <div className='flex items-center gap-3'>
-            <h1 className='text-3xl font-bold text-gray-800'>🎫 Quản lý Voucher</h1>
+            <h1 className='text-3xl font-bold text-gray-800'>Quản lý Voucher</h1>
             <Chip
-              label={`${filteredVouchers.length} voucher`}
+              label={`${filteredVouchers.length} hiện có`}
               size='medium'
               sx={{
                 backgroundColor: '#ede9fe',

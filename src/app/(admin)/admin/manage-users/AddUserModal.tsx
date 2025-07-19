@@ -93,12 +93,18 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded,
         ...(formData.password && { password: formData.password }) // Chỉ gửi password nếu có
       };
 
+      // Determine API endpoint based on role
+      const isStaffRole = formData.role === 'ADMIN' || formData.role === 'STAFF';
+      const baseEndpoint = isStaffRole ? '/api/admin/staff' : '/api/admin/users';
+
       if (isEditMode) {
-        await axios.put(`/api/admin/users/${editData?.id}`, apiData);
-        toast.success('Cập nhật người dùng thành công');
+        const endpoint = isStaffRole ? `${baseEndpoint}/${editData?.id}` : `${baseEndpoint}/${editData?.id}`;
+        await axios.put(endpoint, apiData);
+        toast.success(`Cập nhật ${isStaffRole ? 'nhân viên' : 'người dùng'} thành công`);
       } else {
-        await axios.post('/api/admin/users/create', apiData);
-        toast.success('Tạo người dùng thành công');
+        const endpoint = isStaffRole ? baseEndpoint : `${baseEndpoint}/create`;
+        await axios.post(endpoint, apiData);
+        toast.success(`Tạo ${isStaffRole ? 'nhân viên' : 'người dùng'} thành công`);
       }
 
       onUserAdded();

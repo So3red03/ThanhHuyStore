@@ -2,9 +2,9 @@
 
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { Product } from '@prisma/client';
-import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { formatPrice } from '../../../../../utils/formatPrice';
-import { MdCached, MdClose, MdDelete, MdDone, MdEdit, MdRefresh } from 'react-icons/md';
+import { MdCached, MdClose, MdDelete, MdDone, MdEdit, MdRefresh, MdSearch, MdFilterList } from 'react-icons/md';
 // TODO: Add back when soft delete is implemented: MdRestore, MdVisibility
 import { useRouter, useSearchParams } from 'next/navigation';
 import { deleteObject, getStorage, ref } from 'firebase/storage';
@@ -20,7 +20,18 @@ import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useEffect, useState } from 'react';
 import SendNewProductEmail from '@/app/components/admin/SendNewProductEmail';
 import Image from 'next/image';
-import { Rating, Button as MuiButton, CircularProgress } from '@mui/material';
+import {
+  Rating,
+  Button as MuiButton,
+  CircularProgress,
+  TextField,
+  InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  Chip,
+  Box
+} from '@mui/material';
 import { MdAdd } from 'react-icons/md';
 import { FaDollarSign, FaRegBuilding, FaRegEnvelope, FaRegListAlt, FaRegWindowMaximize } from 'react-icons/fa';
 import * as SlIcons from 'react-icons/sl';
@@ -37,13 +48,15 @@ interface ManageProductsClientProps {
   currentUser: SafeUser | null | undefined;
   subCategories: any;
   parentCategories: any;
+  orders?: any[]; // Add orders for calculating sold quantities
 }
 
 const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   products,
   currentUser,
   subCategories,
-  parentCategories
+  parentCategories,
+  orders = []
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,6 +76,13 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [currentProducts, setCurrentProducts] = useState(products);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+
+  // Enhanced search and filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [priceRangeFilter, setPriceRangeFilter] = useState('all');
+  const [stockFilter, setStockFilter] = useState('all');
+  const [filteredProducts, setFilteredProducts] = useState(products);
 
   const [text, setText] = useState('');
   const {
@@ -145,6 +165,78 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     setCustomValue('description', newText); // Cập nhật giá trị description trong form
   };
 
+  // Enhanced filter logic
+  const handleSearch = () => {
+    let filtered = products;
+
+    // Search by name or description
+    if (searchTerm) {
+      filtered = filtered.filter(
+        product =>
+          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    // Filter by category (parent category)
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(product => {
+        // Tìm subcategory của product
+        const subCategory = subCategories.find((sub: any) => sub.id === product.categoryId);
+        // So sánh parentId của subcategory với categoryFilter
+        return subCategory?.parentId === categoryFilter;
+      });
+    }
+
+    // Filter by price range
+    if (priceRangeFilter !== 'all') {
+      filtered = filtered.filter(product => {
+        const price = product.price || 0;
+        switch (priceRangeFilter) {
+          case 'under-1m':
+            return price < 1000000;
+          case '1m-5m':
+            return price >= 1000000 && price < 5000000;
+          case '5m-10m':
+            return price >= 5000000 && price < 10000000;
+          case '10m-20m':
+            return price >= 10000000 && price < 20000000;
+          case 'over-20m':
+            return price >= 20000000;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Filter by stock status
+    if (stockFilter !== 'all') {
+      filtered = filtered.filter(product => {
+        const inStock = product.inStock || 0;
+        switch (stockFilter) {
+          case 'in-stock':
+            return inStock > 0;
+          case 'low-stock':
+            return inStock > 0 && inStock <= 10;
+          case 'out-of-stock':
+            return inStock === 0;
+          default:
+            return true;
+        }
+      });
+    }
+
+    setFilteredProducts(filtered);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setCategoryFilter('all');
+    setPriceRangeFilter('all');
+    setStockFilter('all');
+    setFilteredProducts(products);
+  };
+
   const handleOpenModal = async (product: Product) => {
     // For variant products, fetch full data from API to get complete variant info
     if (product.productType === 'VARIANT') {
@@ -183,13 +275,22 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   // Use state for current products instead of props directly
 
   let rows: any = [];
-  if (currentProducts?.length > 0) {
-    rows = currentProducts?.map((product: any) => {
+  if (filteredProducts?.length > 0) {
+    rows = filteredProducts?.map((product: any) => {
       // Tính điểm đánh giá của mỗi sản phẩm
       const productRating =
         product.reviews?.reduce((acc: number, item: any) => item.rating + acc, 0) / (product.reviews?.length || 1) || 0;
       // Tìm tên danh mục cha dựa vào parentId
       const subCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.name;
+
+      // Tính số lượng đã bán (logic từ BestSellingProducts)
+      const totalPurchased = orders.reduce((total: number, order: any) => {
+        if (order.products && Array.isArray(order.products)) {
+          const orderProduct = order.products.find((p: any) => p.id === product.id);
+          return total + (orderProduct?.quantity || 0);
+        }
+        return total;
+      }, 0);
       const parentCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.parentId;
       // For variant products, calculate total stock and use base price or first variant price
       let displayPrice = product.price;
@@ -222,6 +323,8 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         deletedAt: product.deletedAt,
         deletedBy: product.deletedBy,
         productType: product.productType,
+        totalPurchased: totalPurchased, // ✅ Add sold quantity
+        createdAt: product.createdAt, // ✅ Add creation date
         variants: product.variants || [], // Include variants data
         // Include all original product data for editing
         brand: product.brand,
@@ -293,18 +396,17 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     },
     { field: 'subCategory', headerName: 'Danh mục', width: 140 },
     {
-      field: 'rating',
-      headerName: 'Đánh giá',
-      width: 130,
+      field: 'totalPurchased',
+      headerName: 'Đã bán',
+      width: 90,
       renderCell: params => {
         return (
-          <div className='flex items-center justify-center w-full h-full'>
-            <Rating value={params.row.rating} readOnly precision={0.5} />
+          <div className='flex justify-center items-center h-full'>
+            <Status text={params.row.totalPurchased || 0} bg='bg-blue-200' color='text-blue-700' />
           </div>
         );
       }
     },
-    { field: 'description', headerName: 'Mô tả', width: 170 },
     {
       field: 'inStock',
       headerName: 'Tồn kho',
@@ -321,13 +423,37 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         );
       }
     },
+
+    {
+      field: 'rating',
+      headerName: 'Đánh giá',
+      width: 130,
+      renderCell: params => {
+        return (
+          <div className='flex items-center justify-center w-full h-full'>
+            <Rating value={params.row.rating} readOnly precision={0.5} />
+          </div>
+        );
+      }
+    },
+    { field: 'description', headerName: 'Mô tả', width: 170 },
+    {
+      field: 'createdAt',
+      headerName: 'Ngày tạo',
+      width: 120,
+      renderCell: params => {
+        return (
+          <div className='flex justify-center items-center h-full'>
+            <div className='text-gray-600 text-sm'>{new Date(params.row.createdAt).toLocaleDateString('vi-VN')}</div>
+          </div>
+        );
+      }
+    },
     {
       field: 'action',
       headerName: '',
       width: 170,
       renderCell: params => {
-        // TODO: Add soft delete actions when implemented
-        // For now, only show active product actions
         return (
           <div className='flex items-center justify-center gap-4 h-full'>
             <ActionBtn
@@ -431,6 +557,11 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       });
   };
 
+  // Auto-trigger search when filters change
+  useEffect(() => {
+    handleSearch();
+  }, [searchTerm, categoryFilter, priceRangeFilter, stockFilter, products]);
+
   useEffect(() => {
     if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
       router.push('/login');
@@ -454,78 +585,24 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
     return <NullData title='Từ chối đăng nhập' />;
   }
-  const stats = [
-    {
-      title: 'Sản phẩm hiện có',
-      count: products?.length,
-      icon: <FaRegListAlt className='text-2xl text-gray-600' />,
-      changeColor: 'text-green-500',
-      bgColor: 'bg-green-100'
-    },
-    // {
-    // 	title: 'Doanh thu trực tiếp',
-    // 	count: formatPrice(21.459),
-    // 	change: '+29%',
-    // 	description: '5k đơn',
-    // 	icon: <FaRegBuilding className="text-2xl text-gray-600" />,
-    // 	changeColor: 'text-green-500',
-    // 	bgColor: 'bg-green-100',
-    // },
-    {
-      title: 'Doanh thu trên website',
-      count: 0,
-      change: '0%',
-      description: '0 đơn',
-      icon: <FaRegWindowMaximize className='text-2xl text-gray-600' />,
-      changeColor: 'text-green-500',
-      bgColor: 'bg-green-100'
-    },
-    {
-      title: 'Khuyến mãi',
-      count: 0,
-      change: '-0%',
-      description: '0 đơn',
-      icon: <FaRegEnvelope className='text-2xl text-gray-600' />,
-      changeColor: 'text-rose-500',
-      bgColor: 'bg-red-100'
-    }
-  ];
-
   return (
-    <>
-      <div className='w-full m-auto text-xl mt-6'>
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-3 pr-0 border border-r-0 border-gray-200 rounded-lg'>
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className='bg-white p-4 border-r border-r-gray-200 border-b border-b-gray-200 md:border-b-0'
-            >
-              <div className='flex justify-between'>
-                <div className='flex flex-col gap-y-2'>
-                  <h5 className='text-gray-500 text-sm'>{stat.title}</h5>
-                  <div className='text-2xl'>{stat.count}</div>
-                  <p className='text-gray-400 text-sm'>
-                    {stat.description || ''}
-                    {stat.change && (
-                      <span
-                        className={`ml-2 text-base font-semibold px-2 py-1 ${stat.bgColor} rounded-full ${stat.changeColor}`}
-                      >
-                        {stat.change}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className='flex items-center justify-center h-12 w-12 rounded-md bg-gray-100 text-slate-700'>
-                  {stat.icon}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* Header with Add Product Button and Email Marketing */}
-        <div className='mb-4 mt-5 flex justify-between items-center'>
-          <h2 className='text-xl font-semibold text-gray-800'></h2>
-          <div className='flex gap-3'>
+    <div className='w-full m-auto text-xl mt-6'>
+      {/* Header */}
+      <div className='px-6 py-5'>
+        <div className='flex items-center justify-between mb-6'>
+          <div className='flex items-center gap-3'>
+            <h1 className='text-3xl font-bold text-gray-800'>Sản phẩm</h1>
+            <Chip
+              label={`${filteredProducts.length} hiện có`}
+              size='medium'
+              sx={{
+                backgroundColor: '#dbeafe',
+                color: '#1e40af',
+                fontWeight: 600
+              }}
+            />
+          </div>
+          <div className='flex items-center gap-3'>
             <MuiButton
               onClick={() => setShowEmailModal(true)}
               startIcon={<FaRegEnvelope />}
@@ -567,8 +644,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
                 backgroundColor: '#3b82f6',
                 '&:hover': { backgroundColor: '#2563eb' },
                 borderRadius: '12px',
-                px: 3,
-                py: 1.5,
                 textTransform: 'none',
                 fontWeight: 600,
                 boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
@@ -576,6 +651,156 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
             >
               {isRefreshing ? 'Đang tải...' : 'Làm mới'}
             </MuiButton>
+          </div>
+        </div>
+
+        {/* Enhanced Search Form */}
+        <div className='bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6'>
+          <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
+            {/* Search Input */}
+            <div className='lg:col-span-2'>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Tìm kiếm</label>
+              <TextField
+                size='medium'
+                placeholder='Tìm theo tên sản phẩm hoặc mô tả...'
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                sx={{
+                  width: '100%',
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    '&:hover': {
+                      backgroundColor: '#f3f4f6'
+                    },
+                    '&.Mui-focused': {
+                      backgroundColor: '#ffffff',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#3b82f6',
+                        borderWidth: '2px'
+                      }
+                    }
+                  }
+                }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position='end'>
+                      <MuiButton
+                        size='medium'
+                        onClick={handleSearch}
+                        startIcon={<MdSearch />}
+                        variant='contained'
+                        sx={{
+                          minWidth: 'auto',
+                          px: 2,
+                          backgroundColor: '#3b82f6',
+                          '&:hover': { backgroundColor: '#2563eb' }
+                        }}
+                      >
+                        Tìm
+                      </MuiButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </div>
+
+            {/* Category Filter */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Danh mục</label>
+              <FormControl fullWidth size='medium'>
+                <Select
+                  value={categoryFilter}
+                  onChange={e => setCategoryFilter(e.target.value)}
+                  displayEmpty
+                  sx={{
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover': {
+                        backgroundColor: '#f3f4f6'
+                      },
+                      '&.Mui-focused': {
+                        backgroundColor: '#ffffff'
+                      }
+                    }
+                  }}
+                >
+                  <MenuItem value='all'>Tất cả danh mục</MenuItem>
+                  {parentCategories?.map((category: any) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </div>
+
+            {/* Price Range Filter */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Khoảng giá</label>
+              <FormControl fullWidth size='medium'>
+                <Select
+                  value={priceRangeFilter}
+                  onChange={e => setPriceRangeFilter(e.target.value)}
+                  displayEmpty
+                  sx={{
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover': {
+                        backgroundColor: '#f3f4f6'
+                      },
+                      '&.Mui-focused': {
+                        backgroundColor: '#ffffff'
+                      }
+                    }
+                  }}
+                >
+                  <MenuItem value='all'>Tất cả giá</MenuItem>
+                  <MenuItem value='under-1m'>Dưới 1 triệu</MenuItem>
+                  <MenuItem value='1m-5m'>1 - 5 triệu</MenuItem>
+                  <MenuItem value='5m-10m'>5 - 10 triệu</MenuItem>
+                  <MenuItem value='10m-20m'>10 - 20 triệu</MenuItem>
+                  <MenuItem value='over-20m'>Trên 20 triệu</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className='flex justify-between items-center mt-6'>
+            {(searchTerm || categoryFilter !== 'all' || priceRangeFilter !== 'all') && (
+              <MuiButton
+                variant='outlined'
+                onClick={handleClearFilters}
+                size='medium'
+                startIcon={<MdFilterList />}
+                sx={{
+                  borderColor: '#ef4444',
+                  color: '#ef4444',
+                  '&:hover': {
+                    borderColor: '#dc2626',
+                    backgroundColor: '#fef2f2'
+                  }
+                }}
+              >
+                Xóa bộ lọc
+              </MuiButton>
+            )}
+
+            {/* Search Results Info */}
+            {(searchTerm || categoryFilter !== 'all' || priceRangeFilter !== 'all') && (
+              <div className='px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg'>
+                <div className='text-sm font-medium text-green-800'>
+                  🎯 <strong>Kết quả:</strong> {filteredProducts.length} sản phẩm
+                  {filteredProducts.length === 0 && (
+                    <span className='text-red-600 ml-2'>- Không tìm thấy sản phẩm nào phù hợp</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -587,13 +812,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
             initialState={{
               pagination: {
                 paginationModel: { page: 0, pageSize: 10 }
-              }
-            }}
-            slots={{ toolbar: GridToolbar }}
-            slotProps={{
-              toolbar: {
-                showQuickFilter: true,
-                quickFilterProps: { debounceMs: 500 }
               }
             }}
             pageSizeOptions={[10, 20, 30]}
@@ -671,7 +889,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
           open={showEmailModal}
         />
       )}
-    </>
+    </div>
   );
 };
 
