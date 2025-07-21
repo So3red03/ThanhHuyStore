@@ -5,7 +5,16 @@ import ActionBtn from '@/app/components/ActionBtn';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import AdminModal from '@/app/components/admin/AdminModal';
-import { MdAccessTimeFilled, MdDeliveryDining, MdDone, MdRefresh, MdRemoveRedEye, MdAdd } from 'react-icons/md';
+import AdminCancelOrderDialog from '@/app/components/admin/AdminCancelOrderDialog';
+import {
+  MdAccessTimeFilled,
+  MdDeliveryDining,
+  MdDone,
+  MdRefresh,
+  MdRemoveRedEye,
+  MdAdd,
+  MdClose
+} from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DeliveryStatus, Order, OrderStatus } from '@prisma/client';
@@ -46,6 +55,9 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
   const [filteredOrders, setFilteredOrders] = useState(initialOrders);
   const [tabValue, setTabValue] = useState(0);
   const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<any>(null);
 
   const router = useRouter();
 
@@ -101,7 +113,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
         email: order.user.email,
         status: order.status,
         amount: order.amount,
-        paymentStatus: order.status,
+        orderStatus: order.status,
         paymentMethod: order.paymentMethod,
         deliveryStatus: order.deliveryStatus,
         products: order.products,
@@ -133,8 +145,8 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
       }
     },
     {
-      field: 'paymentStatus',
-      headerName: 'Thanh toán',
+      field: 'orderStatus',
+      headerName: 'Trạng thái',
       width: 150,
       renderCell: params => {
         const getStatusColor = (status: string) => {
@@ -142,7 +154,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
             case OrderStatus.pending:
               return 'text-xs bg-purple-200 text-purple-700 border-purple-300';
             case OrderStatus.confirmed:
-              return 'text-xs bg-orange-200 text-orange-700 border-orange-300';
+              return 'text-xs bg-blue-200 text-blue-700 border-blue-300';
             case OrderStatus.completed:
               return 'text-xs bg-green-200 text-green-700 border-green-300';
             case OrderStatus.canceled:
@@ -155,9 +167,9 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
         const getStatusLabel = (status: OrderStatus) => {
           switch (status) {
             case OrderStatus.pending:
-              return 'Chờ thanh toán';
+              return 'Chờ xác nhận';
             case OrderStatus.confirmed:
-              return 'Đã thanh toán';
+              return 'Đang chuẩn bị';
             case OrderStatus.completed:
               return 'Hoàn thành';
             case OrderStatus.canceled:
@@ -168,16 +180,16 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
         };
 
         // Lấy danh sách trạng thái hợp lệ có thể chuyển đến
-        const validTransitions = getValidOrderStatusTransitions(params.row.paymentStatus, params.row.deliveryStatus);
+        const validTransitions = getValidOrderStatusTransitions(params.row.orderStatus, params.row.deliveryStatus);
 
         // Nếu không có trạng thái nào có thể chuyển, chỉ hiển thị text
         if (validTransitions.length === 0) {
           return (
             <div className='flex justify-center items-center h-full'>
               <span
-                className={`border rounded-md px-2 py-1 text-sm shadow-sm ${getStatusColor(params.row.paymentStatus)}`}
+                className={`border rounded-md px-2 py-1 text-sm shadow-sm ${getStatusColor(params.row.orderStatus)}`}
               >
-                {getStatusLabel(params.row.paymentStatus)}
+                {getStatusLabel(params.row.orderStatus)}
               </span>
             </div>
           );
@@ -186,12 +198,12 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
         return (
           <div className='flex justify-center items-center h-full'>
             <select
-              value={params.row.paymentStatus}
+              value={params.row.orderStatus}
               onChange={event => handleUpdateOrderStatus(params.row.id, event.target.value)}
-              className={`border rounded-md px-2 py-1 text-sm shadow-sm ${getStatusColor(params.row.paymentStatus)}`}
+              className={`border rounded-md px-2 py-1 text-sm shadow-sm ${getStatusColor(params.row.orderStatus)}`}
             >
               {/* Trạng thái hiện tại */}
-              <option value={params.row.paymentStatus}>{getStatusLabel(params.row.paymentStatus)}</option>
+              <option value={params.row.orderStatus}>{getStatusLabel(params.row.orderStatus)}</option>
 
               {/* Các trạng thái có thể chuyển đến */}
               {validTransitions.map(status => (
@@ -237,36 +249,37 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
       headerName: '',
       width: 180,
       renderCell: params => {
-        const canDispatch = canTransitionDeliveryStatus(
-          params.row.deliveryStatus,
-          DeliveryStatus.in_transit,
-          params.row.status
+        const canConfirm = canTransitionOrderStatus(
+          params.row.status,
+          OrderStatus.confirmed,
+          params.row.deliveryStatus
         );
 
-        const canDeliver = canTransitionDeliveryStatus(
-          params.row.deliveryStatus,
-          DeliveryStatus.delivered,
-          params.row.status
-        );
+        const canCancel = canTransitionOrderStatus(params.row.status, OrderStatus.canceled, params.row.deliveryStatus);
+
+        // Không hiển thị button nếu đơn hàng đã hoàn thành và đã giao
+        const isCompleted =
+          params.row.status === OrderStatus.completed && params.row.deliveryStatus === DeliveryStatus.delivered;
 
         return (
           <div className='flex items-center justify-center gap-4 h-full'>
-            {/* Nút gửi hàng - chỉ hiện khi có thể chuyển sang in_transit */}
-            {canDispatch && (
+            {/* Nút xác nhận - chỉ hiện khi có thể chuyển sang confirmed */}
+            {canConfirm && !isCompleted && (
               <ActionBtn
-                icon={MdDeliveryDining}
+                icon={MdDone}
                 onClick={() => {
-                  handleDispatch(params.row.id);
+                  handleConfirmOrder(params.row.id);
                 }}
               />
             )}
 
-            {/* Nút giao hàng - chỉ hiện khi có thể chuyển sang delivered */}
-            {canDeliver && (
+            {/* Nút hủy - chỉ hiện khi có thể hủy và chưa hoàn thành */}
+            {canCancel && !isCompleted && (
               <ActionBtn
-                icon={MdDone}
+                icon={MdClose}
                 onClick={() => {
-                  handleDeliver(params.row.id);
+                  setOrderToCancel(params.row);
+                  setShowCancelDialog(true);
                 }}
               />
             )}
@@ -287,6 +300,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
   ];
 
   const handleRefresh = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch('/api/orders');
       if (response.ok) {
@@ -298,6 +312,8 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
     } catch (error) {
       console.error('Error refreshing orders:', error);
       router.refresh();
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -306,6 +322,13 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
     const currentOrder = orders.find(order => order.id === id);
     if (!currentOrder) {
       toast.error('Không tìm thấy đơn hàng');
+      return;
+    }
+
+    // Nếu chọn hủy đơn hàng, hiển thị dialog
+    if (newStatus === OrderStatus.canceled) {
+      setOrderToCancel(currentOrder);
+      setShowCancelDialog(true);
       return;
     }
 
@@ -327,7 +350,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
       });
   };
 
-  const handleDispatch = (id: string) => {
+  const handleConfirmOrder = (id: string) => {
     // Tìm order hiện tại để validate
     const currentOrder = orders.find(order => order.id === id);
     if (!currentOrder) {
@@ -335,28 +358,27 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
       return;
     }
 
-    // Kiểm tra xem có thể chuyển sang in_transit không
-    if (!canTransitionDeliveryStatus(currentOrder.deliveryStatus, DeliveryStatus.in_transit, currentOrder.status)) {
-      toast.error('Không thể gửi đơn hàng này');
+    // Kiểm tra xem có thể xác nhận không
+    if (!canTransitionOrderStatus(currentOrder.status, OrderStatus.confirmed, currentOrder.deliveryStatus)) {
+      toast.error('Không thể xác nhận đơn hàng này');
       return;
     }
 
     axios
-      .put('/api/orders', {
-        id,
-        deliveryStatus: DeliveryStatus.in_transit
+      .put(`/api/orders/${id}`, {
+        status: OrderStatus.confirmed
       })
       .then(() => {
-        toast.success('Đơn hàng đã được gửi đi');
+        toast.success('Đơn hàng đã được xác nhận');
         handleRefresh();
       })
       .catch(error => {
-        toast.error('Có lỗi xảy ra khi gửi đơn hàng');
+        toast.error('Có lỗi xảy ra khi xác nhận đơn hàng');
         console.error(error);
       });
   };
 
-  const handleDeliver = async (id: string) => {
+  const handleCancelOrder = async (id: string) => {
     // Tìm order hiện tại để validate
     const currentOrder = orders.find(order => order.id === id);
     if (!currentOrder) {
@@ -364,21 +386,29 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
       return;
     }
 
-    // Kiểm tra xem có thể giao hàng không
-    if (!canTransitionDeliveryStatus(currentOrder.deliveryStatus, DeliveryStatus.delivered, currentOrder.status)) {
-      toast.error('Không thể giao đơn hàng này');
+    // Kiểm tra xem có thể hủy không
+    if (!canTransitionOrderStatus(currentOrder.status, OrderStatus.canceled, currentOrder.deliveryStatus)) {
+      toast.error('Không thể hủy đơn hàng này');
+      return;
+    }
+
+    // TODO: Thêm modal để nhập lý do hủy (tham khảo KanbanBoard)
+    const reason = prompt('Nhập lý do hủy đơn hàng:');
+    if (!reason) {
+      toast.error('Vui lòng nhập lý do hủy đơn hàng');
       return;
     }
 
     try {
-      // Cập nhật tuần tự thay vì song song để tránh race condition
-      await axios.put('/api/orders', { id, deliveryStatus: DeliveryStatus.delivered });
-      await axios.put(`/api/orders/${id}`, { status: OrderStatus.completed });
+      await axios.put(`/api/orders/${id}`, {
+        status: OrderStatus.canceled,
+        cancelReason: reason
+      });
 
-      toast.success('Giao hàng thành công');
+      toast.success('Đơn hàng đã được hủy');
       handleRefresh();
     } catch (error) {
-      toast.error('Có lỗi xảy ra khi giao hàng');
+      toast.error('Có lỗi xảy ra khi hủy đơn hàng');
       console.error(error);
     }
   };
@@ -439,7 +469,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
                 boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
               }}
             >
-              Làm mới
+              {isLoading ? 'Đang tải...' : 'Làm mới'}
             </Button>
           </div>
         </div>
@@ -642,6 +672,24 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
         users={users}
         products={products}
       />
+
+      {/* Admin Cancel Order Dialog */}
+      {showCancelDialog && orderToCancel && (
+        <AdminCancelOrderDialog
+          isOpen={showCancelDialog}
+          onClose={() => {
+            setShowCancelDialog(false);
+            setOrderToCancel(null);
+          }}
+          orderId={orderToCancel.id}
+          customerName={orderToCancel.name || 'N/A'}
+          onSuccess={() => {
+            setShowCancelDialog(false);
+            setOrderToCancel(null);
+            handleRefresh();
+          }}
+        />
+      )}
     </>
   );
 };

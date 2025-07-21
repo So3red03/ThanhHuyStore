@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 interface SettingsData {
   discordNotifications: boolean;
   orderNotifications: boolean;
-  emailNotifications: boolean;
   pushNotifications: boolean;
   analyticsTracking: boolean;
   sessionTimeout: number; // minutes
@@ -22,7 +21,6 @@ interface SettingsData {
 const defaultSettings: SettingsData = {
   discordNotifications: true,
   orderNotifications: true,
-  emailNotifications: true,
   pushNotifications: false,
   analyticsTracking: true,
   sessionTimeout: 30,

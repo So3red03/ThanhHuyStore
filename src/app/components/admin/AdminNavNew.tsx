@@ -33,7 +33,6 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-products': 'Quản lý sản phẩm',
   '/admin/manage-orders': 'Quản lý đơn hàng',
   '/admin/manage-orders/kanban': 'Kanban Đơn hàng',
-  '/admin/manage-returns': 'Quản lý đổi/trả hàng',
   '/admin/manage-users': 'Quản lý người dùng',
   '/admin/manage-staff': 'Quản lý nhân viên',
   '/admin/manage-categories': 'Quản lý danh mục cha',
@@ -43,7 +42,6 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-articlesCategory': 'Quản lý danh mục',
   '/admin/manage-vouchers': 'Quản lý Voucher',
   '/admin/manage-promotions': 'Quản lý khuyến mãi',
-  '/admin/discord-test': 'Discord Test',
   '/admin/news-dashboard': 'Phân tích',
   '/admin/settings': 'Cài đặt hệ thống'
 };
@@ -228,7 +226,7 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
             />
 
             {/* Messages */}
-            <IconButton
+            {/* <IconButton
               color='inherit'
               onClick={handleMessagesOpen}
               sx={{
@@ -241,7 +239,7 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
               <Badge badgeContent={messages.length} color='error'>
                 <MdOutlineChat size={20} />
               </Badge>
-            </IconButton>
+            </IconButton> */}
 
             {/* Notifications */}
             <IconButton
@@ -483,7 +481,7 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
       </Menu>
 
       {/* Messages Menu */}
-      <Menu
+      {/* <Menu
         anchorEl={messagesAnchorEl}
         open={Boolean(messagesAnchorEl)}
         onClose={handleMessagesClose}
@@ -501,7 +499,6 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
           }
         }}
       >
-        {/* Header */}
         <Box
           sx={{
             p: 3,
@@ -527,7 +524,6 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
           </Box>
         </Box>
 
-        {/* Content */}
         <Box sx={{ maxHeight: 350, overflow: 'auto' }}>
           {messages.length === 0 ? (
             <Box sx={{ p: 4, textAlign: 'center' }}>
@@ -616,7 +612,6 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
           )}
         </Box>
 
-        {/* Footer */}
         {messages.length > 0 && (
           <Box
             sx={{
@@ -650,7 +645,7 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
             </Box>
           </Box>
         )}
-      </Menu>
+      </Menu> */}
     </>
   );
 };

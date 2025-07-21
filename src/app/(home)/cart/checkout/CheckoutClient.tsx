@@ -141,12 +141,9 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
           toast.success('Đặt hàng thành công!');
           router.push('/cart/orderconfirmation');
         } else {
-          console.error('Missing data in response:', response.data);
           throw new Error('Không nhận được thông tin đơn hàng');
         }
       } catch (error: any) {
-        console.error('Error creating COD order:', error);
-        console.error('Error details:', error.response?.data);
         toast.error('Đặt đơn thất bại. Vui lòng thử lại!');
       } finally {
         setIsLoading(false);
@@ -184,7 +181,6 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
           throw new Error('Không nhận được URL thanh toán MoMo');
         }
       } catch (error: any) {
-        console.error('API Error:', error);
         toast.error('Đặt đơn thất bại. Vui lòng thử lại!');
       } finally {
         setIsLoading(false);

@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 import { getSummary } from '../../../../utils/Articles';
+import { useAnalyticsTracker } from '@/app/hooks/useAnalytics';
 
 interface DisplayArticlesProps {
   initialArticles: any;
@@ -23,6 +24,9 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
   const [isLoading, setIsLoading] = useState(false);
   const [randomArticles, setRandomArticles] = useState<any[]>([]);
   const [isClient, setIsClient] = useState(false);
+
+  // Analytics tracker
+  const { trackArticleView } = useAnalyticsTracker();
 
   // Fix hydration mismatch - chỉ chạy random trên client
   useEffect(() => {
@@ -59,8 +63,15 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
     return randomArticles; // Client-side: sử dụng random articles
   };
 
-  const handleArticleClick = async (articleId: string) => {
+  const handleArticleClick = async (articleId: string, articleTitle?: string) => {
     try {
+      // 🎯 Track analytics event for article click
+      await trackArticleView(articleId, {
+        articleTitle: articleTitle || 'Unknown',
+        clickSource: 'DisplayArticles',
+        interactionType: 'click'
+      });
+
       // Lấy viewCount từ localStorage
       const viewCounts = JSON.parse(localStorage.getItem('articleViewCounts') || '{}');
 
@@ -71,9 +82,9 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
       localStorage.setItem('articleViewCounts', JSON.stringify(viewCounts));
 
       // Vẫn giữ nguyên API call để update trên server
-      const response = await axios.post(`/api/articleViewCount/${articleId}`);
+      await axios.post(`/api/articleViewCount/${articleId}`);
     } catch (error) {
-      console.error('Có lỗi xảy ra khi tăng viewCount:', error);
+      console.error('Có lỗi xảy ra khi tăng viewCount hoặc track analytics:', error);
     }
   };
 
@@ -267,7 +278,7 @@ const DisplayArticles: React.FC<DisplayArticlesProps> = ({ initialArticles, Arti
                   <Link
                     className='relative block aspect-16/9 w-full flex-shrink-0 overflow-hidden rounded-[5px]'
                     href={`/article/${slugConvert(article.title)}-${article.id}`}
-                    onClick={() => handleArticleClick(article.id)}
+                    onClick={() => handleArticleClick(article.id, article.title)}
                   >
                     <img
                       alt={article.title}

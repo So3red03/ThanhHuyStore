@@ -17,7 +17,9 @@
     "variant:migrate": "node prisma/migrations/add-variant-system.js",
     "variant:seed": "node prisma/seed-variant-system.js",
     "variant:setup": "node scripts/setup-variant-system.js",
-    "variant:setup-safe": "npm run variant:backup && npm run variant:setup"
+    "variant:setup-safe": "npm run variant:backup && npm run variant:setup",
+    "email:automation": "node scripts/email-automation.js",
+    "email:test": "node scripts/email-automation.js --test"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.1.0",
@@ -58,6 +60,7 @@
     "mongodb": "^6.17.0",
     "next": "14.2.3",
     "next-auth": "^4.24.7",
+    "node-cron": "^4.2.1",
     "nodemailer": "^6.10.1",
     "nprogress": "^0.2.0",
     "pdfkit": "^0.17.1",
@@ -87,6 +90,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@types/node-cron": "^3.0.11",
     "@types/xlsx": "^0.0.36"
   }
 }

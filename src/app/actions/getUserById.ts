@@ -37,7 +37,13 @@ export async function getUserById(params: IParams) {
       createAt: user.createAt.toISOString(),
       updateAt: user.updateAt.toISOString(),
       emailVerified: user.emailVerified?.toString() || null,
-      lastLogin: user.lastLogin?.toISOString() || null
+      lastLogin: user.lastLogin?.toISOString() || null,
+      orders: user.orders.map(order => ({
+        ...order,
+        createdAt: order.createdAt.toISOString(),
+        updatedAt: order.updatedAt.toISOString(),
+        cancelDate: order.cancelDate?.toISOString() || null
+      }))
     };
   } catch (error: any) {
     throw new Error(error);

@@ -167,7 +167,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
   // Enhanced filter logic
   const handleSearch = () => {
-    let filtered = products;
+    let filtered = currentProducts;
 
     // Search by name or description
     if (searchTerm) {
@@ -560,7 +560,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   // Auto-trigger search when filters change
   useEffect(() => {
     handleSearch();
-  }, [searchTerm, categoryFilter, priceRangeFilter, stockFilter, products]);
+  }, [searchTerm, categoryFilter, priceRangeFilter, stockFilter, currentProducts]);
 
   useEffect(() => {
     if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {

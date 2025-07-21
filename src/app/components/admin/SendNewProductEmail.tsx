@@ -169,7 +169,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
       try {
         const response = await axios.get('/api/analytics/customer-categories');
         if (response.data.success) {
-          // Extract all unique customers from all categories
+          // Extract all unique customers from all categories (only users who have made purchases)
           const allCustomers = new Map();
           response.data.data.flat.forEach((category: CategoryStat) => {
             if (category.customers) {
@@ -519,6 +519,37 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                                 <Typography variant='caption' color='text.secondary'>
                                   Mua gần nhất: {new Date(user.lastOrderDate).toLocaleDateString('vi-VN')}
                                 </Typography>
+                              )}
+                              {user.categories && user.categories.length > 0 && (
+                                <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                  {user.categories.slice(0, 3).map((categoryName: string, index: number) => (
+                                    <Chip
+                                      key={index}
+                                      label={categoryName}
+                                      size='small'
+                                      variant='outlined'
+                                      sx={{
+                                        fontSize: '0.7rem',
+                                        height: '20px',
+                                        borderColor: '#3b82f6',
+                                        color: '#3b82f6'
+                                      }}
+                                    />
+                                  ))}
+                                  {user.categories.length > 3 && (
+                                    <Chip
+                                      label={`+${user.categories.length - 3}`}
+                                      size='small'
+                                      variant='outlined'
+                                      sx={{
+                                        fontSize: '0.7rem',
+                                        height: '20px',
+                                        borderColor: '#6b7280',
+                                        color: '#6b7280'
+                                      }}
+                                    />
+                                  )}
+                                </Box>
                               )}
                             </Box>
                           }

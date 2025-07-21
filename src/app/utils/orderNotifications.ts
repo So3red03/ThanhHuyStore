@@ -8,15 +8,9 @@ const nodemailer = require('nodemailer');
 // Unified Discord notification function for orders
 export const sendOrderDiscordNotification = async (orderData: any, currentUser: any) => {
   try {
-    console.log('=== DISCORD NOTIFICATION DEBUG ===');
-    console.log('orderData.id:', orderData.id);
-    console.log('orderData.id type:', typeof orderData.id);
-    console.log('orderData keys:', Object.keys(orderData));
-
     const botService = DiscordBotService.getInstance();
 
     if (!botService.isConfigured()) {
-      console.error('Discord bot not configured');
       return;
     }
 
@@ -82,10 +76,6 @@ export const sendOrderDiscordNotification = async (orderData: any, currentUser: 
     const approveCustomId = `approve_${orderData.id}`;
     const rejectCustomId = `reject_${orderData.id}`;
 
-    console.log('=== BUTTON CUSTOM_IDS ===');
-    console.log('Approve custom_id:', approveCustomId);
-    console.log('Reject custom_id:', rejectCustomId);
-
     const components = [
       {
         type: 1, // Action Row
@@ -112,29 +102,81 @@ export const sendOrderDiscordNotification = async (orderData: any, currentUser: 
       components: components
     };
 
-    console.log('Sending Discord message with components via Bot API:', JSON.stringify(messageData, null, 2));
-
     // Check if Discord notifications are enabled in settings
     const settings = await prisma.adminSettings.findFirst();
     if (!settings?.discordNotifications) {
-      console.log('Discord notifications disabled in settings');
       return;
     }
 
     // Send via Discord Bot API instead of webhook
     await botService.sendMessage(messageData);
-    console.log('Discord order notification sent successfully via Bot API');
   } catch (error) {
-    console.error('Error sending Discord notification:', error);
+    throw new Error('Gửi thông báo Discord thất bại');
   }
 };
 
 // Unified function to update user purchased categories
 export const updateUserPurchasedCategories = async (userId: string, products: any[]) => {
   try {
-    // Lấy danh mục từ các sản phẩm đã mua (lấy category.id thay vì category object)
-    const categories = products.map(product => product.category?.id || product.categoryId).filter(Boolean);
-    const uniqueCategories = [...new Set(categories)];
+    // Lấy parent category từ các sản phẩm đã mua
+    // Xử lý cả 2 trường hợp: CartProductType (category là string) và Product object (có categoryId)
+    const parentCategoryIds = [];
+
+    for (const product of products) {
+      let categoryId = null;
+
+      if (product.categoryId) {
+        // Trường hợp Product object có categoryId
+        categoryId = product.categoryId;
+      } else if (product.category && typeof product.category === 'string') {
+        // Kiểm tra xem category là ObjectId hay category name
+        if (product.category.match(/^[0-9a-fA-F]{24}$/)) {
+          // Trường hợp category là ObjectId (từ CartProductType)
+          categoryId = product.category;
+        } else {
+          // Trường hợp category là string name - tìm categoryId từ category name
+          // Ưu tiên parent category (không có parentId) trước, sau đó mới đến subcategory
+          const categoryRecord = await prisma.category.findFirst({
+            where: { name: product.category },
+            orderBy: [
+              { parentId: 'asc' }, // null values first (parent categories)
+              { createdAt: 'asc' }
+            ]
+          });
+
+          if (categoryRecord) {
+            categoryId = categoryRecord.id;
+          }
+        }
+      } else if (product.category?.id) {
+        // Trường hợp Product object có category relation
+        categoryId = product.category.id;
+      }
+
+      if (categoryId) {
+        // Lấy thông tin category để tìm parent
+        const category = await prisma.category.findUnique({
+          where: { id: categoryId },
+          select: { id: true, parentId: true }
+        });
+
+        if (category) {
+          if (category.parentId) {
+            // Nếu có parent, lưu parent category
+            parentCategoryIds.push(category.parentId);
+          } else {
+            // Nếu không có parent, đây là parent category
+            parentCategoryIds.push(category.id);
+          }
+        }
+      }
+    }
+
+    const uniqueParentCategories = [...new Set(parentCategoryIds.filter(Boolean))];
+
+    if (uniqueParentCategories.length === 0) {
+      return;
+    }
 
     // Lấy danh mục đã mua trước đó của user
     const user = await prisma.user.findUnique({
@@ -143,18 +185,18 @@ export const updateUserPurchasedCategories = async (userId: string, products: an
     });
 
     if (user) {
-      // Merge với danh mục cũ
+      // Merge với danh mục cũ (chỉ lưu parent categories)
       const existingCategories = user.purchasedCategories || [];
-      const allCategories = [...new Set([...existingCategories, ...uniqueCategories])];
+      const allCategories = [...new Set([...existingCategories, ...uniqueParentCategories])];
 
-      // Cập nhật user
+      // Cập nhật user với parent categories
       await prisma.user.update({
         where: { id: userId },
         data: { purchasedCategories: allCategories }
       });
     }
   } catch (error) {
-    console.error('Error updating user purchased categories:', error);
+    throw new Error('Cập nhật danh mục đã mua thất bại');
   }
 };
 
@@ -185,7 +227,6 @@ export const sendOrderConfirmationEmail = async (email: string, content: string)
     // Gửi email
     await transporter.sendMail(mailOptions);
   } catch (error) {
-    console.error('Lỗi khi gửi email:', error);
     throw new Error('Gửi email thất bại');
   }
 };
@@ -212,7 +253,7 @@ export const createAdminOrderNotifications = async (order: any, currentUser: any
       });
     }
   } catch (error) {
-    console.error('Error creating admin notifications:', error);
+    throw new Error('Tạo thông báo cho admin thất bại');
   }
 };
 
@@ -230,7 +271,6 @@ export const checkNotificationExists = async (
     });
     return !!existingNotification;
   } catch (error) {
-    console.error('Error checking notification existence:', error);
     return false;
   }
 };

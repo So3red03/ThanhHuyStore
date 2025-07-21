@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 import {
   Box,
   Card,
@@ -14,16 +16,8 @@ import {
   InputLabel,
   Grid
 } from '@mui/material';
-import {
-  MdRefresh,
-  MdDateRange,
-  MdVisibility,
-  MdArticle,
-  MdEmail,
-  MdSend,
-  MdTrendingUp,
-  MdPeople
-} from 'react-icons/md';
+import { MdRefresh, MdDateRange, MdVisibility, MdArticle } from 'react-icons/md';
+import { SiDiscord } from 'react-icons/si';
 import { useAnalyticsOverview, useProductAnalytics, useArticleAnalytics } from '@/app/hooks/useAnalytics';
 import AnalyticsTrendChart from '../../analytics/AnalyticsTrendChart';
 import TopProductsTable from '../../analytics/TopProductsTable';
@@ -39,6 +33,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
   // State for time filter
   const [timeFilter, setTimeFilter] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSendingDiscord, setIsSendingDiscord] = useState(false);
 
   // Convert timeFilter to days
   const getDaysFromFilter = (filter: string) => {
@@ -90,6 +85,24 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
     }
   };
 
+  const handleSendDiscordInsights = async () => {
+    setIsSendingDiscord(true);
+    try {
+      const days = getDaysFromFilter(timeFilter);
+      const response = await axios.post('/api/analytics/send-insights', { days });
+
+      if (response.data.success) {
+        toast.success('Phân tích & đề xuất đã được gửi qua Discord thành công!');
+      }
+    } catch (error: any) {
+      console.error('❌ Error sending Discord insights:', error);
+      const errorMessage = error.response?.data?.error || 'Có lỗi xảy ra khi gửi phân tích qua Discord';
+      toast.error(errorMessage);
+    } finally {
+      setIsSendingDiscord(false);
+    }
+  };
+
   // Create real analytics stats from API data
   const analyticsStatsData = [
     {
@@ -133,6 +146,41 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
                   <MenuItem value='90d'>90 ngày</MenuItem>
                 </Select>
               </FormControl>
+
+              <Button
+                variant='outlined'
+                startIcon={
+                  isSendingDiscord ? (
+                    <div className='animate-spin'>
+                      <SiDiscord />
+                    </div>
+                  ) : (
+                    <SiDiscord />
+                  )
+                }
+                onClick={handleSendDiscordInsights}
+                disabled={isSendingDiscord || isRefreshing}
+                size='medium'
+                sx={{
+                  borderColor: '#5865f2',
+                  color: '#5865f2',
+                  '&:hover': {
+                    backgroundColor: '#5865f2',
+                    color: '#ffffff',
+                    borderColor: '#5865f2'
+                  },
+                  '&:disabled': {
+                    borderColor: '#9ca3af',
+                    color: '#9ca3af'
+                  },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  mr: 2
+                }}
+              >
+                {isSendingDiscord ? 'Đang phân tích...' : 'Phân tích Discord'}
+              </Button>
 
               <Button
                 variant='contained'

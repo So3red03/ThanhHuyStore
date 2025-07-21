@@ -38,7 +38,7 @@ const CustomerAnalytics: React.FC<CustomerAnalyticsProps> = ({ users = [], order
     const calculateCustomerStats = (customerList: any[]) => {
       return customerList
         .map(customer => {
-          const customerOrders = orders.filter(order => order.userId === customer.id && order.status === 'complete');
+          const customerOrders = orders.filter(order => order.userId === customer.id && order.status === 'completed');
           const totalSpent = customerOrders.reduce((sum, order) => sum + order.amount, 0);
           const totalOrders = customerOrders.length;
           const lastOrderDate =

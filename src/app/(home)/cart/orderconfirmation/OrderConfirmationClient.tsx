@@ -17,7 +17,7 @@ interface CartBuyClientProps {
 
 const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) => {
   const router = useRouter();
-  const { paymentIntent, handleSetPaymentIntent, handleClearCart, cartProducts } = useCart();
+  const { paymentIntent, handleSetPaymentIntent, handleClearCart, cartProducts, clearVoucherAfterUse } = useCart();
   const [hasToastBeenShown, setHasToastBeenShown] = useState(false);
   const [order, setOrder] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(true);
@@ -49,6 +49,7 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
                 }
 
                 handleSetPaymentIntent(null);
+                clearVoucherAfterUse(); // Clear voucher from localStorage
                 handleClearCart();
               } else {
                 setOrderStatus('failed');

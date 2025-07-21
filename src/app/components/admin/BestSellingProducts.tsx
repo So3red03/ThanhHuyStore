@@ -12,19 +12,24 @@ interface BestSellingProductsProps {
 }
 
 const BestSellingProducts: React.FC<BestSellingProductsProps> = ({ uniqueProducts, orders = [] }) => {
-  // 🎯 Calculate purchase quantities for each product
+  // 🎯 Calculate purchase quantities for each product (only completed and delivered orders)
   const enhancedProducts = useMemo(() => {
     return (
       uniqueProducts
         ?.map(product => {
-          // Calculate total quantity purchased across all orders
-          const totalPurchased = orders.reduce((total, order) => {
+          // Filter only completed and delivered orders
+          const completedOrders = orders.filter(
+            order => order.status === 'COMPLETED' && order.deliveryStatus === 'DELIVERED'
+          );
+
+          // Calculate total quantity purchased across completed orders only
+          const totalPurchased = completedOrders.reduce((total, order) => {
             const orderProduct = order.products?.find((p: any) => p.id === product.id);
             return total + (orderProduct?.quantity || 0);
           }, 0);
 
-          // Calculate total revenue for this product
-          const totalRevenue = orders.reduce((total, order) => {
+          // Calculate total revenue for this product from completed orders only
+          const totalRevenue = completedOrders.reduce((total, order) => {
             const orderProduct = order.products?.find((p: any) => p.id === product.id);
             return total + (orderProduct?.quantity || 0) * (orderProduct?.price || product.price || 0);
           }, 0);
@@ -179,9 +184,6 @@ const BestSellingProducts: React.FC<BestSellingProductsProps> = ({ uniqueProduct
                           }}
                         >
                           {product.name}
-                        </Typography>
-                        <Typography variant='body2' sx={{ color: '#6b7280' }}>
-                          ID: {product.id.slice(-8)}
                         </Typography>
                       </div>
                     </div>

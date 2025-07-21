@@ -197,6 +197,7 @@ export const CartContextProvider = (props: Props) => {
     shippingFeeClient,
     selectedVoucher: store.selectedVoucher,
     setSelectedVoucher: handleSetSelectedVoucher,
+    clearVoucherAfterUse: store.clearVoucherAfterUse,
     discountAmount: store.discountAmount,
     finalAmount: store.finalAmount
   };
@@ -257,6 +258,7 @@ export const useCart = () => {
     shippingFeeClient: store.setShippingFee,
     selectedVoucher: store.selectedVoucher,
     setSelectedVoucher: store.setSelectedVoucher,
+    clearVoucherAfterUse: store.clearVoucherAfterUse,
     discountAmount: store.discountAmount,
     finalAmount: store.finalAmount
   };

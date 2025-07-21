@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
           reportInterval: 24, // 24 giờ default
           discordNotifications: true,
           orderNotifications: true,
-          emailNotifications: true,
+          pushNotifications: false,
           analyticsTracking: true,
           lowStockAlerts: true,
           autoVoucherSuggestion: true,

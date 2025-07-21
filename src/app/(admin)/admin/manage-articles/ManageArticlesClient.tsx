@@ -37,9 +37,10 @@ type Article = {
 interface ManageArticlesClientProps {
   currentUser: SafeUser | null | undefined;
   articleData: any;
+  articleCategories: any[];
 }
 
-const ManageArticlesClient: React.FC<ManageArticlesClientProps> = ({ currentUser, articleData }) => {
+const ManageArticlesClient: React.FC<ManageArticlesClientProps> = ({ currentUser, articleData, articleCategories }) => {
   const router = useRouter();
   const storage = getStorage(firebase);
   const [isDelete, setIsDelete] = useState(false);
@@ -194,14 +195,6 @@ const ManageArticlesClient: React.FC<ManageArticlesClientProps> = ({ currentUser
     const category = articleData.find((cate: any) => cate.categoryId === id);
     return { label: category.category.name, value: category.categoryId };
   });
-
-  // Extract unique categories for AddArticleModal
-  const articleCategories = Array.from(new Set(articleData.map((article: any) => article.categoryId)))
-    .map(id => {
-      const article = articleData.find((article: any) => article.categoryId === id);
-      return article?.category;
-    })
-    .filter(Boolean);
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'ADMIN') {

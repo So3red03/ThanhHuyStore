@@ -53,6 +53,7 @@ export interface CartStore {
   setCartInfo: (info: any) => void;
   setShippingFee: (fee: number) => void;
   setSelectedVoucher: (voucher: Voucher | null) => void;
+  clearVoucherAfterUse: () => void;
 
   // Computed values (getters)
   getTotalWithShipping: () => number;
@@ -231,6 +232,11 @@ export const useCartStore = create<CartStore>()(
 
       setSelectedVoucher: (voucher: Voucher | null) => {
         set({ selectedVoucher: voucher });
+        setTimeout(() => get().calculateDiscounts(), 0);
+      },
+
+      clearVoucherAfterUse: () => {
+        set({ selectedVoucher: null, discountAmount: 0 });
         setTimeout(() => get().calculateDiscounts(), 0);
       },
 

@@ -25,6 +25,12 @@ const validateAndReserveVoucher = async (
   paymentIntentId: string
 ) => {
   return await prisma.$transaction(async tx => {
+    // ✅ Voucher active/inactive: Line 33-35
+    // ✅ Voucher hết hạn: Line 37-44
+    // ✅ Voucher hết lượt: Line 46-48
+    // ✅ Min order value: Line 50-52
+    // ✅ User đã sử dụng: Line 65-67
+    // ✅ Atomic transaction: Tránh race condition
     // 1. Re-validate voucher with lock
     const voucherData = await tx.voucher.findUnique({
       where: { id: voucher.id }
@@ -253,7 +259,16 @@ export async function POST(request: NextRequest) {
           price: true,
           inStock: true,
           category: true,
-          productType: true
+          productType: true,
+          productPromotions: {
+            where: {
+              isActive: true,
+              startDate: { lte: new Date() },
+              endDate: { gte: new Date() }
+            },
+            orderBy: [{ priority: 'desc' }, { promotionalPrice: 'asc' }],
+            take: 1
+          }
         }
       });
 
@@ -301,9 +316,17 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 3. Validate price integrity (check for price manipulation)
-      if (Math.abs(product.price - (expectedPrice ?? 0)) > 0.01) {
-        errors.push(`Price mismatch for ${product.name}. Expected: ${expectedPrice}, Received: ${product.price}`);
+      // 3. Validate price integrity (check for price manipulation, considering promotions)
+      let validPrice = expectedPrice ?? 0;
+
+      // Check if there's an active promotion for this product
+      if (dbProduct.productPromotions && dbProduct.productPromotions.length > 0) {
+        const activePromotion = dbProduct.productPromotions[0];
+        validPrice = activePromotion.promotionalPrice;
+      }
+
+      if (Math.abs(product.price - validPrice) > 0.01) {
+        errors.push(`Price mismatch for ${product.name}. Expected: ${validPrice}, Received: ${product.price}`);
       }
     } catch (error) {
       console.error(`Error validating product ${product.id}:`, error);

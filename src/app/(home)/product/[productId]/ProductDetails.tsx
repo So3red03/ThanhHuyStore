@@ -282,12 +282,46 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
       selectedImg: defaultImage,
       thumbnail: product.thumbnail || defaultImage,
       quantity: 1,
-      price: initialPrice,
+      price: initialPrice, // Will be updated by useEffect
       inStock: initialStock,
       variantId: initialVariantId,
       attributes: initialAttributes
     };
   });
+
+  // Update price when component mounts or product changes
+  useEffect(() => {
+    const updatePrice = () => {
+      // Calculate promotional price directly here to avoid dependency issues
+      let finalPrice = cartProduct.price;
+
+      if (product.productPromotions && product.productPromotions.length > 0) {
+        const now = new Date();
+        const activePromotions = product.productPromotions.filter((promo: any) => {
+          const startDate = new Date(promo.startDate);
+          const endDate = new Date(promo.endDate);
+          return promo.isActive && now >= startDate && now <= endDate;
+        });
+
+        if (activePromotions.length > 0) {
+          // Sort by priority (higher first), then by lowest price
+          activePromotions.sort((a: any, b: any) => {
+            if (a.priority !== b.priority) return b.priority - a.priority;
+            return a.promotionalPrice - b.promotionalPrice;
+          });
+
+          finalPrice = activePromotions[0].promotionalPrice;
+        }
+      }
+
+      setCartProduct(prev => ({
+        ...prev,
+        price: finalPrice
+      }));
+    };
+
+    updatePrice();
+  }, [product.id, product.productPromotions]);
 
   // Get current selected variant
   const getCurrentVariant = () => {
@@ -321,13 +355,60 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
     return '';
   };
 
-  // Get current price based on variant or product
-  const getCurrentPrice = () => {
+  // Check if product has active promotions
+  const isOnSale = () => {
+    if (!product.productPromotions || product.productPromotions.length === 0) {
+      return false;
+    }
+
+    const now = new Date();
+    const activePromotion = product.productPromotions.find((promo: any) => {
+      const startDate = new Date(promo.startDate);
+      const endDate = new Date(promo.endDate);
+      return promo.isActive && now >= startDate && now <= endDate && promo.promotionalPrice < getCurrentBasePrice();
+    });
+
+    return !!activePromotion;
+  };
+
+  // Get the best promotional price from active promotions
+  const getBestPromotionalPrice = () => {
+    if (!product.productPromotions || product.productPromotions.length === 0) return null;
+
+    const now = new Date();
+    const activePromotions = product.productPromotions.filter((promo: any) => {
+      const startDate = new Date(promo.startDate);
+      const endDate = new Date(promo.endDate);
+      return promo.isActive && now >= startDate && now <= endDate;
+    });
+
+    if (activePromotions.length === 0) return null;
+
+    // Sort by priority (higher first), then by lowest price
+    activePromotions.sort((a: any, b: any) => {
+      if (a.priority !== b.priority) return b.priority - a.priority;
+      return a.promotionalPrice - b.promotionalPrice;
+    });
+
+    return activePromotions[0].promotionalPrice;
+  };
+
+  // Get base price (without promotions) based on variant or product
+  const getCurrentBasePrice = () => {
     const currentVariant = getCurrentVariant();
     if (currentVariant && currentVariant.price) {
       return currentVariant.price;
     }
     return product.price || 0;
+  };
+
+  // Get current price (with promotions if available) based on variant or product
+  const getCurrentPrice = () => {
+    const promotionalPrice = getBestPromotionalPrice();
+    if (promotionalPrice !== null) {
+      return promotionalPrice;
+    }
+    return getCurrentBasePrice();
   };
 
   // Get current stock based on variant or product
@@ -391,10 +472,29 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
           }
         }
 
+        // Calculate promotional price for this variant
+        let finalVariantPrice = variantPrice || product.price;
+        if (product.productPromotions && product.productPromotions.length > 0) {
+          const now = new Date();
+          const activePromotions = product.productPromotions.filter((promo: any) => {
+            const startDate = new Date(promo.startDate);
+            const endDate = new Date(promo.endDate);
+            return promo.isActive && now >= startDate && now <= endDate;
+          });
+
+          if (activePromotions.length > 0) {
+            activePromotions.sort((a: any, b: any) => {
+              if (a.priority !== b.priority) return b.priority - a.priority;
+              return a.promotionalPrice - b.promotionalPrice;
+            });
+            finalVariantPrice = activePromotions[0].promotionalPrice;
+          }
+        }
+
         return {
           ...prev,
           selectedImg: newSelectedImg,
-          price: variantPrice,
+          price: finalVariantPrice,
           inStock: variantStock,
           variantId: variantId,
           attributes: variantAttributes
@@ -437,7 +537,19 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
             <div className='py-2'>({product.reviews.length}) Đánh giá</div>
           </div>
           <Horizontal />
-          <div className='font-semibold text-2xl text-[#d43232]'>{formatPrice(getCurrentPrice())}</div>
+          <div className='font-semibold text-2xl'>
+            {isOnSale() ? (
+              <div className='flex flex-col gap-1'>
+                <div className='flex items-center gap-2'>
+                  <span className='text-red-600'>{formatPrice(getCurrentPrice())}</span>
+                  <span className='bg-red-500 text-white text-xs px-2 py-1 rounded-full'>SALE</span>
+                </div>
+                <span className='text-gray-500 line-through text-lg'>{formatPrice(getCurrentBasePrice())}</span>
+              </div>
+            ) : (
+              <span className='text-[#d43232]'>{formatPrice(getCurrentPrice())}</span>
+            )}
+          </div>
           <div className='mt-4'>
             <div className='flex items-center gap-2'>
               <Image

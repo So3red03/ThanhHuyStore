@@ -4,6 +4,10 @@ import { ArticleCategory } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { MdAdd, MdDelete, MdEdit } from 'react-icons/md';
 import { Button as MuiButton } from '@mui/material';
+import * as SlIcons from 'react-icons/sl';
+import * as AiIcons from 'react-icons/ai';
+import * as TbIcons from 'react-icons/tb';
+import * as MdIcons from 'react-icons/md';
 import AddArticleCateModal from './AddArticleCateModal';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -39,6 +43,9 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
   const [selectedCategory, setselectedCategory] = useState<ArticleCategory | null>(null);
   const [addArticleCategoryModalOpen, setAddArticleCategoryModalOpen] = useState(false);
   const [editCategoryData, setEditCategoryData] = useState<any>(null);
+
+  // Icons mapping
+  const Icons = { ...SlIcons, ...AiIcons, ...MdIcons, ...TbIcons };
 
   const toggleDelete = () => {
     setIsDelete(!isDelete);
@@ -84,9 +91,10 @@ const ManageArticlesCategoriesClient: React.FC<ManageArticlesCategoriesClientPro
       headerName: 'Icon',
       width: 50,
       renderCell: params => {
+        const IconComponent = Icons[params.row.icon as keyof typeof Icons];
         return (
           <div className='flex justify-center items-center w-full h-full'>
-            {params.row.icon ? <div dangerouslySetInnerHTML={{ __html: params.row.icon }} className='w-6 h-6' /> : null}
+            {IconComponent ? <IconComponent size={24} /> : null}
           </div>
         );
       }

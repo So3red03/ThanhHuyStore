@@ -2,14 +2,13 @@ import '../globals.css';
 import { Toaster } from 'react-hot-toast';
 import { Inter } from 'next/font/google';
 import ClientSessionProvider from '../providers/ClientSessionProvider';
-import { getSession } from 'next-auth/react';
+
 import { SidebarProvider } from '../providers/SidebarProvider';
 import { getCurrentUser } from '../actions/getCurrentUser';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { adminTheme } from '../theme/adminTheme';
-import AdminSideBarNew from '../components/admin/AdminSideBarNew';
-import AdminNavNew from '../components/admin/AdminNavNew';
+import DynamicAdminLayout from '../components/admin/DynamicAdminLayout';
 // Removed complex permission imports - using simple role check
 import { redirect } from 'next/navigation';
 export const metadata = {
@@ -21,45 +20,12 @@ export const metadata = {
 };
 const inter = Inter({ subsets: ['latin'] });
 
-// Layout content component that uses sidebar context
+// Layout content component that uses dynamic imports to prevent hydration mismatch
 const LayoutContent = ({ children, currentUser }: { children: React.ReactNode; currentUser: any }) => {
-  return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
-      {/* New MUI-based Sidebar */}
-      <AdminSideBarNew currentUser={currentUser} />
-
-      {/* Main Content Area */}
-      <Box
-        component='main'
-        sx={{
-          flexGrow: 1,
-          minHeight: '100vh',
-          overflow: 'auto',
-          backgroundColor: 'background.default'
-        }}
-      >
-        {/* New MUI-based Navigation */}
-        <AdminNavNew currentUser={currentUser} />
-
-        {/* Page Content */}
-        <Box
-          sx={{
-            flex: 1,
-            p: { xs: 2, xl: 3 },
-            backgroundColor: 'primary.200', // Same as sidebar
-            minHeight: 'calc(100vh - 80px)', // Account for nav height
-            overflow: 'auto'
-          }}
-        >
-          {children}
-        </Box>
-      </Box>
-    </Box>
-  );
+  return <DynamicAdminLayout currentUser={currentUser}>{children}</DynamicAdminLayout>;
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const session = await getSession();
   const currentUser = await getCurrentUser();
 
   // Simple check: only ADMIN and STAFF can access admin panel
@@ -89,7 +55,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <ThemeProvider theme={adminTheme}>
           <CssBaseline />
           {/* Lấy toàn bộ thông tin của user theo phiên hiện tại  */}
-          <ClientSessionProvider session={session}>
+          <ClientSessionProvider session={null}>
             <SidebarProvider>
               <LayoutContent currentUser={currentUser}>{children}</LayoutContent>
             </SidebarProvider>

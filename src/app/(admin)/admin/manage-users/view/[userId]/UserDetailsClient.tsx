@@ -82,7 +82,7 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
         products: invoice.products,
         address: invoice.address,
         phoneNumber: invoice.phoneNumber,
-        createDate: formatDate(invoice.createDate)
+        createDate: formatDate(invoice.createdAt)
       };
     });
   }

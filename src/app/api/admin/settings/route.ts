@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
           // Notification settings
           discordNotifications: true,
           orderNotifications: true,
-          emailNotifications: true,
           pushNotifications: false,
 
           // System settings
@@ -63,6 +62,11 @@ export async function GET(request: NextRequest) {
           codPayment: true,
           momoPayment: false, // Default false for security
           stripePayment: false, // Default false for security
+
+          // Email automation settings
+          autoEmailMarketing: false,
+          emailMarketingSchedule: 'daily',
+          emailMarketingTime: '09:00',
 
           // Audit fields
           createdBy: currentUser.email,
@@ -106,7 +110,6 @@ export async function PUT(request: NextRequest) {
     const {
       discordNotifications,
       orderNotifications,
-      emailNotifications,
       pushNotifications,
       analyticsTracking,
       sessionTimeout,
@@ -117,7 +120,10 @@ export async function PUT(request: NextRequest) {
       reportInterval,
       codPayment,
       momoPayment,
-      stripePayment
+      stripePayment,
+      autoEmailMarketing,
+      emailMarketingSchedule,
+      emailMarketingTime
     } = body;
 
     // Validate critical business rules
@@ -139,7 +145,6 @@ export async function PUT(request: NextRequest) {
         data: {
           discordNotifications,
           orderNotifications,
-          emailNotifications,
           pushNotifications,
           analyticsTracking,
           sessionTimeout,
@@ -151,6 +156,9 @@ export async function PUT(request: NextRequest) {
           codPayment,
           momoPayment,
           stripePayment,
+          autoEmailMarketing,
+          emailMarketingSchedule,
+          emailMarketingTime,
           updatedBy: currentUser.email
         }
       });
@@ -160,7 +168,6 @@ export async function PUT(request: NextRequest) {
         data: {
           discordNotifications,
           orderNotifications,
-          emailNotifications,
           pushNotifications,
           analyticsTracking,
           sessionTimeout,
@@ -172,6 +179,9 @@ export async function PUT(request: NextRequest) {
           codPayment,
           momoPayment,
           stripePayment,
+          autoEmailMarketing,
+          emailMarketingSchedule,
+          emailMarketingTime,
           createdBy: currentUser.email,
           updatedBy: currentUser.email
         }

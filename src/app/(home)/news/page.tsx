@@ -12,7 +12,7 @@ export const metadata = {
 const news = async () => {
   // Use direct database action instead of axios to avoid dynamic server usage
   const initialArticles = await getArticles();
-  const slug = 'thu-thuat-hoi-dap';
+  const slug = 'meo-va-thu-thuat';
   const articlesRightSide = await getArticleListBySlug({ slug });
   return <DisplayArticles initialArticles={initialArticles} ArticlesListRightSide={articlesRightSide} />;
 };

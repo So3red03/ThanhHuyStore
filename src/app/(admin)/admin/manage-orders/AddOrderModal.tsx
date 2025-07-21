@@ -525,21 +525,19 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, toggleOpen, users
 
             {/* Shipping Fee */}
             <Box>
-              <Typography variant='body2' sx={{ mb: 1, color: '#374151', fontWeight: 500 }}>
-                Phí vận chuyển
-              </Typography>
-              <TextField
-                fullWidth
-                label='Phí vận chuyển (₫)'
-                type='number'
-                value={shippingFee}
-                onChange={e => setShippingFee(Number(e.target.value) || 0)}
-                disabled={isLoading}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
-                InputProps={{
-                  inputProps: { min: 0 }
-                }}
-              />
+              <FormControl fullWidth disabled={isLoading}>
+                <InputLabel>Chọn dịch vụ giao hàng</InputLabel>
+                <Select
+                  value={shippingFee}
+                  onChange={e => setShippingFee(Number(e.target.value))}
+                  label='Chọn dịch vụ giao hàng'
+                  sx={{ borderRadius: '12px' }}
+                >
+                  <MenuItem value={0}>Chọn dịch vụ giao hàng</MenuItem>
+                  <MenuItem value={40000}>Giao hàng nhanh (2-4h) - 40.000₫</MenuItem>
+                  <MenuItem value={25000}>Giao hàng tiêu chuẩn - 25.000₫</MenuItem>
+                </Select>
+              </FormControl>
             </Box>
 
             {/* Address */}

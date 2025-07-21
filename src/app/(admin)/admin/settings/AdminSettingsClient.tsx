@@ -1,25 +1,27 @@
 'use client';
 
 import ToggleSwitch from '@/app/components/admin/settings/ToggleSwitch';
-import PusherConnectionStatus from '@/app/components/admin/PusherConnectionStatus';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import {
   MdNotifications,
-  MdEmail,
   MdSecurity,
   MdStorage,
   MdSmartToy,
   MdAccessTime,
   MdAssessment,
-  MdPayment
+  MdPayment,
+  MdAutorenew,
+  MdSend,
+  MdLocalShipping,
+  MdCheckCircle
 } from 'react-icons/md';
+import { DeliveryStatus, Order, OrderStatus } from '@prisma/client';
 
 interface SettingsData {
   discordNotifications: boolean;
   orderNotifications: boolean;
-  emailNotifications: boolean;
   pushNotifications: boolean;
   analyticsTracking: boolean;
   sessionTimeout: number;
@@ -31,6 +33,10 @@ interface SettingsData {
   codPayment: boolean;
   momoPayment: boolean;
   stripePayment: boolean;
+  // Email automation settings
+  autoEmailMarketing: boolean;
+  emailMarketingSchedule: string;
+  emailMarketingTime: string;
 }
 
 interface AdminSettingsClientProps {
@@ -42,7 +48,11 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
   const [settings, setSettings] = useState<SettingsData>(initialSettings);
   const [loading, setLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('notifications');
-  const [testingReport, setTestingReport] = useState(false);
+  const [isTestingAPI, setIsTestingAPI] = useState(false);
+  const [testOrders, setTestOrders] = useState<any[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('');
+  const [shippingOrders, setShippingOrders] = useState<any[]>([]);
+  const [selectedShippingOrderId, setSelectedShippingOrderId] = useState<string>('');
 
   // Save settings to database
   const handleSave = async () => {
@@ -95,30 +105,160 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
     }));
   };
 
-  // Test Discord report
-  const handleTestReport = async () => {
-    setTestingReport(true);
+  // Load test orders function
+  const loadTestOrders = async () => {
     try {
-      const response = await fetch('/api/admin/reports/discord', {
-        method: 'POST',
+      const response = await fetch('/api/orders');
+      const data = await response.json();
+      console.log(data);
+      // Filter orders with status 'confirmed' and deliveryStatus 'not_shipped'
+      // API /api/orders trả về array trực tiếp, không có wrapper
+      const eligibleOrders = Array.isArray(data)
+        ? data.filter(
+            (order: Order) =>
+              order.status === OrderStatus.confirmed && order.deliveryStatus === DeliveryStatus.not_shipped
+          )
+        : [];
+      console.log('Eligible orders:', eligibleOrders);
+      setTestOrders(eligibleOrders);
+
+      if (eligibleOrders.length === 0) {
+        toast('Không có đơn hàng phù hợp để test (cần status: confirmed, deliveryStatus: not_shipped)', {
+          icon: 'ℹ️'
+        });
+      } else {
+        toast.success(`Tìm thấy ${eligibleOrders.length} đơn hàng phù hợp để test`);
+      }
+    } catch (error) {
+      console.error('Error loading test orders:', error);
+      toast.error('Lỗi khi tải danh sách đơn hàng');
+    }
+  };
+
+  // Load shipping orders function
+  const loadShippingOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      const data = await response.json();
+      console.log(data);
+      // Filter orders with status 'confirmed' and deliveryStatus 'in_transit'
+      const eligibleOrders = Array.isArray(data)
+        ? data.filter(
+            (order: Order) =>
+              order.status === OrderStatus.confirmed && order.deliveryStatus === DeliveryStatus.in_transit
+          )
+        : [];
+      console.log('Shipping orders:', eligibleOrders);
+      setShippingOrders(eligibleOrders);
+
+      if (eligibleOrders.length === 0) {
+        toast('Không có đơn hàng đang vận chuyển (cần status: confirmed, deliveryStatus: in_transit)', {
+          icon: 'ℹ️'
+        });
+      } else {
+        toast.success(`Tìm thấy ${eligibleOrders.length} đơn hàng đang vận chuyển`);
+      }
+    } catch (error) {
+      console.error('Error loading shipping orders:', error);
+      toast.error('Lỗi khi tải danh sách đơn hàng vận chuyển');
+    }
+  };
+
+  // Test delivery API function
+  const handleTestDeliveryAPI = async (action: 'in_transit' | 'completed') => {
+    if (!selectedOrderId) {
+      toast.error('Vui lòng chọn đơn hàng để test');
+      return;
+    }
+
+    setIsTestingAPI(true);
+    try {
+      let updateData: any = {};
+
+      if (action === 'in_transit') {
+        // Chuyển sang đang vận chuyển
+        updateData = {
+          deliveryStatus: 'in_transit'
+        };
+      } else if (action === 'completed') {
+        // Hoàn thành: status = completed, deliveryStatus = delivered
+        updateData = {
+          status: 'completed',
+          deliveryStatus: 'delivered'
+        };
+      }
+
+      // Add test flag to bypass validation
+      updateData.isTest = true;
+
+      const response = await fetch(`/api/orders/${selectedOrderId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ type: 'test' }),
-        cache: 'no-store'
+        body: JSON.stringify(updateData)
       });
 
       const result = await response.json();
 
-      if (result.success) {
-        toast.success('Báo cáo test đã được gửi thành công!');
+      if (response.ok) {
+        const actionText = action === 'in_transit' ? 'đang vận chuyển' : 'hoàn thành';
+        toast.success(`✅ Test thành công! Đơn hàng đã được cập nhật thành ${actionText}`);
+        console.log('Test result:', result);
+
+        // Reload orders after successful test
+        await loadTestOrders();
+        setSelectedOrderId('');
       } else {
-        toast.error(result.error || 'Không thể gửi báo cáo test');
+        toast.error(`❌ Test thất bại: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      toast.error('Lỗi kết nối. Vui lòng thử lại.');
+      console.error('Test API error:', error);
+      toast.error('❌ Lỗi khi test API');
     } finally {
-      setTestingReport(false);
+      setIsTestingAPI(false);
+    }
+  };
+
+  // Complete shipping order function
+  const handleCompleteShippingOrder = async () => {
+    if (!selectedShippingOrderId) {
+      toast.error('Vui lòng chọn đơn hàng để hoàn thành');
+      return;
+    }
+
+    setIsTestingAPI(true);
+    try {
+      const updateData = {
+        status: 'completed',
+        deliveryStatus: 'delivered',
+        isTest: true // Add test flag to bypass validation
+      };
+
+      const response = await fetch(`/api/orders/${selectedShippingOrderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success('✅ Đơn hàng đã được hoàn thành thành công');
+
+        // Reload shipping orders after successful completion
+        await loadShippingOrders();
+        setSelectedShippingOrderId('');
+      } else {
+        toast.error(`❌ Hoàn thành thất bại: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Complete shipping order error:', error);
+      toast.error('❌ Lỗi khi hoàn thành đơn hàng');
+    } finally {
+      setIsTestingAPI(false);
     }
   };
 
@@ -172,9 +312,6 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                       Thông báo hệ thống
                     </h3>
 
-                    {/* Pusher Connection Status */}
-                    <PusherConnectionStatus />
-
                     <div className='space-y-4'>
                       <ToggleSwitch
                         id='discordNotifications'
@@ -202,19 +339,65 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                     </div>
                   </div>
 
-                  {/* Email Notifications */}
-                  <div>
+                  {/* Email Automation */}
+                  <div className='border-t pt-6'>
                     <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
-                      <MdEmail className='w-5 h-5' />
-                      Email marketing
+                      <MdAutorenew className='w-5 h-5' />
+                      Tự động hóa Email
                     </h3>
-                    <ToggleSwitch
-                      id='emailNotifications'
-                      checked={settings.emailNotifications}
-                      onChange={() => handleToggle('emailNotifications')}
-                      title='Email marketing'
-                      description='Nhận email về sản phẩm mới, tính năng và nhiều hơn nữa'
-                    />
+
+                    <div className='space-y-4'>
+                      <ToggleSwitch
+                        id='autoEmailMarketing'
+                        checked={settings.autoEmailMarketing}
+                        onChange={() => handleToggle('autoEmailMarketing')}
+                        title='Tự động gửi email sản phẩm mới'
+                        description='Tự động gửi email thông báo sản phẩm mới đến khách hàng đã mua cùng danh mục'
+                      />
+
+                      {settings.autoEmailMarketing && (
+                        <div className='ml-6 space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200'>
+                          <div>
+                            <label className='block text-sm font-medium text-gray-700 mb-2'>Tần suất gửi email</label>
+                            <select
+                              value={settings.emailMarketingSchedule}
+                              onChange={e => setSettings(prev => ({ ...prev, emailMarketingSchedule: e.target.value }))}
+                              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                            >
+                              <option value='daily'>Hàng ngày</option>
+                              <option value='weekly'>Hàng tuần</option>
+                              <option value='monthly'>Hàng tháng</option>
+                              <option value='newProduct'>Khi có sản phẩm mới</option>
+                            </select>
+                          </div>
+
+                          {/* Chỉ hiển thị field thời gian khi không phải option "newProduct" */}
+                          {settings.emailMarketingSchedule !== 'newProduct' && (
+                            <div>
+                              <label className='block text-sm font-medium text-gray-700 mb-2'>Thời gian gửi</label>
+                              <input
+                                type='time'
+                                value={settings.emailMarketingTime}
+                                onChange={e => setSettings(prev => ({ ...prev, emailMarketingTime: e.target.value }))}
+                                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                              />
+                            </div>
+                          )}
+
+                          {/* Hiển thị thông tin khi chọn option "newProduct" */}
+                          {settings.emailMarketingSchedule === 'newProduct' && (
+                            <div className='p-3 bg-green-50 border border-green-200 rounded-md'>
+                              <p className='text-sm text-green-800'>
+                                <strong>📧 Gửi email ngay lập tức</strong>
+                              </p>
+                              <p className='text-xs text-green-600 mt-1'>
+                                Email sẽ được gửi tự động mỗi khi có sản phẩm mới được thêm vào hệ thống
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -228,7 +411,7 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
 
                 <div className='space-y-6'>
                   {/* Security Section */}
-                  <div className='border-b pb-6'>
+                  {/* <div className='border-b pb-6'>
                     <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
                       <MdSecurity className='w-5 h-5' />
                       Bảo mật & Phiên làm việc
@@ -255,10 +438,10 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                         </select>
                       </div>
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Analytics Section */}
-                  <div className='border-b pb-6'>
+                  {/* <div className='border-b pb-6'>
                     <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
                       <MdStorage className='w-5 h-5' />
                       Phân tích & Theo dõi
@@ -270,7 +453,7 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                       title='Theo dõi phân tích'
                       description='Bật theo dõi hành vi người dùng và phân tích'
                     />
-                  </div>
+                  </div> */}
 
                   {/* Payment Methods Section */}
                   <div>
@@ -309,9 +492,144 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                       <ul className='text-sm text-yellow-800 space-y-1'>
                         <li>• Tắt phương thức thanh toán sẽ ẩn nó khỏi trang checkout</li>
                         <li>• Đảm bảo ít nhất 1 phương thức được bật</li>
-                        <li>• COD phù hợp cho thị trường Việt Nam</li>
-                        <li>• MoMo cần cấu hình API key riêng</li>
-                        <li>• Stripe phù hợp cho thanh toán quốc tế</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Delivery API Testing Section */}
+                  <div className='border-t pt-6'>
+                    <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
+                      <MdLocalShipping className='w-5 h-5' />
+                      Test API Vận chuyển
+                    </h3>
+                    <p className='text-sm text-gray-600 mb-4'>
+                      Kiểm tra API cập nhật trạng thái đơn hàng và gửi thông báo Discord
+                    </p>
+
+                    {/* Load Orders Button */}
+                    <div className='mb-4'>
+                      <button
+                        onClick={loadTestOrders}
+                        className='px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center gap-2'
+                      >
+                        <MdAutorenew className='w-4 h-4' />
+                        Tải đơn hàng
+                      </button>
+                    </div>
+
+                    {/* Order Selection Dropdown */}
+                    {testOrders.length > 0 && (
+                      <div className='mb-4'>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>Chọn đơn hàng để test:</label>
+                        <select
+                          value={selectedOrderId}
+                          onChange={e => setSelectedOrderId(e.target.value)}
+                          className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        >
+                          <option value=''>-- Chọn đơn hàng --</option>
+                          {testOrders.map(order => (
+                            <option key={order.id} value={order.id}>
+                              #{order.id.slice(-8)} - {order.user?.name || 'N/A'} - {order.amount?.toLocaleString()}đ
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Test Buttons */}
+                    <div className='flex gap-3'>
+                      <button
+                        onClick={() => handleTestDeliveryAPI('in_transit')}
+                        disabled={isTestingAPI || !selectedOrderId}
+                        className='px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2'
+                      >
+                        <MdLocalShipping className='w-4 h-4' />
+                        {isTestingAPI ? 'Đang test...' : 'Đang giao hàng'}
+                      </button>
+
+                      {/* <button
+                        onClick={() => handleTestDeliveryAPI('completed')}
+                        disabled={isTestingAPI || !selectedOrderId}
+                        className='px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2'
+                      >
+                        <MdCheckCircle className='w-4 h-4' />
+                        {isTestingAPI ? 'Đang test...' : 'Hoàn thành'}
+                      </button> */}
+                    </div>
+
+                    <div className='bg-blue-50 p-4 rounded-lg mt-4'>
+                      <h5 className='font-medium text-blue-900 mb-2'>ℹ️ Hướng dẫn test:</h5>
+                      <ul className='text-sm text-blue-800 space-y-1'>
+                        <li>• Chọn 1 đơn hàng có status PENDING hoặc PROCESSING để test</li>
+                        <li>• API sẽ cập nhật deliveryStatus và gửi thông báo Discord</li>
+                        <li>• Kiểm tra Discord channel để xem thông báo</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shipping Orders Completion Section */}
+                <div className='bg-white p-6 rounded-lg shadow-sm border border-gray-200 mt-6'>
+                  <h4 className='text-lg font-semibold mb-4 text-gray-800'>🚚 Hoàn thành đơn hàng vận chuyển</h4>
+                  <p className='text-gray-600 mb-4'>Tải và hoàn thành các đơn hàng đang trong quá trình vận chuyển.</p>
+
+                  <div className='space-y-4'>
+                    {/* Load Shipping Orders and Complete Buttons */}
+                    <div className='flex gap-3'>
+                      <button
+                        onClick={loadShippingOrders}
+                        className='flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors'
+                      >
+                        <MdAutorenew className='w-4 h-4' />
+                        Tải đơn hàng vận chuyển
+                      </button>
+
+                      <button
+                        onClick={handleCompleteShippingOrder}
+                        disabled={isTestingAPI || !selectedShippingOrderId}
+                        className='flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                      >
+                        {isTestingAPI ? (
+                          <>
+                            <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
+                            Đang xử lý...
+                          </>
+                        ) : (
+                          <>
+                            <MdCheckCircle className='w-4 h-4' />
+                            Hoàn thành
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Shipping Order Selection Dropdown */}
+                    {shippingOrders.length > 0 && (
+                      <div className='mb-4'>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>
+                          Chọn đơn hàng để hoàn thành:
+                        </label>
+                        <select
+                          value={selectedShippingOrderId}
+                          onChange={e => setSelectedShippingOrderId(e.target.value)}
+                          className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500'
+                        >
+                          <option value=''>-- Chọn đơn hàng vận chuyển --</option>
+                          {shippingOrders.map(order => (
+                            <option key={order.id} value={order.id}>
+                              #{order.id.slice(-8)} - {order.user?.name || 'N/A'} - {order.amount?.toLocaleString()}đ
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <div className='bg-orange-50 p-4 rounded-lg mt-4'>
+                      <h5 className='font-medium text-orange-900 mb-2'>ℹ️ Hướng dẫn hoàn thành:</h5>
+                      <ul className='text-sm text-orange-800 space-y-1'>
+                        <li>• Chọn 1 đơn hàng có status CONFIRMED và deliveryStatus IN_TRANSIT</li>
+                        <li>• Hệ thống sẽ cập nhật status thành COMPLETED và deliveryStatus thành DELIVERED</li>
+                        <li>• Đơn hàng sẽ được đánh dấu là hoàn thành trong hệ thống</li>
                       </ul>
                     </div>
                   </div>
@@ -320,7 +638,7 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
             )}
 
             {/* Automation Section */}
-            {activeSection === 'automation' && (
+            {/* {activeSection === 'automation' && (
               <div>
                 <h2 className='text-2xl font-semibold mb-2'>Cài đặt tự động hóa</h2>
                 <p className='text-gray-600 mb-6'>Cấu hình các tính năng tự động và hỗ trợ AI.</p>
@@ -351,10 +669,10 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                   />
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Reports Section */}
-            {activeSection === 'reports' && (
+            {/* {activeSection === 'reports' && (
               <div>
                 <h2 className='text-2xl font-semibold mb-2'>Báo cáo thống kê</h2>
                 <p className='text-gray-600 mb-6'>Cấu hình báo cáo thống kê tự động qua Discord.</p>
@@ -404,23 +722,10 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                       <li>• Top sản phẩm bán chạy</li>
                       <li>• Khách hàng mới đăng ký</li>
                     </ul>
-
-                    <div className='mt-4 pt-4 border-t border-blue-200'>
-                      <button
-                        onClick={handleTestReport}
-                        disabled={testingReport}
-                        className='bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm'
-                      >
-                        {testingReport ? 'Đang gửi...' : '🧪 Test báo cáo Discord'}
-                      </button>
-                      <p className='text-xs text-blue-700 mt-2'>
-                        Gửi tin nhắn test để kiểm tra kết nối Discord webhook
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Save Button */}
             <div className='mt-8 pt-6 border-t'>

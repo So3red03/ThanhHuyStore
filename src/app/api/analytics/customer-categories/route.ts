@@ -58,6 +58,7 @@ export async function GET() {
             name: true,
             email: true,
             role: true,
+            purchasedCategories: true,
             orders: {
               orderBy: {
                 createdAt: 'desc'

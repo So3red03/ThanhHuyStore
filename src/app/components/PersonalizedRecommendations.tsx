@@ -24,7 +24,6 @@ interface ViewHistory {
 interface GlobalTrendsData {
   trendingProducts: any[];
   collaborativeFiltering: Record<string, string[]>;
-  categoryTrends: any[];
   period: {
     days: number;
     startDate: string;
@@ -62,6 +61,17 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       const globalTrendsData: GlobalTrendsData = (await globalTrendsResponse.json()).data;
       const trendingProducts = globalTrendsData.trendingProducts || [];
 
+      // Debug: In ra điểm số của các sản phẩm được xem nhiều nhất
+      console.log(
+        'Trending products with scores:',
+        trendingProducts.map(p => ({
+          name: p.name,
+          viewCount: p.viewCount,
+          avgRating: p.avgRating,
+          recommendationScore: p.recommendationScore
+        }))
+      );
+
       // Map trending products to local products and limit to 6
       const mappedProducts = trendingProducts
         .map(trendingProduct => {
@@ -87,7 +97,6 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         : {
             trendingProducts: [],
             collaborativeFiltering: {},
-            categoryTrends: [],
             period: { days: 7, startDate: '', endDate: '' },
             metadata: { totalProducts: 0, avgRating: 0, totalViews: 0 }
           };
@@ -112,13 +121,11 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       // 5. Tạo scoring system cho người dùng có dữ liệu
       const productScores = new Map<string, number>();
       const interestedCategories = new Set<string>();
-      const interestedBrands = new Set<string>();
 
       // 6. Score từ lịch sử xem cá nhân (weight: 3)
       if (viewHistory.length > 0) {
         viewHistory.forEach(item => {
           interestedCategories.add(item.category);
-          interestedBrands.add(item.brand);
           const currentScore = productScores.get(item.productId) || 0;
           productScores.set(item.productId, currentScore + 3);
         });
@@ -130,7 +137,6 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
           if (order.products && order.products.length > 0) {
             order.products.forEach((product: any) => {
               interestedCategories.add(product.category);
-              interestedBrands.add(product.brand || 'Apple');
               const currentScore = productScores.get(product.id) || 0;
               productScores.set(product.id, currentScore + 5);
             });
@@ -159,8 +165,8 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
           const personalScore = productScores.get(product.id) || 0;
           score += personalScore;
 
-          // Category/brand interest score
-          if (interestedCategories.has(product.categoryId) || interestedBrands.has(product.brand || 'Apple')) {
+          // Category interest score
+          if (interestedCategories.has(product.categoryId)) {
             score += 1;
           }
 

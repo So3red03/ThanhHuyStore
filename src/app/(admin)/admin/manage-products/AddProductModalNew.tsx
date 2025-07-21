@@ -11,6 +11,7 @@ import {
   uploadVariantProductThumbnail,
   uploadVariantProductGallery
 } from '@/app/utils/firebase-product-storage';
+import { triggerNewProductEmail } from '@/app/utils/autoEmailMarketing';
 import * as SlIcons from 'react-icons/sl';
 import * as AiIcons from 'react-icons/ai';
 import * as TbIcons from 'react-icons/tb';
@@ -500,12 +501,34 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         toast.success('Sản phẩm đã được cập nhật thành công!');
       } else {
         // Create product - use the correct API endpoint based on product type
+        let createdProductResponse;
         if (productType === ProductType.VARIANT) {
-          await axios.post('/api/product/variant', submitData);
+          createdProductResponse = await axios.post('/api/product/variant', submitData);
         } else {
-          await axios.post('/api/product/simple', submitData);
+          createdProductResponse = await axios.post('/api/product/simple', submitData);
         }
+
         toast.success('Sản phẩm đã được tạo thành công!');
+
+        // Gửi email tự động nếu được cấu hình
+        const productId =
+          productType === ProductType.VARIANT
+            ? createdProductResponse?.data?.product?.id // Variant API trả về result.product.id
+            : createdProductResponse?.data?.id; // Simple API trả về product.id trực tiếp
+
+        console.log('🔍 [AddProduct] Product created:', {
+          productType,
+          productId,
+          productName: data.name,
+          responseData: createdProductResponse?.data
+        });
+
+        if (productId) {
+          console.log('🚀 [AddProduct] Triggering auto email for product:', productId);
+          triggerNewProductEmail(productId, data.name);
+        } else {
+          console.warn('⚠️ [AddProduct] No product ID found, cannot send auto email');
+        }
       }
 
       reset();

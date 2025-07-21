@@ -5,15 +5,24 @@ const nodemailer = require('nodemailer');
 
 export async function POST(request: Request) {
   try {
+    console.log('📧 [Send New Product Email API] Request received');
     const currentUser = await getCurrentUser();
 
     // Chỉ admin mới có thể gọi API này
     if (!currentUser || currentUser.role !== 'ADMIN') {
+      console.log('❌ [Send New Product Email API] Unauthorized user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
     const { productId, timeframe = 'all', manualMode = false, selectedUserIds = [] } = body;
+
+    console.log('📧 [Send New Product Email API] Request params:', {
+      productId,
+      timeframe,
+      manualMode,
+      selectedUserIds: selectedUserIds?.length || 0
+    });
 
     if (!productId) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
@@ -106,7 +115,10 @@ export async function POST(request: Request) {
       });
     }
 
+    console.log(`📧 [Send New Product Email API] Found ${interestedUsers.length} interested users`);
+
     if (interestedUsers.length === 0) {
+      console.log('📧 [Send New Product Email API] No users found with interest in this category');
       return NextResponse.json({
         message: 'No users found with interest in this category',
         sentCount: 0
@@ -115,16 +127,21 @@ export async function POST(request: Request) {
 
     // Gửi email cho từng user
     let sentCount = 0;
+    console.log('📧 [Send New Product Email API] Starting to send emails...');
+
     const emailPromises = interestedUsers.map(async user => {
       try {
         await sendNewProductEmail(user.email, user.name || 'Khách hàng', product);
         sentCount++;
+        console.log(`✅ [Send New Product Email API] Email sent to ${user.email}`);
       } catch (error) {
-        console.error(`Failed to send email to ${user.email}:`, error);
+        console.error(`❌ [Send New Product Email API] Failed to send email to ${user.email}:`, error);
       }
     });
 
     await Promise.all(emailPromises);
+
+    console.log(`📧 [Send New Product Email API] Completed sending emails: ${sentCount}/${interestedUsers.length}`);
 
     return NextResponse.json({
       message: `New product emails sent successfully`,

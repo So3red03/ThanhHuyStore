@@ -9,20 +9,29 @@ const PusherConnectionStatus = () => {
 
   useEffect(() => {
     // Listen to Pusher connection state changes
-    const handleStateChange = (state: string) => {
-      setConnectionState(state);
+    const handleStateChange = (states: any) => {
+      // Handle both string and object state changes
+      const newState = typeof states === 'string' ? states : states?.current || 'unknown';
+      setConnectionState(String(newState));
     };
 
     // Bind to connection state changes
     pusherClient.connection.bind('state_change', handleStateChange);
-    
-    // Set initial state
-    setConnectionState(pusherClient.connection.state);
+
+    // Set initial state safely
+    const initialState = pusherClient.connection.state;
+    setConnectionState(String(initialState || 'disconnected'));
 
     // Track connection count (rough estimate)
     const interval = setInterval(() => {
-      // This is a rough estimate - Pusher doesn't expose exact connection count
-      setConnectionCount(Object.keys(pusherClient.channels.channels).length);
+      try {
+        // This is a rough estimate - Pusher doesn't expose exact connection count
+        const channelCount = pusherClient.channels?.channels ? Object.keys(pusherClient.channels.channels).length : 0;
+        setConnectionCount(channelCount);
+      } catch (error) {
+        console.warn('Error getting channel count:', error);
+        setConnectionCount(0);
+      }
     }, 5000);
 
     return () => {
@@ -80,7 +89,7 @@ const PusherConnectionStatus = () => {
           </button>
         )}
       </div>
-      
+
       {connectionCount > 5 && (
         <div className='mt-2 text-xs text-orange-600'>
           ⚠️ High channel count ({connectionCount}). Consider refreshing if experiencing issues.

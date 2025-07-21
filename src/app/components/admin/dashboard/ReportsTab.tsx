@@ -89,10 +89,10 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
       });
       if (response.data.success) {
         setShowReportAlert(true);
-        toast.success('📊 Báo cáo đã được gửi thành công qua Discord!');
+        toast.success('Báo cáo đã được gửi thành công qua Discord!');
       }
     } catch (error) {
-      toast.error('❌ Lỗi khi gửi báo cáo');
+      toast.error('Lỗi khi gửi báo cáo');
     } finally {
       setReportLoading(false);
     }
@@ -112,10 +112,10 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
       };
 
       const fileName = ExcelExportService.exportOverviewReport(reportData);
-      toast.success(`📊 Xuất Excel thành công: ${fileName}`);
+      toast.success(`Xuất Excel thành công`);
     } catch (error) {
       console.error('Excel export error:', error);
-      toast.error('❌ Lỗi khi xuất file Excel');
+      toast.error('Lỗi khi xuất file Excel');
     } finally {
       setIsExporting(false);
     }
@@ -143,10 +143,10 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
       });
 
       const fileName = ExcelExportService.exportProductReport(productData, timeFilter);
-      toast.success(`📊 Xuất Excel sản phẩm thành công: ${fileName}`);
+      toast.success(`Xuất Excel sản phẩm thành công`);
     } catch (error) {
       console.error('Product Excel export error:', error);
-      toast.error('❌ Lỗi khi xuất file Excel sản phẩm');
+      toast.error('Lỗi khi xuất file Excel sản phẩm');
     } finally {
       setIsExporting(false);
     }
@@ -351,9 +351,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
         <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <CardContent sx={{ p: 3 }}>
             <div className='flex items-center justify-between mb-4'>
-              <Typography variant='h6' component='h3' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                📈 Sản phẩm bán chạy
-              </Typography>
+              <Typography variant='h6' component='h3' sx={{ fontWeight: 600, color: '#1f2937' }}></Typography>
               <Button
                 variant='outlined'
                 startIcon={<MdDownload />}
@@ -392,7 +390,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert onClose={() => setShowReportAlert(false)} severity='success' sx={{ width: '100%' }}>
-          📊 Báo cáo đã được gửi thành công qua Discord!
+          Báo cáo đã được gửi thành công qua Discord!
         </Alert>
       </Snackbar>
 

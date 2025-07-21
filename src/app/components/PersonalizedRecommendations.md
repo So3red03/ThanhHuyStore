@@ -17,7 +17,6 @@
    - Lịch sử xem cá nhân: +3 điểm/sản phẩm
    - Lịch sử mua hàng: +5 điểm/sản phẩm
    - Collaborative filtering: +2 điểm/sản phẩm
-   - Danh mục/thương hiệu quan tâm: +1 điểm
    - Điểm từ global trends: +0.1 × recommendationScore
 
 3. Sắp xếp sản phẩm theo điểm và giới hạn 6 sản phẩm
@@ -57,8 +56,6 @@
 
 ## Đánh giá
 
-Logic hiện tại của ThanhHuyStore **hoàn toàn phù hợp** với các sàn thương mại điện tử lớn vì:
-
 1. **Tối ưu trải nghiệm người dùng**:
 
    - Người dùng đã đăng nhập nhận được gợi ý cá nhân hóa, tăng khả năng chuyển đổi
@@ -74,8 +71,6 @@ Logic hiện tại của ThanhHuyStore **hoàn toàn phù hợp** với các sà
    - Người dùng chưa đăng nhập: Tăng tỷ lệ chuyển đổi bằng cách hiển thị sản phẩm phổ biến
 
 ## Cải tiến tiềm năng
-
-Mặc dù logic hiện tại đã tốt, vẫn có thể cải thiện thêm:
 
 1. **Kết hợp nhiều loại gợi ý**: Có thể thêm các phần như "Sản phẩm mới", "Đang giảm giá" bên cạnh gợi ý cá nhân hóa
 

@@ -213,7 +213,11 @@ const AddProductCateModal: React.FC<AddProductCateModalProps> = ({ isOpen, toggl
         </IconButton>
       </DialogTitle>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form
+        onSubmit={e => {
+          handleSubmit(onSubmit)(e);
+        }}
+      >
         <DialogContent sx={{ pt: 3 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Name Field */}

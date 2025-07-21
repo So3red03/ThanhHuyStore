@@ -10,7 +10,6 @@ export const fetchCache = 'force-no-store';
 interface SettingsData {
   discordNotifications: boolean;
   orderNotifications: boolean;
-  emailNotifications: boolean;
   pushNotifications: boolean;
   analyticsTracking: boolean;
   sessionTimeout: number;
@@ -22,6 +21,10 @@ interface SettingsData {
   codPayment: boolean;
   momoPayment: boolean;
   stripePayment: boolean;
+  // Email automation settings
+  autoEmailMarketing: boolean;
+  emailMarketingSchedule: string;
+  emailMarketingTime: string;
 }
 
 // Server Component - fetch fresh data every time
@@ -43,7 +46,6 @@ const AdminSettings = async () => {
         // Notification settings
         discordNotifications: true,
         orderNotifications: true,
-        emailNotifications: true,
         pushNotifications: false,
 
         // System settings
@@ -64,6 +66,11 @@ const AdminSettings = async () => {
         momoPayment: true,
         stripePayment: false,
 
+        // Email automation settings
+        autoEmailMarketing: false,
+        emailMarketingSchedule: 'daily',
+        emailMarketingTime: '09:00',
+
         // Audit fields
         createdBy: currentUser.email,
         updatedBy: currentUser.email
@@ -75,7 +82,6 @@ const AdminSettings = async () => {
   const settingsData: SettingsData = {
     discordNotifications: settings.discordNotifications,
     orderNotifications: settings.orderNotifications,
-    emailNotifications: settings.emailNotifications,
     pushNotifications: settings.pushNotifications,
     analyticsTracking: settings.analyticsTracking,
     sessionTimeout: settings.sessionTimeout,
@@ -86,7 +92,10 @@ const AdminSettings = async () => {
     reportInterval: settings.reportInterval,
     codPayment: settings.codPayment,
     momoPayment: settings.momoPayment,
-    stripePayment: settings.stripePayment
+    stripePayment: settings.stripePayment,
+    autoEmailMarketing: settings.autoEmailMarketing,
+    emailMarketingSchedule: settings.emailMarketingSchedule,
+    emailMarketingTime: settings.emailMarketingTime
   };
 
   return <AdminSettingsClient initialSettings={settingsData} />;

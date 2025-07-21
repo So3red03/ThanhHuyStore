@@ -4,15 +4,6 @@ const nextConfig = {
   // Tối ưu performance cho development
   swcMinify: true,
   experimental: {
-    // Sử dụng Turbopack khi có thể
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js'
-        }
-      }
-    },
     // Tối ưu memory usage
     optimizePackageImports: ['@mui/material', '@mui/icons-material']
   },
@@ -33,14 +24,16 @@ const nextConfig = {
       config.externals.push('bcrypt');
     }
 
-    // Tối ưu cho development - chỉ dùng polling khi cần thiết
+    // Tối ưu cho development - enable hot reload
     if (dev) {
       config.watchOptions = {
-        // Chỉ dùng polling trên Windows nếu có vấn đề với file watching
-        // poll: 1000, // Bỏ comment này nếu gặp vấn đề file watching
+        poll: 1000, // Enable polling cho Windows
         aggregateTimeout: 300,
         ignored: /node_modules/
       };
+
+      // Ensure hot reload works properly
+      config.cache = false;
     }
 
     return config;

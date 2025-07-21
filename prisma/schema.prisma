@@ -51,6 +51,11 @@ model User {
   // Danh mục sản phẩm đã mua (để gửi email marketing)
   purchasedCategories String[] @default([])
 
+  // Email marketing settings
+  emailMarketingEnabled Boolean @default(true)
+  lastEmailSent DateTime?
+  emailFrequency String @default("daily") // daily, weekly, monthly
+
   accounts        Account[]
   orders          Order[]
   reviews         Review[]
@@ -155,6 +160,7 @@ model Product {
   reviews          Review[]
   notifications    Notification[]
   productPromotions ProductPromotion[]
+  emailCampaigns   EmailCampaign[]
 
   // Variant system relationships
   productAttributes ProductAttribute[]
@@ -484,7 +490,6 @@ model AdminSettings {
   // Notification settings
   discordNotifications  Boolean  @default(true)
   orderNotifications    Boolean  @default(true)
-  emailNotifications    Boolean  @default(true)
   pushNotifications     Boolean  @default(false)
 
   // System settings
@@ -504,6 +509,11 @@ model AdminSettings {
   codPayment            Boolean  @default(true)
   momoPayment           Boolean  @default(false)
   stripePayment         Boolean  @default(false)
+
+  // Email automation settings
+  autoEmailMarketing    Boolean  @default(false)
+  emailMarketingSchedule String  @default("daily") // daily, weekly, monthly, newProduct
+  emailMarketingTime    String   @default("09:00") // HH:MM format
 
   // Audit fields
   createdBy             String
@@ -635,4 +645,19 @@ model AuditLog {
   @@index([timestamp])
   @@index([resourceId])
   @@index([resourceType])
+}
+
+// Email Campaign tracking model
+model EmailCampaign {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  productId String @db.ObjectId
+  sentAt DateTime @default(now())
+  clickCount Int @default(0) // Số lượng user click vào sản phẩm
+  status String // sent, failed, scheduled
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([sentAt])
 }

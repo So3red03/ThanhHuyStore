@@ -160,8 +160,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       return;
     }
 
+    // Chỉ kiểm tra delivery status nếu thực sự thay đổi
     if (
       canTransitionDeliveryStatus &&
+      currentOrder.deliveryStatus !== newDeliveryStatus &&
       !canTransitionDeliveryStatus(currentOrder.deliveryStatus, newDeliveryStatus, currentOrder.status)
     ) {
       toast.error('Không thể chuyển trạng thái giao hàng này');
@@ -187,11 +189,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       });
       setOrders(updatedOrders);
 
-      // Gọi API cập nhật trạng thái
-      await Promise.all([
-        axios.put(`/api/orders/${orderId}`, { status: newStatus }),
-        axios.put('/api/orders', { id: orderId, deliveryStatus: newDeliveryStatus })
-      ]);
+      // Gọi API cập nhật trạng thái - chỉ cần 1 API call
+      await axios.put(`/api/orders/${orderId}`, {
+        status: newStatus,
+        deliveryStatus: newDeliveryStatus
+      });
 
       toast.success('Cập nhật đơn hàng thành công');
       onOrderUpdate();

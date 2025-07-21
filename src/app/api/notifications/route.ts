@@ -14,13 +14,8 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const isAdmin = currentUser.role === 'ADMIN';
 
-    let notifications;
-    if (isAdmin) {
-      // Mock admin notifications
-      notifications = { notifications: [], total: 0, hasMore: false };
-    } else {
-      notifications = await NotificationService.getUserNotifications(currentUser.id, 1, limit);
-    }
+    // Get notifications for current user (both admin and regular users)
+    const notifications = await NotificationService.getUserNotifications(currentUser.id, 1, limit);
 
     return NextResponse.json(notifications);
   } catch (error) {
