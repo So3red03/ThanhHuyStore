@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     // Summary embed
     embeds.push({
-      title: '📊 BÁO CÁO PHÂN TÍCH & ĐỀ XUẤT',
+      title: 'PHÂN TÍCH & ĐỀ XUẤT',
       description: `Phân tích dữ liệu ${insights.period} - ThanhHuy Store`,
       color: 0x3b82f6,
       fields: [
@@ -92,26 +92,26 @@ export async function POST(request: Request) {
     }
 
     // Related products embed - dynamic title based on patterns
-    if (insights.relatedProducts.length > 0) {
-      const strongestPattern = insights.relatedProducts[0];
-      const dynamicTitle =
-        strongestPattern.frequency > 10
-          ? '🔥 COMBO SẢN PHẨM PHỔ BIẾN'
-          : strongestPattern.frequency > 5
-          ? '🔗 SẢN PHẨM THƯỜNG MUA CÙNG'
-          : '💡 GỢI Ý SẢN PHẨM LIÊN QUAN';
+    // if (insights.relatedProducts.length > 0) {
+    //   const strongestPattern = insights.relatedProducts[0];
+    //   const dynamicTitle =
+    //     strongestPattern.frequency > 10
+    //       ? '🔥 COMBO SẢN PHẨM PHỔ BIẾN'
+    //       : strongestPattern.frequency > 5
+    //       ? '🔗 SẢN PHẨM THƯỜNG MUA CÙNG'
+    //       : '💡 GỢI Ý SẢN PHẨM LIÊN QUAN';
 
-      embeds.push({
-        title: dynamicTitle,
-        description: `${insights.relatedProducts.length} patterns được phát hiện từ hành vi người dùng`,
-        color: 0x8b5cf6,
-        fields: insights.relatedProducts.slice(0, 5).map((pattern, index) => ({
-          name: `Pattern ${index + 1} (${pattern.frequency} lần)`,
-          value: `💡 ${pattern.suggestion}`,
-          inline: true
-        }))
-      });
-    }
+    //   embeds.push({
+    //     title: dynamicTitle,
+    //     description: `${insights.relatedProducts.length} patterns được phát hiện từ hành vi người dùng`,
+    //     color: 0x8b5cf6,
+    //     fields: insights.relatedProducts.slice(0, 5).map((pattern, index) => ({
+    //       name: `Pattern ${index + 1} (${pattern.frequency} lần)`,
+    //       value: `💡 ${pattern.suggestion}`,
+    //       inline: true
+    //     }))
+    //   });
+    // }
 
     // User behavior embed
     embeds.push({
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         username: 'ThanhHuy Store - Analytics Bot',
         avatar_url: 'https://cdn-icons-png.flaticon.com/512/2920/2920277.png',
-        content: `📊 **BÁO CÁO PHÂN TÍCH THÔNG MINH** - ${insights.period}`,
+        content: `**BÁO CÁO PHÂN TÍCH** - ${insights.period}`,
         embeds: embeds
       })
     });

@@ -333,7 +333,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
               </FormControl>
 
               {/* Timeframe Selection - Only show in auto mode */}
-              <Collapse in={!manualMode}>
+              {/* <Collapse in={!manualMode}>
                 <FormControl fullWidth sx={{ mb: 3 }}>
                   <InputLabel>Lọc khách hàng theo thời gian mua hàng</InputLabel>
                   <Select
@@ -349,7 +349,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                     <MenuItem value='older'>Khách hàng mua trên 90 ngày trước</MenuItem>
                   </Select>
                 </FormControl>
-              </Collapse>
+              </Collapse> */}
 
               {/* Manual Customer Selection Toggle */}
               <Box sx={{ mb: 3 }}>
@@ -379,7 +379,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
               </Box>
 
               {/* Info Alert */}
-              {selectedProductId && !manualMode && (
+              {/* {selectedProductId && !manualMode && (
                 <Alert icon={<MdInfo />} severity='info' sx={{ mb: 3, borderRadius: '12px' }}>
                   <Typography variant='body2'>
                     <strong>Lưu ý:</strong> Email sẽ được gửi đến những khách hàng đã từng mua sản phẩm trong cùng danh
@@ -394,7 +394,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                     ).
                   </Typography>
                 </Alert>
-              )}
+              )} */}
 
               {/* Manual Customer Selection List */}
               <Collapse in={manualMode}>
@@ -1192,12 +1192,12 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                             variant='outlined'
                             sx={{ mb: 0.5 }}
                           />
-                          <Typography variant='body2' color='text.secondary'>
+                          {/* <Typography variant='body2' color='text.secondary'>
                             Mua lần đầu:{' '}
                             {product.firstPurchased
                               ? new Date(product.firstPurchased).toLocaleDateString('vi-VN')
                               : 'Không xác định'}
-                          </Typography>
+                          </Typography> */}
                           <Typography variant='body2' color='success.main' sx={{ fontWeight: 600 }}>
                             {product.price
                               ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
