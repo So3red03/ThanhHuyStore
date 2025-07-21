@@ -638,19 +638,19 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
             )}
 
             {/* Automation Section */}
-            {/* {activeSection === 'automation' && (
+            {activeSection === 'automation' && (
               <div>
                 <h2 className='text-2xl font-semibold mb-2'>Cài đặt tự động hóa</h2>
                 <p className='text-gray-600 mb-6'>Cấu hình các tính năng tự động và hỗ trợ AI.</p>
 
                 <div className='space-y-6'>
-                  <ToggleSwitch
+                  {/* <ToggleSwitch
                     id='lowStockAlerts'
                     checked={settings.lowStockAlerts}
                     onChange={() => handleToggle('lowStockAlerts')}
                     title='Cảnh báo tồn kho thấp'
                     description='Nhận thông báo khi sản phẩm sắp hết hàng (≤10 sản phẩm)'
-                  />
+                  /> */}
 
                   <ToggleSwitch
                     id='chatbotSupport'
@@ -659,17 +659,17 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                     title='Hỗ trợ Chatbot'
                     description='Bật chatbot AI để hỗ trợ khách hàng'
                   />
-
+                  {/* 
                   <ToggleSwitch
                     id='autoVoucherSuggestion'
                     checked={settings.autoVoucherSuggestion}
                     onChange={() => handleToggle('autoVoucherSuggestion')}
                     title='Đề xuất voucher tự động'
                     description='Tự động đề xuất voucher cho khách hàng'
-                  />
+                  /> */}
                 </div>
               </div>
-            )} */}
+            )}
 
             {/* Reports Section */}
             {/* {activeSection === 'reports' && (
