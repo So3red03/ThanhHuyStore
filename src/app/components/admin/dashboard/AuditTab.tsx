@@ -74,6 +74,7 @@ const AuditTab: React.FC<AuditTabProps> = () => {
   const [timeFilter, setTimeFilter] = useState('7d');
   const [eventTypeFilter, setEventTypeFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showDateRange, setShowDateRange] = useState(false);
@@ -109,6 +110,22 @@ const AuditTab: React.FC<AuditTabProps> = () => {
     { label: 'Tùy chọn', value: 'custom' }
   ];
 
+  // Sort order options
+  const sortOrderOptions = [
+    { label: 'Mới nhất', value: 'desc' },
+    { label: 'Cũ nhất', value: 'asc' },
+    { label: 'A-Z (Loại sự kiện)', value: 'eventType_asc' },
+    { label: 'Z-A (Loại sự kiện)', value: 'eventType_desc' }
+  ];
+
+  // if (sortOrder === 'eventType_asc') {
+  //   // Lọc dữ liệu theo thứ tự A-Z
+  //   data = data.sort((a, b) => a.eventType.localeCompare(b.eventType));
+  // } else if (sortOrder === 'eventType_desc') {
+  //   // Lọc dữ liệu theo thứ tự Z-A
+  //   data = data.sort((a, b) => b.eventType.localeCompare(a.eventType));
+  // }
+
   // Fetch audit logs
   const fetchAuditLogs = async () => {
     setLoading(true);
@@ -116,6 +133,7 @@ const AuditTab: React.FC<AuditTabProps> = () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '20',
+        sortOrder: sortOrder,
         ...(eventTypeFilter !== 'all' && { eventType: eventTypeFilter }),
         ...(severityFilter !== 'all' && { severity: severityFilter }),
         ...(timeFilter === 'custom' && startDate && { startDate }),
@@ -131,7 +149,6 @@ const AuditTab: React.FC<AuditTabProps> = () => {
       setAuditLogs(response.data.auditLogs);
       setPagination(response.data.pagination);
     } catch (error) {
-      console.error('Error fetching audit logs:', error);
       toast.error('Lỗi khi tải audit logs');
     } finally {
       setLoading(false);
@@ -141,36 +158,13 @@ const AuditTab: React.FC<AuditTabProps> = () => {
   // Load audit logs on component mount and filter changes
   useEffect(() => {
     fetchAuditLogs();
-  }, [currentPage, eventTypeFilter, severityFilter, timeFilter, startDate, endDate]);
+  }, [currentPage, eventTypeFilter, severityFilter, timeFilter, sortOrder, startDate, endDate]);
 
   // Handle time filter change
   const handleTimeFilterChange = (value: string) => {
     setTimeFilter(value);
     setShowDateRange(value === 'custom');
     setCurrentPage(1);
-  };
-
-  // Test functions
-  const handleGenerateTestData = async () => {
-    try {
-      await axios.post('/api/admin/audit-logs', { action: 'generateTestData' });
-      toast.success('✅ Test data generated successfully!');
-      fetchAuditLogs();
-    } catch (error) {
-      toast.error('❌ Error generating test data');
-    }
-  };
-
-  const handleClearAllTestData = async () => {
-    try {
-      // Clear both test data and view logs
-      await axios.post('/api/admin/audit-logs', { action: 'clearTestData' });
-      await axios.post('/api/admin/audit-logs', { action: 'clearViewLogs' });
-      toast.success('🗑️ All test data & view logs cleared successfully!');
-      fetchAuditLogs();
-    } catch (error) {
-      toast.error('❌ Error clearing data');
-    }
   };
 
   // Get severity color
@@ -285,7 +279,6 @@ const AuditTab: React.FC<AuditTabProps> = () => {
                 />
               )}
             </div>
-
             {/* Right side refresh button */}
             <Button
               variant='contained'
@@ -339,10 +332,23 @@ const AuditTab: React.FC<AuditTabProps> = () => {
                 ))}
               </Select>
             </FormControl>
+            <FormControl size='small' sx={{ minWidth: 160 }}>
+              <InputLabel>Sắp xếp</InputLabel>
+              <Select value={sortOrder} label='Sắp xếp' onChange={e => setSortOrder(e.target.value)}>
+                {sortOrderOptions.map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             {/* Active filters indicator */}
             <div className='flex items-center gap-2 ml-auto'>
-              {(eventTypeFilter !== 'all' || severityFilter !== 'all' || timeFilter !== '7d') && (
+              {(eventTypeFilter !== 'all' ||
+                severityFilter !== 'all' ||
+                timeFilter !== '7d' ||
+                sortOrder !== 'desc') && (
                 <Chip
                   label='Đang lọc'
                   size='small'

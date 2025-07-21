@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const resourceType = searchParams.get('resourceType');
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     // Build filter conditions
     const where: any = {};
@@ -61,10 +62,23 @@ export async function GET(request: Request) {
     // Get total count for pagination
     const totalCount = await prisma.auditLog.count({ where });
 
+    // Determine sort order
+    let orderBy: any = { timestamp: 'desc' }; // default
+
+    if (sortOrder === 'asc') {
+      orderBy = { timestamp: 'asc' };
+    } else if (sortOrder === 'desc') {
+      orderBy = { timestamp: 'desc' };
+    } else if (sortOrder === 'eventType_asc') {
+      orderBy = { eventType: 'asc' };
+    } else if (sortOrder === 'eventType_desc') {
+      orderBy = { eventType: 'desc' };
+    }
+
     // Get audit logs with pagination
     const auditLogs = await prisma.auditLog.findMany({
       where,
-      orderBy: { timestamp: 'desc' },
+      orderBy,
       skip: (page - 1) * limit,
       take: limit
     });
