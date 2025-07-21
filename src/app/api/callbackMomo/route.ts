@@ -9,7 +9,6 @@ export async function POST(req: any) {
     const body = await req.json();
     const { orderId, resultCode, signature, amount, requestId } = body;
 
-
     // Get client IP for rate limiting
     const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
 
@@ -140,8 +139,9 @@ export async function POST(req: any) {
 
       // Tự động tạo PDF và gửi email
       try {
+        console.log(`🔄 MoMo callback: Processing payment for order ${updatedOrder.id}`);
         const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-        await fetch(`${baseUrl}/api/orders/process-payment`, {
+        const response = await fetch(`${baseUrl}/api/orders/process-payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -149,8 +149,20 @@ export async function POST(req: any) {
             paymentIntentId: updatedOrder.paymentIntentId
           })
         });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ MoMo callback: Payment processing successful', result);
+        } else {
+          const errorText = await response.text();
+          console.error('❌ MoMo callback: Payment processing failed', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
+        }
       } catch (error) {
-        console.error('Error processing payment in MoMo callback:', error);
+        console.error('❌ Error processing payment in MoMo callback:', error);
       }
 
       MoMoSecurity.logSecurityEvent('PAYMENT_PROCESSED_SUCCESSFULLY', {

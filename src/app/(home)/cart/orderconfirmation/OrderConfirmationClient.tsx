@@ -28,12 +28,65 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
       router.push('/login');
       return;
     }
+
     try {
-      if (cartProducts && paymentIntent && !hasToastBeenShown) {
+      // Check for MoMo callback parameters in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const momoOrderId = urlParams.get('orderId');
+      const momoResultCode = urlParams.get('resultCode');
+
+      if (momoOrderId && momoResultCode !== null) {
+        // Handle MoMo callback
         setIsProcessing(true);
         setOrderStatus('processing');
 
-        // Simulate processing time for better UX
+        if (momoResultCode === '0') {
+          // MoMo payment success
+          setTimeout(() => {
+            axios
+              .get(`/api/orders?paymentIntentId=${momoOrderId}`)
+              .then(res => {
+                if (res.data) {
+                  setOrder(res.data);
+                  setOrderStatus('success');
+                  setIsProcessing(false);
+
+                  if (!hasToastBeenShown) {
+                    toast.success('Thanh toán MoMo thành công!');
+                    setHasToastBeenShown(true);
+                  }
+
+                  handleSetPaymentIntent(null);
+                  clearVoucherAfterUse();
+                  handleClearCart();
+
+                  // Clean URL parameters
+                  window.history.replaceState({}, document.title, '/cart/orderconfirmation');
+                } else {
+                  setOrderStatus('failed');
+                  setIsProcessing(false);
+                  toast.error('Không tìm thấy đơn hàng');
+                }
+              })
+              .catch(error => {
+                console.error('Error fetching MoMo order:', error);
+                setOrderStatus('failed');
+                setIsProcessing(false);
+                toast.error('Lỗi khi lấy thông tin đơn hàng MoMo');
+              });
+          }, 1500);
+        } else {
+          // MoMo payment failed
+          setOrderStatus('failed');
+          setIsProcessing(false);
+          toast.error('Thanh toán MoMo thất bại');
+          window.history.replaceState({}, document.title, '/cart/orderconfirmation');
+        }
+      } else if (cartProducts && paymentIntent && !hasToastBeenShown) {
+        // Handle regular payment (COD/Stripe)
+        setIsProcessing(true);
+        setOrderStatus('processing');
+
         setTimeout(() => {
           axios
             .get(`/api/orders?paymentIntentId=${paymentIntent}`)
@@ -49,7 +102,7 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
                 }
 
                 handleSetPaymentIntent(null);
-                clearVoucherAfterUse(); // Clear voucher from localStorage
+                clearVoucherAfterUse();
                 handleClearCart();
               } else {
                 setOrderStatus('failed');
@@ -63,7 +116,7 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
               setIsProcessing(false);
               toast.error('Lỗi khi lấy thông tin đơn hàng');
             });
-        }, 1500); // 1.5 second processing simulation
+        }, 1500);
       }
     } catch (error) {
       console.error('Error in useEffect:', error);
@@ -71,11 +124,21 @@ const OrderConfirmationClient: React.FC<CartBuyClientProps> = ({ currentUser }) 
       setIsProcessing(false);
       toast.error('Đặt hàng thất bại');
     }
+
     // Reset lại trạng thái toast khi trang được tải lại hoặc khi bạn muốn reset trạng thái
     return () => {
       setHasToastBeenShown(false); // Reset trạng thái toast khi component unmount hoặc trang reload
     };
-  }, [paymentIntent]);
+  }, [
+    paymentIntent,
+    currentUser,
+    router,
+    handleSetPaymentIntent,
+    clearVoucherAfterUse,
+    handleClearCart,
+    cartProducts,
+    hasToastBeenShown
+  ]);
 
   return (
     <div className='w-full bg-white lg:p-14 p-2 lg:py-6'>

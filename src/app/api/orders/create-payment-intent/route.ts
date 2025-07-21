@@ -558,7 +558,7 @@ export async function POST(request: NextRequest) {
       const secretKey = 'K951B6PE1waDMi640xX08PD3vg6EkVlz';
       const orderInfo = 'pay with MoMo';
       const partnerCode = 'MOMO';
-      const redirectUrl = `${process.env.NEXTAUTH_URL}/cart/orderconfirmation/${createdOrder.id}`;
+      const redirectUrl = `${process.env.NEXTAUTH_URL}/cart/orderconfirmation`;
       const ipnUrl = `${process.env.NEXTAUTH_URL}/api/callbackMomo`;
       const requestType = 'payWithMethod';
       const amount = finalAmount.toString();

@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
 
     // Gửi email xác nhận
     try {
+      console.log(`📧 Starting email process for order: ${order.id}, payment method: ${order.paymentMethod}`);
+      console.log(`📧 Customer email: ${order.user.email}`);
+
       const emailService = new OrderEmailService();
       await emailService.sendOrderConfirmation({
         orderId: order.id,
@@ -92,9 +95,15 @@ export async function POST(request: NextRequest) {
         }))
       });
 
-      console.log('Order confirmation email sent successfully');
+      console.log('✅ Order confirmation email sent successfully');
     } catch (emailError) {
-      console.error('Error sending email:', emailError);
+      console.error('❌ Error sending email:', emailError);
+      console.error('❌ Email error details:', {
+        orderId: order.id,
+        customerEmail: order.user.email,
+        paymentMethod: order.paymentMethod,
+        error: emailError instanceof Error ? emailError.message : String(emailError)
+      });
       // Không throw error để không ảnh hưởng đến quá trình thanh toán
     }
 
