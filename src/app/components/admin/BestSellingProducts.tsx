@@ -19,7 +19,7 @@ const BestSellingProducts: React.FC<BestSellingProductsProps> = ({ uniqueProduct
         ?.map(product => {
           // Filter only completed and delivered orders
           const completedOrders = orders.filter(
-            order => order.status === 'COMPLETED' && order.deliveryStatus === 'DELIVERED'
+            order => order.status === 'completed' && order.deliveryStatus === 'delivered'
           );
 
           // Calculate total quantity purchased across completed orders only
