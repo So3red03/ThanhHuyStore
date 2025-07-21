@@ -11,10 +11,10 @@ export const AccountItems = [
     title: 'Quản lý đơn hàng',
     path: '/account/orders',
     icon: CiViewList
-  },
-  {
-    title: 'Sản phẩm đã xem',
-    path: '/account/viewed',
-    icon: CiRead
   }
+  // {
+  //   title: 'Sản phẩm đã xem',
+  //   path: '/account/viewed',
+  //   icon: CiRead
+  // }
 ];

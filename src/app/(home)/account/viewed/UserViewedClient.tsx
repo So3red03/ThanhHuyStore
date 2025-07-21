@@ -16,6 +16,29 @@ const UserViewedClient = () => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Helper function to get product image (handles both simple and variant products)
+  const getProductImage = (product: any) => {
+    // For simple products, use thumbnail or first gallery image
+    if (product.productType === 'SIMPLE') {
+      if (product.thumbnail) return product.thumbnail;
+      if (product.galleryImages && product.galleryImages.length > 0) return product.galleryImages[0];
+    }
+
+    // For variant products, try to get image from first active variant
+    if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+      const firstVariant = product.variants[0];
+      if (firstVariant.thumbnail) return firstVariant.thumbnail;
+      if (firstVariant.galleryImages && firstVariant.galleryImages.length > 0) return firstVariant.galleryImages[0];
+    }
+
+    // Fallback to product-level images
+    if (product.thumbnail) return product.thumbnail;
+    if (product.galleryImages && product.galleryImages.length > 0) return product.galleryImages[0];
+
+    // Final fallback
+    return '/noavatar.png';
+  };
+
   useEffect(() => {
     const getViewedProducts = async () => {
       try {
@@ -41,7 +64,8 @@ const UserViewedClient = () => {
           return;
         }
 
-        const allProducts = await productsResponse.json();
+        const productData = await productsResponse.json();
+        const allProducts = productData.products || productData;
 
         // Lấy các sản phẩm đã xem
         const recentProductIds = viewHistory
@@ -49,7 +73,8 @@ const UserViewedClient = () => {
           .map((item: any) => item.productId);
 
         const recentProducts = allProducts.filter(
-          (product: Product) => recentProductIds.includes(product.id) && (product.inStock ?? 0) > 0
+          (product: Product) =>
+            recentProductIds.includes(product.id) && (product.inStock ?? 0) > 0 && !product.isDeleted
         );
 
         // Sắp xếp theo thứ tự trong viewHistory
@@ -100,38 +125,17 @@ const UserViewedClient = () => {
               >
                 <div className='flex flex-col items-center gap-1 w-full'>
                   <div className='aspect-square overflow-hidden relative w-full'>
-                    {/* Use new thumbnail + galleryImages structure */}
-                    {data.thumbnail || (data.galleryImages && data.galleryImages.length > 0) ? (
-                      <Image
-                        src={data.thumbnail || data.galleryImages[0]}
-                        alt={data.name}
-                        fill
-                        sizes='100%'
-                        className='w-full h-full object-cover'
-                        loading='lazy'
-                        onError={e => {
-                          e.currentTarget.src = '/noavatar.png';
-                        }}
-                      />
-                    ) : (
-                      /* Fallback to old images structure */
-                      data.images &&
-                      data.images.length > 0 &&
-                      data.images[0].images &&
-                      data.images[0].images.length > 0 && (
-                        <Image
-                          src={data.images[0].images[0]}
-                          alt={data.name}
-                          fill
-                          sizes='100%'
-                          className='w-full h-full object-cover'
-                          loading='lazy'
-                          onError={e => {
-                            e.currentTarget.src = '/noavatar.png';
-                          }}
-                        />
-                      )
-                    )}
+                    <Image
+                      src={getProductImage(data)}
+                      alt={data.name}
+                      fill
+                      sizes='100%'
+                      className='w-full h-full object-cover'
+                      loading='lazy'
+                      onError={e => {
+                        e.currentTarget.src = '/noavatar.png';
+                      }}
+                    />
                   </div>
                   <div className='mt-4 text-base h-11'>{truncateText(data.name)}</div>
                   <div className='font-semibold text-lg mt-2'>{formatPrice(data.price)}</div>

@@ -12,13 +12,21 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || '';
     const categoryId = searchParams.get('categoryId') || '';
     const forAdmin = searchParams.get('admin') === 'true';
+    const includeDeleted = searchParams.get('includeDeleted') === 'true';
+    const onlyDeleted = searchParams.get('onlyDeleted') === 'true';
 
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {
-      isDeleted: false
-    };
+    const where: any = {};
+
+    // Handle soft delete filtering
+    if (onlyDeleted) {
+      where.isDeleted = true;
+    } else if (!includeDeleted) {
+      where.isDeleted = false;
+    }
+    // If includeDeleted is true and onlyDeleted is false, don't filter by isDeleted
 
     // For admin, include both SIMPLE and VARIANT products
     if (!forAdmin) {
@@ -43,12 +51,10 @@ export async function GET(request: Request) {
         where,
         include: {
           category: true,
-          variants: forAdmin
-            ? {
-                where: { isActive: true },
-                orderBy: { createdAt: 'desc' }
-              }
-            : false,
+          variants: {
+            where: { isActive: true },
+            orderBy: { createdAt: 'desc' }
+          },
           reviews: {
             include: { user: true },
             orderBy: { createdDate: 'desc' }

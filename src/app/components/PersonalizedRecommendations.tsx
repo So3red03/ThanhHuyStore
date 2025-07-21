@@ -43,7 +43,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   // Lấy sản phẩm ngẫu nhiên (fallback) - giới hạn 6 sản phẩm
   const getRecentProducts = useCallback((): Product[] => {
     const recentProducts = allProducts
-      .filter(product => (product.inStock ?? 0) > 0)
+      .filter(product => (product.inStock ?? 0) > 0 && !product.isDeleted)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 6); // Limit to 6 products
 
@@ -76,7 +76,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       // Map trending products to local products and limit to 6
       const mappedProducts = trendingProducts
         .map(trendingProduct => {
-          const localProduct = allProducts.find(p => p.id === trendingProduct.id);
+          const localProduct = allProducts.find(p => p.id === trendingProduct.id && !p.isDeleted);
           return localProduct ? { ...localProduct, recommendationScore: trendingProduct.recommendationScore } : null;
         })
         .filter(Boolean)
@@ -88,7 +88,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
     }
   }, [allProducts, getRecentProducts]);
 
-  // Lấy gợi ý nâng cao cho người dùng đã đăng nhập (sử dụng global trends + personal data)
+  //Tính năng mở rộng: Lấy gợi ý nâng cao cho người dùng đã đăng nhập (sử dụng global trends + personal data)
   const getEnhancedPersonalizedRecommendations = useCallback(async (): Promise<Product[]> => {
     try {
       // 1. Lấy global trends data (tái sử dụng logic có sẵn)
@@ -191,15 +191,17 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   useEffect(() => {
     const getRecommendations = async () => {
       try {
-        if (currentUser) {
-          // Người dùng đã đăng nhập - gợi ý nâng cao với global trends
-          const recommendations = await getEnhancedPersonalizedRecommendations();
-          setRecommendedProducts(recommendations);
-        } else {
-          // Người dùng chưa đăng nhập - hiển thị trending products từ global analytics
-          const trendingProducts = await getGlobalTrendingProducts();
-          setRecommendedProducts(trendingProducts);
-        }
+        // if (currentUser) {
+        //   // Người dùng đã đăng nhập - gợi ý nâng cao với global trends (tính năng mở rộng)
+        //   const recommendations = await getEnhancedPersonalizedRecommendations();
+        //   setRecommendedProducts(recommendations);
+        // } else {
+        //   // Người dùng chưa đăng nhập - hiển thị trending products từ global analytics
+        //   const trendingProducts = await getGlobalTrendingProducts();
+        //   setRecommendedProducts(trendingProducts);
+        // }
+        const trendingProducts = await getGlobalTrendingProducts();
+        setRecommendedProducts(trendingProducts);
       } catch (error) {
         // Fallback: hiển thị sản phẩm ngẫu nhiên
         const recentProducts = getRecentProducts();

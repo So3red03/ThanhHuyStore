@@ -16,10 +16,10 @@ export async function getProducts(params: IProductParams) {
       query.category = category;
     }
 
-    // TODO: Thêm filter cho soft delete sau khi update database
-    // if (!includeDeleted) {
-    //   query.isDeleted = { not: true };
-    // }
+    // Filter out soft deleted products by default
+    if (!includeDeleted) {
+      query.isDeleted = { not: true };
+    }
 
     const products = await prisma.product.findMany({
       where: {
@@ -91,10 +91,9 @@ export async function getParentCategoryAndProductsBySlug(parentSlug: string) {
         subcategories: {
           include: {
             products: {
-              // TODO: Add soft delete filter after database update
-              // where: {
-              //   isDeleted: { not: true }
-              // },
+              where: {
+                isDeleted: { not: true }
+              },
               include: {
                 reviews: {
                   include: {
@@ -160,9 +159,8 @@ export async function getProductsByCategory(slug: string) {
 
     const products = await prisma.product.findMany({
       where: {
-        categoryId: category.id
-        // TODO: Add soft delete filter after database update
-        // isDeleted: { not: true }
+        categoryId: category.id,
+        isDeleted: { not: true }
       },
       include: {
         reviews: {

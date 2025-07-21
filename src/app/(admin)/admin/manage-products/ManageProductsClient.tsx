@@ -4,8 +4,18 @@ import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { Product } from '@prisma/client';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { formatPrice } from '../../../../../utils/formatPrice';
-import { MdCached, MdClose, MdDelete, MdDone, MdEdit, MdRefresh, MdSearch, MdFilterList } from 'react-icons/md';
-// TODO: Add back when soft delete is implemented: MdRestore, MdVisibility
+import {
+  MdCached,
+  MdClose,
+  MdDelete,
+  MdDone,
+  MdEdit,
+  MdRefresh,
+  MdSearch,
+  MdFilterList,
+  MdRestore,
+  MdVisibility
+} from 'react-icons/md';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { deleteObject, getStorage, ref } from 'firebase/storage';
 import { SafeUser } from '../../../../../types';
@@ -129,35 +139,39 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     }
   };
 
-  // TODO: Enable when soft delete is implemented
-  // const fetchDeletedProducts = async () => {
-  //   try {
-  //     const response = await axios.get('/api/product/deleted');
-  //     setDeletedProducts(response.data);
-  //   } catch (error) {
-  //     console.error('Error fetching deleted products:', error);
-  //     toast.error('Lỗi khi tải sản phẩm đã xóa');
-  //   }
-  // };
+  const fetchDeletedProducts = async () => {
+    try {
+      const response = await fetch('/api/product?admin=true&onlyDeleted=true');
+      if (response.ok) {
+        const data = await response.json();
+        setDeletedProducts(data.products || data);
+      } else {
+        toast.error('Lỗi khi tải sản phẩm đã xóa');
+      }
+    } catch (error) {
+      console.error('Error fetching deleted products:', error);
+      toast.error('Lỗi khi tải sản phẩm đã xóa');
+    }
+  };
 
-  // const toggleShowDeleted = async () => {
-  //   if (!showDeleted) {
-  //     await fetchDeletedProducts();
-  //   }
-  //   setShowDeleted(!showDeleted);
-  // };
+  const toggleShowDeleted = async () => {
+    if (!showDeleted) {
+      await fetchDeletedProducts();
+    }
+    setShowDeleted(!showDeleted);
+  };
 
-  // const handleRestoreProduct = async (productId: string) => {
-  //   try {
-  //     await axios.patch(`/api/product/${productId}`, { action: 'restore' });
-  //     toast.success('Khôi phục sản phẩm thành công');
-  //     await fetchDeletedProducts(); // Refresh deleted products list
-  //     router.refresh(); // Refresh main products list
-  //   } catch (error) {
-  //     console.error('Error restoring product:', error);
-  //     toast.error('Lỗi khi khôi phục sản phẩm');
-  //   }
-  // };
+  const handleRestoreProduct = async (productId: string) => {
+    try {
+      await axios.put(`/api/product/restore/${productId}`);
+      toast.success('Khôi phục sản phẩm thành công');
+      await fetchDeletedProducts(); // Refresh deleted products list
+      await handleRefresh(); // Refresh main products list
+    } catch (error) {
+      console.error('Error restoring product:', error);
+      toast.error('Lỗi khi khôi phục sản phẩm');
+    }
+  };
 
   const onTextChange = (e: any) => {
     const newText = e.htmlValue;
@@ -275,8 +289,10 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   // Use state for current products instead of props directly
 
   let rows: any = [];
-  if (filteredProducts?.length > 0) {
-    rows = filteredProducts?.map((product: any) => {
+  const dataSource = showDeleted ? deletedProducts : filteredProducts;
+
+  if (dataSource?.length > 0) {
+    rows = dataSource?.map((product: any) => {
       // Tính điểm đánh giá của mỗi sản phẩm
       const productRating =
         product.reviews?.reduce((acc: number, item: any) => item.rating + acc, 0) / (product.reviews?.length || 1) || 0;
@@ -475,28 +491,114 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     }
   ];
 
-  // TODO: Add deleted info columns when soft delete is implemented
-  // const deletedColumns: GridColDef[] = [
-  //   {
-  //     field: 'deletedAt',
-  //     headerName: 'Ngày xóa',
-  //     width: 150,
-  //     renderCell: params => {
-  //       return params.row.deletedAt ? new Date(params.row.deletedAt).toLocaleDateString('vi-VN') : '';
-  //     }
-  //   },
-  //   {
-  //     field: 'deletedBy',
-  //     headerName: 'Người xóa',
-  //     width: 150,
-  //     renderCell: params => {
-  //       return params.row.deletedBy || '';
-  //     }
-  //   }
-  // ];
+  const deletedColumns: GridColDef[] = [
+    {
+      field: 'images',
+      headerName: 'Ảnh SP',
+      width: 80,
+      renderCell: params => {
+        // Helper function to get product image (handles both simple and variant products)
+        const getProductImage = (product: any) => {
+          // For simple products, use thumbnail or first gallery image
+          if (product.productType === 'SIMPLE') {
+            if (product.thumbnail) return product.thumbnail;
+            if (product.galleryImages && product.galleryImages.length > 0) return product.galleryImages[0];
+          }
 
-  // For now, just use base columns
-  const columns = baseColumns;
+          // For variant products, try to get image from first active variant
+          if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+            const firstVariant = product.variants[0];
+            if (firstVariant.thumbnail) return firstVariant.thumbnail;
+            if (firstVariant.galleryImages && firstVariant.galleryImages.length > 0)
+              return firstVariant.galleryImages[0];
+          }
+
+          // Fallback to product-level images
+          if (product.thumbnail) return product.thumbnail;
+          if (product.galleryImages && product.galleryImages.length > 0) return product.galleryImages[0];
+
+          // Final fallback
+          return '/noavatar.png';
+        };
+
+        return (
+          <Image
+            src={getProductImage(params.row)}
+            alt='Ảnh sản phẩm'
+            width={50}
+            height={50}
+            style={{ objectFit: 'cover', borderRadius: '4px' }}
+            onError={e => {
+              e.currentTarget.src = '/noavatar.png';
+            }}
+          />
+        );
+      }
+    },
+    {
+      field: 'name',
+      headerName: 'Tên sản phẩm',
+      width: 200,
+      renderCell: params => (
+        <div className='text-[#212B36]'>
+          <h3 className='m-0'>{params.row.name}</h3>
+        </div>
+      )
+    },
+    {
+      field: 'price',
+      headerName: 'Giá bán',
+      width: 110,
+      renderCell: params => {
+        return <div className='font-bold text-slate-800'>{formatPrice(params.row.price)}</div>;
+      }
+    },
+    { field: 'subCategory', headerName: 'Danh mục', width: 120 },
+    {
+      field: 'inStock',
+      headerName: 'Tồn kho',
+      width: 80,
+      renderCell: params => {
+        return <div className='text-center'>{params.row.inStock || 0}</div>;
+      }
+    },
+    {
+      field: 'deletedAt',
+      headerName: 'Ngày xóa',
+      width: 120,
+      renderCell: params => {
+        return params.row.deletedAt ? new Date(params.row.deletedAt).toLocaleDateString('vi-VN') : '';
+      }
+    },
+    {
+      field: 'deletedBy',
+      headerName: 'Người xóa',
+      width: 120,
+      renderCell: params => {
+        return params.row.deletedBy || '';
+      }
+    },
+    {
+      field: 'actions',
+      headerName: 'Thao tác',
+      width: 100,
+      renderCell: params => {
+        return (
+          <div className='flex justify-center items-center h-full w-full'>
+            <ActionBtn
+              icon={MdRestore}
+              onClick={() => {
+                handleRestoreProduct(params.row.id);
+              }}
+            />
+          </div>
+        );
+      }
+    }
+  ];
+
+  // Use appropriate columns based on view mode
+  const columns = showDeleted ? deletedColumns : baseColumns;
 
   // Xác nhận xóa
   const handleConfirmDelete = async () => {
@@ -593,16 +695,34 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
           <div className='flex items-center gap-3'>
             <h1 className='text-3xl font-bold text-gray-800'>Sản phẩm</h1>
             <Chip
-              label={`${filteredProducts.length} hiện có`}
+              label={showDeleted ? `${deletedProducts.length} đã xóa` : `${filteredProducts.length} hiện có`}
               size='medium'
               sx={{
-                backgroundColor: '#dbeafe',
-                color: '#1e40af',
+                backgroundColor: showDeleted ? '#fee2e2' : '#dbeafe',
+                color: showDeleted ? '#dc2626' : '#1e40af',
                 fontWeight: 600
               }}
             />
           </div>
           <div className='flex items-center gap-3'>
+            <MuiButton
+              onClick={toggleShowDeleted}
+              startIcon={showDeleted ? <MdVisibility /> : <MdDelete />}
+              variant={showDeleted ? 'contained' : 'outlined'}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                borderColor: showDeleted ? '#dc2626' : '#6b7280',
+                color: showDeleted ? '#ffffff' : '#6b7280',
+                backgroundColor: showDeleted ? '#dc2626' : 'transparent',
+                '&:hover': {
+                  borderColor: showDeleted ? '#b91c1c' : '#4b5563',
+                  backgroundColor: showDeleted ? '#b91c1c' : '#f9fafb'
+                }
+              }}
+            >
+              {showDeleted ? 'Sản phẩm đã xóa' : 'Xem sản phẩm đã xóa'}
+            </MuiButton>
             <MuiButton
               onClick={() => setShowEmailModal(true)}
               startIcon={<FaRegEnvelope />}

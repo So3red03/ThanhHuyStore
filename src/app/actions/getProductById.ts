@@ -12,7 +12,8 @@ export async function getProductById(params: IParams) {
     }
     const product = await prisma.product.findUnique({
       where: {
-        id: productId
+        id: productId,
+        isDeleted: { not: true }
       },
       include: {
         reviews: {
