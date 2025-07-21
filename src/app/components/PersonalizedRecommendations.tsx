@@ -61,11 +61,12 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       const globalTrendsData: GlobalTrendsData = (await globalTrendsResponse.json()).data;
       const trendingProducts = globalTrendsData.trendingProducts || [];
 
-      // Debug: In ra điểm số của các sản phẩm được xem nhiều nhất
+      // Debug: In ra điểm số của các sản phẩm trending (ưu tiên bán chạy)
       console.log(
-        'Trending products with scores:',
+        'Trending products with enhanced scores:',
         trendingProducts.map(p => ({
           name: p.name,
+          salesCount: p.salesCount || 0,
           viewCount: p.viewCount,
           avgRating: p.avgRating,
           recommendationScore: p.recommendationScore
