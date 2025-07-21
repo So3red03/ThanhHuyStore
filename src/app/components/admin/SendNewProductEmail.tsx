@@ -99,13 +99,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
   const [isLoading, setIsLoading] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [categoryData, setCategoryData] = useState<CategoryAnalyticsData | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'all' | 'recent' | 'medium' | 'older'>('all');
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<'hierarchical' | 'flat'>('hierarchical');
-  const [selectedCategory, setSelectedCategory] = useState<CategoryStat | null>(null);
-  const [customerViewMode, setCustomerViewMode] = useState<'recent' | 'medium' | 'older' | 'all'>('all');
   const [showResult, setShowResult] = useState(false);
   const [manualMode, setManualMode] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -114,38 +108,6 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [customerDetailData, setCustomerDetailData] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-
-  // Lấy thông tin về khách hàng theo danh mục
-  useEffect(() => {
-    const fetchCategoryStats = async () => {
-      setIsLoadingStats(true);
-      try {
-        const response = await axios.get('/api/analytics/customer-categories');
-        if (response.data.success) {
-          setCategoryData(response.data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching category stats:', error);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-
-    fetchCategoryStats();
-  }, []);
-
-  // Toggle expand/collapse category
-  const toggleCategory = (categoryId: string) => {
-    setExpandedCategories(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(categoryId)) {
-        newSet.delete(categoryId);
-      } else {
-        newSet.add(categoryId);
-      }
-      return newSet;
-    });
-  };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -167,31 +129,15 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
   useEffect(() => {
     const fetchAllUsers = async () => {
       try {
-        const response = await axios.get('/api/analytics/customer-categories');
-        if (response.data.success) {
-          // Extract all unique customers from all categories (only users who have made purchases)
-          const allCustomers = new Map();
-          response.data.data.flat.forEach((category: CategoryStat) => {
-            if (category.customers) {
-              [...category.customers.recent, ...category.customers.medium, ...category.customers.older].forEach(
-                customer => {
-                  if (!allCustomers.has(customer.id)) {
-                    allCustomers.set(customer.id, {
-                      ...customer,
-                      categories: [category.categoryName]
-                    });
-                  } else {
-                    const existing = allCustomers.get(customer.id);
-                    existing.categories.push(category.categoryName);
-                  }
-                }
-              );
-            }
-          });
-          setAllUsers(Array.from(allCustomers.values()));
+        const response = await axios.get('/api/customers');
+        if (response.data.success && response.data.data) {
+          setAllUsers(response.data.data);
+        } else {
+          setAllUsers([]);
         }
       } catch (error) {
         console.error('Error fetching users:', error);
+        setAllUsers([]);
       }
     };
 
@@ -204,9 +150,19 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
   const fetchCustomerDetail = async (userId: string) => {
     setLoadingDetail(true);
     try {
-      const response = await axios.get(`/api/analytics/customer-detail?userId=${userId}`);
-      if (response.data.success) {
-        setCustomerDetailData(response.data.data);
+      // Find user data from allUsers array (already loaded)
+      const userData = allUsers.find(user => user.id === userId);
+      if (userData) {
+        setCustomerDetailData({
+          user: {
+            totalOrders: userData.totalOrders,
+            totalSpent: userData.totalSpent
+          },
+          categories: userData.categories || [],
+          products: userData.products || []
+        });
+      } else {
+        toast.error('Không tìm thấy thông tin khách hàng');
       }
     } catch (error) {
       console.error('Error fetching customer detail:', error);
@@ -249,18 +205,20 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
   };
 
   // Lọc sản phẩm mới (trong 30 ngày gần đây)
-  const recentProducts = products
-    ?.filter(product => {
-      const productDate = new Date(product.createdAt || Date.now());
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      return productDate >= thirtyDaysAgo;
-    })
-    .sort((a, b) => {
-      const dateA = new Date(a.createdAt || Date.now());
-      const dateB = new Date(b.createdAt || Date.now());
-      return dateB.getTime() - dateA.getTime();
-    });
+  const recentProducts =
+    products
+      ?.filter(product => {
+        if (!product || !product.id) return false;
+        const productDate = new Date(product.createdAt || Date.now());
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return productDate >= thirtyDaysAgo;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.createdAt || Date.now());
+        const dateB = new Date(b.createdAt || Date.now());
+        return dateB.getTime() - dateA.getTime();
+      }) || [];
 
   return (
     <Dialog
@@ -354,21 +312,23 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                   <MenuItem value=''>
                     <em>-- Chọn sản phẩm --</em>
                   </MenuItem>
-                  {recentProducts?.map(product => (
-                    <MenuItem key={product.id} value={product.id}>
-                      <Box
-                        sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}
-                      >
-                        <Typography sx={{ fontWeight: 500 }}>{product.name}</Typography>
-                        <Chip
-                          label={new Date(product.createdAt || Date.now()).toLocaleDateString('vi-VN')}
-                          size='small'
-                          color='primary'
-                          variant='outlined'
-                        />
-                      </Box>
-                    </MenuItem>
-                  ))}
+                  {recentProducts?.map(product =>
+                    product && product.id && product.name ? (
+                      <MenuItem key={product.id} value={product.id}>
+                        <Box
+                          sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}
+                        >
+                          <Typography sx={{ fontWeight: 500 }}>{product.name}</Typography>
+                          <Chip
+                            label={new Date(product.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                            size='small'
+                            color='primary'
+                            variant='outlined'
+                          />
+                        </Box>
+                      </MenuItem>
+                    ) : null
+                  )}
                 </Select>
               </FormControl>
 
@@ -500,7 +460,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                           primary={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>
-                                {user.name}
+                                {user.name || 'Khách hàng'}
                               </Typography>
                               <Chip
                                 label={user.role === 'ADMIN' ? 'Admin' : user.role === 'STAFF' ? 'Staff' : 'Khách hàng'}
@@ -513,7 +473,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                           secondary={
                             <Box sx={{ mt: 0.5 }}>
                               <Typography variant='body2' color='text.secondary'>
-                                {user.email}
+                                {user.email || 'Email không có'}
                               </Typography>
                               {user.lastOrderDate && (
                                 <Typography variant='caption' color='text.secondary'>
@@ -522,10 +482,10 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                               )}
                               {user.categories && user.categories.length > 0 && (
                                 <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                  {user.categories.slice(0, 3).map((categoryName: string, index: number) => (
+                                  {user.categories.slice(0, 3).map((category: any, index: number) => (
                                     <Chip
                                       key={index}
-                                      label={categoryName}
+                                      label={category.name || category}
                                       size='small'
                                       variant='outlined'
                                       sx={{
@@ -588,466 +548,245 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
           {tabValue === 1 && (
             <Box>
               <Typography variant='h6' sx={{ mb: 3, fontWeight: 600 }}>
-                Danh sách khách hàng theo danh mục
+                Danh sách tất cả khách hàng ({allUsers.length})
               </Typography>
 
-              {isLoadingStats ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                  <CircularProgress />
-                </Box>
-              ) : categoryData ? (
-                <Box>
-                  {/* Customer Filter */}
-                  <Box sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    <Button
-                      size='small'
-                      variant={customerViewMode === 'all' ? 'contained' : 'outlined'}
-                      onClick={() => setCustomerViewMode('all')}
+              <Grid container spacing={2}>
+                {allUsers.map(user => (
+                  <Grid item xs={12} md={6} lg={4} key={user.id}>
+                    <Paper
                       sx={{
-                        textTransform: 'none',
-                        backgroundColor: customerViewMode === 'all' ? '#3b82f6' : 'transparent',
-                        borderColor: '#3b82f6',
-                        color: customerViewMode === 'all' ? 'white' : '#3b82f6',
-                        '&:hover': {
-                          backgroundColor: customerViewMode === 'all' ? '#2563eb' : '#eff6ff'
-                        }
+                        p: 2,
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: '#fafafa',
+                        '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }
                       }}
                     >
-                      Tất cả
-                    </Button>
-                    <Button
-                      size='small'
-                      variant={customerViewMode === 'recent' ? 'contained' : 'outlined'}
-                      onClick={() => setCustomerViewMode('recent')}
-                      sx={{
-                        textTransform: 'none',
-                        backgroundColor: customerViewMode === 'recent' ? '#22c55e' : 'transparent',
-                        borderColor: '#22c55e',
-                        color: customerViewMode === 'recent' ? 'white' : '#22c55e',
-                        '&:hover': {
-                          backgroundColor: customerViewMode === 'recent' ? '#16a34a' : '#f0fdf4'
-                        }
-                      }}
-                    >
-                      30 ngày gần đây
-                    </Button>
-                    <Button
-                      size='small'
-                      variant={customerViewMode === 'medium' ? 'contained' : 'outlined'}
-                      onClick={() => setCustomerViewMode('medium')}
-                      sx={{
-                        textTransform: 'none',
-                        backgroundColor: customerViewMode === 'medium' ? '#f59e0b' : 'transparent',
-                        borderColor: '#f59e0b',
-                        color: customerViewMode === 'medium' ? 'white' : '#f59e0b',
-                        '&:hover': {
-                          backgroundColor: customerViewMode === 'medium' ? '#d97706' : '#fef3c7'
-                        }
-                      }}
-                    >
-                      30-90 ngày trước
-                    </Button>
-                    <Button
-                      size='small'
-                      variant={customerViewMode === 'older' ? 'contained' : 'outlined'}
-                      onClick={() => setCustomerViewMode('older')}
-                      sx={{
-                        textTransform: 'none',
-                        backgroundColor: customerViewMode === 'older' ? '#6b7280' : 'transparent',
-                        borderColor: '#6b7280',
-                        color: customerViewMode === 'older' ? 'white' : '#6b7280',
-                        '&:hover': {
-                          backgroundColor: customerViewMode === 'older' ? '#4b5563' : '#f9fafb'
-                        }
-                      }}
-                    >
-                      Trên 90 ngày
-                    </Button>
-                  </Box>
-
-                  {/* Customer List */}
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {categoryData.flat.map(category => {
-                      if (!category.customers) return null;
-
-                      let customersToShow: Customer[] = [];
-                      switch (customerViewMode) {
-                        case 'recent':
-                          customersToShow = category.customers.recent;
-                          break;
-                        case 'medium':
-                          customersToShow = category.customers.medium;
-                          break;
-                        case 'older':
-                          customersToShow = category.customers.older;
-                          break;
-                        default:
-                          customersToShow = [
-                            ...category.customers.recent,
-                            ...category.customers.medium,
-                            ...category.customers.older
-                          ];
-                      }
-
-                      if (customersToShow.length === 0) return null;
-
-                      return (
-                        <Paper
-                          key={category.categoryId}
-                          sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}
-                        >
-                          <Typography variant='h6' sx={{ fontWeight: 600, mb: 2, color: '#1f2937' }}>
-                            {category.categoryName} ({customersToShow.length} khách hàng)
-                          </Typography>
-
-                          <Grid container spacing={2}>
-                            {customersToShow.map(customer => (
-                              <Grid item xs={12} md={6} lg={4} key={customer.id}>
-                                <Paper
-                                  sx={{
-                                    p: 2,
-                                    borderRadius: '8px',
-                                    border: '1px solid #e5e7eb',
-                                    backgroundColor: '#f8fafc',
-                                    '&:hover': { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }
-                                  }}
-                                >
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                    <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>
-                                      {customer.name}
-                                    </Typography>
-                                    <Chip
-                                      label={
-                                        customer.role === 'ADMIN'
-                                          ? 'Admin'
-                                          : customer.role === 'STAFF'
-                                          ? 'Staff'
-                                          : 'Khách hàng'
-                                      }
-                                      size='small'
-                                      color={
-                                        customer.role === 'ADMIN'
-                                          ? 'error'
-                                          : customer.role === 'STAFF'
-                                          ? 'warning'
-                                          : 'default'
-                                      }
-                                      variant='outlined'
-                                    />
-                                  </Box>
-                                  <Typography variant='body2' color='text.secondary' sx={{ mb: 1 }}>
-                                    {customer.email}
-                                  </Typography>
-                                  {customer.lastOrderDate && (
-                                    <Typography variant='caption' color='text.secondary'>
-                                      Mua gần nhất: {new Date(customer.lastOrderDate).toLocaleDateString('vi-VN')}
-                                    </Typography>
-                                  )}
-                                </Paper>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </Paper>
-                      );
-                    })}
-                  </Box>
-                </Box>
-              ) : (
-                <Alert severity='info' sx={{ borderRadius: '12px' }}>
-                  Không có dữ liệu khách hàng để hiển thị.
-                </Alert>
-              )}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>
+                          {user.name || 'Khách hàng'}
+                        </Typography>
+                        <Chip
+                          label={user.role === 'ADMIN' ? 'Admin' : user.role === 'STAFF' ? 'Staff' : 'Khách hàng'}
+                          size='small'
+                          color={user.role === 'ADMIN' ? 'error' : user.role === 'STAFF' ? 'warning' : 'default'}
+                          variant='outlined'
+                        />
+                      </Box>
+                      <Typography variant='body2' color='text.secondary' sx={{ mb: 1 }}>
+                        {user.email || 'Email không có'}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant='caption' color='text.secondary'>
+                          Đơn hàng:
+                        </Typography>
+                        <Typography variant='caption' fontWeight={600}>
+                          {user.totalOrders || 0}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant='caption' color='text.secondary'>
+                          Tổng chi:
+                        </Typography>
+                        <Typography variant='caption' fontWeight={600} color='success.main'>
+                          {user.totalSpent
+                            ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                                user.totalSpent
+                              )
+                            : '0₫'}
+                        </Typography>
+                      </Box>
+                      {user.lastOrderDate && (
+                        <Typography variant='caption' color='text.secondary'>
+                          Mua gần nhất: {new Date(user.lastOrderDate).toLocaleDateString('vi-VN')}
+                        </Typography>
+                      )}
+                      {user.categories && user.categories.length > 0 && (
+                        <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {user.categories.slice(0, 2).map((category: any, index: number) => (
+                            <Chip
+                              key={index}
+                              label={category.name || category}
+                              size='small'
+                              variant='outlined'
+                              sx={{
+                                fontSize: '0.6rem',
+                                height: '18px',
+                                borderColor: '#3b82f6',
+                                color: '#3b82f6'
+                              }}
+                            />
+                          ))}
+                          {user.categories.length > 2 && (
+                            <Chip
+                              label={`+${user.categories.length - 2}`}
+                              size='small'
+                              variant='outlined'
+                              sx={{
+                                fontSize: '0.6rem',
+                                height: '18px',
+                                borderColor: '#6b7280',
+                                color: '#6b7280'
+                              }}
+                            />
+                          )}
+                        </Box>
+                      )}
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
             </Box>
           )}
 
           {/* Tab Panel 2: Thống kê danh mục */}
           {tabValue === 2 && (
             <Box>
-              {/* Header với controls */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant='h6' sx={{ fontWeight: 600 }}>
-                  Thống kê khách hàng theo danh mục
-                </Typography>
-
-                {/* View Mode Toggle */}
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    size='small'
-                    variant={viewMode === 'hierarchical' ? 'contained' : 'outlined'}
-                    onClick={() => setViewMode('hierarchical')}
-                    sx={{
-                      textTransform: 'none',
-                      backgroundColor: viewMode === 'hierarchical' ? '#3b82f6' : 'transparent',
-                      borderColor: '#3b82f6',
-                      color: viewMode === 'hierarchical' ? 'white' : '#3b82f6',
-                      '&:hover': {
-                        backgroundColor: viewMode === 'hierarchical' ? '#2563eb' : '#eff6ff'
-                      }
-                    }}
-                  >
-                    Phân tầng
-                  </Button>
-                  <Button
-                    size='small'
-                    variant={viewMode === 'flat' ? 'contained' : 'outlined'}
-                    onClick={() => setViewMode('flat')}
-                    sx={{
-                      textTransform: 'none',
-                      backgroundColor: viewMode === 'flat' ? '#3b82f6' : 'transparent',
-                      borderColor: '#3b82f6',
-                      color: viewMode === 'flat' ? 'white' : '#3b82f6',
-                      '&:hover': {
-                        backgroundColor: viewMode === 'flat' ? '#2563eb' : '#eff6ff'
-                      }
-                    }}
-                  >
-                    Danh sách
-                  </Button>
-                </Box>
-              </Box>
+              <Typography variant='h6' sx={{ fontWeight: 600, mb: 3 }}>
+                Thống kê khách hàng theo danh mục
+              </Typography>
 
               {/* Summary Cards */}
-              {categoryData && (
-                <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={12} md={4}>
-                    <Paper
-                      sx={{
-                        p: 2,
-                        textAlign: 'center',
-                        borderRadius: '12px',
-                        backgroundColor: '#f0f9ff',
-                        border: '1px solid #0ea5e9'
-                      }}
-                    >
-                      <Typography variant='h4' sx={{ fontWeight: 700, color: '#0ea5e9' }}>
-                        {categoryData.summary.totalParentCategories}
-                      </Typography>
-                      <Typography variant='body2' color='text.secondary'>
-                        Danh mục chính
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Paper
-                      sx={{
-                        p: 2,
-                        textAlign: 'center',
-                        borderRadius: '12px',
-                        backgroundColor: '#f0fdf4',
-                        border: '1px solid #22c55e'
-                      }}
-                    >
-                      <Typography variant='h4' sx={{ fontWeight: 700, color: '#22c55e' }}>
-                        {categoryData.summary.totalSubcategories}
-                      </Typography>
-                      <Typography variant='body2' color='text.secondary'>
-                        Danh mục con
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Paper
-                      sx={{
-                        p: 2,
-                        textAlign: 'center',
-                        borderRadius: '12px',
-                        backgroundColor: '#fef3c7',
-                        border: '1px solid #f59e0b'
-                      }}
-                    >
-                      <Typography variant='h4' sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                        {categoryData.hierarchical.reduce((sum, cat) => sum + cat.userCount, 0)}
-                      </Typography>
-                      <Typography variant='body2' color='text.secondary'>
-                        Tổng khách hàng
-                      </Typography>
-                    </Paper>
-                  </Grid>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={4}>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      textAlign: 'center',
+                      borderRadius: '12px',
+                      backgroundColor: '#f0f9ff',
+                      border: '1px solid #0ea5e9'
+                    }}
+                  >
+                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#0ea5e9' }}>
+                      {(() => {
+                        const allCategories = new Set();
+                        allUsers.forEach(user => {
+                          user.categories?.forEach((cat: any) => {
+                            allCategories.add(cat.name);
+                          });
+                        });
+                        return allCategories.size;
+                      })()}
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Tổng danh mục
+                    </Typography>
+                  </Paper>
                 </Grid>
-              )}
+                <Grid item xs={12} md={4}>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      textAlign: 'center',
+                      borderRadius: '12px',
+                      backgroundColor: '#f0fdf4',
+                      border: '1px solid #22c55e'
+                    }}
+                  >
+                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#22c55e' }}>
+                      {(() => {
+                        const allProducts = new Set();
+                        allUsers.forEach(user => {
+                          user.products?.forEach((product: any) => {
+                            allProducts.add(product.id);
+                          });
+                        });
+                        return allProducts.size;
+                      })()}
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Sản phẩm đã bán
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      textAlign: 'center',
+                      borderRadius: '12px',
+                      backgroundColor: '#fef3c7',
+                      border: '1px solid #f59e0b'
+                    }}
+                  >
+                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#f59e0b' }}>
+                      {allUsers.length}
+                    </Typography>
+                    <Typography variant='body2' color='text.secondary'>
+                      Tổng khách hàng
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
 
-              {isLoadingStats ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                  <CircularProgress />
-                </Box>
-              ) : categoryData ? (
-                viewMode === 'hierarchical' ? (
-                  // Hierarchical View
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {categoryData.hierarchical.map(parentCategory => (
-                      <Paper
-                        key={parentCategory.categoryId}
-                        sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb' }}
-                      >
-                        {/* Parent Category Header */}
-                        <Box
-                          sx={{
-                            p: 3,
-                            backgroundColor: '#f8fafc',
-                            borderBottom: '1px solid #e5e7eb',
-                            cursor: 'pointer',
-                            '&:hover': { backgroundColor: '#f1f5f9' }
-                          }}
-                          onClick={() => toggleCategory(parentCategory.categoryId)}
-                        >
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Typography variant='h6' sx={{ fontWeight: 700, color: '#1f2937' }}>
-                                {parentCategory.categoryName}
-                              </Typography>
-                              <Chip
-                                label={`${parentCategory.subcategories?.length || 0} danh mục con`}
-                                size='small'
-                                color='primary'
-                                variant='outlined'
-                              />
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                              <Box sx={{ textAlign: 'center' }}>
-                                <Typography variant='h5' sx={{ fontWeight: 700, color: '#3b82f6' }}>
-                                  {parentCategory.userCount}
-                                </Typography>
-                                <Typography variant='caption' color='text.secondary'>
-                                  Tổng KH
-                                </Typography>
-                              </Box>
-                              <Box sx={{ textAlign: 'center' }}>
-                                <Typography variant='h6' sx={{ fontWeight: 600, color: '#22c55e' }}>
-                                  {parentCategory.recentUserCount}
-                                </Typography>
-                                <Typography variant='caption' color='text.secondary'>
-                                  30 ngày
-                                </Typography>
-                              </Box>
-                              <Typography
-                                variant='h6'
-                                sx={{
-                                  color: expandedCategories.has(parentCategory.categoryId) ? '#ef4444' : '#6b7280'
-                                }}
-                              >
-                                {expandedCategories.has(parentCategory.categoryId) ? '▼' : '▶'}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </Box>
+              {/* Category Statistics */}
+              <Typography variant='h6' sx={{ fontWeight: 600, mb: 2 }}>
+                Thống kê theo danh mục
+              </Typography>
+              {(() => {
+                // Calculate category statistics from allUsers
+                const categoryStats = new Map();
+                allUsers.forEach(user => {
+                  user.categories?.forEach((cat: any) => {
+                    if (!categoryStats.has(cat.name)) {
+                      categoryStats.set(cat.name, {
+                        name: cat.name,
+                        userCount: 0,
+                        totalSpent: 0,
+                        productCount: 0
+                      });
+                    }
+                    const stats = categoryStats.get(cat.name);
+                    stats.userCount += 1;
+                    stats.totalSpent += cat.totalSpent || 0;
+                    stats.productCount += cat.productCount || 0;
+                  });
+                });
 
-                        {/* Subcategories */}
-                        {expandedCategories.has(parentCategory.categoryId) && parentCategory.subcategories && (
-                          <Box sx={{ p: 2 }}>
-                            <Grid container spacing={2}>
-                              {parentCategory.subcategories.map(subCategory => (
-                                <Grid item xs={12} md={6} lg={4} key={subCategory.categoryId}>
-                                  <Paper
-                                    sx={{
-                                      p: 2,
-                                      borderRadius: '8px',
-                                      border: '1px solid #e5e7eb',
-                                      backgroundColor: 'white',
-                                      '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }
-                                    }}
-                                  >
-                                    <Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 1, color: '#374151' }}>
-                                      {subCategory.categoryName}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                      <Typography variant='body2' color='text.secondary'>
-                                        Tổng:
-                                      </Typography>
-                                      <Typography variant='body2' fontWeight={600}>
-                                        {subCategory.userCount}
-                                      </Typography>
-                                    </Box>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                      <Typography variant='body2' color='text.secondary'>
-                                        30 ngày:
-                                      </Typography>
-                                      <Typography variant='body2' fontWeight={600} color='success.main'>
-                                        {subCategory.recentUserCount}
-                                      </Typography>
-                                    </Box>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                      <Typography variant='body2' color='text.secondary'>
-                                        30-90 ngày:
-                                      </Typography>
-                                      <Typography variant='body2' fontWeight={600} color='warning.main'>
-                                        {subCategory.mediumUserCount}
-                                      </Typography>
-                                    </Box>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                      <Typography variant='body2' color='text.secondary'>
-                                        90+ ngày:
-                                      </Typography>
-                                      <Typography variant='body2' fontWeight={600} color='text.secondary'>
-                                        {subCategory.olderUserCount}
-                                      </Typography>
-                                    </Box>
-                                  </Paper>
-                                </Grid>
-                              ))}
-                            </Grid>
-                          </Box>
-                        )}
-                      </Paper>
-                    ))}
-                  </Box>
-                ) : (
-                  // Flat View
+                const sortedCategories = Array.from(categoryStats.values()).sort((a, b) => b.userCount - a.userCount);
+
+                return (
                   <Grid container spacing={2}>
-                    {categoryData.flat.map(stat => (
-                      <Grid item xs={12} md={6} lg={4} key={stat.categoryId}>
+                    {sortedCategories.map((category, index) => (
+                      <Grid item xs={12} md={6} lg={4} key={index}>
                         <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                            <Typography variant='h6' sx={{ fontWeight: 600 }}>
-                              {stat.categoryName}
+                          <Typography variant='h6' sx={{ fontWeight: 600, mb: 2 }}>
+                            {category.name}
+                          </Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant='body2' color='text.secondary'>
+                              Khách hàng:
                             </Typography>
-                            {stat.parentName && (
-                              <Chip label={stat.parentName} size='small' color='secondary' variant='outlined' />
-                            )}
+                            <Typography variant='body2' fontWeight={600}>
+                              {category.userCount}
+                            </Typography>
                           </Box>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant='body2' color='text.secondary'>
-                                Tổng khách hàng:
-                              </Typography>
-                              <Typography variant='body2' fontWeight={600}>
-                                {stat.userCount}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant='body2' color='text.secondary'>
-                                Mua trong 30 ngày:
-                              </Typography>
-                              <Typography variant='body2' fontWeight={600} color='success.main'>
-                                {stat.recentUserCount}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant='body2' color='text.secondary'>
-                                Mua 30-90 ngày trước:
-                              </Typography>
-                              <Typography variant='body2' fontWeight={600} color='warning.main'>
-                                {stat.mediumUserCount}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <Typography variant='body2' color='text.secondary'>
-                                Mua trên 90 ngày:
-                              </Typography>
-                              <Typography variant='body2' fontWeight={600} color='text.secondary'>
-                                {stat.olderUserCount}
-                              </Typography>
-                            </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant='body2' color='text.secondary'>
+                              Sản phẩm:
+                            </Typography>
+                            <Typography variant='body2' fontWeight={600}>
+                              {category.productCount}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant='body2' color='text.secondary'>
+                              Doanh thu:
+                            </Typography>
+                            <Typography variant='body2' fontWeight={600} color='success.main'>
+                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                                category.totalSpent
+                              )}
+                            </Typography>
                           </Box>
                         </Paper>
                       </Grid>
                     ))}
                   </Grid>
-                )
-              ) : (
-                <Alert severity='info' sx={{ borderRadius: '12px' }}>
-                  Không có dữ liệu khách hàng để hiển thị.
-                </Alert>
-              )}
+                );
+              })()}
             </Box>
           )}
 
@@ -1084,8 +823,8 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                     </Typography>
 
                     {(() => {
-                      const selectedProduct = recentProducts?.find(p => p.id === selectedProductId);
-                      return selectedProduct ? (
+                      const selectedProduct = recentProducts?.find(p => p && p.id === selectedProductId);
+                      return selectedProduct && selectedProduct.name ? (
                         <Box
                           sx={{
                             border: '1px solid #e5e7eb',
@@ -1096,16 +835,36 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                           }}
                         >
                           <Typography variant='h6' sx={{ fontWeight: 600, mb: 1 }}>
-                            {selectedProduct.name}
+                            {selectedProduct.name || 'Sản phẩm mới'}
                           </Typography>
                           <Typography variant='body2' sx={{ mb: 2 }}>
                             {selectedProduct.description || 'Mô tả sản phẩm...'}
                           </Typography>
                           <Typography variant='h6' sx={{ color: '#e74c3c', fontWeight: 700 }}>
-                            {selectedProduct.price?.toLocaleString('vi-VN')}₫
+                            {selectedProduct.price?.toLocaleString('vi-VN') || '0'}₫
                           </Typography>
                         </Box>
-                      ) : null;
+                      ) : (
+                        <Box
+                          sx={{
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            p: 2,
+                            my: 2,
+                            backgroundColor: '#f8fafc'
+                          }}
+                        >
+                          <Typography variant='h6' sx={{ fontWeight: 600, mb: 1 }}>
+                            Sản phẩm mới
+                          </Typography>
+                          <Typography variant='body2' sx={{ mb: 2 }}>
+                            Mô tả sản phẩm...
+                          </Typography>
+                          <Typography variant='h6' sx={{ color: '#e74c3c', fontWeight: 700 }}>
+                            0₫
+                          </Typography>
+                        </Box>
+                      );
                     })()}
 
                     <Typography variant='body1' sx={{ mb: 2 }}>
@@ -1221,7 +980,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                     </Typography>
                   </Box>
                   <Typography variant='body1' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    {lastResult.product.name}
+                    {lastResult.product?.name || 'Sản phẩm mới'}
                   </Typography>
                 </Box>
 
@@ -1307,7 +1066,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                 <Grid item xs={12} md={3}>
                   <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#f0f9ff' }}>
                     <Typography variant='h4' sx={{ fontWeight: 700, color: '#3b82f6' }}>
-                      {customerDetailData.user.totalOrders}
+                      {customerDetailData.user?.totalOrders || 0}
                     </Typography>
                     <Typography variant='body2' color='text.secondary'>
                       Tổng đơn hàng
@@ -1317,7 +1076,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                 <Grid item xs={12} md={3}>
                   <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#f0fdf4' }}>
                     <Typography variant='h4' sx={{ fontWeight: 700, color: '#22c55e' }}>
-                      {customerDetailData.products.length}
+                      {customerDetailData.products?.length || 0}
                     </Typography>
                     <Typography variant='body2' color='text.secondary'>
                       Sản phẩm đã mua
@@ -1327,7 +1086,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                 <Grid item xs={12} md={3}>
                   <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#fef3c7' }}>
                     <Typography variant='h4' sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                      {customerDetailData.categories.length}
+                      {customerDetailData.categories?.length || 0}
                     </Typography>
                     <Typography variant='body2' color='text.secondary'>
                       Danh mục
@@ -1337,9 +1096,11 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                 <Grid item xs={12} md={3}>
                   <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#fce7f3' }}>
                     <Typography variant='h4' sx={{ fontWeight: 700, color: '#ec4899' }}>
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                        customerDetailData.user.totalSpent
-                      )}
+                      {customerDetailData.user?.totalSpent
+                        ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                            customerDetailData.user.totalSpent
+                          )
+                        : '0₫'}
                     </Typography>
                     <Typography variant='body2' color='text.secondary'>
                       Tổng chi tiêu
@@ -1353,18 +1114,18 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                 Danh mục đã mua
               </Typography>
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                {customerDetailData.categories.map((category: any, index: number) => (
+                {customerDetailData.categories?.map((category: any, index: number) => (
                   <Grid item xs={12} md={6} key={index}>
                     <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
                       <Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 1 }}>
-                        {category.name}
+                        {category.name || 'Danh mục không xác định'}
                       </Typography>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant='body2' color='text.secondary'>
                           Số sản phẩm:
                         </Typography>
                         <Typography variant='body2' fontWeight={600}>
-                          {category.productCount}
+                          {category.productCount || 0}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -1372,9 +1133,11 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                           Tổng chi:
                         </Typography>
                         <Typography variant='body2' fontWeight={600} color='success.main'>
-                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                            category.totalSpent
-                          )}
+                          {category.totalSpent
+                            ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                                category.totalSpent
+                              )
+                            : '0₫'}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1382,7 +1145,9 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                           Mua gần nhất:
                         </Typography>
                         <Typography variant='body2' fontWeight={600}>
-                          {new Date(category.lastPurchased).toLocaleDateString('vi-VN')}
+                          {category.lastPurchased
+                            ? new Date(category.lastPurchased).toLocaleDateString('vi-VN')
+                            : 'Không xác định'}
                         </Typography>
                       </Box>
                     </Paper>
@@ -1392,17 +1157,17 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
 
               {/* Recent Products */}
               <Typography variant='h6' sx={{ fontWeight: 600, mb: 2 }}>
-                Sản phẩm đã mua ({customerDetailData.products.length})
+                Sản phẩm đã mua ({customerDetailData.products?.length || 0})
               </Typography>
               <Box sx={{ maxHeight: '300px', overflow: 'auto' }}>
                 <Grid container spacing={2}>
-                  {customerDetailData.products.map((product: any) => (
+                  {customerDetailData.products?.map((product: any) => (
                     <Grid item xs={12} md={6} key={product.id}>
                       <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #e5e7eb', display: 'flex', gap: 2 }}>
                         <Box
                           component='img'
                           src={product.thumbnail || '/noavatar.png'}
-                          alt={product.name}
+                          alt={product.name || 'Sản phẩm'}
                           onError={e => {
                             const target = e.target as HTMLImageElement;
                             target.src = '/noavatar.png';
@@ -1418,22 +1183,27 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                         />
                         <Box sx={{ flex: 1 }}>
                           <Typography variant='subtitle2' sx={{ fontWeight: 600, mb: 0.5 }}>
-                            {product.name}
+                            {product.name || 'Sản phẩm không xác định'}
                           </Typography>
                           <Chip
-                            label={product.category}
+                            label={product.category || 'Không có danh mục'}
                             size='small'
                             color='primary'
                             variant='outlined'
                             sx={{ mb: 0.5 }}
                           />
                           <Typography variant='body2' color='text.secondary'>
-                            Mua lần đầu: {new Date(product.firstPurchased).toLocaleDateString('vi-VN')}
+                            Mua lần đầu:{' '}
+                            {product.firstPurchased
+                              ? new Date(product.firstPurchased).toLocaleDateString('vi-VN')
+                              : 'Không xác định'}
                           </Typography>
                           <Typography variant='body2' color='success.main' sx={{ fontWeight: 600 }}>
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                              product.price
-                            )}
+                            {product.price
+                              ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                                  product.price
+                                )
+                              : '0₫'}
                           </Typography>
                         </Box>
                       </Paper>

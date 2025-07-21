@@ -40,6 +40,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
+    if (!product.category) {
+      return NextResponse.json({ error: 'Product category not found' }, { status: 404 });
+    }
+
     // Tính toán thời gian filter dựa trên timeframe
     let timeFilter = {};
     if (timeframe !== 'all') {
@@ -70,13 +74,9 @@ export async function POST(request: Request) {
       }
 
       timeFilter = {
-        orders: {
-          some: {
-            createdAt: {
-              gte: startDate,
-              lte: endDate
-            }
-          }
+        createdAt: {
+          gte: startDate,
+          lte: endDate
         }
       };
     }
@@ -99,13 +99,34 @@ export async function POST(request: Request) {
       });
     } else {
       // Auto mode: get users who bought products in same category
+      // Find users through orders that contain products with the same category name
+      const categoryName = product.category.name;
+
+      // Get orders that contain products with the same category
+      const ordersWithSameCategory = await prisma.order.findMany({
+        where: {
+          products: {
+            some: {
+              category: categoryName
+            }
+          },
+          status: { in: ['completed', 'confirmed'] }, // Only completed orders
+          ...timeFilter
+        },
+        select: {
+          userId: true
+        },
+        distinct: ['userId']
+      });
+
+      // Get unique user IDs
+      const userIds = ordersWithSameCategory.map(order => order.userId);
+
+      // Get user details
       interestedUsers = await prisma.user.findMany({
         where: {
-          purchasedCategories: {
-            has: product.category.id
-          },
-          email: { not: '' },
-          ...timeFilter
+          id: { in: userIds },
+          email: { not: '' }
         },
         select: {
           id: true,
@@ -149,8 +170,8 @@ export async function POST(request: Request) {
       totalUsers: interestedUsers.length,
       product: {
         id: product.id,
-        name: product.name,
-        category: product.category.name
+        name: product.name || 'Sản phẩm mới',
+        category: product.category?.name || 'Danh mục không xác định'
       }
     });
   } catch (error) {
@@ -174,9 +195,9 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
       }
     });
 
-    const productUrl = `${process.env.NEXT_PUBLIC_API_URL}/product/${product.name.toLowerCase().replace(/\s+/g, '-')}-${
-      product.id
-    }`;
+    const productUrl = `${process.env.NEXT_PUBLIC_API_URL}/product/${
+      product.name?.toLowerCase().replace(/\s+/g, '-') || 'product'
+    }-${product.id}`;
     const unsubscribeUrl = `${process.env.NEXT_PUBLIC_API_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
 
     const htmlContent = `
@@ -207,7 +228,7 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
           
           <div class="content">
             <p>Chúng tôi vừa ra mắt một sản phẩm mới trong danh mục <strong>${
-              product.category.name
+              product.category?.name || 'sản phẩm tương tự'
             }</strong> mà bạn quan tâm:</p>
             
             <div class="product-card">
@@ -216,9 +237,9 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
                 (product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages[0] : '') ||
                 '/noavatar.png'
               }" alt="${product.name}" class="product-image" style="max-width: 100%; height: auto; border-radius: 8px;">
-              <h2>${product.name}</h2>
-              <p>${product.description}</p>
-              <div class="price">${product.price.toLocaleString('vi-VN')}₫</div>
+              <h2>${product.name || 'Sản phẩm mới'}</h2>
+              <p>${product.description || 'Mô tả sản phẩm...'}</p>
+              <div class="price">${product.price?.toLocaleString('vi-VN') || '0'}₫</div>
               <a href="${productUrl}" class="btn">Xem chi tiết sản phẩm</a>
             </div>
             
@@ -231,7 +252,9 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
           
           <div class="footer">
             <p>ThanhHuy Store - Apple Store chính hãng</p>
-            <p>Email này được gửi vì bạn đã từng mua sản phẩm trong danh mục ${product.category.name}</p>
+            <p>Email này được gửi vì bạn đã từng mua sản phẩm trong danh mục ${
+              product.category?.name || 'sản phẩm tương tự'
+            }</p>
             <p><a href="${unsubscribeUrl}">Hủy đăng ký nhận email</a></p>
           </div>
         </div>
@@ -242,7 +265,7 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
     const mailOptions = {
       from: process.env.GMAIL_USER,
       to: email,
-      subject: `🎉 Sản phẩm mới: ${product.name} - ThanhHuy Store`,
+      subject: `🎉 Sản phẩm mới: ${product.name || 'Sản phẩm mới'} - ThanhHuy Store`,
       html: htmlContent
     };
 
