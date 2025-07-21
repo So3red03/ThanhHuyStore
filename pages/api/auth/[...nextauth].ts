@@ -3,8 +3,8 @@ import GoogleProvider from 'next-auth/providers/google';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import prisma from '../../../src/app/libs/prismadb';
 import CredentialsProvider from 'next-auth/providers/credentials';
-// Dynamic import bcrypt to avoid webpack issues
-const bcrypt = require('bcrypt');
+// Use bcryptjs for serverless compatibility
+import bcrypt from 'bcryptjs';
 import { getAdminSessionConfig } from '../../../src/app/libs/auth/getAdminSessionConfig';
 import { AuditLogger, AuditEventType, AuditSeverity } from '../../../src/app/utils/auditLogger';
 

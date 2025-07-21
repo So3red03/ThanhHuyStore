@@ -1,6 +1,6 @@
 import prisma from '../../../libs/prismadb';
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 // GET: Validate token
 export async function GET(request: Request, { params }: { params: { id: string } }) {

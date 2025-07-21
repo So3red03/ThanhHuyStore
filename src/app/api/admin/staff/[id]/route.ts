@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { hasPermission } from '@/app/utils/admin/permissionUtils';
 import { PERMISSIONS } from '@/app/utils/admin/permissions';
 import { AuditLogger, AuditEventType, AuditSeverity } from '@/app/utils/auditLogger';

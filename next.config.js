@@ -18,12 +18,6 @@ const nextConfig = {
     ]
   },
   webpack: (config, { isServer, dev }) => {
-    // Exclude bcrypt from client-side bundle
-    if (!isServer) {
-      config.externals = config.externals || [];
-      config.externals.push('bcrypt');
-    }
-
     // Tối ưu cho development - enable hot reload
     if (dev) {
       config.watchOptions = {
