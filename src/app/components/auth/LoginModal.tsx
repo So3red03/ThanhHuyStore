@@ -47,6 +47,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ currentUser }) => {
         if (callback.error === 'EMAIL_NOT_VERIFIED') {
           toast.error('Email chưa được xác thực. Vui lòng kiểm tra email và xác thực tài khoản.');
           switchModal('emailVerification');
+        } else if (callback.error === 'ACCOUNT_BLOCKED') {
+          toast.error('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.');
+          closeModal();
+          router.push('/account-blocked');
         } else {
           toast.error('Email hoặc mật khẩu không chính xác');
         }

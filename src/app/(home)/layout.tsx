@@ -14,6 +14,7 @@ import AnalyticsTracker from '../components/analytics/AnalyticsTracker';
 import NProgressProvider from '../components/NProgressProvider';
 import { AuthModalProvider } from '../components/auth/AuthModalProvider';
 import AuthModal from '../components/auth/AuthModal';
+import BlockedUserWrapper from '../components/BlockedUserWrapper';
 
 const poppins = Poppins({ subsets: ['latin'], weight: ['400', '700'] });
 
@@ -49,15 +50,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <CartProvider>
             <AuthModalProvider>
               <AnalyticsTracker>
-                <NProgressProvider />
-                <div className='flex flex-col min-h-screen'>
-                  <Navbar />
-                  <main className='flex-grow'>{children}</main>
-                  <Footer />
-                  <ZaloChatBtn />
-                  <ChatBoxClient currentUser={currentUser} />
-                  <AuthModal currentUser={currentUser} />
-                </div>
+                <BlockedUserWrapper user={currentUser}>
+                  <NProgressProvider />
+                  <div className='flex flex-col min-h-screen'>
+                    <Navbar />
+                    <main className='flex-grow'>{children}</main>
+                    <Footer />
+                    <ZaloChatBtn />
+                    <ChatBoxClient currentUser={currentUser} />
+                    <AuthModal currentUser={currentUser} />
+                  </div>
+                </BlockedUserWrapper>
               </AnalyticsTracker>
             </AuthModalProvider>
           </CartProvider>

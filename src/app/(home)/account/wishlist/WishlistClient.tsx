@@ -36,10 +36,7 @@ const WishlistClient: React.FC<WishlistClientProps> = ({ currentUser }) => {
       {favorites.length > 0 ? (
         <>
           <Heading title='SẢN PHẨM YÊU THÍCH'>
-            <div className='flex items-center gap-2'>
-              <MdFavorite className='text-red-500' size={20} />
-              <span className='text-sm text-gray-600'>{favoriteCount} sản phẩm</span>
-            </div>
+            <></>
           </Heading>
 
           {/* Products Grid using ProductCard */}

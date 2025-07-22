@@ -154,6 +154,37 @@ export const authOptions: AuthOptions = {
           throw new Error('EMAIL_NOT_VERIFIED');
         }
 
+        // Check if account is blocked (except ADMIN)
+        if (user.isBlocked && user.role !== 'ADMIN') {
+          // 🚨 AUDIT LOG: Account Blocked
+          await AuditLogger.log({
+            eventType: AuditEventType.FAILED_LOGIN_ATTEMPT,
+            severity: AuditSeverity.HIGH,
+            userId: user.id,
+            userEmail: user.email!,
+            userRole: user.role || 'USER',
+            ipAddress: clientIP,
+            userAgent: userAgent,
+            description: `Đăng nhập thất bại: tài khoản đã bị khóa`,
+            details: {
+              reason: 'account_blocked',
+              email: user.email,
+              userId: user.id,
+              userName: user.name,
+              userRole: user.role,
+              isBlocked: user.isBlocked,
+              blockedAt: user.blockedAt,
+              blockReason: user.blockReason,
+              timestamp: new Date(),
+              riskLevel: 'HIGH',
+              securityNote: 'Blocked user attempted to login'
+            },
+            resourceId: user.id,
+            resourceType: 'User'
+          });
+          throw new Error('ACCOUNT_BLOCKED');
+        }
+
         // 🎯 AUDIT LOG: Successful Login
         await AuditLogger.log({
           eventType: AuditEventType.USER_LOGIN_SUCCESS,
