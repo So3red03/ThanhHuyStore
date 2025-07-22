@@ -66,7 +66,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orderId: params.id,
-            reason: `Admin status change: ${oldOrder.status} → canceled`
+            reason: `Admin status change: ${oldOrder.status} → canceled`,
+            internalCall: true // Bypass auth for internal server-to-server call
           })
         });
       } catch (rollbackError) {

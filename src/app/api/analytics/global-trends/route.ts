@@ -70,10 +70,10 @@ export async function GET(request: Request) {
       }
     });
 
-    // 3. Get sales data for these products (from completed orders)
+    // 3. Get sales data for these products (from completed orders only)
     const completedOrders = await prisma.order.findMany({
       where: {
-        status: 'completed',
+        status: 'completed', // Chỉ tính orders completed, không tính canceled
         createdAt: {
           gte: startDate
         }

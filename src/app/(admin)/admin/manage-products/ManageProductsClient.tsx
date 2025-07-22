@@ -123,15 +123,23 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
+      // Fetch fresh product data from API
       const response = await fetch('/api/product?admin=true');
       if (response.ok) {
         const data = await response.json();
-        setCurrentProducts(data.products || data); // Handle both paginated and direct response
+        const freshProducts = data.products || data;
+
+        // Update current products with fresh data
+        setCurrentProducts(freshProducts);
+
+        toast.success('Đã làm mới danh sách sản phẩm');
+        console.log('📦 Product data refreshed successfully');
       } else {
         toast.error('Lỗi khi tải danh sách sản phẩm');
         router.refresh(); // Fallback to full page refresh
       }
     } catch (error) {
+      console.error('Error refreshing products:', error);
       toast.error('Lỗi khi làm mới danh sách sản phẩm');
       router.refresh(); // Fallback to full page refresh
     } finally {
@@ -299,9 +307,10 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       // Tìm tên danh mục cha dựa vào parentId
       const subCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.name;
 
-      // Tính số lượng đã bán (logic từ BestSellingProducts)
+      // Tính số lượng đã bán (chỉ tính orders completed, không tính canceled)
       const totalPurchased = orders.reduce((total: number, order: any) => {
-        if (order.products && Array.isArray(order.products)) {
+        // Chỉ tính orders đã hoàn thành, không tính orders bị hủy
+        if (order.status === 'completed' && order.products && Array.isArray(order.products)) {
           const orderProduct = order.products.find((p: any) => p.id === product.id);
           return total + (orderProduct?.quantity || 0);
         }

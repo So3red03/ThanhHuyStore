@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
             createdAt: {
               gte: startDate,
               lte: endDate
-            }
+            },
+            status: 'completed' // Chỉ tính orders completed
           },
           select: {
             id: true,
@@ -65,11 +66,11 @@ export async function GET(request: NextRequest) {
     const voucherAnalytics = voucherStats.map(voucher => {
       const usageInPeriod = voucher.userVouchers.length;
       const ordersInPeriod = voucher.orders.length;
-      
+
       // Calculate total revenue generated
       const totalRevenue = voucher.orders.reduce((sum, order) => sum + order.amount, 0);
       const totalDiscount = voucher.orders.reduce((sum, order) => sum + (order.discountAmount || 0), 0);
-      
+
       // Get products that used this voucher
       const productsUsed = voucher.orders.reduce((acc: any[], order) => {
         const orderProducts = order.products as any[];
@@ -126,8 +127,10 @@ export async function GET(request: NextRequest) {
       totalUsage: voucherAnalytics.reduce((sum, v) => sum + v.usageInPeriod, 0),
       totalRevenue: voucherAnalytics.reduce((sum, v) => sum + v.totalRevenue, 0),
       totalDiscount: voucherAnalytics.reduce((sum, v) => sum + v.totalDiscount, 0),
-      averageUsagePerVoucher: voucherStats.length > 0 ? 
-        voucherAnalytics.reduce((sum, v) => sum + v.usageInPeriod, 0) / voucherStats.length : 0
+      averageUsagePerVoucher:
+        voucherStats.length > 0
+          ? voucherAnalytics.reduce((sum, v) => sum + v.usageInPeriod, 0) / voucherStats.length
+          : 0
     };
 
     // Get most popular products across all vouchers

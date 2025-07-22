@@ -2,7 +2,7 @@
 
 import { CartProductType, DeliveryStatus, Order, OrderStatus } from '@prisma/client';
 import Status from '@/app/components/Status';
-import { MdAccessTimeFilled, MdDeliveryDining, MdDone } from 'react-icons/md';
+import { MdAccessTimeFilled, MdDeliveryDining, MdDone, MdClose } from 'react-icons/md';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useState } from 'react';
@@ -188,7 +188,7 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
                     </span>
                   </div>
                   <div className='text-sm text-gray-600 flex items-center gap-2'>
-                    Trạng thái thanh toán:{' '}
+                    Trạng thái đơn hàng:{' '}
                     <span className='font-medium'>
                       {order.status === 'pending' ? (
                         <Status
@@ -197,6 +197,12 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
                           bg='bg-slate-200'
                           color='text-slate-700 !py-0 !px-1'
                         />
+                      ) : order.status === 'confirmed' ? (
+                        <Status text='Đã xác nhận' icon={MdDone} bg='bg-blue-200' color='text-blue-700 !py-0 !px-1' />
+                      ) : order.status === 'completed' ? (
+                        <Status text='Hoàn thành' icon={MdDone} bg='bg-green-200' color='text-green-700 !py-0 !px-1' />
+                      ) : order.status === 'canceled' ? (
+                        <Status text='Đã hủy' icon={MdClose} bg='bg-red-200' color='text-red-700 !py-0 !px-1' />
                       ) : (
                         <Status text='Thành công' icon={MdDone} bg='bg-green-200' color='text-green-700 !py-0 !px-1' />
                       )}

@@ -27,9 +27,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get user's orders with products
+    // Get user's orders with products (chỉ tính completed orders)
     const orders = await prisma.order.findMany({
-      where: { userId: userId },
+      where: {
+        userId: userId,
+        status: 'completed' // Chỉ tính orders completed
+      },
       orderBy: { createdAt: 'desc' },
       take: 20 // Limit to recent 20 orders
     });

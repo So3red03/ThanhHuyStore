@@ -95,15 +95,13 @@ export class DiscordReportService {
         take: 5
       });
 
-      // Top sản phẩm bán chạy từ Order.products
+      // Top sản phẩm bán chạy từ Order.products (chỉ tính completed)
       const ordersWithProducts = await prisma.order.findMany({
         where: {
           createdAt: {
             gte: startTime
           },
-          status: {
-            in: ['completed', 'confirmed']
-          }
+          status: 'completed' // Chỉ tính orders completed, không tính canceled
         },
         select: {
           products: true

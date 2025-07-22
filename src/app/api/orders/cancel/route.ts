@@ -160,17 +160,28 @@ export async function POST(request: NextRequest) {
 
     // Trigger inventory rollback (async, don't fail if rollback fails)
     try {
+      console.log(`🔄 [CANCEL] Triggering inventory rollback for order: ${orderId}`);
       const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      await fetch(`${baseUrl}/api/orders/rollback-inventory`, {
+      const rollbackResponse = await fetch(`${baseUrl}/api/orders/rollback-inventory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId,
-          reason: `User cancelled: ${reason}`
+          reason: `User cancelled: ${reason}`,
+          internalCall: true // Bypass auth for internal server-to-server call
         })
       });
+
+      const rollbackResult = await rollbackResponse.json();
+      console.log(`📦 [CANCEL] Rollback response:`, rollbackResult);
+
+      if (!rollbackResponse.ok) {
+        console.error(`❌ [CANCEL] Rollback failed:`, rollbackResult);
+      } else {
+        console.log(`✅ [CANCEL] Rollback successful for order: ${orderId}`);
+      }
     } catch (rollbackError) {
-      console.error('Error triggering inventory rollback:', rollbackError);
+      console.error('❌ [CANCEL] Error triggering inventory rollback:', rollbackError);
       // Log error but don't fail the cancel operation
     }
 
