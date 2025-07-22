@@ -158,6 +158,22 @@ export async function POST(request: NextRequest) {
     // Gửi thông báo Discord (chỉ khi user tự hủy đơn hàng)
     await sendDiscordNotification(updatedOrder, currentUser, reason);
 
+    // Trigger inventory rollback (async, don't fail if rollback fails)
+    try {
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      await fetch(`${baseUrl}/api/orders/rollback-inventory`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          reason: `User cancelled: ${reason}`
+        })
+      });
+    } catch (rollbackError) {
+      console.error('Error triggering inventory rollback:', rollbackError);
+      // Log error but don't fail the cancel operation
+    }
+
     // 🎯 AUDIT LOG: Order Cancelled by User
     await AuditLogger.log({
       eventType: AuditEventType.ORDER_CANCELLED,

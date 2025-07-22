@@ -57,6 +57,24 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
     });
 
+    // Trigger inventory rollback if order is being cancelled
+    if (status === 'canceled' && oldOrder.status !== 'canceled') {
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        await fetch(`${baseUrl}/api/orders/rollback-inventory`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: params.id,
+            reason: `Admin status change: ${oldOrder.status} → canceled`
+          })
+        });
+      } catch (rollbackError) {
+        console.error('Error triggering inventory rollback:', rollbackError);
+        // Log error but don't fail the status update operation
+      }
+    }
+
     // 🎯 AUDIT LOG: Order Status Changed
     await AuditLogger.log({
       eventType: AuditEventType.ORDER_STATUS_CHANGED,

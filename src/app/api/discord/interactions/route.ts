@@ -299,6 +299,24 @@ export async function POST(request: NextRequest) {
           resourceType: 'Order'
         });
 
+        // Trigger inventory rollback for rejected orders (async, don't fail if rollback fails)
+        if (action === 'reject') {
+          try {
+            const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+            await fetch(`${baseUrl}/api/orders/rollback-inventory`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId,
+                reason: cancelReason
+              })
+            });
+          } catch (rollbackError) {
+            console.error('Error triggering inventory rollback:', rollbackError);
+            // Log error but don't fail the cancel operation
+          }
+        }
+
         // Send email notification to customer
         try {
           const emailContent =
