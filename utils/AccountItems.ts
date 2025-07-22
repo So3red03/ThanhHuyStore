@@ -1,5 +1,5 @@
 import { CiRead, CiUser, CiViewList } from 'react-icons/ci';
-import { MdAssignmentReturn } from 'react-icons/md';
+import { MdAssignmentReturn, MdFavorite } from 'react-icons/md';
 
 export const AccountItems = [
   {
@@ -11,6 +11,11 @@ export const AccountItems = [
     title: 'Quản lý đơn hàng',
     path: '/account/orders',
     icon: CiViewList
+  },
+  {
+    title: 'Sản phẩm yêu thích',
+    path: '/account/wishlist',
+    icon: MdFavorite
   }
   // {
   //   title: 'Sản phẩm đã xem',

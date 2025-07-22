@@ -3,6 +3,7 @@
 import Button from '@/app/components/Button';
 import ProductImage from '@/app/components/products/ProductImage';
 import ProductVariantSelector from '@/app/components/products/ProductVariantSelector';
+import FavoriteButton from '@/app/components/products/FavoriteButton';
 import SetQuantity from '@/app/components/products/SetQuantity';
 import { Rating } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
@@ -526,12 +527,25 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
           }}
         />
         <div className='flex flex-col gap-1 text-slate-500 text-sm ml-0 lg:ml-16'>
-          <h2 className='text-3xl font-semibold text-slate-700'>
-            {product.name}
-            {getCurrentVariantInfo() && (
-              <span className='text-3xl font-semibold text-slate-700'> {getCurrentVariantInfo()}</span>
-            )}
-          </h2>
+          <div className='flex items-start justify-between gap-4'>
+            <h2 className='text-3xl font-semibold text-slate-700 flex-1'>
+              {product.name}
+              {getCurrentVariantInfo() && (
+                <span className='text-3xl font-semibold text-slate-700'> {getCurrentVariantInfo()}</span>
+              )}
+            </h2>
+            {/* Favorite Button with elegant design */}
+            <div className='flex-shrink-0 mt-1'>
+              <div className='bg-gray-50 hover:bg-gray-100 rounded-full p-2 transition-all duration-200 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md'>
+                <FavoriteButton
+                  productId={product.id}
+                  size='medium'
+                  showTooltip={true}
+                  className='hover:scale-110 transition-transform duration-200'
+                />
+              </div>
+            </div>
+          </div>
           <div className='flex items-center gap-2'>
             <Rating value={productRating} readOnly precision={0.5} />
             <div className='py-2'>({product.reviews.length}) Đánh giá</div>

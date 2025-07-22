@@ -2,7 +2,7 @@
 
 import { Role, User } from '@prisma/client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
-import { MdDelete, MdEdit, MdRemoveRedEye } from 'react-icons/md';
+import { MdDelete, MdEdit, MdRemoveRedEye, MdBlock, MdLockOpen } from 'react-icons/md';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ActionBtn from '@/app/components/ActionBtn';
@@ -13,10 +13,11 @@ import 'moment/locale/vi';
 import { SafeUser } from '../../../../../types';
 import NullData from '@/app/components/NullData';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
+import BlockUserModal from '@/app/components/admin/BlockUserModal';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Button as MuiButton } from '@mui/material';
+import { Button as MuiButton, Chip } from '@mui/material';
 import { MdPersonAdd } from 'react-icons/md';
 import AddUserModal from './AddUserModal';
 
@@ -30,6 +31,8 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [addUserModalOpen, setAddUserModalOpen] = useState(false);
   const [editUserData, setEditUserData] = useState<any>(null);
+  const [blockModalOpen, setBlockModalOpen] = useState(false);
+  const [selectedUserForBlock, setSelectedUserForBlock] = useState<User | null>(null);
 
   // Calculate statistics
   const totalUsers = users.length;
@@ -63,6 +66,18 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
 
     setEditUserData(editData);
     setAddUserModalOpen(true);
+  };
+
+  // Handle block/unblock user
+  const handleBlockUser = (user: User) => {
+    setSelectedUserForBlock(user);
+    setBlockModalOpen(true);
+  };
+
+  const handleBlockSuccess = () => {
+    setBlockModalOpen(false);
+    setSelectedUserForBlock(null);
+    router.refresh(); // Refresh to show updated status
   };
 
   let rows: any = [];
@@ -110,6 +125,30 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
         );
       }
     },
+    {
+      field: 'status',
+      headerName: 'Trạng thái',
+      width: 120,
+      renderCell: params => {
+        const isBlocked = params.row.isBlocked;
+        return (
+          <Chip
+            label={isBlocked ? 'Đã khóa' : 'Hoạt động'}
+            color={isBlocked ? 'error' : 'success'}
+            variant='outlined'
+            size='small'
+            icon={isBlocked ? <MdBlock /> : <MdLockOpen />}
+            sx={{
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              '& .MuiChip-icon': {
+                fontSize: '0.875rem'
+              }
+            }}
+          />
+        );
+      }
+    },
     // { field: 'password', headerName: 'Mật khẩu', width: 140 },
     { field: 'createAt', headerName: 'Ngày tạo', width: 200 },
     { field: 'updateAt', headerName: 'Ngày cập nhật', width: 200 },
@@ -117,10 +156,15 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
     {
       field: 'action',
       headerName: '',
-      width: 180,
+      width: 240,
       renderCell: params => {
+        const isBlocked = params.row.isBlocked;
+        const isCurrentUser = params.row.id === currentUser?.id;
+        const isAdmin = params.row.role === 'ADMIN';
+        const canBlock = !isCurrentUser && (currentUser?.role === 'ADMIN' || !isAdmin);
+
         return (
-          <div className='flex items-center justify-center gap-4 h-full'>
+          <div className='flex items-center justify-center gap-2 h-full'>
             <ActionBtn
               icon={MdEdit}
               onClick={() => {
@@ -140,6 +184,17 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
                 router.push(`/admin/manage-users/view/${params.row.id}`);
               }}
             />
+            {canBlock && (
+              <div
+                className={`${
+                  isBlocked
+                    ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                    : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                } transition-colors duration-200 rounded`}
+              >
+                <ActionBtn icon={isBlocked ? MdLockOpen : MdBlock} onClick={() => handleBlockUser(params.row)} />
+              </div>
+            )}
           </div>
         );
       }
@@ -260,6 +315,14 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
         }}
         onUserAdded={handleUserAdded}
         editData={editUserData}
+      />
+
+      {/* Block/Unblock User Modal */}
+      <BlockUserModal
+        open={blockModalOpen}
+        onClose={() => setBlockModalOpen(false)}
+        user={selectedUserForBlock}
+        onSuccess={handleBlockSuccess}
       />
     </>
   );

@@ -5,11 +5,12 @@ import { ChatRoom, Message, User } from '@prisma/client';
 
 // Định nghĩa lại các type để tránh lỗi nhận diện typescript vì đôi khi join các collection với nhau
 // thì sẽ bị lỗi typescript
-export type SafeUser = Omit<User, 'createAt' | 'updateAt' | 'emailVerified' | 'lastLogin'> & {
+export type SafeUser = Omit<User, 'createAt' | 'updateAt' | 'emailVerified' | 'lastLogin' | 'blockedAt'> & {
   createAt: string;
   updateAt: string;
   emailVerified: string | null;
   lastLogin?: string | null;
+  blockedAt?: string | null;
 };
 
 export type MessageType = Message & {

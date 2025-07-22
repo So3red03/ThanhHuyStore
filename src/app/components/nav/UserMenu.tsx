@@ -8,7 +8,7 @@ import BackDrop from './BackDrop';
 import Link from 'next/link';
 import MenuItem from './MenuItem';
 import { signOut } from 'next-auth/react';
-import { CiLogout, CiRead, CiUser, CiViewList } from 'react-icons/ci';
+import { CiHeart, CiLogout, CiRead, CiUser, CiViewList } from 'react-icons/ci';
 import { useRouter } from 'next/navigation';
 import ConfirmDialog from '../ConfirmDialog';
 import { useAuthModal } from '../auth/useAuthModal';
@@ -83,12 +83,12 @@ const UserMenu: React.FC<UserMenuProps> = ({ currentUser }) => {
                   Đơn hàng của tôi
                 </MenuItem>
               </Link>
-              <Link href='/account/viewed'>
+              <Link href='/account/wishlist'>
                 <MenuItem onClick={handleMouseLeave}>
                   <span className='text-xl'>
-                    <CiRead />
+                    <CiHeart />
                   </span>
-                  Đã xem gần đây
+                  Sản phẩm yêu thích
                 </MenuItem>
               </Link>
               <MenuItem

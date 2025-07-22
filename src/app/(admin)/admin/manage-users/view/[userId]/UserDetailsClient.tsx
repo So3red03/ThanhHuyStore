@@ -3,7 +3,15 @@ import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { CartProductType, DeliveryStatus, OrderStatus, Role } from '@prisma/client';
 import { formatPrice } from '../../../../../../../utils/formatPrice';
 import Status from '@/app/components/Status';
-import { MdAccessTimeFilled, MdDelete, MdDeliveryDining, MdDone, MdRemoveRedEye } from 'react-icons/md';
+import {
+  MdAccessTimeFilled,
+  MdDelete,
+  MdDeliveryDining,
+  MdDone,
+  MdRemoveRedEye,
+  MdBlock,
+  MdLockOpen
+} from 'react-icons/md';
 import ActionBtn from '@/app/components/ActionBtn';
 import { FaDollarSign } from 'react-icons/fa';
 import { FaBagShopping, FaCartShopping } from 'react-icons/fa6';
@@ -12,6 +20,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import AdminModal from '@/app/components/admin/AdminModal';
+import BlockUserModal from '@/app/components/admin/BlockUserModal';
 import FormWarp from '@/app/components/FormWrap';
 import Input from '@/app/components/inputs/Input';
 import Button from '@/app/components/Button';
@@ -55,6 +64,7 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
   const [isDelete, setIsDelete] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [blockModalOpen, setBlockModalOpen] = useState(false);
 
   // Early return nếu không có user
   if (!user) {
@@ -316,6 +326,12 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
     { label: 'USER', value: Role.USER }
   ];
 
+  // Handle block success
+  const handleBlockSuccess = () => {
+    setBlockModalOpen(false);
+    router.refresh(); // Refresh to show updated status
+  };
+
   return (
     <>
       <div className='flex justify-between items-center flex-wrap gap-y-4 mb-6 mt-6 px-6 lg:px-0'>
@@ -323,16 +339,47 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
           <h4 className='text-2xl'> ID tài khoản {user.id}</h4>
           <p className='text-gray-500 mb-0'>{formatDate(user.createAt)}</p>
         </div>
-        <button
-          type='button'
-          className='border border-[#ff4c51] rounded-lg px-[18px] py-2 hover:bg-red-100'
-          onClick={() => {
-            setSelectedUser(user);
-            toggleDelete();
-          }}
-        >
-          <span className='whitespace-nowrap text-[#ff4c51] text-base font-semibold'>Xóa tài khoản </span>
-        </button>
+        <div className='flex gap-3'>
+          {/* Block/Unblock Button */}
+          <button
+            type='button'
+            className={`border rounded-lg px-[18px] py-2 transition-colors duration-200 ${
+              user.isBlocked
+                ? 'border-green-500 hover:bg-green-50 text-green-600'
+                : 'border-orange-500 hover:bg-orange-50 text-orange-600'
+            }`}
+            onClick={() => setBlockModalOpen(true)}
+          >
+            <span className='whitespace-nowrap text-base font-semibold flex items-center gap-2'>
+              {user.isBlocked ? (
+                <>
+                  <MdLockOpen size={16} />
+                  Mở khóa tài khoản
+                </>
+              ) : (
+                <>
+                  <MdBlock size={16} />
+                  Khóa tài khoản
+                </>
+              )}
+            </span>
+          </button>
+
+          {/* Delete Button */}
+          <button
+            type='button'
+            className='border border-[#ff4c51] rounded-lg px-[18px] py-2 hover:bg-red-100'
+            onClick={() => {
+              setSelectedUser(user);
+              toggleDelete();
+            }}
+          >
+            <span className='whitespace-nowrap text-[#ff4c51] text-base font-semibold flex items-center gap-2'>
+              <MdDelete size={16} />
+              Xóa tài khoản
+            </span>
+          </button>
+        </div>
       </div>
       <div className='w-full flex md:flex-row flex-col justify-center gap-6 mt-3 px-6 lg:px-0'>
         <div className='md:w-1/3 w-full'>
@@ -343,15 +390,30 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
                   <img className='w-full h-full object-cover' src='/dog-meme.png' alt='User Avatar' loading='lazy' />
                 </div>
                 <h5 className='text-xl font-medium mt-4 mb-3'>{user.name}</h5>
-                {user.role === 'ADMIN' ? (
-                  <span className='bg-red-200 text-rose-500 text-xs font-semibold px-2 py-1 rounded-full mt-4'>
-                    ADMIN
-                  </span>
-                ) : (
-                  <span className='bg-green-200 text-green-500 text-xs font-semibold px-2 py-1 rounded-full mt-4'>
-                    USER
-                  </span>
-                )}
+
+                {/* Role Badge */}
+                <div className='flex flex-col gap-2 items-center'>
+                  {user.role === 'ADMIN' ? (
+                    <span className='bg-red-200 text-rose-500 text-xs font-semibold px-2 py-1 rounded-full'>ADMIN</span>
+                  ) : (
+                    <span className='bg-green-200 text-green-500 text-xs font-semibold px-2 py-1 rounded-full'>
+                      USER
+                    </span>
+                  )}
+
+                  {/* Account Status Badge */}
+                  {user.isBlocked ? (
+                    <span className='bg-red-100 text-red-600 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1'>
+                      <MdBlock size={12} />
+                      Đã khóa
+                    </span>
+                  ) : (
+                    <span className='bg-green-100 text-green-600 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1'>
+                      <MdLockOpen size={12} />
+                      Hoạt động
+                    </span>
+                  )}
+                </div>
               </div>
               <div className='flex lg:justify-center justify-stretch flex-wrap gap-6 pb-6'>
                 <div className='flex items-center 4xl:me-8'>
@@ -552,6 +614,14 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
           />
         </AdminModal>
       )}
+
+      {/* Block/Unblock User Modal */}
+      <BlockUserModal
+        open={blockModalOpen}
+        onClose={() => setBlockModalOpen(false)}
+        user={user}
+        onSuccess={handleBlockSuccess}
+      />
     </>
   );
 };

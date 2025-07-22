@@ -7,14 +7,15 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import ActionBtn from '@/app/components/ActionBtn';
-import { MdDelete, MdEdit, MdRemoveRedEye, MdPersonAdd } from 'react-icons/md';
+import { MdDelete, MdEdit, MdRemoveRedEye, MdPersonAdd, MdBlock, MdLockOpen } from 'react-icons/md';
 import 'moment/locale/vi';
 import { SafeUser } from '../../../../../types';
 import NullData from '@/app/components/NullData';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
+import BlockUserModal from '@/app/components/admin/BlockUserModal';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Button as MuiButton } from '@mui/material';
+import { Button as MuiButton, Chip } from '@mui/material';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import AddUserModal from '../manage-users/AddUserModal';
 import { hasPermission } from '@/app/utils/admin/permissionUtils';
@@ -31,6 +32,8 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [addStaffModalOpen, setAddStaffModalOpen] = useState(false);
   const [editStaffData, setEditStaffData] = useState<any>(null);
+  const [blockModalOpen, setBlockModalOpen] = useState(false);
+  const [selectedUserForBlock, setSelectedUserForBlock] = useState<any>(null);
 
   // Check permissions
   const canCreateStaff = hasPermission(currentUser?.role || 'USER', PERMISSIONS.STAFF_CREATE);
@@ -84,6 +87,18 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
 
     setEditStaffData(editData);
     setAddStaffModalOpen(true);
+  };
+
+  // Handle block/unblock staff
+  const handleBlockUser = (user: any) => {
+    setSelectedUserForBlock(user);
+    setBlockModalOpen(true);
+  };
+
+  const handleBlockSuccess = () => {
+    setBlockModalOpen(false);
+    setSelectedUserForBlock(null);
+    router.refresh(); // Refresh to show updated status
   };
 
   if (!canViewStaff) {
@@ -142,16 +157,44 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
         );
       }
     },
+    {
+      field: 'status',
+      headerName: 'Trạng thái',
+      width: 120,
+      renderCell: params => {
+        const isBlocked = params.row.isBlocked;
+        return (
+          <Chip
+            label={isBlocked ? 'Đã khóa' : 'Hoạt động'}
+            color={isBlocked ? 'error' : 'success'}
+            variant='outlined'
+            size='small'
+            icon={isBlocked ? <MdBlock /> : <MdLockOpen />}
+            sx={{
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              '& .MuiChip-icon': {
+                fontSize: '0.875rem'
+              }
+            }}
+          />
+        );
+      }
+    },
     { field: 'createAt', headerName: 'Ngày tạo', width: 200 },
     { field: 'updateAt', headerName: 'Ngày cập nhật', width: 200 },
     { field: 'lastLogin', headerName: 'Lần cuối đăng nhập', width: 200 },
     {
       field: 'action',
       headerName: '',
-      width: 180,
+      width: 240,
       renderCell: params => {
+        const isBlocked = params.row.isBlocked;
+        const isCurrentUser = params.row.id === currentUser?.id;
+        const canBlock = !isCurrentUser && currentUser?.role === 'ADMIN';
+
         return (
-          <div className='flex items-center justify-center gap-4 h-full'>
+          <div className='flex items-center justify-center gap-2 h-full'>
             {canUpdateStaff && (
               <ActionBtn
                 icon={MdEdit}
@@ -175,6 +218,17 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
                 router.push(`/admin/manage-users/view/${params.row.id}`);
               }}
             />
+            {canBlock && (
+              <div
+                className={`${
+                  isBlocked
+                    ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                    : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                } transition-colors duration-200 rounded`}
+              >
+                <ActionBtn icon={isBlocked ? MdLockOpen : MdBlock} onClick={() => handleBlockUser(params.row)} />
+              </div>
+            )}
           </div>
         );
       }
@@ -271,6 +325,14 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
           <p>{`Bạn có chắc chắn muốn xóa nhân viên "${selectedUser?.name}"? Hành động này không thể hoàn tác.`}</p>
         </div>
       </ConfirmDialog>
+
+      {/* Block/Unblock Staff Modal */}
+      <BlockUserModal
+        open={blockModalOpen}
+        onClose={() => setBlockModalOpen(false)}
+        user={selectedUserForBlock}
+        onSuccess={handleBlockSuccess}
+      />
     </>
   );
 };

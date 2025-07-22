@@ -712,16 +712,42 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
               sx={{
                 textTransform: 'none',
                 fontWeight: 600,
+                borderRadius: '8px',
                 borderColor: showDeleted ? '#dc2626' : '#6b7280',
                 color: showDeleted ? '#ffffff' : '#6b7280',
                 backgroundColor: showDeleted ? '#dc2626' : 'transparent',
+                transition: 'all 0.3s ease-in-out',
+                transform: showDeleted ? 'scale(1.02)' : 'scale(1)',
+                boxShadow: showDeleted ? '0 4px 12px rgba(220, 38, 38, 0.3)' : 'none',
                 '&:hover': {
                   borderColor: showDeleted ? '#b91c1c' : '#4b5563',
-                  backgroundColor: showDeleted ? '#b91c1c' : '#f9fafb'
+                  backgroundColor: showDeleted ? '#b91c1c' : '#f9fafb',
+                  transform: 'scale(1.05)',
+                  boxShadow: showDeleted ? '0 6px 16px rgba(220, 38, 38, 0.4)' : '0 2px 8px rgba(107, 114, 128, 0.2)'
+                },
+                '& .MuiButton-startIcon': {
+                  transition: 'transform 0.2s ease-in-out',
+                  transform: showDeleted ? 'rotate(0deg)' : 'rotate(0deg)'
                 }
               }}
             >
-              {showDeleted ? 'Sản phẩm đã xóa' : 'Xem sản phẩm đã xóa'}
+              {showDeleted ? (
+                <span className='flex items-center gap-1'>
+                  <span>Đang xem đã xóa</span>
+                  <Chip
+                    label={deletedProducts.length}
+                    size='small'
+                    sx={{
+                      backgroundColor: 'rgba(255,255,255,0.2)',
+                      color: 'white',
+                      fontSize: '0.7rem',
+                      height: '18px'
+                    }}
+                  />
+                </span>
+              ) : (
+                'Xem sản phẩm đã xóa'
+              )}
             </MuiButton>
             <MuiButton
               onClick={() => setShowEmailModal(true)}

@@ -56,6 +56,15 @@ model User {
   lastEmailSent DateTime?
   emailFrequency String @default("daily") // daily, weekly, monthly
 
+  // Wishlist feature - Tính năng yêu thích sản phẩm
+  favoriteProductIds String[] @db.ObjectId @default([])
+
+  // Account blocking feature - Tính năng khóa tài khoản
+  isBlocked Boolean? @default(false)
+  blockedAt DateTime?
+  blockedBy String? // ID của admin/staff thực hiện khóa
+  blockReason String? // Lý do khóa tài khoản
+
   accounts        Account[]
   orders          Order[]
   reviews         Review[]

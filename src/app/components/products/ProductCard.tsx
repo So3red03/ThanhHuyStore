@@ -5,6 +5,7 @@ import { truncateText } from '../../../../utils/truncateText';
 import { formatPrice } from '../../../../utils/formatPrice';
 
 import ProductVariantSelector from './ProductVariantSelector';
+import FavoriteButton from './FavoriteButton';
 import { useCallback, useState } from 'react';
 import { CartProductType, selectedImgType } from '@/app/(home)/product/[productId]/ProductDetails';
 import Link from 'next/link';
@@ -179,6 +180,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, className }) => {
                 SALE
               </div>
             )}
+          </div>
+
+          {/* Favorite Button - Positioned at top right with elegant design */}
+          <div className='absolute top-2 right-2 z-20'>
+            <div className='bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-lg hover:bg-white transition-all duration-200 hover:scale-110'>
+              <FavoriteButton
+                productId={data.id}
+                size='small'
+                showTooltip={false}
+                className='hover:scale-110 transition-transform duration-200'
+              />
+            </div>
           </div>
         </div>
         <div className='mt-3 text-base h-11'>{truncateText(data.name)}</div>
