@@ -15,6 +15,7 @@ import NProgressProvider from '../components/NProgressProvider';
 import { AuthModalProvider } from '../components/auth/AuthModalProvider';
 import AuthModal from '../components/auth/AuthModal';
 import BlockedUserWrapper from '../components/BlockedUserWrapper';
+import { FavoritesProvider } from '../contexts/FavoritesContext';
 
 const poppins = Poppins({ subsets: ['latin'], weight: ['400', '700'] });
 
@@ -48,21 +49,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <ClientSessionProvider session={session}>
           <CartProvider>
-            <AuthModalProvider>
-              <AnalyticsTracker>
-                <BlockedUserWrapper user={currentUser}>
-                  <NProgressProvider />
-                  <div className='flex flex-col min-h-screen'>
-                    <Navbar />
-                    <main className='flex-grow'>{children}</main>
-                    <Footer />
-                    <ZaloChatBtn />
-                    <ChatBoxClient currentUser={currentUser} />
-                    <AuthModal currentUser={currentUser} />
-                  </div>
-                </BlockedUserWrapper>
-              </AnalyticsTracker>
-            </AuthModalProvider>
+            <FavoritesProvider>
+              <AuthModalProvider>
+                <AnalyticsTracker>
+                  <BlockedUserWrapper user={currentUser}>
+                    <NProgressProvider />
+                    <div className='flex flex-col min-h-screen'>
+                      <Navbar />
+                      <main className='flex-grow'>{children}</main>
+                      <Footer />
+                      <ZaloChatBtn />
+                      <ChatBoxClient currentUser={currentUser} />
+                      <AuthModal currentUser={currentUser} />
+                    </div>
+                  </BlockedUserWrapper>
+                </AnalyticsTracker>
+              </AuthModalProvider>
+            </FavoritesProvider>
           </CartProvider>
         </ClientSessionProvider>
       </body>

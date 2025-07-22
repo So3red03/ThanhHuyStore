@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -24,7 +24,7 @@ interface Product {
   }>;
 }
 
-interface UseFavoritesReturn {
+interface FavoritesContextType {
   favorites: Product[];
   favoriteCount: number;
   loading: boolean;
@@ -33,14 +33,19 @@ interface UseFavoritesReturn {
   refreshFavorites: () => Promise<void>;
 }
 
-export const useFavorites = (): UseFavoritesReturn => {
+const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
+
+export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const router = useRouter();
 
-  // Lấy danh sách yêu thích
+  // Lấy danh sách yêu thích - chỉ gọi 1 lần
   const fetchFavorites = async () => {
+    if (loading) return; // Prevent multiple calls
+    
     try {
       setLoading(true);
       const response = await axios.get('/api/user/favorites');
@@ -53,10 +58,11 @@ export const useFavorites = (): UseFavoritesReturn => {
         setFavoriteCount(0);
       } else {
         console.error('Error fetching favorites:', error);
-        toast.error('Lỗi khi tải danh sách yêu thích');
+        // Không show toast error để tránh spam
       }
     } finally {
       setLoading(false);
+      setInitialized(true);
     }
   };
 
@@ -84,6 +90,7 @@ export const useFavorites = (): UseFavoritesReturn => {
 
       // Refresh danh sách yêu thích
       await fetchFavorites();
+
     } catch (error: any) {
       if (error.response?.status === 401) {
         toast.error('Vui lòng đăng nhập để sử dụng tính năng này');
@@ -102,12 +109,14 @@ export const useFavorites = (): UseFavoritesReturn => {
     await fetchFavorites();
   };
 
-  // Load danh sách yêu thích khi component mount
+  // Load danh sách yêu thích khi component mount - chỉ 1 lần
   useEffect(() => {
-    fetchFavorites();
-  }, []);
+    if (!initialized) {
+      fetchFavorites();
+    }
+  }, [initialized]);
 
-  return {
+  const value: FavoritesContextType = {
     favorites,
     favoriteCount,
     loading,
@@ -115,4 +124,18 @@ export const useFavorites = (): UseFavoritesReturn => {
     toggleFavorite,
     refreshFavorites
   };
+
+  return (
+    <FavoritesContext.Provider value={value}>
+      {children}
+    </FavoritesContext.Provider>
+  );
+};
+
+export const useFavorites = (): FavoritesContextType => {
+  const context = useContext(FavoritesContext);
+  if (context === undefined) {
+    throw new Error('useFavorites must be used within a FavoritesProvider');
+  }
+  return context;
 };

@@ -91,6 +91,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
         createAt: formatDate(user.createAt),
         updateAt: formatDate(user.updateAt),
         lastLogin: user.lastLogin ? formatDate(user.lastLogin) : 'Chưa đăng nhập',
+        isBlocked: user.isBlocked,
         role: user.role
       };
     });

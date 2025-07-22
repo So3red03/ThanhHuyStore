@@ -3,7 +3,7 @@
 import React from 'react';
 import { Typography, Button } from '@mui/material';
 import { MdFavorite } from 'react-icons/md';
-import { useFavorites } from '@/app/hooks/useFavorites';
+import { useFavorites } from '@/app/contexts/FavoritesContext';
 import ProductCard from '@/app/components/products/ProductCard';
 import Heading from '@/app/components/Heading';
 import { useRouter } from 'next/navigation';
@@ -35,9 +35,32 @@ const WishlistClient: React.FC<WishlistClientProps> = ({ currentUser }) => {
     <div className='px-6'>
       {favorites.length > 0 ? (
         <>
-          <Heading title='SẢN PHẨM YÊU THÍCH'>
-            <></>
-          </Heading>
+          <div className='flex items-center justify-between'>
+            <Heading title='SẢN PHẨM YÊU THÍCH'>
+              <></>
+            </Heading>
+            {/* Refresh Button */}
+            <div className='text-center'>
+              <Button
+                variant='outlined'
+                onClick={refreshFavorites}
+                disabled={loading}
+                sx={{
+                  borderColor: '#3b82f6',
+                  color: '#3b82f6',
+                  '&:hover': {
+                    borderColor: '#2563eb',
+                    backgroundColor: '#eff6ff'
+                  },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: 600
+                }}
+              >
+                Làm mới
+              </Button>
+            </div>
+          </div>
 
           {/* Products Grid using ProductCard */}
           <div className='grid grid-cols-2 sm:grid-cols-3 xl:!grid-cols-4 gap-8 mt-8'>
@@ -45,38 +68,13 @@ const WishlistClient: React.FC<WishlistClientProps> = ({ currentUser }) => {
               <ProductCard key={product.id} data={product} />
             ))}
           </div>
-
-          {/* Refresh Button */}
-          <div className='text-center mt-8'>
-            <Button
-              variant='outlined'
-              onClick={refreshFavorites}
-              disabled={loading}
-              sx={{
-                borderColor: '#3b82f6',
-                color: '#3b82f6',
-                '&:hover': {
-                  borderColor: '#2563eb',
-                  backgroundColor: '#eff6ff'
-                },
-                borderRadius: '8px',
-                textTransform: 'none',
-                fontWeight: 600
-              }}
-            >
-              Làm mới danh sách
-            </Button>
-          </div>
         </>
       ) : (
         /* Empty State */
         <div className='text-center py-16'>
-          <MdFavorite size={80} className='text-gray-300 mx-auto mb-4' />
+          <MdFavorite size={80} className='text-red-600 mx-auto mb-4' />
           <Typography variant='h5' gutterBottom color='text.secondary'>
             Danh sách yêu thích trống
-          </Typography>
-          <Typography variant='body1' color='text.secondary' className='mb-6'>
-            Hãy thêm những sản phẩm bạn yêu thích để dễ dàng tìm lại sau này
           </Typography>
           <Button
             variant='contained'
@@ -87,7 +85,8 @@ const WishlistClient: React.FC<WishlistClientProps> = ({ currentUser }) => {
               '&:hover': { backgroundColor: '#2563eb' },
               borderRadius: '8px',
               textTransform: 'none',
-              fontWeight: 600
+              fontWeight: 600,
+              marginTop: '15px'
             }}
           >
             Khám phá sản phẩm

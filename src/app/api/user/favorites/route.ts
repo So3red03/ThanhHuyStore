@@ -23,27 +23,35 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Lấy thông tin chi tiết các sản phẩm yêu thích
+    // Lấy thông tin chi tiết các sản phẩm yêu thích (giống getProducts)
     const favoriteProducts = await prisma.product.findMany({
       where: {
         id: { in: userWithFavorites.favoriteProductIds },
-        isDeleted: false
+        isDeleted: { not: true }
       },
       include: {
-        category: true,
         reviews: {
-          select: {
-            rating: true
+          include: {
+            user: true
+          },
+          orderBy: {
+            createdDate: 'desc'
+          }
+        },
+        category: {
+          include: {
+            parent: true
           }
         },
         variants: {
           where: { isActive: true },
-          select: {
-            id: true,
-            price: true,
-            stock: true
+          orderBy: {
+            price: 'asc'
           }
         }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
 
@@ -51,7 +59,7 @@ export async function GET() {
     const productsWithRating = favoriteProducts.map(product => {
       const totalRating = product.reviews.reduce((sum, review) => sum + review.rating, 0);
       const averageRating = product.reviews.length > 0 ? totalRating / product.reviews.length : 0;
-      
+
       return {
         ...product,
         averageRating: Math.round(averageRating * 10) / 10,
@@ -63,7 +71,6 @@ export async function GET() {
       favorites: productsWithRating,
       count: productsWithRating.length
     });
-
   } catch (error) {
     console.error('Error fetching favorites:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -134,7 +141,6 @@ export async function POST(request: Request) {
       isFavorite: action === 'add',
       favoriteCount: updatedFavorites.length
     });
-
   } catch (error) {
     console.error('Error updating favorites:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
