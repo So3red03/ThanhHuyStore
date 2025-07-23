@@ -155,14 +155,14 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    if (recentReturns >= 3) {
-      return NextResponse.json(
-        {
-          error: 'Monthly return limit exceeded (3 returns per month)'
-        },
-        { status: 400 }
-      );
-    }
+    // if (recentReturns >= 3) {
+    //   return NextResponse.json(
+    //     {
+    //       error: 'Monthly return limit exceeded (3 returns per month)'
+    //     },
+    //     { status: 400 }
+    //   );
+    // }
 
     // Validate items exist in order
     const orderProducts = order.products as any[];

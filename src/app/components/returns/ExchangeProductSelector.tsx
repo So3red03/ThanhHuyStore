@@ -192,7 +192,7 @@ const ExchangeProductSelector: React.FC<ExchangeProductSelectorProps> = ({
                       />
                       <div className='flex-1'>
                         <p className='font-medium text-sm'>{product.name}</p>
-                        <p className='text-sm text-gray-600'>{formatPrice(product.price)}</p>
+                        <p className='text-sm text-gray-600'>{product.price}</p>
                         <p className='text-xs text-gray-500'>Còn lại: {product.inStock}</p>
                       </div>
                     </div>

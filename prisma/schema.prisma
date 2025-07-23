@@ -686,7 +686,6 @@ model ReturnRequest {
   type            ReturnType?       // RETURN hoặc EXCHANGE
   status          ReturnStatus?     @default(PENDING)
 
-  // Simplified items (JSON array) - Optional
   items           Json?             // [{productId, variantId?, quantity, unitPrice, reason}]
 
   // Basic info - Optional
@@ -703,11 +702,9 @@ model ReturnRequest {
   approvedBy      String?           @db.ObjectId
   approvedAt      DateTime?
 
-  // Timestamps
   createdAt       DateTime?         @default(now())
   updatedAt       DateTime?         @updatedAt
 
-  // Relations - Optional
   order           Order?            @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user            User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   approver        User?             @relation("ReturnApprover", fields: [approvedBy], references: [id])
