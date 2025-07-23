@@ -1,0 +1,465 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUser } from '@/app/actions/getCurrentUser';
+import prisma from '@/app/libs/prismadb';
+import { ReturnStatus, OrderReturnStatus } from '@prisma/client';
+import { sendReturnStatusEmail } from '@/app/utils/emailService';
+
+// Helper functions for inventory management
+async function reserveInventoryForReturn(tx: any, items: any[]) {
+  // For returns, we don't actually change stock yet, just mark as reserved
+  // This could be implemented with a separate reservation table if needed
+  console.log('Reserving inventory for return:', items.length, 'items');
+}
+
+async function restoreInventoryFromReturn(tx: any, items: any[]) {
+  console.log(`📦 [RETURN-RESTORE] Processing ${items.length} items for inventory restoration...`);
+
+  for (const item of items) {
+    console.log(`🔄 [RETURN-RESTORE] Processing item:`, {
+      productId: item.productId,
+      variantId: item.variantId,
+      quantity: item.quantity,
+      name: item.name || 'Unknown'
+    });
+
+    if (item.variantId) {
+      // Handle variant products (following rollback-inventory pattern)
+      console.log(`🔄 [RETURN-RESTORE] Restoring variant product stock...`);
+
+      // 1. Restore variant stock
+      await tx.productVariant.update({
+        where: { id: item.variantId },
+        data: { stock: { increment: item.quantity } }
+      });
+      console.log(`✅ [RETURN-RESTORE] Variant stock restored: +${item.quantity} for variant ${item.variantId}`);
+
+      // 2. Recalculate main product stock (sum of all active variant stocks)
+      const totalStock = await tx.productVariant.aggregate({
+        where: {
+          productId: item.productId,
+          isActive: true
+        },
+        _sum: { stock: true }
+      });
+
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { inStock: totalStock._sum.stock || 0 }
+      });
+      console.log(
+        `✅ [RETURN-RESTORE] Main product stock updated: ${totalStock._sum.stock || 0} for product ${item.productId}`
+      );
+    } else {
+      // Handle simple products
+      console.log(`🔄 [RETURN-RESTORE] Restoring simple product stock...`);
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { inStock: { increment: item.quantity } }
+      });
+      console.log(`✅ [RETURN-RESTORE] Simple product stock restored: +${item.quantity} for product ${item.productId}`);
+    }
+  }
+
+  console.log(`🎉 [RETURN-RESTORE] Inventory restoration completed successfully`);
+}
+
+async function unreserveInventoryForReturn(tx: any, items: any[]) {
+  // Unreserve inventory if return was rejected after approval
+  // For now, this is just logging since we don't have a reservation system
+  // In a full implementation, this would release reserved inventory
+  console.log('Unreserving inventory for rejected return:', items.length, 'items');
+
+  // If we had a reservation system, we would:
+  // 1. Find reservation records for these items
+  // 2. Delete or mark them as released
+  // 3. Update available inventory counts
+}
+
+async function handleExchangeApproval(tx: any, returnRequest: any) {
+  console.log(`🔄 [EXCHANGE-APPROVE] Handling exchange approval for request: ${returnRequest.id}`);
+
+  // For exchange approval, we need to:
+  // 1. Reserve the items being returned (similar to return approval)
+  // 2. Reduce stock for the new item being exchanged to
+
+  // Reserve old items (customer will send back)
+  await reserveInventoryForReturn(tx, returnRequest.items as any[]);
+
+  // Reduce stock for new exchange item if specified
+  if (returnRequest.exchangeToProductId) {
+    console.log(`🔄 [EXCHANGE-APPROVE] Reducing stock for exchange item:`, {
+      productId: returnRequest.exchangeToProductId,
+      variantId: returnRequest.exchangeToVariantId
+    });
+
+    if (returnRequest.exchangeToVariantId) {
+      // Exchange to variant product (following rollback-inventory pattern)
+      console.log(`🔄 [EXCHANGE-APPROVE] Reducing variant product stock...`);
+
+      // 1. Reduce variant stock
+      await tx.productVariant.update({
+        where: { id: returnRequest.exchangeToVariantId },
+        data: { stock: { decrement: 1 } } // Assuming quantity 1 for exchange
+      });
+      console.log(`✅ [EXCHANGE-APPROVE] Variant stock reduced: -1 for variant ${returnRequest.exchangeToVariantId}`);
+
+      // 2. Recalculate main product stock (sum of all active variant stocks)
+      const totalStock = await tx.productVariant.aggregate({
+        where: {
+          productId: returnRequest.exchangeToProductId,
+          isActive: true
+        },
+        _sum: { stock: true }
+      });
+
+      await tx.product.update({
+        where: { id: returnRequest.exchangeToProductId },
+        data: { inStock: totalStock._sum.stock || 0 }
+      });
+      console.log(
+        `✅ [EXCHANGE-APPROVE] Main product stock updated: ${totalStock._sum.stock || 0} for product ${
+          returnRequest.exchangeToProductId
+        }`
+      );
+    } else {
+      // Exchange to simple product
+      console.log(`🔄 [EXCHANGE-APPROVE] Reducing simple product stock...`);
+      await tx.product.update({
+        where: { id: returnRequest.exchangeToProductId },
+        data: { inStock: { decrement: 1 } }
+      });
+      console.log(
+        `✅ [EXCHANGE-APPROVE] Simple product stock reduced: -1 for product ${returnRequest.exchangeToProductId}`
+      );
+    }
+  }
+
+  console.log(`🎉 [EXCHANGE-APPROVE] Exchange approval inventory handling completed`);
+}
+
+async function handleExchangeCompletion(tx: any, returnRequest: any) {
+  console.log(`🔄 [EXCHANGE-COMPLETE] Handling exchange completion for request: ${returnRequest.id}`);
+
+  // When exchange is completed:
+  // 1. Restore the returned items to inventory (customer sent them back)
+  // 2. The new item stock was already reduced during approval
+
+  console.log(`🔄 [EXCHANGE-COMPLETE] Restoring returned items to inventory...`);
+  await restoreInventoryFromReturn(tx, returnRequest.items as any[]);
+
+  console.log(`🎉 [EXCHANGE-COMPLETE] Exchange completion inventory handling completed`);
+}
+
+async function revertExchangeInventory(tx: any, returnRequest: any) {
+  console.log(`🔄 [EXCHANGE-REVERT] Reverting exchange inventory for request: ${returnRequest.id}`);
+
+  // When reverting an exchange:
+  // 1. Unreserve the old items (they won't be returned now)
+  // 2. Restore stock for the new item (it was reduced during approval)
+
+  await unreserveInventoryForReturn(tx, returnRequest.items as any[]);
+
+  // Restore stock for the exchange item if specified
+  if (returnRequest.exchangeToProductId) {
+    console.log(`🔄 [EXCHANGE-REVERT] Restoring stock for exchange item:`, {
+      productId: returnRequest.exchangeToProductId,
+      variantId: returnRequest.exchangeToVariantId
+    });
+
+    if (returnRequest.exchangeToVariantId) {
+      // Restore variant stock (following rollback-inventory pattern)
+      console.log(`🔄 [EXCHANGE-REVERT] Restoring variant product stock...`);
+
+      // 1. Restore variant stock
+      await tx.productVariant.update({
+        where: { id: returnRequest.exchangeToVariantId },
+        data: { stock: { increment: 1 } } // Assuming quantity 1 for exchange
+      });
+      console.log(`✅ [EXCHANGE-REVERT] Variant stock restored: +1 for variant ${returnRequest.exchangeToVariantId}`);
+
+      // 2. Recalculate main product stock (sum of all active variant stocks)
+      const totalStock = await tx.productVariant.aggregate({
+        where: {
+          productId: returnRequest.exchangeToProductId,
+          isActive: true
+        },
+        _sum: { stock: true }
+      });
+
+      await tx.product.update({
+        where: { id: returnRequest.exchangeToProductId },
+        data: { inStock: totalStock._sum.stock || 0 }
+      });
+      console.log(
+        `✅ [EXCHANGE-REVERT] Main product stock updated: ${totalStock._sum.stock || 0} for product ${
+          returnRequest.exchangeToProductId
+        }`
+      );
+    } else {
+      // Restore simple product stock
+      console.log(`🔄 [EXCHANGE-REVERT] Restoring simple product stock...`);
+      await tx.product.update({
+        where: { id: returnRequest.exchangeToProductId },
+        data: { inStock: { increment: 1 } }
+      });
+      console.log(
+        `✅ [EXCHANGE-REVERT] Simple product stock restored: +1 for product ${returnRequest.exchangeToProductId}`
+      );
+    }
+  }
+
+  console.log(`🎉 [EXCHANGE-REVERT] Exchange revert inventory handling completed`);
+}
+
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const returnRequest = await prisma.returnRequest.findUnique({
+      where: { id: params.id },
+      include: {
+        order: {
+          select: {
+            id: true,
+            amount: true,
+            createdAt: true,
+            products: true
+          }
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (!returnRequest) {
+      return NextResponse.json({ error: 'Return request not found' }, { status: 404 });
+    }
+
+    // Check access permissions
+    const isOwner = returnRequest.userId === currentUser.id;
+    const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'STAFF';
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      returnRequest
+    });
+  } catch (error) {
+    console.error('Error fetching return request:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// PUT - Admin approve/reject return request
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Only admin/staff can update return requests
+    if (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF') {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { action, adminNotes } = body;
+
+    if (!action || !['approve', 'reject', 'complete'].includes(action)) {
+      return NextResponse.json(
+        {
+          error: 'Invalid action. Must be approve, reject, or complete'
+        },
+        { status: 400 }
+      );
+    }
+
+    const returnRequest = await prisma.returnRequest.findUnique({
+      where: { id: params.id },
+      include: {
+        order: true,
+        user: true
+      }
+    });
+
+    if (!returnRequest) {
+      return NextResponse.json({ error: 'Return request not found' }, { status: 404 });
+    }
+
+    // Validate status transitions
+    if (action === 'approve' || action === 'reject') {
+      if (returnRequest.status !== 'PENDING') {
+        return NextResponse.json(
+          {
+            error: 'Return request has already been processed'
+          },
+          { status: 400 }
+        );
+      }
+    } else if (action === 'complete') {
+      if (returnRequest.status !== 'APPROVED') {
+        return NextResponse.json(
+          {
+            error: 'Return request must be approved before completion'
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    let updateData: any = {
+      approvedBy: currentUser.id,
+      approvedAt: new Date(),
+      adminNotes: adminNotes || null
+    };
+
+    if (action === 'approve') {
+      updateData.status = 'APPROVED';
+    } else if (action === 'reject') {
+      updateData.status = 'REJECTED';
+    } else if (action === 'complete') {
+      updateData.status = 'COMPLETED';
+    }
+
+    // Handle inventory and order updates based on action
+    console.log(
+      `🔄 [RETURN-REQUEST] Starting transaction for ${action} action on ${returnRequest.type} request: ${params.id}`
+    );
+
+    await prisma.$transaction(async (tx: any) => {
+      console.log(`🔄 [RETURN-REQUEST] Updating return request status to: ${updateData.status}`);
+
+      // Update return request
+      const updatedReturnRequest = await tx.returnRequest.update({
+        where: { id: params.id },
+        data: updateData
+      });
+
+      console.log(`✅ [RETURN-REQUEST] Return request updated successfully`);
+      console.log(`🔄 [RETURN-REQUEST] Processing inventory changes for ${returnRequest.type} ${action}...`);
+
+      // Handle inventory based on action and type
+      if (returnRequest.type === 'RETURN') {
+        if (action === 'approve') {
+          // Reserve inventory when approved (customer will send back)
+          await reserveInventoryForReturn(tx, returnRequest.items as any[]);
+        } else if (action === 'complete') {
+          // Actually restore inventory when completed (received goods back)
+          await restoreInventoryFromReturn(tx, returnRequest.items as any[]);
+        } else if (action === 'reject') {
+          // If previously approved, unreserve inventory
+          if (returnRequest.status === 'APPROVED') {
+            await unreserveInventoryForReturn(tx, returnRequest.items as any[]);
+          }
+        }
+      } else if (returnRequest.type === 'EXCHANGE') {
+        if (action === 'approve') {
+          // For exchange: reserve old inventory, reduce new inventory
+          await handleExchangeApproval(tx, returnRequest);
+        } else if (action === 'complete') {
+          // Exchange completed: finalize inventory changes
+          await handleExchangeCompletion(tx, returnRequest);
+        } else if (action === 'reject') {
+          // Revert exchange inventory changes if previously approved
+          if (returnRequest.status === 'APPROVED') {
+            await revertExchangeInventory(tx, returnRequest);
+          }
+        }
+      }
+
+      // Update order return status and amount only for completed returns
+      if (action === 'complete' && returnRequest.type === 'RETURN') {
+        console.log(`🔄 [RETURN-REQUEST] Updating order return status...`);
+
+        const totalReturnValue = returnRequest.refundAmount || 0;
+        const currentReturnedAmount = returnRequest.order?.returnedAmount || 0;
+        const newReturnedAmount = currentReturnedAmount + totalReturnValue;
+
+        // Determine if this is partial or full return
+        const orderAmount = returnRequest.order?.amount || 0;
+        const isFullReturn = newReturnedAmount >= orderAmount;
+
+        await tx.order.update({
+          where: { id: returnRequest.orderId! },
+          data: {
+            returnStatus: isFullReturn ? OrderReturnStatus.FULL : OrderReturnStatus.PARTIAL,
+            returnedAmount: newReturnedAmount
+          }
+        });
+
+        console.log(
+          `✅ [RETURN-REQUEST] Order return status updated: ${
+            isFullReturn ? 'FULL' : 'PARTIAL'
+          } return, amount: ${newReturnedAmount}`
+        );
+      }
+
+      console.log(`🎉 [RETURN-REQUEST] Transaction completed successfully for ${action} action`);
+      return updatedReturnRequest;
+    });
+
+    // Send email notification
+    try {
+      if (returnRequest.user?.email && returnRequest.user?.name) {
+        await sendReturnStatusEmail(
+          returnRequest.user.email,
+          returnRequest.user.name,
+          returnRequest,
+          action as 'approve' | 'reject' | 'complete'
+        );
+      }
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    const updatedReturnRequest = await prisma.returnRequest.findUnique({
+      where: { id: params.id },
+      include: {
+        order: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      returnRequest: updatedReturnRequest,
+      message: `Return request ${action}d successfully`
+    });
+  } catch (error) {
+    console.error('Error updating return request:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

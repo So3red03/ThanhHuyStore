@@ -30,10 +30,11 @@ interface ReportsTabProps {
   orders: any[];
   users: any[];
   totalRevenue: any;
+  products?: any[]; // Add products prop for consistent data source
   // onRefresh prop removed - now using direct axios refetch
 }
 
-const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) => {
+const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, products = [] }) => {
   // State for time filter
   const [timeFilter, setTimeFilter] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -126,19 +127,42 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
     try {
       setIsExporting(true);
 
-      // Prepare product data with sales info
+      // Prepare product data with sales info (consistent with ManageProductsClient logic)
       const productData = uniqueProducts.map((product: any) => {
-        const productOrders = orders.filter(order => order.products?.some((p: any) => p.id === product.id));
+        // Calculate sold quantity from completed orders only (excluding returned orders)
+        const soldQuantity = orders.reduce((total: number, order: any) => {
+          // Only count completed orders
+          if (order.status !== 'completed' || !order.products || !Array.isArray(order.products)) {
+            return total;
+          }
 
-        const soldQuantity = productOrders.reduce((sum, order) => {
+          // Exclude orders with approved/completed return requests
+          if (order.returnRequests && order.returnRequests.length > 0) {
+            const hasActiveReturn = order.returnRequests.some(
+              (returnReq: any) => returnReq.status === 'APPROVED' || returnReq.status === 'COMPLETED'
+            );
+            if (hasActiveReturn) {
+              return total; // Skip this order
+            }
+          }
+
           const orderProduct = order.products.find((p: any) => p.id === product.id);
-          return sum + (orderProduct?.quantity || 0);
+          return total + (orderProduct?.quantity || 0);
         }, 0);
+
+        // Calculate stock for variant products (consistent with other components)
+        let displayStock = product.inStock || 0;
+        if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+          displayStock = product.variants.reduce((total: number, variant: any) => {
+            return total + (variant.stock || 0);
+          }, 0);
+        }
 
         return {
           ...product,
           soldQuantity,
-          category: product.category || 'Không xác định'
+          inStock: displayStock, // Use calculated stock
+          category: product.category?.name || 'Không xác định'
         };
       });
 
@@ -152,10 +176,9 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue }) 
     }
   };
 
-  // Tránh các đơn hàng bị trùng
-  const uniqueProducts = orders?.reduce((acc: any[], order) => {
-    return acc.concat(order.products?.filter((product: any) => !acc.some(p => p.id === product.id)));
-  }, []);
+  // Use products from database for consistent data source (same as ManageProductsClient)
+  // Filter out soft deleted products to match getProducts behavior
+  const uniqueProducts = products?.filter(product => !product.isDeleted) || [];
 
   return (
     <Box>

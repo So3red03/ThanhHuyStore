@@ -8,9 +8,8 @@ export default async function getColumnChartData() {
     const startDate = moment().subtract(6, 'days').startOf('days');
     const endDate = moment().endOf('days');
 
-    // Truy vấn order group by theo createdAt
-    const result = await prisma.order.groupBy({
-      by: ['createdAt'],
+    // Fetch completed orders with return requests to filter out returned orders
+    const orders = await prisma.order.findMany({
       where: {
         createdAt: {
           gte: startDate.toISOString(),
@@ -18,9 +17,24 @@ export default async function getColumnChartData() {
         },
         status: OrderStatus.completed
       },
-      _sum: {
-        amount: true
+      include: {
+        returnRequests: {
+          where: {
+            status: {
+              in: ['APPROVED', 'COMPLETED'] // Only include approved/completed return requests
+            }
+          }
+        }
       }
+    });
+
+    // Filter out orders with approved/completed return requests
+    const validOrders = orders.filter(order => {
+      if (order.returnRequests && order.returnRequests.length > 0) {
+        console.log(`🔄 [CHART-DATA] Excluding order ${order.id} from chart data due to return request`);
+        return false;
+      }
+      return true;
     });
     // Khởi tạo đối tượng để tổng hợp data theo ngày
     const aggregatedData: {
@@ -38,12 +52,18 @@ export default async function getColumnChartData() {
       // Move to the next day
       currentDate.add(1, 'day');
     }
-    // Calculate the total amount for each day
-    result?.forEach(entry => {
-      const day = moment((entry as any).createdAt).format('dddd');
-      const amount = entry._sum.amount || 0;
+    // Calculate the total amount for each day from valid orders
+    validOrders.forEach(order => {
+      const day = moment(order.createdAt).format('dddd');
+      const amount = order.amount || 0;
       aggregatedData[day].totalAmount += amount;
     });
+
+    console.log(
+      `📊 [CHART-DATA] Chart data calculated from ${validOrders.length} valid orders (excluded ${
+        orders.length - validOrders.length
+      } returned orders)`
+    );
 
     // Conver the aggregatedData object to an array and sort it by date
     const formattedData = Object.values(aggregatedData).sort((a, b) => moment(a.date).diff(moment(b.date)));

@@ -51,6 +51,10 @@ export const MenuItems = [
           {
             title: 'Kanban',
             path: '/admin/manage-orders/kanban'
+          },
+          {
+            title: 'Đổi/Trả hàng',
+            path: '/admin/manage-returns'
           }
         ]
       },

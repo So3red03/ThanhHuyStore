@@ -307,14 +307,25 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       // Tìm tên danh mục cha dựa vào parentId
       const subCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.name;
 
-      // Tính số lượng đã bán (chỉ tính orders completed, không tính canceled)
+      // Tính số lượng đã bán (chỉ tính orders completed, không tính canceled và returned)
       const totalPurchased = orders.reduce((total: number, order: any) => {
         // Chỉ tính orders đã hoàn thành, không tính orders bị hủy
-        if (order.status === 'completed' && order.products && Array.isArray(order.products)) {
-          const orderProduct = order.products.find((p: any) => p.id === product.id);
-          return total + (orderProduct?.quantity || 0);
+        if (order.status !== 'completed' || !order.products || !Array.isArray(order.products)) {
+          return total;
         }
-        return total;
+
+        // Exclude orders with approved/completed return requests
+        if (order.returnRequests && order.returnRequests.length > 0) {
+          const hasActiveReturn = order.returnRequests.some(
+            (returnReq: any) => returnReq.status === 'APPROVED' || returnReq.status === 'COMPLETED'
+          );
+          if (hasActiveReturn) {
+            return total; // Skip this order
+          }
+        }
+
+        const orderProduct = order.products.find((p: any) => p.id === product.id);
+        return total + (orderProduct?.quantity || 0);
       }, 0);
       const parentCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.parentId;
       // For variant products, calculate total stock and use base price or first variant price

@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
 import UserViewedClient from './UserViewedClient';
-import { getProducts } from '@/app/actions/getProducts';
 export const dynamic = 'force-dynamic';
 
 const Viewed = async () => {

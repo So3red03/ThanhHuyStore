@@ -74,6 +74,8 @@ model User {
   // activities removed - migrated to AuditLog
   userVouchers    UserVoucher[]
   analyticsEvents AnalyticsEvent[]
+  returnRequests  ReturnRequest[]
+  approvedReturns ReturnRequest[] @relation("ReturnApprover")
 
   chatRoomIds     String[]          @db.ObjectId
   chatRoom        ChatRoom[]        @relation(fields: [chatRoomIds], references: [id])
@@ -106,6 +108,10 @@ model Order {
   cancelReason    String?
   cancelDate      DateTime?
 
+  // Return/Exchange tracking (simple) - Optional để tránh mất dữ liệu
+  returnStatus    OrderReturnStatus?
+  returnedAmount  Float?
+
   // Timestamps
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -113,6 +119,7 @@ model Order {
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   voucher         Voucher?          @relation(fields: [voucherId], references: [id])
   products        CartProductType[]
+  returnRequests  ReturnRequest[]
 }
 
 type CartProductType {
@@ -669,4 +676,64 @@ model EmailCampaign {
 
   @@index([productId])
   @@index([sentAt])
+}
+
+// Return/Exchange Request Model - Tất cả optional để tránh mất dữ liệu
+model ReturnRequest {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  orderId         String?           @db.ObjectId
+  userId          String?           @db.ObjectId
+  type            ReturnType?       // RETURN hoặc EXCHANGE
+  status          ReturnStatus?     @default(PENDING)
+
+  // Simplified items (JSON array) - Optional
+  items           Json?             // [{productId, variantId?, quantity, unitPrice, reason}]
+
+  // Basic info - Optional
+  reason          String?           // "DEFECTIVE", "WRONG_ITEM", "CHANGE_MIND"
+  description     String?
+  images          String[]          @default([]) // Tối đa 3 ảnh
+
+  // Financial (simple) - Optional
+  refundAmount    Float?            // Số tiền hoàn (đã tính phí)
+  additionalCost  Float?            // Phí bù thêm (exchange)
+
+  // Admin workflow (simple) - Optional
+  adminNotes      String?
+  approvedBy      String?           @db.ObjectId
+  approvedAt      DateTime?
+
+  // Timestamps
+  createdAt       DateTime?         @default(now())
+  updatedAt       DateTime?         @updatedAt
+
+  // Relations - Optional
+  order           Order?            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user            User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approver        User?             @relation("ReturnApprover", fields: [approvedBy], references: [id])
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([type, status])
+}
+
+enum ReturnType {
+  RETURN          // Trả hàng hoàn tiền
+  EXCHANGE        // Đổi hàng
+}
+
+enum ReturnStatus {
+  PENDING         // Chờ duyệt
+  APPROVED        // Đã duyệt
+  REJECTED        // Từ chối
+  COMPLETED       // Hoàn tất
+}
+
+enum OrderReturnStatus {
+  NONE            // Chưa trả hàng
+  PARTIAL         // Trả một phần
+  FULL            // Trả toàn bộ
+  EXCHANGED       // Đã đổi hàng
 }

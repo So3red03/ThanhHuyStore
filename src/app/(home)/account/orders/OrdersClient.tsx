@@ -17,6 +17,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import OrderDetails from '@/app/components/OrderDetails';
 import CancelOrderDialog from '@/app/components/CancelOrderDialog';
+import ReturnRequestButton from '@/app/components/returns/ReturnRequestButton';
 
 export const formatDate = (date: any) => {
   if (!date) return 'N/A';
@@ -233,6 +234,18 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
                       </button>
                     )}
                   </div>
+
+                  {/* Return/Exchange Buttons */}
+                  {currentUser && (
+                    <ReturnRequestButton
+                      order={{ ...order, user: currentUser }}
+                      currentUser={currentUser}
+                      onReturnRequested={() => {
+                        // Refresh orders after return request
+                        window.location.reload();
+                      }}
+                    />
+                  )}
                   <span className='text-md font-semibold'>{formatPrice(order.amount)}</span>
                 </div>
               </div>

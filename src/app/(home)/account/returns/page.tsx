@@ -1,18 +1,16 @@
-import { Suspense } from 'react';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
-import OrdersClient from './OrdersClient';
-import { getOrdersById } from '@/app/actions/getOrdersById';
+import ReturnsClient from './ReturnsClient';
 import NullData from '@/app/components/NullData';
+import { Suspense } from 'react';
 import { ReturnRequestProvider } from '@/app/contexts/ReturnRequestContext';
-
 export const dynamic = 'force-dynamic';
 
-const Orders = async () => {
+const ReturnsPage = async () => {
   const currentUser = await getCurrentUser();
+
   if (!currentUser) {
     return <NullData title='Bạn chưa đăng nhập' />;
   }
-  const orders = await getOrdersById(currentUser?.id);
 
   return (
     <ReturnRequestProvider>
@@ -23,10 +21,10 @@ const Orders = async () => {
           </div>
         }
       >
-        <OrdersClient orders={orders} currentUser={currentUser} />
+        <ReturnsClient currentUser={currentUser} />
       </Suspense>
     </ReturnRequestProvider>
   );
 };
 
-export default Orders;
+export default ReturnsPage;

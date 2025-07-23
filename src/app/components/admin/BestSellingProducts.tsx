@@ -12,15 +12,26 @@ interface BestSellingProductsProps {
 }
 
 const BestSellingProducts: React.FC<BestSellingProductsProps> = ({ uniqueProducts, orders = [] }) => {
-  // 🎯 Calculate purchase quantities for each product (only completed and delivered orders)
+  // 🎯 Calculate purchase quantities for each product (only completed orders)
   const enhancedProducts = useMemo(() => {
     return (
       uniqueProducts
         ?.map(product => {
-          // Filter only completed and delivered orders
-          const completedOrders = orders.filter(
-            order => order.status === 'completed' && order.deliveryStatus === 'delivered'
-          );
+          // Filter only completed orders (excluding returned orders)
+          const completedOrders = orders.filter(order => {
+            // Only include completed orders
+            if (order.status !== 'completed') return false;
+
+            // Exclude orders with approved/completed return requests
+            if (order.returnRequests && order.returnRequests.length > 0) {
+              const hasActiveReturn = order.returnRequests.some(
+                (returnReq: any) => returnReq.status === 'APPROVED' || returnReq.status === 'COMPLETED'
+              );
+              if (hasActiveReturn) return false;
+            }
+
+            return true;
+          });
 
           // Calculate total quantity purchased across completed orders only
           const totalPurchased = completedOrders.reduce((total, order) => {
@@ -34,12 +45,55 @@ const BestSellingProducts: React.FC<BestSellingProductsProps> = ({ uniqueProduct
             return total + (orderProduct?.quantity || 0) * (orderProduct?.price || product.price || 0);
           }, 0);
 
+          // Calculate correct stock (including variants)
+          let displayStock = product.inStock || 0;
+          if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+            // Calculate total stock from all variants
+            displayStock = product.variants.reduce((total: number, variant: any) => {
+              return total + (variant.stock || 0);
+            }, 0);
+          }
+
+          // Get product image (handles both simple and variant products)
+          let imageUrl = '/noavatar.png';
+
+          // For simple products, use thumbnail or first gallery image
+          if (product.productType === 'SIMPLE') {
+            if (product.thumbnail) {
+              imageUrl = product.thumbnail;
+            } else if (product.galleryImages && product.galleryImages.length > 0) {
+              imageUrl = product.galleryImages[0];
+            }
+          }
+
+          // For variant products, try to get image from first active variant
+          if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+            const firstVariantWithImage = product.variants.find(
+              (variant: any) => variant.thumbnail || (variant.galleryImages && variant.galleryImages.length > 0)
+            );
+            if (firstVariantWithImage) {
+              imageUrl = firstVariantWithImage.thumbnail || firstVariantWithImage.galleryImages[0];
+            } else {
+              // Fallback to product-level images
+              if (product.thumbnail) {
+                imageUrl = product.thumbnail;
+              } else if (product.galleryImages && product.galleryImages.length > 0) {
+                imageUrl = product.galleryImages[0];
+              }
+            }
+          }
+
+          // Final fallback for backward compatibility
+          if (imageUrl === '/noavatar.png') {
+            imageUrl = product.selectedImg || '/noavatar.png';
+          }
+
           return {
             ...product,
             totalPurchased,
             totalRevenue,
-            // Use thumbnail field from schema instead of selectedImg
-            imageUrl: product.thumbnail || product.selectedImg || '/noavatar.png'
+            inStock: displayStock, // Override with calculated stock
+            imageUrl
           };
         })
         .sort((a, b) => b.totalPurchased - a.totalPurchased) || []

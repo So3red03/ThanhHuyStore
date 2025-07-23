@@ -10,6 +10,8 @@ import Button from './Button';
 import { useState } from 'react';
 import CancelOrderDialog from './CancelOrderDialog';
 import { formatDate } from '../(home)/account/orders/OrdersClient';
+import ReturnRequestButton from './returns/ReturnRequestButton';
+import ReturnRequestStatus from './returns/ReturnRequestStatus';
 
 interface OrderDetailsProps {
   order: Order & {
@@ -19,15 +21,18 @@ interface OrderDetailsProps {
   currentUser: SafeUser;
   showCancelButton?: boolean;
   onOrderCancelled?: () => void;
+  showReturnButton?: boolean;
 }
 
 const OrderDetails: React.FC<OrderDetailsProps> = ({
   order,
   currentUser,
   showCancelButton = false,
-  onOrderCancelled
+  onOrderCancelled,
+  showReturnButton = true
 }) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const getOrderStatusText = (status: OrderStatus) => {
     switch (status) {
@@ -94,6 +99,10 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
     if (onOrderCancelled) {
       onOrderCancelled();
     }
+  };
+
+  const handleReturnRequested = () => {
+    setRefreshKey(prev => prev + 1);
   };
   return (
     <>
@@ -241,6 +250,15 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
           <p className='text-gray-700'>Số điện thoại: {order.phoneNumber}</p>
           <p className='text-gray-700'>Địa chỉ: {`${order.address?.line1 || ''} ${order.address?.city || ''}`}</p>
         </div>
+
+        {/* Return/Exchange Section */}
+        {showReturnButton && currentUser.id === order.userId && (
+          <>
+            <ReturnRequestButton order={order} currentUser={currentUser} onReturnRequested={handleReturnRequested} />
+
+            <ReturnRequestStatus key={refreshKey} order={order} currentUser={currentUser} />
+          </>
+        )}
 
         {/* Shipping functionality removed */}
       </div>

@@ -6,6 +6,7 @@ import getColumnChartData from '@/app/actions/getColumnChartData';
 import { Suspense } from 'react';
 import { getConversations } from '@/app/actions/getConversations';
 import { getReviews } from '@/app/actions/getReviews';
+import { getProducts } from '@/app/actions/getProducts';
 import DashboardTabs from '@/app/components/admin/DashboardTabs';
 import OverviewTab from '@/app/components/admin/dashboard/OverviewTab';
 import AnalyticsTab from '@/app/components/admin/dashboard/AnalyticsTab';
@@ -24,13 +25,34 @@ const AdminDashboard = async () => {
   const columnChartData = await getColumnChartData();
   const userInSession = await getSessionUsers();
   const conversations = await getConversations();
+  const products = await getProducts({ category: null }); // Get all products for consistent data
 
-  // Calculate average order value from completed orders
-  const completedOrders = orders?.filter(order => order.status === 'completed') || [];
+  // Calculate average order value from completed orders (excluding returned orders)
+  const completedOrders =
+    orders?.filter(order => {
+      // Only include completed orders
+      if (order.status !== 'completed') return false;
+
+      // Exclude orders with approved/completed return requests
+      if (order.returnRequests && order.returnRequests.length > 0) {
+        const hasActiveReturn = order.returnRequests.some(
+          (returnReq: any) => returnReq.status === 'APPROVED' || returnReq.status === 'COMPLETED'
+        );
+        if (hasActiveReturn) {
+          console.log(`🔄 [AVG-ORDER] Excluding order ${order.id} from average calculation due to return request`);
+          return false;
+        }
+      }
+
+      return true;
+    }) || [];
+
   const avgOrderValue =
     completedOrders.length > 0
       ? completedOrders.reduce((sum, order) => sum + (order.amount || 0), 0) / completedOrders.length
       : 0;
+
+  console.log(`📊 [AVG-ORDER] Average order value: ${avgOrderValue} (from ${completedOrders.length} valid orders)`);
 
   return (
     <Suspense
@@ -62,7 +84,7 @@ const AdminDashboard = async () => {
             />
           }
           analyticsContent={<AnalyticsTab />}
-          reportsContent={<ReportsTab orders={orders} users={users} totalRevenue={totalRevenue} />}
+          reportsContent={<ReportsTab orders={orders} users={users} totalRevenue={totalRevenue} products={products} />}
           notificationsContent={<AuditTab orders={orders} users={users} />}
           orders={orders}
           users={users}

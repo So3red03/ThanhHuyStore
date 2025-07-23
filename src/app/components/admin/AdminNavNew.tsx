@@ -33,6 +33,7 @@ const pathTitle: { [key: string]: string } = {
   '/admin/manage-products': 'Quản lý sản phẩm',
   '/admin/manage-orders': 'Quản lý đơn hàng',
   '/admin/manage-orders/kanban': 'Kanban Đơn hàng',
+  '/admin/manage-returns': 'Quản lý đổi/trả hàng',
   '/admin/manage-users': 'Quản lý người dùng',
   '/admin/manage-staff': 'Quản lý nhân viên',
   '/admin/manage-categories': 'Quản lý danh mục cha',

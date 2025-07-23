@@ -31,16 +31,16 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    // Validate status transition if status is being updated (skip validation if isTest is true)
-    if (status !== undefined && !isTest) {
+    // Validate status transition if status is being updated AND actually changed (skip validation if isTest is true)
+    if (status !== undefined && !isTest && status !== oldOrder.status) {
       const validation = validateOrderStatusTransition(oldOrder.status, status, oldOrder.deliveryStatus);
       if (!validation.isValid) {
         return NextResponse.json({ error: validation.error }, { status: 400 });
       }
     }
 
-    // Validate delivery status transition if deliveryStatus is being updated (skip validation if isTest is true)
-    if (deliveryStatus !== undefined && !isTest) {
+    // Validate delivery status transition if deliveryStatus is being updated AND actually changed (skip validation if isTest is true)
+    if (deliveryStatus !== undefined && !isTest && deliveryStatus !== oldOrder.deliveryStatus) {
       // Use the new status if it's being updated, otherwise use the old status
       const statusForValidation = status !== undefined ? status : oldOrder.status;
       const validation = validateDeliveryStatusTransition(oldOrder.deliveryStatus, deliveryStatus, statusForValidation);
