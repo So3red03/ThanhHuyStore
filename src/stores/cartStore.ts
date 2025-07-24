@@ -218,7 +218,14 @@ export const useCartStore = create<CartStore>()(
           cartTotalQty: 0,
           cartTotalAmount: 0,
           discountAmount: 0,
-          finalAmount: 0
+          finalAmount: 0,
+          // Clear order note when clearing cart
+          orderNote: '',
+          // Reset shipping calculation
+          shippingFee: 0,
+          shippingAddress: null,
+          shippingType: null,
+          isShippingCalculated: false
         });
         toast.success('Xóa tất cả sản phẩm thành công');
       },

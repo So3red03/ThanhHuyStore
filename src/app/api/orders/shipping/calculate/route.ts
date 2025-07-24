@@ -62,6 +62,12 @@ export async function POST(request: NextRequest) {
       shippingOptions,
       selectedOption,
       breakdown: {
+        // New zone-based fields
+        zone: breakdown.zone,
+        zoneFee: breakdown.zoneFee,
+        description: breakdown.description,
+        estimatedDays: breakdown.estimatedDays,
+        // Legacy fields for backward compatibility
         distance: breakdown.distance,
         baseShipping: breakdown.baseShipping,
         distanceFee: breakdown.distanceFee,
@@ -71,6 +77,11 @@ export async function POST(request: NextRequest) {
       },
       settings: {
         freeShippingThreshold: settings.freeShippingThreshold,
+        // Zone-based fees
+        sameDistrictFee: settings.sameDistrictFee,
+        sameProvinceFee: settings.sameProvinceFee,
+        sameRegionFee: settings.sameRegionFee,
+        crossRegionFee: settings.crossRegionFee,
         shopLocation: {
           province: settings.shopProvince,
           district: settings.shopDistrict,
@@ -133,6 +144,12 @@ export async function GET(request: NextRequest) {
           ward: settings.shopWard
         },
         freeShippingThreshold: settings.freeShippingThreshold,
+        // Zone-based fees
+        sameDistrictFee: settings.sameDistrictFee,
+        sameProvinceFee: settings.sameProvinceFee,
+        sameRegionFee: settings.sameRegionFee,
+        crossRegionFee: settings.crossRegionFee,
+        // Legacy fields for compatibility
         baseShippingFee: settings.baseShippingFee,
         shippingPerKm: settings.shippingPerKm
       }

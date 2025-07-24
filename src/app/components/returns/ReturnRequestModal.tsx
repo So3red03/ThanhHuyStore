@@ -10,6 +10,7 @@ import { MdCloudUpload, MdDelete } from 'react-icons/md';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import ExchangeProductInlineSelector from './ExchangeProductInlineSelector';
+import ReturnShippingBreakdown from './ReturnShippingBreakdown';
 
 interface ReturnRequestModalProps {
   isOpen: boolean;
@@ -503,43 +504,38 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
           </div>
         )}
 
-        {/* Summary */}
-        {selectedItems.length > 0 && type === 'RETURN' && (
+        {/* Return Shipping Breakdown */}
+        {selectedItems.length > 0 && type === 'RETURN' && reason && (
+          <div className='mb-8'>
+            <ReturnShippingBreakdown
+              orderId={order.id}
+              reason={reason}
+              items={selectedItems.map(item => ({
+                id: item.productId,
+                name: item.name,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice
+              }))}
+            />
+          </div>
+        )}
+
+        {/* Simple Summary for Exchange */}
+        {selectedItems.length > 0 && type === 'EXCHANGE' && (
           <div className='mb-8 p-4 bg-gray-50 rounded-lg'>
-            <h3 className='text-lg font-semibold mb-2'>Tóm tắt hoàn tiền</h3>
+            <h3 className='text-lg font-semibold mb-2'>Tóm tắt đổi hàng</h3>
             <div className='space-y-2'>
-              {selectedItems.map((item, index) => {
-                const itemTotal = item.unitPrice * item.quantity;
-                // Use item's individual reason if available, otherwise use general reason
-                const effectiveReason = item.reason || reason;
-                const refundRate = effectiveReason === 'DEFECTIVE' || effectiveReason === 'WRONG_ITEM' ? 1.0 : 0.95;
-                const refundAmount = itemTotal * refundRate;
-
-                // Show reason and refund rate for clarity
-                const reasonText = effectiveReason
-                  ? reasonOptions.find(opt => opt.value === effectiveReason)?.label || effectiveReason
-                  : 'Chưa chọn lý do';
-                const refundRateText =
-                  effectiveReason === 'DEFECTIVE' || effectiveReason === 'WRONG_ITEM' ? '100%' : '95%';
-
-                return (
-                  <div key={index} className='space-y-1'>
-                    <div className='flex justify-between text-sm'>
-                      <span>
-                        {item.name} x{item.quantity}
-                      </span>
-                      <span>{formatPrice(refundAmount)}</span>
-                    </div>
-                    <div className='flex justify-between text-xs text-gray-500'>
-                      <span>{reasonText}</span>
-                      <span>Hoàn {refundRateText}</span>
-                    </div>
-                  </div>
-                );
-              })}
+              {selectedItems.map((item, index) => (
+                <div key={index} className='flex justify-between text-sm'>
+                  <span>
+                    {item.name} x{item.quantity}
+                  </span>
+                  <span>{formatPrice(item.unitPrice * item.quantity)}</span>
+                </div>
+              ))}
               <div className='border-t pt-2 flex justify-between font-semibold'>
-                <span>Tổng hoàn tiền:</span>
-                <span className='text-green-600'>{formatPrice(calculateRefund())}</span>
+                <span>Tổng giá trị:</span>
+                <span className='text-blue-600'>{formatPrice(calculateRefund())}</span>
               </div>
             </div>
           </div>

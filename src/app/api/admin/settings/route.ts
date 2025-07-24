@@ -74,8 +74,13 @@ export async function GET(request: NextRequest) {
           shopDistrict: 'Quận 1',
           shopWard: 'Phường Bến Nghé',
           freeShippingThreshold: 5000000, // Free ship over 5tr
-          baseShippingFee: 15000, // Standard shipping fee
-          shippingPerKm: 1500, // Additional fee per km
+          baseShippingFee: 18000, // Legacy compatibility
+          shippingPerKm: 0, // Not used in zone-based pricing
+          // Zone-based shipping fees
+          sameDistrictFee: 18000, // Cùng quận/huyện: 18k
+          sameProvinceFee: 22000, // Cùng tỉnh/thành: 22k
+          sameRegionFee: 28000, // Cùng miền: 28k
+          crossRegionFee: 38000, // Khác miền: 38k
           returnShippingPolicy: {
             DEFECTIVE: {
               customerPaysShipping: false,
@@ -171,7 +176,12 @@ export async function PUT(request: NextRequest) {
       freeShippingThreshold,
       baseShippingFee,
       shippingPerKm,
-      returnShippingPolicy
+      returnShippingPolicy,
+      // Zone-based shipping fees
+      sameDistrictFee,
+      sameProvinceFee,
+      sameRegionFee,
+      crossRegionFee
     } = body;
 
     // Validate critical business rules

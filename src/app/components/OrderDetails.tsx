@@ -3,10 +3,7 @@
 import { CartProductType, DeliveryStatus, Order, OrderStatus } from '@prisma/client';
 import { SafeUser } from '../../../types';
 import { formatPrice } from '../../../utils/formatPrice';
-import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import Image from 'next/image';
-import Button from './Button';
 import { useState } from 'react';
 import CancelOrderDialog from './CancelOrderDialog';
 import { formatDate } from '../(home)/account/orders/OrdersClient';

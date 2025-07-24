@@ -543,10 +543,16 @@ model AdminSettings {
   shopDistrict          String?  @default("Quận 1")
   shopWard              String?  @default("Phường Bến Nghé")
 
-  // Shipping Settings (Standard only)
+  // Shipping Settings - Zone-based pricing
   freeShippingThreshold Float?   @default(5000000) // Free ship over 5tr
-  baseShippingFee       Float?   @default(15000)  // Standard shipping fee
-  shippingPerKm         Float?   @default(1500)   // Additional fee per km
+  baseShippingFee       Float?   @default(18000)   // Legacy field for compatibility
+  shippingPerKm         Float?   @default(0)       // Legacy field (not used in zone-based)
+
+  // Zone-based shipping fees (market competitive)
+  sameDistrictFee       Float?   @default(18000)   // Cùng quận/huyện: 18k
+  sameProvinceFee       Float?   @default(22000)   // Cùng tỉnh/thành: 22k
+  sameRegionFee         Float?   @default(28000)   // Cùng miền: 28k
+  crossRegionFee        Float?   @default(38000)   // Khác miền: 38k
 
   // Return Policy Settings
   returnShippingPolicy  Json?    @default("{}") // Return shipping policies
@@ -716,6 +722,7 @@ model ReturnRequest {
   // Financial (simple) - Optional
   refundAmount    Float?            // Số tiền hoàn (đã tính phí)
   additionalCost  Float?            // Phí bù thêm (exchange)
+  shippingBreakdown Json?           // Chi tiết phí vận chuyển trả hàng
 
   // Admin workflow (simple) - Optional
   adminNotes      String?

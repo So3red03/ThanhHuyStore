@@ -1,5 +1,6 @@
-// Simple shipping calculation utility
-// No external API dependencies - uses distance estimation
+// Modern shipping calculation utility with zone-based pricing
+// Follows Vietnam market standards (GHTK/GHN compatible)
+// Zone-based pricing: SAME_DISTRICT -> SAME_PROVINCE -> SAME_REGION -> CROSS_REGION
 
 interface ShippingCalculationRequest {
   customerAddress: {
@@ -27,7 +28,92 @@ interface AdminSettings {
   baseShippingFee?: number | null;
   shippingPerKm?: number | null;
   returnShippingPolicy?: any;
+  // New zone-based pricing fields
+  sameDistrictFee?: number | null;
+  sameProvinceFee?: number | null;
+  sameRegionFee?: number | null;
+  crossRegionFee?: number | null;
 }
+
+// Vietnam geographical regions for shipping calculation
+export const VIETNAM_REGIONS = {
+  NORTH: [
+    'Hà Nội',
+    'Hải Phòng',
+    'Quảng Ninh',
+    'Thái Nguyên',
+    'Lạng Sơn',
+    'Cao Bằng',
+    'Bắc Kạn',
+    'Tuyên Quang',
+    'Lào Cai',
+    'Yên Bái',
+    'Phú Thọ',
+    'Vĩnh Phúc',
+    'Bắc Ninh',
+    'Bắc Giang',
+    'Hải Dương',
+    'Hưng Yên',
+    'Thái Bình',
+    'Hà Nam',
+    'Nam Định',
+    'Ninh Bình',
+    'Hòa Bình',
+    'Sơn La',
+    'Điện Biên',
+    'Lai Châu'
+  ],
+  CENTRAL: [
+    'Thanh Hóa',
+    'Nghệ An',
+    'Hà Tĩnh',
+    'Quảng Bình',
+    'Quảng Trị',
+    'Thừa Thiên Huế',
+    'Đà Nẵng',
+    'Quảng Nam',
+    'Quảng Ngãi',
+    'Bình Định',
+    'Phú Yên',
+    'Khánh Hòa',
+    'Ninh Thuận',
+    'Bình Thuận',
+    'Kon Tum',
+    'Gia Lai',
+    'Đắk Lắk',
+    'Đắk Nông',
+    'Lâm Đồng'
+  ],
+  SOUTH: [
+    'TP. Hồ Chí Minh',
+    'Bình Dương',
+    'Đồng Nai',
+    'Bà Rịa - Vũng Tàu',
+    'Tây Ninh',
+    'Bình Phước',
+    'Long An',
+    'Tiền Giang',
+    'Bến Tre',
+    'Trà Vinh',
+    'Vĩnh Long',
+    'Đồng Tháp',
+    'An Giang',
+    'Kiên Giang',
+    'Cần Thơ',
+    'Hậu Giang',
+    'Sóc Trăng',
+    'Bạc Liêu',
+    'Cà Mau'
+  ]
+};
+
+// Market-standard shipping fees (VND) - competitive with GHTK/GHN
+export const MARKET_STANDARD_SHIPPING = {
+  SAME_DISTRICT: 18000, // Cùng quận/huyện: 18k
+  SAME_PROVINCE: 22000, // Cùng tỉnh/thành: 22k
+  SAME_REGION: 28000, // Cùng miền: 28k
+  CROSS_REGION: 38000 // Khác miền: 38k
+};
 
 // Default return shipping policies
 export const DEFAULT_RETURN_POLICIES = {
@@ -64,6 +150,7 @@ export const DEFAULT_RETURN_POLICIES = {
 export class SimpleShippingCalculator {
   /**
    * Calculate shipping options based on customer address and order value
+   * Uses zone-based pricing for market competitiveness
    */
   static calculate(request: ShippingCalculationRequest, settings: AdminSettings): ShippingOption[] {
     const { customerAddress, orderValue } = request;
@@ -71,34 +158,31 @@ export class SimpleShippingCalculator {
     // Check free shipping threshold
     const isFreeShipping = orderValue >= (settings.freeShippingThreshold || 5000000);
 
-    // Simple distance estimation based on province/district
-    const distance = this.estimateDistance(customerAddress, settings);
+    // Determine shipping zone
+    const shippingZone = this.determineShippingZone(customerAddress, settings);
 
-    // Calculate standard shipping fee only - use consistent baseShippingFee
-    const baseShipping = settings.baseShippingFee || 25000;
-    const distanceFee = distance > 10 ? (distance - 10) * (settings.shippingPerKm || 2000) : 0;
-
-    // Standard shipping fee
-    const standardFee = isFreeShipping ? 0 : baseShipping + distanceFee;
+    // Get shipping fee based on zone
+    const standardFee = isFreeShipping ? 0 : this.getShippingFeeByZone(shippingZone, settings);
 
     return [
       {
         type: 'standard',
         fee: standardFee,
-        estimatedDays: 3,
-        description: 'Giao hàng tiêu chuẩn (2-3 ngày)',
+        estimatedDays: this.getEstimatedDays(shippingZone),
+        description: this.getShippingDescription(shippingZone),
         isFree: isFreeShipping
       }
     ];
   }
 
   /**
-   * Simple distance estimation based on province/district matching
-   * This is a fallback method - can be enhanced with real geocoding later
+   * Determine shipping zone based on geographical regions
    */
-  private static estimateDistance(customerAddress: any, settings: AdminSettings): number {
+  private static determineShippingZone(customerAddress: any, settings: AdminSettings): string {
     const shopProvince = settings.shopProvince || 'TP. Hồ Chí Minh';
     const shopDistrict = settings.shopDistrict || 'Quận 1';
+    const customerProvince = customerAddress.province;
+    const customerDistrict = customerAddress.district;
 
     // Normalize strings for comparison (remove accents, lowercase)
     const normalizeString = (str: string) => {
@@ -110,17 +194,108 @@ export class SimpleShippingCalculator {
         .replace(/[^a-z0-9]/g, '');
     };
 
-    const customerProvinceNorm = normalizeString(customerAddress.province);
-    const customerDistrictNorm = normalizeString(customerAddress.district);
     const shopProvinceNorm = normalizeString(shopProvince);
     const shopDistrictNorm = normalizeString(shopDistrict);
+    const customerProvinceNorm = normalizeString(customerProvince);
+    const customerDistrictNorm = normalizeString(customerDistrict);
 
-    if (customerProvinceNorm !== shopProvinceNorm) {
-      return 50; // Inter-province: 50km
-    } else if (customerDistrictNorm !== shopDistrictNorm) {
-      return 20; // Different district: 20km
-    } else {
-      return 5; // Same district: 5km
+    // Same district
+    if (shopProvinceNorm === customerProvinceNorm && shopDistrictNorm === customerDistrictNorm) {
+      return 'SAME_DISTRICT';
+    }
+
+    // Same province
+    if (shopProvinceNorm === customerProvinceNorm) {
+      return 'SAME_PROVINCE';
+    }
+
+    // Check regions
+    const shopRegion = this.getRegion(shopProvince);
+    const customerRegion = this.getRegion(customerProvince);
+
+    if (shopRegion === customerRegion) {
+      return 'SAME_REGION';
+    }
+
+    return 'CROSS_REGION';
+  }
+
+  /**
+   * Get region for a province
+   */
+  private static getRegion(province: string): string {
+    const normalizedProvince = province
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd');
+
+    for (const [region, provinces] of Object.entries(VIETNAM_REGIONS)) {
+      const found = provinces.some(p => {
+        const normalizedP = p
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/đ/g, 'd');
+        return normalizedProvince.includes(normalizedP) || normalizedP.includes(normalizedProvince);
+      });
+      if (found) return region;
+    }
+
+    return 'SOUTH'; // Default to South if not found
+  }
+
+  /**
+   * Get shipping fee based on zone
+   */
+  private static getShippingFeeByZone(zone: string, settings: AdminSettings): number {
+    switch (zone) {
+      case 'SAME_DISTRICT':
+        return settings.sameDistrictFee || MARKET_STANDARD_SHIPPING.SAME_DISTRICT;
+      case 'SAME_PROVINCE':
+        return settings.sameProvinceFee || MARKET_STANDARD_SHIPPING.SAME_PROVINCE;
+      case 'SAME_REGION':
+        return settings.sameRegionFee || MARKET_STANDARD_SHIPPING.SAME_REGION;
+      case 'CROSS_REGION':
+        return settings.crossRegionFee || MARKET_STANDARD_SHIPPING.CROSS_REGION;
+      default:
+        return settings.baseShippingFee || MARKET_STANDARD_SHIPPING.SAME_DISTRICT;
+    }
+  }
+
+  /**
+   * Get estimated delivery days based on zone
+   */
+  private static getEstimatedDays(zone: string): number {
+    switch (zone) {
+      case 'SAME_DISTRICT':
+        return 1;
+      case 'SAME_PROVINCE':
+        return 2;
+      case 'SAME_REGION':
+        return 3;
+      case 'CROSS_REGION':
+        return 4;
+      default:
+        return 3;
+    }
+  }
+
+  /**
+   * Get shipping description based on zone
+   */
+  private static getShippingDescription(zone: string): string {
+    switch (zone) {
+      case 'SAME_DISTRICT':
+        return 'Giao hàng nội thành (1 ngày)';
+      case 'SAME_PROVINCE':
+        return 'Giao hàng nội tỉnh (2 ngày)';
+      case 'SAME_REGION':
+        return 'Giao hàng nội miền (3 ngày)';
+      case 'CROSS_REGION':
+        return 'Giao hàng liên miền (4 ngày)';
+      default:
+        return 'Giao hàng tiêu chuẩn (2-3 ngày)';
     }
   }
 
@@ -129,20 +304,43 @@ export class SimpleShippingCalculator {
    */
   static getShippingBreakdown(request: ShippingCalculationRequest, settings: AdminSettings) {
     const { customerAddress, orderValue } = request;
-    const distance = this.estimateDistance(customerAddress, settings);
+    const shippingZone = this.determineShippingZone(customerAddress, settings);
     const isFreeShipping = orderValue >= (settings.freeShippingThreshold || 5000000);
 
-    const baseShipping = settings.baseShippingFee || 25000;
-    const distanceFee = distance > 10 ? (distance - 10) * (settings.shippingPerKm || 2000) : 0;
+    const zoneFee = this.getShippingFeeByZone(shippingZone, settings);
+    const totalFee = isFreeShipping ? 0 : zoneFee;
 
     return {
-      distance,
-      baseShipping,
-      distanceFee,
-      totalFee: isFreeShipping ? 0 : baseShipping + distanceFee,
+      zone: shippingZone,
+      zoneFee,
+      totalFee,
       isFreeShipping,
-      freeShippingThreshold: settings.freeShippingThreshold || 5000000
+      freeShippingThreshold: settings.freeShippingThreshold || 5000000,
+      estimatedDays: this.getEstimatedDays(shippingZone),
+      description: this.getShippingDescription(shippingZone),
+      // Legacy fields for backward compatibility
+      distance: this.getLegacyDistance(shippingZone),
+      baseShipping: zoneFee,
+      distanceFee: 0
     };
+  }
+
+  /**
+   * Get legacy distance for backward compatibility
+   */
+  private static getLegacyDistance(zone: string): number {
+    switch (zone) {
+      case 'SAME_DISTRICT':
+        return 5;
+      case 'SAME_PROVINCE':
+        return 20;
+      case 'SAME_REGION':
+        return 35;
+      case 'CROSS_REGION':
+        return 50;
+      default:
+        return 20;
+    }
   }
 }
 
@@ -184,16 +382,70 @@ export class SimpleReturnCalculator {
       processingFee,
       totalRefund,
       restoreInventory: policy.restoreInventory,
+      requiresApproval: policy.requiresApproval,
+      policy // Include policy details for UI display
+    };
+  }
+
+  /**
+   * Get return shipping breakdown for display
+   */
+  static getReturnShippingBreakdown(returnRequest: any, originalOrder: any, settings: AdminSettings) {
+    const policy = this.getReturnPolicy(returnRequest.reason, settings);
+    const calculation = this.calculate(returnRequest, originalOrder, settings);
+
+    return {
+      reason: returnRequest.reason,
+      reasonText: this.getReasonText(returnRequest.reason),
+      customerPaysShipping: policy.customerPaysShipping,
+      shippingResponsibility: policy.customerPaysShipping ? 'Khách hàng' : 'Cửa hàng',
+      returnShippingFee: calculation.returnShippingFee,
+      customerShippingFee: calculation.customerShippingFee,
+      shopShippingFee: calculation.shopShippingFee,
+      refundAmount: calculation.refundAmount,
+      processingFee: calculation.processingFee,
+      totalRefund: calculation.totalRefund,
       requiresApproval: policy.requiresApproval
     };
   }
 
   private static getReturnPolicy(reason: string, settings: AdminSettings) {
-    const policies = settings.returnShippingPolicy || DEFAULT_RETURN_POLICIES;
-    return policies[reason] || DEFAULT_RETURN_POLICIES.CHANGE_MIND;
+    let policies = DEFAULT_RETURN_POLICIES;
+
+    // Parse JSON policy if exists
+    if (settings.returnShippingPolicy) {
+      try {
+        const customPolicies =
+          typeof settings.returnShippingPolicy === 'string'
+            ? JSON.parse(settings.returnShippingPolicy)
+            : settings.returnShippingPolicy;
+        policies = { ...DEFAULT_RETURN_POLICIES, ...customPolicies };
+      } catch (error) {
+        console.error('Error parsing return shipping policy:', error);
+      }
+    }
+
+    return policies[reason as keyof typeof policies] || DEFAULT_RETURN_POLICIES.CHANGE_MIND;
+  }
+
+  private static getReasonText(reason: string): string {
+    const reasonTexts: Record<string, string> = {
+      DEFECTIVE: 'Hàng lỗi/hư hỏng',
+      WRONG_ITEM: 'Giao sai hàng',
+      DAMAGED_SHIPPING: 'Hư hỏng trong vận chuyển',
+      CHANGE_MIND: 'Đổi ý không muốn mua',
+      WRONG_SIZE: 'Sai kích thước',
+      NOT_AS_DESCRIBED: 'Không đúng mô tả'
+    };
+    return reasonTexts[reason] || reason;
   }
 
   private static calculateReturnShippingFee(address: any, settings: AdminSettings): number {
+    // Fallback to base shipping fee if no address
+    if (!address || !address.city) {
+      return settings.sameDistrictFee || MARKET_STANDARD_SHIPPING.SAME_DISTRICT;
+    }
+
     // Use same logic as forward shipping
     const request = {
       customerAddress: {
@@ -205,6 +457,6 @@ export class SimpleReturnCalculator {
     };
 
     const options = SimpleShippingCalculator.calculate(request, settings);
-    return options[0]?.fee || settings.baseShippingFee || 25000;
+    return options[0]?.fee || settings.sameDistrictFee || MARKET_STANDARD_SHIPPING.SAME_DISTRICT;
   }
 }

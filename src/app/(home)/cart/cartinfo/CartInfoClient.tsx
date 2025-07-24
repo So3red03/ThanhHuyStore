@@ -33,6 +33,22 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [shippingBreakdown, setShippingBreakdown] = useState<any>(null);
 
+  // Helper function to get zone text
+  const getZoneText = (zone: string) => {
+    switch (zone) {
+      case 'SAME_DISTRICT':
+        return 'Cùng quận/huyện';
+      case 'SAME_PROVINCE':
+        return 'Cùng tỉnh/thành';
+      case 'SAME_REGION':
+        return 'Cùng miền';
+      case 'CROSS_REGION':
+        return 'Khác miền';
+      default:
+        return 'Tiêu chuẩn';
+    }
+  };
+
   const {
     register,
     setValue,
@@ -369,15 +385,13 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
             {shippingBreakdown.isFreeShipping ? 'Miễn phí vận chuyển!' : 'Thông tin vận chuyển:'}
           </p>
           <div className={`text-xs space-y-1 ${shippingBreakdown.isFreeShipping ? 'text-green-700' : 'text-blue-700'}`}>
-            <p>• Khoảng cách: ~{shippingBreakdown.distance}km</p>
+            <p>• Vùng giao hàng: {getZoneText(shippingBreakdown.zone)}</p>
+            <p>• Thời gian: {shippingBreakdown.description}</p>
             {shippingBreakdown.isFreeShipping ? (
               <p>• Đơn hàng đủ điều kiện freeship (từ {formatPrice(shippingBreakdown.freeShippingThreshold)})</p>
             ) : (
               <>
-                <p>• Phí cơ bản: {formatPrice(shippingBreakdown.baseShipping)}</p>
-                {shippingBreakdown.distanceFee > 0 && (
-                  <p>• Phí khoảng cách: {formatPrice(shippingBreakdown.distanceFee)}</p>
-                )}
+                <p>• Phí vận chuyển: {formatPrice(shippingBreakdown.zoneFee || shippingBreakdown.baseShipping)}</p>
                 <p className='text-orange-600 font-medium'>
                   💡 Mua thêm {formatPrice(shippingBreakdown.freeShippingThreshold - cartTotalAmount)} để được freeship!
                 </p>

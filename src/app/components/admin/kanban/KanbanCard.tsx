@@ -35,7 +35,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
 
       {/* Products */}
       <div className='mb-2'>
-        <p className='text-xs text-gray-600 mb-1'>Sản phẩm:</p>
+        <p className='text-xs text-gray-900 mb-1'>Sản phẩm:</p>
         <div className='space-y-1'>
           {order.products.slice(0, 2).map((product: any, index: number) => (
             <div key={index} className='text-xs text-gray-700'>
@@ -43,7 +43,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
             </div>
           ))}
           {order.products.length > 2 && (
-            <div className='text-xs text-gray-500'>+{order.products.length - 2} sản phẩm khác</div>
+            <div className='text-xs text-gray-900'>+{order.products.length - 2} sản phẩm khác</div>
           )}
         </div>
       </div>
@@ -77,7 +77,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
 
       {/* Shipping Fee */}
       <div className='mb-2'>
-        <p className='text-xs text-gray-600'>
+        <p className='text-xs text-gray-900'>
           Phí ship: {order.shippingFee ? formatPrice(order.shippingFee) : 'Chưa tính'}
         </p>
       </div>

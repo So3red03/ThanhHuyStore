@@ -33,6 +33,7 @@ import {
   getValidOrderStatusTransitions,
   canTransitionDeliveryStatus
 } from '@/app/utils/orderStatusValidation';
+import { formatPrice } from '../../../../../utils/formatPrice';
 
 interface ManageOrdersClientProps {
   orders: Order[];
@@ -141,7 +142,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
       headerName: 'Giá đơn',
       width: 110,
       renderCell: params => {
-        return <div className='font-bold text-slate-800'>{params.row.amount}</div>;
+        return <div className='font-bold text-slate-800'>{formatPrice(params.row.amount)}</div>;
       }
     },
     {

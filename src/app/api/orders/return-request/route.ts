@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { ReturnType, OrderStatus } from '@prisma/client';
+import { SimpleReturnCalculator } from '../../../../../utils/shipping/calculator';
 
 interface ReturnItem {
   productId: string;
@@ -190,14 +191,39 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate refund amount
+    // Get admin settings for shipping calculation
+    const settings = await prisma.adminSettings.findFirst();
+    if (!settings) {
+      return NextResponse.json({ error: 'Settings not found' }, { status: 500 });
+    }
+
+    // Calculate refund amount with shipping
     let refundAmount = 0;
     let additionalCost = 0;
+    let shippingBreakdown = null;
 
     if (type === 'RETURN') {
-      // Calculate refund based on reason
-      const refundRate = reason === 'DEFECTIVE' || reason === 'WRONG_ITEM' ? 1.0 : 0.95;
-      refundAmount = items.reduce((total, item) => total + item.unitPrice * item.quantity, 0) * refundRate;
+      // Use SimpleReturnCalculator for accurate calculation
+      const returnRequestData = {
+        reason,
+        items: items.map(item => ({
+          id: item.productId,
+          name: item.productId, // Will be replaced with actual name in calculator
+          quantity: item.quantity,
+          unitPrice: item.unitPrice
+        }))
+      };
+
+      const calculation = SimpleReturnCalculator.calculate(returnRequestData, order, settings);
+      refundAmount = calculation.totalRefund;
+      shippingBreakdown = {
+        returnShippingFee: calculation.returnShippingFee,
+        customerShippingFee: calculation.customerShippingFee,
+        shopShippingFee: calculation.shopShippingFee,
+        processingFee: calculation.processingFee,
+        customerPaysShipping: calculation.policy.customerPaysShipping,
+        requiresApproval: calculation.requiresApproval
+      };
     } else if (type === 'EXCHANGE') {
       // For exchange, calculate price difference
       if (exchangeToProductId) {
@@ -259,7 +285,8 @@ export async function POST(request: NextRequest) {
         description: description || null,
         images: images || [],
         refundAmount: refundAmount > 0 ? refundAmount : null,
-        additionalCost: additionalCost !== 0 ? additionalCost : null
+        additionalCost: additionalCost !== 0 ? additionalCost : null,
+        shippingBreakdown: shippingBreakdown
       },
       include: {
         order: {

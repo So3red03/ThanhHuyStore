@@ -12,6 +12,7 @@ import ActionBtn from '../../../components/ActionBtn';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import ReturnRequestProductItem from '../../../components/returns/ReturnRequestProductItem';
+import ReturnShippingDisplay from '../../../components/admin/returns/ReturnShippingDisplay';
 
 interface ReturnRequest {
   id: string;
@@ -22,6 +23,14 @@ interface ReturnRequest {
   refundAmount?: number;
   additionalCost?: number;
   adminNotes?: string;
+  shippingBreakdown?: {
+    returnShippingFee: number;
+    customerShippingFee: number;
+    shopShippingFee: number;
+    processingFee: number;
+    customerPaysShipping: boolean;
+    requiresApproval: boolean;
+  };
   createdAt: string;
   items: any[];
   order: {
@@ -466,7 +475,17 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
                   </div>
                 </div>
 
-                {selectedRequest.refundAmount && (
+                {/* Return Shipping Display */}
+                {selectedRequest.type === 'RETURN' && selectedRequest.shippingBreakdown && (
+                  <ReturnShippingDisplay
+                    shippingBreakdown={selectedRequest.shippingBreakdown}
+                    refundAmount={selectedRequest.refundAmount || 0}
+                    reason={selectedRequest.reason}
+                  />
+                )}
+
+                {/* Simple refund display for cases without shipping breakdown */}
+                {selectedRequest.refundAmount && !selectedRequest.shippingBreakdown && (
                   <div className='p-3 bg-green-50 border border-green-200 rounded'>
                     <strong>Số tiền hoàn:</strong> {formatPrice(selectedRequest.refundAmount)}
                   </div>
