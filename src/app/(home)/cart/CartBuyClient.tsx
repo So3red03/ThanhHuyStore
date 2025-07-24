@@ -20,7 +20,7 @@ interface CartBuyClientProps {
 const CartBuyClient: React.FC<CartBuyClientProps> = ({ currentUser }) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const { cartProducts, cartTotalAmount, handleNextStep, setStep, discountAmount, finalAmount } = useCart();
+  const { cartProducts, cartTotalAmount, handleNextStep, setStep, discountAmount, shippingFee } = useCart();
   const { isHydrated } = useHydration();
 
   useEffect(() => {
@@ -74,20 +74,38 @@ const CartBuyClient: React.FC<CartBuyClientProps> = ({ currentUser }) => {
         <VoucherDisplay />
       </div>
       <div className='flex flex-col mt-5 gap-4'>
-        <div className='flex justify-between '>
-          <span className='font-bold'>Phí vận chuyển:</span>
-          <span className='font-semibold'>{formatPrice(40000)}</span>
-        </div>
         {discountAmount > 0 && (
           <div className='flex justify-between text-green-600'>
             <span className='font-bold'>Giảm giá:</span>
             <span className='font-semibold'>-{formatPrice(discountAmount)}</span>
           </div>
         )}
+        <div className='flex justify-between '>
+          <span className='font-bold'>Phí vận chuyển:</span>
+          <span className='font-semibold'>{shippingFee > 0 ? formatPrice(shippingFee) : 'Tính khi chọn địa chỉ'}</span>
+        </div>
+
+        {/* Free shipping notification */}
+        {cartTotalAmount >= 5000000 && (
+          <div className='bg-green-50 border border-green-200 rounded-lg p-3'>
+            <p className='text-green-800 text-sm font-medium'>Đơn hàng của bạn được miễn phí vận chuyển!</p>
+          </div>
+        )}
+
+        {/* Free shipping progress */}
+        {cartTotalAmount < 5000000 && (
+          <div className='bg-blue-50 border border-blue-200 rounded-lg p-3'>
+            <p className='text-blue-800 text-sm'>
+              💡 Mua thêm {formatPrice(5000000 - cartTotalAmount)} để được miễn phí vận chuyển!
+            </p>
+          </div>
+        )}
+
         <div className='flex justify-between'>
           <span className='font-bold'>Tổng tiền:</span>
-          <span className='text-indigo-600 font-semibold text-xl'>{formatPrice(finalAmount)}</span>
+          <span className='text-indigo-600 font-semibold text-xl'>{formatPrice(cartTotalAmount - discountAmount)}</span>
         </div>
+
         <div className='mt-5 pb-3'>
           <Button label='ĐẶT HÀNG NGAY' isLoading={isLoading} onClick={handleCheckout} />
         </div>

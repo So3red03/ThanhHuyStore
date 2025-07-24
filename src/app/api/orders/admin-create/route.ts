@@ -28,7 +28,8 @@ export async function POST(request: Request) {
       address,
       shippingFee,
       paymentMethod,
-      discountAmount
+      discountAmount,
+      salesStaff
     } = body;
 
     // Validate required fields
@@ -93,7 +94,8 @@ export async function POST(request: Request) {
           address: mappedAddress,
           shippingFee: shippingFee || 0,
           paymentMethod: paymentMethod || 'cod',
-          discountAmount: discountAmount || 0
+          discountAmount: discountAmount || 0,
+          salesStaff: salesStaff || null // Add sales staff field
         },
         include: {
           user: true

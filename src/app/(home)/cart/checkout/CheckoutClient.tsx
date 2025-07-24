@@ -32,7 +32,8 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
     handleSetPaymentIntent,
     discountAmount,
     finalAmount,
-    selectedVoucher
+    selectedVoucher,
+    orderNote
   } = useCart();
   const { isHydrated } = useHydration();
   const [isLoading, setIsLoading] = useState(false);
@@ -128,7 +129,8 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
           },
           shippingFee: shippingFee,
           paymentMethod: cartInfo.payment,
-          voucher: selectedVoucher
+          voucher: selectedVoucher,
+          orderNote: orderNote
         });
 
         if (response.status === 401) {
@@ -165,7 +167,8 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
           },
           shippingFee: shippingFee,
           paymentMethod: cartInfo.payment,
-          voucher: selectedVoucher
+          voucher: selectedVoucher,
+          orderNote: orderNote
         });
 
         if (response.status === 401) {
@@ -360,7 +363,9 @@ const CheckoutClient: React.FC<CheckoutClientProps> = ({ currentUser }) => {
         <div className='flex flex-col mt-5 gap-4'>
           <div className='flex justify-between '>
             <span className='font-bold'>Phí vận chuyển:</span>
-            <span className='font-semibold'>{formatPrice(shippingFee)}</span>
+            <span className='font-semibold'>
+              {shippingFee === 0 ? <span className='text-green-600'>Miễn phí</span> : formatPrice(shippingFee)}
+            </span>
           </div>
           {discountAmount > 0 && (
             <div className='flex justify-between text-green-600'>

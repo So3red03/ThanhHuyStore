@@ -123,6 +123,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
           </div>
         )}
 
+        {/* Order Note Display */}
+        {(order as any).note && (
+          <div className='mb-6 p-4 bg-green-50 border border-green-200 rounded-lg'>
+            <h3 className='font-semibold text-green-800 mb-2'>Ghi chú đơn hàng:</h3>
+            <p className='text-green-700'>{(order as any).note}</p>
+          </div>
+        )}
+
         {/* Action Buttons */}
         {/* <div className='flex gap-4 mb-6'>
           {showCancelButton && canCancelOrder() && (

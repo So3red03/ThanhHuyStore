@@ -68,6 +68,45 @@ export async function GET(request: NextRequest) {
           emailMarketingSchedule: 'daily',
           emailMarketingTime: '09:00',
 
+          // Shipping settings - Default values (Standard only)
+          shopAddress: '123 Đường ABC, Phường Bến Nghé, Quận 1, TP.HCM',
+          shopProvince: 'TP. Hồ Chí Minh',
+          shopDistrict: 'Quận 1',
+          shopWard: 'Phường Bến Nghé',
+          freeShippingThreshold: 5000000, // Free ship over 5tr
+          baseShippingFee: 15000, // Standard shipping fee
+          shippingPerKm: 1500, // Additional fee per km
+          returnShippingPolicy: {
+            DEFECTIVE: {
+              customerPaysShipping: false,
+              shippingFeePercentage: 0,
+              restoreInventory: false,
+              refundPercentage: 100,
+              requiresApproval: false
+            },
+            WRONG_ITEM: {
+              customerPaysShipping: false,
+              shippingFeePercentage: 0,
+              restoreInventory: true,
+              refundPercentage: 100,
+              requiresApproval: false
+            },
+            DAMAGED_SHIPPING: {
+              customerPaysShipping: false,
+              shippingFeePercentage: 0,
+              restoreInventory: false,
+              refundPercentage: 100,
+              requiresApproval: false
+            },
+            CHANGE_MIND: {
+              customerPaysShipping: true,
+              shippingFeePercentage: 100,
+              restoreInventory: true,
+              refundPercentage: 90,
+              requiresApproval: true
+            }
+          },
+
           // Audit fields
           createdBy: currentUser.email,
           updatedBy: currentUser.email
@@ -123,7 +162,16 @@ export async function PUT(request: NextRequest) {
       stripePayment,
       autoEmailMarketing,
       emailMarketingSchedule,
-      emailMarketingTime
+      emailMarketingTime,
+      // Shipping settings
+      shopAddress,
+      shopProvince,
+      shopDistrict,
+      shopWard,
+      freeShippingThreshold,
+      baseShippingFee,
+      shippingPerKm,
+      returnShippingPolicy
     } = body;
 
     // Validate critical business rules
@@ -159,6 +207,15 @@ export async function PUT(request: NextRequest) {
           autoEmailMarketing,
           emailMarketingSchedule,
           emailMarketingTime,
+          // Shipping settings
+          shopAddress,
+          shopProvince,
+          shopDistrict,
+          shopWard,
+          freeShippingThreshold,
+          baseShippingFee,
+          shippingPerKm,
+          returnShippingPolicy,
           updatedBy: currentUser.email
         }
       });
@@ -182,6 +239,15 @@ export async function PUT(request: NextRequest) {
           autoEmailMarketing,
           emailMarketingSchedule,
           emailMarketingTime,
+          // Shipping settings
+          shopAddress,
+          shopProvince,
+          shopDistrict,
+          shopWard,
+          freeShippingThreshold,
+          baseShippingFee,
+          shippingPerKm,
+          returnShippingPolicy,
           createdBy: currentUser.email,
           updatedBy: currentUser.email
         }

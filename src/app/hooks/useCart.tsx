@@ -58,6 +58,10 @@ interface CartContextType {
   setSelectedVoucher: (voucher: Voucher | null) => void;
   discountAmount: number;
   finalAmount: number;
+
+  // Order note
+  orderNote: string;
+  setOrderNote: (note: string) => void;
 }
 
 interface Props {
@@ -199,7 +203,9 @@ export const CartContextProvider = (props: Props) => {
     setSelectedVoucher: handleSetSelectedVoucher,
     clearVoucherAfterUse: store.clearVoucherAfterUse,
     discountAmount: store.discountAmount,
-    finalAmount: store.finalAmount
+    finalAmount: store.finalAmount,
+    orderNote: store.orderNote,
+    setOrderNote: store.setOrderNote
   };
 
   // Provider
@@ -260,6 +266,8 @@ export const useCart = () => {
     setSelectedVoucher: store.setSelectedVoucher,
     clearVoucherAfterUse: store.clearVoucherAfterUse,
     discountAmount: store.discountAmount,
-    finalAmount: store.finalAmount
+    finalAmount: store.finalAmount,
+    orderNote: store.orderNote,
+    setOrderNote: store.setOrderNote
   };
 };

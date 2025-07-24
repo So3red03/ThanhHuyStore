@@ -108,6 +108,12 @@ model Order {
   cancelReason    String?
   cancelDate      DateTime?
 
+  // Order notes
+  note            String?
+
+  // Sales staff information
+  salesStaff      String?           // Tên nhân viên bán hàng, null = "KH tự đặt"
+
   // Return/Exchange tracking (simple) - Optional để tránh mất dữ liệu
   returnStatus    OrderReturnStatus?
   returnedAmount  Float?
@@ -530,6 +536,20 @@ model AdminSettings {
   autoEmailMarketing    Boolean  @default(false)
   emailMarketingSchedule String  @default("daily") // daily, weekly, monthly, newProduct
   emailMarketingTime    String   @default("09:00") // HH:MM format
+
+  // Shipping Configuration
+  shopAddress           String?  // "123 Đường ABC, Phường XYZ, Quận 1, TP.HCM"
+  shopProvince          String?  @default("TP. Hồ Chí Minh")
+  shopDistrict          String?  @default("Quận 1")
+  shopWard              String?  @default("Phường Bến Nghé")
+
+  // Shipping Settings (Standard only)
+  freeShippingThreshold Float?   @default(5000000) // Free ship over 5tr
+  baseShippingFee       Float?   @default(15000)  // Standard shipping fee
+  shippingPerKm         Float?   @default(1500)   // Additional fee per km
+
+  // Return Policy Settings
+  returnShippingPolicy  Json?    @default("{}") // Return shipping policies
 
   // Audit fields
   createdBy             String

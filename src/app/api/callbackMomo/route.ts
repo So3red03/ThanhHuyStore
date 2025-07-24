@@ -231,7 +231,8 @@ export async function POST(req: any) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderId,
-              reason: `MoMo payment failed - Result code: ${resultCode}`
+              reason: `MoMo payment failed - Result code: ${resultCode}`,
+              internalCall: true // Mark as internal call to bypass auth
             })
           });
         } catch (rollbackError) {

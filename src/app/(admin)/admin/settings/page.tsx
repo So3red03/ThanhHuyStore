@@ -25,6 +25,17 @@ interface SettingsData {
   autoEmailMarketing: boolean;
   emailMarketingSchedule: string;
   emailMarketingTime: string;
+  // Shipping settings
+  shopAddress?: string;
+  shopProvince?: string;
+  shopDistrict?: string;
+  shopWard?: string;
+  freeShippingThreshold?: number;
+  baseShippingFee?: number;
+  fastShippingFee?: number;
+  shippingPerKm?: number;
+  maxShippingDistance?: number;
+  returnShippingPolicy?: any;
 }
 
 // Server Component - fetch fresh data every time
@@ -95,7 +106,16 @@ const AdminSettings = async () => {
     stripePayment: settings.stripePayment,
     autoEmailMarketing: settings.autoEmailMarketing,
     emailMarketingSchedule: settings.emailMarketingSchedule,
-    emailMarketingTime: settings.emailMarketingTime
+    emailMarketingTime: settings.emailMarketingTime,
+    // Shipping settings
+    shopAddress: settings.shopAddress || undefined,
+    shopProvince: settings.shopProvince || undefined,
+    shopDistrict: settings.shopDistrict || undefined,
+    shopWard: settings.shopWard || undefined,
+    freeShippingThreshold: settings.freeShippingThreshold || undefined,
+    baseShippingFee: settings.baseShippingFee || undefined,
+    shippingPerKm: settings.shippingPerKm || undefined,
+    returnShippingPolicy: settings.returnShippingPolicy || undefined
   };
 
   return <AdminSettingsClient initialSettings={settingsData} />;

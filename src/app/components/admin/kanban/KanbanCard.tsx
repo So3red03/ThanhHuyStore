@@ -19,15 +19,6 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
     }
   };
 
-  // Determine shipping method based on order ID (consistent)
-  const getShippingMethod = (orderId: string) => {
-    const hash = orderId.split('').reduce((a, b) => {
-      a = (a << 5) - a + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    return Math.abs(hash) % 2 === 0 ? 'Giao hàng tiết kiệm' : 'Giao hàng nhanh';
-  };
-
   return (
     <div className='bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer'>
       {/* Order ID */}
@@ -79,14 +70,16 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
         <p className='text-xs text-gray-600'>Thanh toán: {order.paymentMethod || 'COD'}</p>
       </div>
 
-      {/* Sales Staff - Fixed */}
+      {/* Sales Staff */}
       <div className='mb-2'>
-        <p className='text-xs text-gray-600'>NV bán hàng: Admin</p>
+        <p className='text-xs text-gray-600'>NV bán hàng: {(order as any).salesStaff || 'KH tự đặt'}</p>
       </div>
 
-      {/* Shipping Method - Fixed */}
+      {/* Shipping Fee */}
       <div className='mb-2'>
-        <p className='text-xs text-gray-600'>Vận chuyển: {getShippingMethod(order.id)}</p>
+        <p className='text-xs text-gray-600'>
+          Phí ship: {order.shippingFee ? formatPrice(order.shippingFee) : 'Chưa tính'}
+        </p>
       </div>
 
       {/* Amount */}
@@ -108,6 +101,14 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
           <p className='text-xs text-red-600 font-medium'>Lý do hủy:</p>
           <p className='text-xs text-red-700'>{order.cancelReason}</p>
           {order.cancelDate && <p className='text-xs text-red-500 mt-1'>{formatDate(order.cancelDate)}</p>}
+        </div>
+      )}
+
+      {/* Order note if exists */}
+      {order.note && (
+        <div className='mt-2 p-2 bg-green-50 border border-green-200 rounded'>
+          <p className='text-xs text-green-600 font-medium'>Ghi chú:</p>
+          <p className='text-xs text-green-700'>{order.note}</p>
         </div>
       )}
     </div>

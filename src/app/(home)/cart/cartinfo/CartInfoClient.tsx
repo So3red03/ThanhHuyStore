@@ -11,22 +11,27 @@ import TextArea from '@/app/components/inputs/TextArea';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { SafeUser } from '../../../../../types';
+import { useCartStore } from '@/stores/cartStore';
 
 interface CartInfoClientProps {
   currentUser: SafeUser | null | undefined;
 }
 const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
-  const { cartTotalAmount, handleInfoClient, handleNextStep, shippingFee, shippingFeeClient } = useCart();
+  const { cartTotalAmount, handleInfoClient, handleNextStep, shippingFee, shippingFeeClient, setOrderNote } = useCart();
   const { isHydrated } = useHydration();
+  const { setShippingAddress, setShippingType, markShippingCalculated, shippingAddress } = useCartStore();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [shippingFeeCheck, setShippingFeeCheck] = useState(0);
+
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [wards, setWards] = useState([]);
   const [provinceName, setProvinceName] = useState('');
   const [districtName, setDistrictName] = useState('');
   const [wardName, setWardName] = useState('');
+  const [shippingOptions, setShippingOptions] = useState<any[]>([]);
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+  const [shippingBreakdown, setShippingBreakdown] = useState<any>(null);
 
   const {
     register,
@@ -52,7 +57,21 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
       }
     };
     fetchProvinces();
-  }, []);
+
+    // Initialize address from cartStore if available
+    if (shippingAddress) {
+      setProvinceName(shippingAddress.province);
+      setDistrictName(shippingAddress.district);
+      setWardName(shippingAddress.ward);
+    }
+  }, [shippingAddress]);
+
+  // Recalculate shipping when cart total changes
+  useEffect(() => {
+    if (provinceName && districtName && wardName && cartTotalAmount > 0) {
+      calculateShippingOptions();
+    }
+  }, [cartTotalAmount]);
 
   const handleProvinceChange = async (e: any) => {
     const provinceId = e.target.value;
@@ -95,20 +114,70 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
   const handleWardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const wardName = e.target.options[e.target.selectedIndex].text; // Lấy tên đầy đủ
     setWardName(wardName);
+
+    // Auto-calculate shipping when address is complete
+    if (provinceName && districtName && wardName) {
+      calculateShippingOptions();
+    }
   };
 
-  const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10) === 0 ? 40000 : 25000;
-    shippingFeeClient(value);
-    setShippingFeeCheck(value);
+  // Function to calculate shipping options when address is complete
+  const calculateShippingOptions = async () => {
+    if (!provinceName || !districtName || !wardName) return;
+
+    setIsCalculatingShipping(true);
+    try {
+      const response = await fetch('/api/orders/shipping/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerAddress: {
+            province: provinceName,
+            district: districtName,
+            ward: wardName
+          },
+          orderValue: cartTotalAmount
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setShippingOptions(data.shippingOptions);
+          setShippingBreakdown(data.breakdown);
+
+          // Update cart store with address
+          setShippingAddress({ province: provinceName, district: districtName, ward: wardName });
+
+          // Auto-apply standard shipping only if we have valid data
+          const standardOption = data.shippingOptions.find((opt: any) => opt.type === 'standard');
+          if (standardOption) {
+            const shippingFee = standardOption.fee;
+
+            setShippingType('standard');
+            markShippingCalculated(true);
+            shippingFeeClient(shippingFee);
+          }
+
+          // Show free shipping notification if applicable
+          if (data.breakdown.isFreeShipping) {
+            toast('Đơn hàng được miễn phí vận chuyển!');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Auto shipping calculation error:', error);
+    } finally {
+      setIsCalculatingShipping(false);
+    }
   };
 
   const handleNext = () => {
     setIsLoading(true);
 
-    // Validate shipping fee
-    if (shippingFeeCheck === 0) {
-      toast.error('Vui lòng chọn dịch vụ giao hàng!');
+    // Validate address is selected (shipping will be auto-calculated)
+    if (!provinceName || !districtName || !wardName) {
+      toast.error('Vui lòng chọn địa chỉ giao hàng!');
       setIsLoading(false);
       return;
     }
@@ -124,6 +193,12 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
             ward: wardName
           };
           handleInfoClient(subData);
+
+          // Sync note to orderNote store
+          if (data.note) {
+            setOrderNote(data.note);
+          }
+
           handleNextStep();
           router.push('/cart/checkout');
         },
@@ -248,16 +323,19 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
             </select>
             {errors.ward && <p className='text-rose-400 text-sm mt-1'>Vui lòng chọn phường/xã</p>}
           </div>
-          <Input
-            id='address'
-            label='Số nhà, tên đường'
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            className='!w-full !p-2 !h-[39px]'
-            cartInfo={true}
-            required
-          />
+          <div>
+            <input
+              type='text'
+              id='address'
+              placeholder='Số nhà, tên đường'
+              {...register('address', { required: true })}
+              disabled={isLoading}
+              className={`block w-full p-2 rounded border-2 focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed ${
+                errors.address ? 'border-rose-400 focus:border-rose-400' : 'border-slate-300 focus:border-slate-500'
+              }`}
+            />
+            {errors.address && <p className='text-rose-400 text-sm mt-1'>Vui lòng nhập số nhà, tên đường</p>}
+          </div>
         </div>
       </div>
       <TextArea
@@ -269,24 +347,45 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
         className='!max-h-[80px] !min-h-[80px]'
       />
 
-      {/* Dịch vụ giao hàng */}
-      <h2 className='text-lg font-semibold my-4'>Dịch vụ giao hàng</h2>
-      <div className='flex items-center flex-col mb-4 gap-2'>
-        <div className='flex items-center w-full gap-2'>
-          <input type='radio' id='delivery_0' name='delivery' value='0' onChange={handleDeliveryChange} />
-          <label htmlFor='delivery_0' className='flex items-end justify-between w-full'>
-            <span>Giao hàng nhanh (2-4h)</span>
-            <span className='font-semibold'>40.000đ</span>
-          </label>
+      {/* Shipping calculation info */}
+      {isCalculatingShipping && (
+        <div className='bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4'>
+          <p className='text-blue-800 text-sm'>🔄 Đang tính phí vận chuyển...</p>
         </div>
-        <div className='flex items-center w-full gap-2'>
-          <input type='radio' id='delivery_1' name='delivery' value='1' onChange={handleDeliveryChange} />
-          <label htmlFor='delivery_1' className='flex items-end justify-between w-full'>
-            <span>Giao hàng tiêu chuẩn</span>
-            <span className='font-semibold'>25.000đ</span>
-          </label>
+      )}
+
+      {/* Shipping breakdown info */}
+      {shippingBreakdown && (
+        <div
+          className={`border rounded-lg p-3 mb-4 ${
+            shippingBreakdown.isFreeShipping ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'
+          }`}
+        >
+          <p
+            className={`text-sm font-medium mb-2 ${
+              shippingBreakdown.isFreeShipping ? 'text-green-800' : 'text-blue-800'
+            }`}
+          >
+            {shippingBreakdown.isFreeShipping ? 'Miễn phí vận chuyển!' : 'Thông tin vận chuyển:'}
+          </p>
+          <div className={`text-xs space-y-1 ${shippingBreakdown.isFreeShipping ? 'text-green-700' : 'text-blue-700'}`}>
+            <p>• Khoảng cách: ~{shippingBreakdown.distance}km</p>
+            {shippingBreakdown.isFreeShipping ? (
+              <p>• Đơn hàng đủ điều kiện freeship (từ {formatPrice(shippingBreakdown.freeShippingThreshold)})</p>
+            ) : (
+              <>
+                <p>• Phí cơ bản: {formatPrice(shippingBreakdown.baseShipping)}</p>
+                {shippingBreakdown.distanceFee > 0 && (
+                  <p>• Phí khoảng cách: {formatPrice(shippingBreakdown.distanceFee)}</p>
+                )}
+                <p className='text-orange-600 font-medium'>
+                  💡 Mua thêm {formatPrice(shippingBreakdown.freeShippingThreshold - cartTotalAmount)} để được freeship!
+                </p>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tổng tiền và đặt hàng */}
       <div className='flex flex-col mt-5 gap-4 border-t pt-6'>

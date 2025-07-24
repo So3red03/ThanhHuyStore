@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { products, phoneNumber, address, shippingFee, paymentMethod, voucher } = body;
+  const { products, phoneNumber, address, shippingFee, paymentMethod, voucher, orderNote } = body;
 
   if (!products || products.length === 0) {
     return NextResponse.json({ error: 'No products provided' }, { status: 400 });
@@ -375,7 +375,8 @@ export async function POST(request: NextRequest) {
     paymentMethod: paymentMethod,
     voucher: voucherData?.id ? { connect: { id: voucherData.id } } : undefined,
     voucherCode: voucherData?.code || null,
-    discountAmount: discountAmount
+    discountAmount: discountAmount,
+    note: orderNote || null
   };
 
   try {

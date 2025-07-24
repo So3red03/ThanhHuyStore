@@ -59,7 +59,8 @@ export async function POST(request: Request) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId,
-          reason: `Admin cancelled: ${reason}`
+          reason: `Admin cancelled: ${reason}`,
+          internalCall: true // Mark as internal call to bypass auth
         })
       });
     } catch (rollbackError) {

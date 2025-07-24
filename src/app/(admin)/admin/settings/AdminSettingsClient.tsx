@@ -37,6 +37,15 @@ interface SettingsData {
   autoEmailMarketing: boolean;
   emailMarketingSchedule: string;
   emailMarketingTime: string;
+  // Shipping settings
+  shopAddress?: string;
+  shopProvince?: string;
+  shopDistrict?: string;
+  shopWard?: string;
+  freeShippingThreshold?: number;
+  baseShippingFee?: number;
+  shippingPerKm?: number;
+  returnShippingPolicy?: any;
 }
 
 interface AdminSettingsClientProps {
@@ -266,7 +275,8 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
     { id: 'notifications', label: 'Thông báo', icon: MdNotifications },
     { id: 'system', label: 'Hệ thống', icon: MdStorage },
     { id: 'automation', label: 'Tự động hóa', icon: MdSmartToy },
-    { id: 'reports', label: 'Báo cáo', icon: MdAssessment }
+    { id: 'reports', label: 'Báo cáo', icon: MdAssessment },
+    { id: 'shipping', label: 'Vận chuyển', icon: MdLocalShipping }
   ];
 
   return (
@@ -726,6 +736,162 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                 </div>
               </div>
             )} */}
+
+            {/* Shipping Section */}
+            {activeSection === 'shipping' && (
+              <div>
+                <h2 className='text-2xl font-semibold mb-2'>Cấu hình vận chuyển</h2>
+                <p className='text-gray-600 mb-6'>Cấu hình địa chỉ shop và phí vận chuyển động.</p>
+
+                <div className='space-y-6'>
+                  {/* Shop Address Configuration */}
+                  <div className='bg-gray-50 p-6 rounded-lg'>
+                    <h3 className='text-lg font-medium mb-4 flex items-center'>
+                      <MdLocalShipping className='mr-2 text-blue-600' />
+                      Địa chỉ cửa hàng
+                    </h3>
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>Địa chỉ đầy đủ</label>
+                        <input
+                          type='text'
+                          value={settings.shopAddress || ''}
+                          onChange={e => setSettings({ ...settings, shopAddress: e.target.value })}
+                          placeholder='123 Đường ABC, Phường XYZ, Quận 1, TP.HCM'
+                          className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        />
+                      </div>
+
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>Tỉnh/Thành phố</label>
+                        <input
+                          type='text'
+                          value={settings.shopProvince || ''}
+                          onChange={e => setSettings({ ...settings, shopProvince: e.target.value })}
+                          placeholder='TP. Hồ Chí Minh'
+                          className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        />
+                      </div>
+
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>Quận/Huyện</label>
+                        <input
+                          type='text'
+                          value={settings.shopDistrict || ''}
+                          onChange={e => setSettings({ ...settings, shopDistrict: e.target.value })}
+                          placeholder='Quận 1'
+                          className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        />
+                      </div>
+
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>Phường/Xã</label>
+                        <input
+                          type='text'
+                          value={settings.shopWard || ''}
+                          onChange={e => setSettings({ ...settings, shopWard: e.target.value })}
+                          placeholder='Phường Bến Nghé'
+                          className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Shipping Fee Configuration */}
+                  <div className='bg-gray-50 p-6 rounded-lg'>
+                    <h3 className='text-lg font-medium mb-4 flex items-center'>
+                      <MdPayment className='mr-2 text-green-600' />
+                      Cấu hình phí vận chuyển
+                    </h3>
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>Ngưỡng freeship (VNĐ)</label>
+                        <input
+                          type='number'
+                          value={settings.freeShippingThreshold || 500000}
+                          onChange={e => setSettings({ ...settings, freeShippingThreshold: Number(e.target.value) })}
+                          placeholder='500000'
+                          className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        />
+                        <p className='text-xs text-gray-500 mt-1'>Đơn hàng từ số tiền này sẽ được freeship</p>
+                      </div>
+
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>Phí ship cơ bản (VNĐ)</label>
+                        <input
+                          type='number'
+                          value={settings.baseShippingFee || 15000}
+                          onChange={e => setSettings({ ...settings, baseShippingFee: Number(e.target.value) })}
+                          placeholder='15000'
+                          className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        />
+                        <p className='text-xs text-gray-500 mt-1'>Phí ship tiêu chuẩn (2-3 ngày)</p>
+                      </div>
+
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>Phí ship mỗi km (VNĐ)</label>
+                        <input
+                          type='number'
+                          value={settings.shippingPerKm || 1500}
+                          onChange={e => setSettings({ ...settings, shippingPerKm: Number(e.target.value) })}
+                          placeholder='1500'
+                          className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        />
+                        <p className='text-xs text-gray-500 mt-1'>Phí bổ sung cho mỗi km &gt; 10km</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Shipping Calculation Preview */}
+                  <div className='bg-blue-50 p-6 rounded-lg'>
+                    <h3 className='text-lg font-medium mb-4 flex items-center'>
+                      <MdCheckCircle className='mr-2 text-blue-600' />
+                      Xem trước tính phí
+                    </h3>
+
+                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
+                      <div className='bg-white p-4 rounded-lg'>
+                        <h4 className='font-medium text-gray-700 mb-2'>Cùng quận (5km)</h4>
+                        <p className='text-lg font-semibold text-green-600'>
+                          {(settings.baseShippingFee || 15000).toLocaleString()}₫
+                        </p>
+                        <p className='text-xs text-gray-500 mt-2'>Phí cơ bản (không có phí khoảng cách)</p>
+                      </div>
+
+                      <div className='bg-white p-4 rounded-lg'>
+                        <h4 className='font-medium text-gray-700 mb-2'>Khác quận (20km)</h4>
+                        <p className='text-lg font-semibold text-orange-600'>
+                          {(
+                            (settings.baseShippingFee || 15000) +
+                            10 * (settings.shippingPerKm || 1500)
+                          ).toLocaleString()}
+                          ₫
+                        </p>
+                        <p className='text-xs text-gray-500 mt-2'>
+                          Cơ bản + 10km × {(settings.shippingPerKm || 1500).toLocaleString()}₫
+                        </p>
+                      </div>
+
+                      <div className='bg-white p-4 rounded-lg'>
+                        <h4 className='font-medium text-gray-700 mb-2'>Khác tỉnh (50km)</h4>
+                        <p className='text-lg font-semibold text-red-600'>
+                          {(
+                            (settings.baseShippingFee || 15000) +
+                            40 * (settings.shippingPerKm || 1500)
+                          ).toLocaleString()}
+                          ₫
+                        </p>
+                        <p className='text-xs text-gray-500 mt-2'>
+                          Cơ bản + 40km × {(settings.shippingPerKm || 1500).toLocaleString()}₫
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Save Button */}
             <div className='mt-8 pt-6 border-t'>

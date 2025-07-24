@@ -20,12 +20,11 @@ interface CancelOrderDialogProps {
 }
 
 const CANCEL_REASONS = [
-  'Tôi muốn thay đổi sản phẩm (kích thước, màu sắc, số lượng...)',
-  'Tôi muốn cập nhật địa chỉ/sđt nhận hàng',
-  'Tôi không có nhu cầu mua nữa',
-  'Người bán xác nhận hết hàng',
-  'Thời gian giao hàng quá lâu',
-  'Khác'
+  'Tôi không còn nhu cầu mua sản phẩm nữa',
+  'Tôi đặt nhầm đơn hàng',
+  'Thời gian giao hàng không phù hợp',
+  'Tôi muốn thay đổi thông tin đơn hàng nhưng không thể',
+  'Khác (vui lòng ghi rõ lý do)'
 ];
 
 const CancelOrderDialog: React.FC<CancelOrderDialogProps> = ({ isOpen, onClose, order, currentUser, onSuccess }) => {

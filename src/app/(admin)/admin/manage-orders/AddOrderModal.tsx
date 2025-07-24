@@ -42,6 +42,8 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, toggleOpen, users
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
   const [shippingFee, setShippingFee] = useState(0);
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+  const [salesStaff, setSalesStaff] = useState('');
   const router = useRouter();
 
   const {
@@ -67,6 +69,44 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, toggleOpen, users
       shippingFee: 0
     }
   });
+
+  // Function to calculate shipping fee
+  const calculateShippingFee = async (city: string) => {
+    if (!city || selectedProducts.length === 0) return;
+
+    setIsCalculatingShipping(true);
+    try {
+      const orderValue = selectedProducts.reduce((sum, product) => sum + product.price * product.quantity, 0);
+
+      const response = await fetch('/api/orders/shipping/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerAddress: {
+            province: city,
+            district: 'Quận 1', // Default district for admin orders
+            ward: 'Phường 1' // Default ward for admin orders
+          },
+          orderValue
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.shippingOptions.length > 0) {
+          const standardOption = data.shippingOptions.find((opt: any) => opt.type === 'standard');
+          if (standardOption) {
+            setShippingFee(standardOption.fee);
+            setValue('shippingFee', standardOption.fee);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error calculating shipping:', error);
+    } finally {
+      setIsCalculatingShipping(false);
+    }
+  };
 
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     if (!selectedUser) {
@@ -95,13 +135,14 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, toggleOpen, users
         currency: 'vnd',
         status: data.status,
         deliveryStatus: data.deliveryStatus,
-        paymentIntentId: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        paymentIntentId: `admin_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         products: selectedProducts,
         phoneNumber: data.phoneNumber,
         address: data.address,
         shippingFee: shippingFee,
         paymentMethod: data.paymentMethod,
-        discountAmount: 0
+        discountAmount: 0,
+        salesStaff: salesStaff || 'Admin' // Add sales staff field
       };
 
       const response = await axios.post('/api/orders/admin-create', orderData);
@@ -523,21 +564,30 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, toggleOpen, users
               </FormControl>
             </Box>
 
-            {/* Shipping Fee */}
+            {/* Sales Staff */}
             <Box>
-              <FormControl fullWidth disabled={isLoading}>
-                <InputLabel>Chọn dịch vụ giao hàng</InputLabel>
-                <Select
-                  value={shippingFee}
-                  onChange={e => setShippingFee(Number(e.target.value))}
-                  label='Chọn dịch vụ giao hàng'
-                  sx={{ borderRadius: '12px' }}
-                >
-                  <MenuItem value={0}>Chọn dịch vụ giao hàng</MenuItem>
-                  <MenuItem value={40000}>Giao hàng nhanh (2-4h) - 40.000₫</MenuItem>
-                  <MenuItem value={25000}>Giao hàng tiêu chuẩn - 25.000₫</MenuItem>
-                </Select>
-              </FormControl>
+              <TextField
+                fullWidth
+                label='Nhân viên bán hàng'
+                value={salesStaff}
+                onChange={e => setSalesStaff(e.target.value)}
+                placeholder='Nhập tên nhân viên (để trống = Admin)'
+                disabled={isLoading}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
+            </Box>
+
+            {/* Shipping Fee Display */}
+            <Box>
+              <Alert severity={shippingFee === 0 ? 'info' : 'success'} sx={{ borderRadius: '12px' }}>
+                <Typography variant='body2'>
+                  {isCalculatingShipping
+                    ? 'Đang tính phí vận chuyển...'
+                    : shippingFee === 0
+                    ? 'Phí vận chuyển sẽ được tính tự động khi chọn thành phố'
+                    : `Phí vận chuyển: ${shippingFee.toLocaleString('vi-VN')}₫`}
+                </Typography>
+              </Alert>
             </Box>
 
             {/* Address */}
@@ -562,6 +612,10 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ isOpen, toggleOpen, users
                   error={!!(errors.address as any)?.city}
                   helperText={(errors.address as any)?.city?.message as string}
                   disabled={isLoading}
+                  onChange={e => {
+                    setValue('address.city', e.target.value);
+                    calculateShippingFee(e.target.value);
+                  }}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
                 />
                 <TextField

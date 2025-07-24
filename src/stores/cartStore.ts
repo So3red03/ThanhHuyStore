@@ -34,6 +34,18 @@ export interface CartStore {
   discountAmount: number;
   finalAmount: number;
 
+  // Shipping state
+  shippingAddress: {
+    province: string;
+    district: string;
+    ward: string;
+  } | null;
+  shippingType: 'standard' | 'fast' | null;
+  isShippingCalculated: boolean;
+
+  // Order note
+  orderNote: string;
+
   // Hydration state
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
@@ -54,6 +66,13 @@ export interface CartStore {
   setShippingFee: (fee: number) => void;
   setSelectedVoucher: (voucher: Voucher | null) => void;
   clearVoucherAfterUse: () => void;
+
+  // Shipping actions
+  setShippingAddress: (address: { province: string; district: string; ward: string } | null) => void;
+  setShippingType: (type: 'standard' | 'fast' | null) => void;
+  markShippingCalculated: (calculated: boolean) => void;
+  setOrderNote: (note: string) => void;
+  resetShippingCalculation: () => void;
 
   // Computed values (getters)
   getTotalWithShipping: () => number;
@@ -77,6 +96,14 @@ export const useCartStore = create<CartStore>()(
       selectedVoucher: null,
       discountAmount: 0,
       finalAmount: 0,
+
+      // Shipping state
+      shippingAddress: null,
+      shippingType: null,
+      isShippingCalculated: false,
+
+      // Order note
+      orderNote: '',
 
       // Hydration state
       _hasHydrated: false,
@@ -240,6 +267,35 @@ export const useCartStore = create<CartStore>()(
         setTimeout(() => get().calculateDiscounts(), 0);
       },
 
+      // Shipping actions
+      setShippingAddress: (address: { province: string; district: string; ward: string } | null) => {
+        set({
+          shippingAddress: address,
+          isShippingCalculated: false // Reset calculation when address changes
+        });
+      },
+
+      setShippingType: (type: 'standard' | 'fast' | null) => {
+        set({ shippingType: type });
+      },
+
+      markShippingCalculated: (calculated: boolean) => {
+        set({ isShippingCalculated: calculated });
+      },
+
+      setOrderNote: (note: string) => {
+        set({ orderNote: note });
+      },
+
+      resetShippingCalculation: () => {
+        set({
+          shippingFee: 0,
+          shippingType: null,
+          isShippingCalculated: false
+        });
+        setTimeout(() => get().calculateDiscounts(), 0);
+      },
+
       // Computed values
       getTotalWithShipping: () => {
         const state = get();
@@ -260,10 +316,24 @@ export const useCartStore = create<CartStore>()(
             { total: 0, qty: 0 }
           );
 
+          const previousTotal = state.cartTotalAmount;
           set({ cartTotalAmount: total, cartTotalQty: qty });
+
+          // If cart total changed and shipping was calculated, mark for recalculation
+          if (previousTotal !== total && state.isShippingCalculated) {
+            set({ isShippingCalculated: false });
+          }
+
           get().calculateDiscounts();
         } else {
-          set({ cartTotalAmount: 0, cartTotalQty: 0, discountAmount: 0, finalAmount: 0 });
+          set({
+            cartTotalAmount: 0,
+            cartTotalQty: 0,
+            discountAmount: 0,
+            finalAmount: 0,
+            shippingFee: 0,
+            isShippingCalculated: false
+          });
         }
       },
 
@@ -294,7 +364,11 @@ export const useCartStore = create<CartStore>()(
         step: state.step,
         shippingFee: state.shippingFee,
         selectedVoucher: state.selectedVoucher,
-        paymentIntent: state.paymentIntent
+        paymentIntent: state.paymentIntent,
+        shippingAddress: state.shippingAddress,
+        shippingType: state.shippingType,
+        orderNote: state.orderNote
+        // Note: Don't persist isShippingCalculated - always recalculate on reload
       }),
       // Enable hydration for proper localStorage sync
       onRehydrateStorage: () => state => {

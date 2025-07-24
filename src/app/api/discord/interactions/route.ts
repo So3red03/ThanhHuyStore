@@ -308,7 +308,8 @@ export async function POST(request: NextRequest) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 orderId,
-                reason: cancelReason
+                reason: cancelReason,
+                internalCall: true // Mark as internal call to bypass auth
               })
             });
           } catch (rollbackError) {
