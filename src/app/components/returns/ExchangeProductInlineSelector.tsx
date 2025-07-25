@@ -18,11 +18,13 @@ interface Product {
 
 interface ProductVariant {
   id: string;
-  name: string;
+  sku: string;
+  attributes: any; // JSON object with variant attributes
   price: number;
   stock: number;
-  color?: string;
-  size?: string;
+  thumbnail?: string;
+  galleryImages?: string[];
+  isActive: boolean;
 }
 
 interface ExchangeProductInlineSelectorProps {
@@ -30,10 +32,7 @@ interface ExchangeProductInlineSelectorProps {
   onSelect: (product: Product, variant?: ProductVariant) => void;
 }
 
-const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps> = ({
-  currentProduct,
-  onSelect
-}) => {
+const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps> = ({ currentProduct, onSelect }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,9 +47,7 @@ const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps
 
   useEffect(() => {
     if (searchTerm) {
-      const filtered = products.filter(product => 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const filtered = products.filter(product => product.name.toLowerCase().includes(searchTerm.toLowerCase()));
       setFilteredProducts(filtered);
     } else {
       setFilteredProducts(products);
@@ -89,7 +86,7 @@ const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps
     setSelectedProduct(product);
     setSelectedVariant(null);
     setShowProductList(false);
-    
+
     // If product has no variants, select immediately
     if (!product.variants || product.variants.length === 0) {
       onSelect(product);
@@ -105,6 +102,20 @@ const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps
 
   const getProductPrice = (product: Product, variant?: ProductVariant) => {
     return variant ? variant.price : product.price;
+  };
+
+  const getVariantDisplayName = (variant: ProductVariant) => {
+    if (!variant.attributes) return variant.sku;
+
+    const attrs = variant.attributes;
+    const parts = [];
+
+    if (attrs.color) parts.push(attrs.color);
+    if (attrs.storage) parts.push(attrs.storage);
+    if (attrs.ram) parts.push(attrs.ram);
+    if (attrs.size) parts.push(attrs.size);
+
+    return parts.length > 0 ? parts.join(' - ') : variant.sku;
   };
 
   const calculatePriceDifference = (product: Product, variant?: ProductVariant) => {
@@ -167,9 +178,13 @@ const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps
                       <p className='text-xs text-gray-500'>Còn lại: {product.inStock}</p>
                     </div>
                     <div className='text-right'>
-                      <div className={`text-xs px-2 py-1 rounded ${
-                        calculatePriceDifference(product) >= 0 ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
-                      }`}>
+                      <div
+                        className={`text-xs px-2 py-1 rounded ${
+                          calculatePriceDifference(product) >= 0
+                            ? 'bg-orange-100 text-orange-600'
+                            : 'bg-green-100 text-green-600'
+                        }`}
+                      >
                         {calculatePriceDifference(product) >= 0 ? '+' : ''}
                         {formatPrice(calculatePriceDifference(product))}
                       </div>
@@ -199,16 +214,25 @@ const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps
               >
                 <div className='flex justify-between items-center'>
                   <div>
-                    <p className='font-medium text-sm'>{variant.name}</p>
-                    {variant.color && <p className='text-xs text-gray-500'>Màu: {variant.color}</p>}
-                    {variant.size && <p className='text-xs text-gray-500'>Size: {variant.size}</p>}
+                    <p className='font-medium text-sm'>{getVariantDisplayName(variant)}</p>
+                    <p className='text-xs text-gray-500'>SKU: {variant.sku}</p>
+                    {variant.attributes?.color && (
+                      <p className='text-xs text-gray-500'>Màu: {variant.attributes.color}</p>
+                    )}
+                    {variant.attributes?.size && (
+                      <p className='text-xs text-gray-500'>Size: {variant.attributes.size}</p>
+                    )}
                   </div>
                   <div className='text-right'>
                     <p className='font-medium text-sm'>{formatPrice(variant.price)}</p>
                     <p className='text-xs text-gray-500'>Còn: {variant.stock}</p>
-                    <div className={`text-xs px-2 py-1 rounded mt-1 ${
-                      calculatePriceDifference(selectedProduct, variant) >= 0 ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
-                    }`}>
+                    <div
+                      className={`text-xs px-2 py-1 rounded mt-1 ${
+                        calculatePriceDifference(selectedProduct, variant) >= 0
+                          ? 'bg-orange-100 text-orange-600'
+                          : 'bg-green-100 text-green-600'
+                      }`}
+                    >
                       {calculatePriceDifference(selectedProduct, variant) >= 0 ? '+' : ''}
                       {formatPrice(calculatePriceDifference(selectedProduct, variant))}
                     </div>

@@ -5,14 +5,16 @@ import { SafeUser } from '../../../../../types';
 import { formatPrice } from '../../../../../utils/formatPrice';
 import { formatDate } from '../../../(home)/account/orders/OrdersClient';
 import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar } from '@mui/x-data-grid';
-import { MdVisibility, MdCheck, MdClose, MdRefresh, MdUndo, MdAssignment } from 'react-icons/md';
+import { MdVisibility, MdCheck, MdClose, MdRefresh, MdUndo, MdAssignment, MdImage } from 'react-icons/md';
 import { Button } from '@mui/material';
 import AdminModal from '../../../components/admin/AdminModal';
 import ActionBtn from '../../../components/ActionBtn';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+
 import ReturnRequestProductItem from '../../../components/returns/ReturnRequestProductItem';
 import ReturnShippingDisplay from '../../../components/admin/returns/ReturnShippingDisplay';
+import ReturnRequestImages from '../../../components/admin/returns/ReturnRequestImages';
 
 interface ReturnRequest {
   id: string;
@@ -20,6 +22,7 @@ interface ReturnRequest {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
   reason: string;
   description?: string;
+  images?: string[]; // Base64 images array
   refundAmount?: number;
   additionalCost?: number;
   adminNotes?: string;
@@ -31,6 +34,10 @@ interface ReturnRequest {
     customerPaysShipping: boolean;
     requiresApproval: boolean;
   };
+  // Exchange specific fields
+  exchangeToProductId?: string;
+  exchangeToVariantId?: string;
+  exchangeOrderId?: string;
   createdAt: string;
   items: any[];
   order: {
@@ -69,6 +76,9 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
+  // Exchange orders data
+  const [exchangeOrders, setExchangeOrders] = useState<{ [key: string]: any }>({});
+
   const fetchReturnRequests = async () => {
     setIsLoading(true);
     try {
@@ -77,7 +87,30 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
       if (typeFilter) params.append('type', typeFilter);
 
       const response = await axios.get(`/api/orders/return-request/admin?${params.toString()}`);
-      setReturnRequests(response.data.returnRequests || []);
+      const requests = response.data.returnRequests || [];
+      setReturnRequests(requests);
+
+      // Fetch exchange orders for exchange requests
+      const exchangeRequestIds = requests
+        .filter((req: ReturnRequest) => req.type === 'EXCHANGE' && req.exchangeOrderId)
+        .map((req: ReturnRequest) => req.exchangeOrderId);
+
+      if (exchangeRequestIds.length > 0) {
+        try {
+          const exchangeOrdersResponse = await axios.post('/api/orders/return-request/batch-get-orders', {
+            orderIds: exchangeRequestIds
+          });
+
+          const exchangeOrdersMap: { [key: string]: any } = {};
+          exchangeOrdersResponse.data.orders?.forEach((order: any) => {
+            exchangeOrdersMap[order.id] = order;
+          });
+
+          setExchangeOrders(exchangeOrdersMap);
+        } catch (exchangeError) {
+          console.error('Error fetching exchange orders:', exchangeError);
+        }
+      }
     } catch (error) {
       console.error('Error fetching return requests:', error);
       toast.error('Không thể tải danh sách yêu cầu đổi/trả');
@@ -144,6 +177,10 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
         return 'Giao sai sản phẩm';
       case 'CHANGE_MIND':
         return 'Đổi ý không muốn mua';
+      case 'SIZE_COLOR':
+        return 'Muốn đổi size/màu khác';
+      case 'DIFFERENT_MODEL':
+        return 'Muốn model/sản phẩm khác';
       default:
         return reason;
     }
@@ -241,6 +278,28 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
       headerName: 'Lý do',
       width: 150,
       renderCell: (params: GridRenderCellParams) => <span className='text-sm'>{getReasonText(params.value)}</span>
+    },
+    {
+      field: 'images',
+      headerName: 'Hình ảnh',
+      width: 100,
+      sortable: false,
+      renderCell: (params: GridRenderCellParams) => {
+        const images = params.value as string[] | undefined;
+        const hasImages = images && images.length > 0;
+        return (
+          <div className='flex items-center justify-center h-full'>
+            {hasImages ? (
+              <div className='flex items-center gap-1'>
+                <MdImage className='text-blue-600' size={16} />
+                <span className='text-xs font-medium text-blue-600'>{images.length}</span>
+              </div>
+            ) : (
+              <span className='text-xs text-gray-400'>Không có</span>
+            )}
+          </div>
+        );
+      }
     },
     {
       field: 'refundAmount',
@@ -466,6 +525,11 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
                   </div>
                 )}
 
+                {/* Images Display */}
+                {selectedRequest.images && selectedRequest.images.length > 0 && (
+                  <ReturnRequestImages images={selectedRequest.images} type={selectedRequest.type} />
+                )}
+
                 <div>
                   <strong>Sản phẩm ({selectedRequest.items.length}):</strong>
                   <div className='mt-3 space-y-3'>
@@ -484,12 +548,55 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
                   />
                 )}
 
-                {/* Simple refund display for cases without shipping breakdown */}
-                {selectedRequest.refundAmount && !selectedRequest.shippingBreakdown && (
-                  <div className='p-3 bg-green-50 border border-green-200 rounded'>
-                    <strong>Số tiền hoàn:</strong> {formatPrice(selectedRequest.refundAmount)}
+                {/* Exchange Order Display */}
+                {selectedRequest.type === 'EXCHANGE' && selectedRequest.exchangeOrderId && (
+                  <div className='p-4 bg-blue-50 border border-blue-200 rounded-lg'>
+                    <h4 className='font-medium text-blue-800 mb-3'>🔄 Thông tin đổi hàng</h4>
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                      {/* Original Order */}
+                      <div className='bg-red-50 border border-red-200 rounded p-3'>
+                        <h5 className='font-medium text-red-800 mb-2'>Đơn hàng gốc</h5>
+                        <p className='text-sm text-red-700'>#{selectedRequest.order.id.slice(-8)}</p>
+                        <p className='text-sm text-red-700'>{formatPrice(selectedRequest.order.amount)}</p>
+                      </div>
+
+                      {/* Exchange Order */}
+                      {exchangeOrders[selectedRequest.exchangeOrderId] && (
+                        <div className='bg-green-50 border border-green-200 rounded p-3'>
+                          <h5 className='font-medium text-green-800 mb-2'>Đơn hàng mới</h5>
+                          <p className='text-sm text-green-700'>#{selectedRequest.exchangeOrderId.slice(-8)}</p>
+                          <p className='text-sm text-green-700'>
+                            {formatPrice(exchangeOrders[selectedRequest.exchangeOrderId].amount)}
+                          </p>
+                          <p className='text-xs text-green-600 mt-1'>
+                            Trạng thái: {exchangeOrders[selectedRequest.exchangeOrderId].status}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Price Difference */}
+                    {selectedRequest.additionalCost !== undefined && selectedRequest.additionalCost !== 0 && (
+                      <div className='mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded'>
+                        <h5 className='font-medium text-yellow-800 mb-1'>Chênh lệch giá</h5>
+                        <p className='text-sm text-yellow-700'>
+                          {selectedRequest.additionalCost > 0 ? 'Khách cần bù thêm: ' : 'Hoàn lại cho khách: '}
+                          <span className='font-medium'>{formatPrice(Math.abs(selectedRequest.additionalCost))}</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
+
+                {/* Simple refund display for cases without shipping breakdown */}
+                {selectedRequest.refundAmount &&
+                  !selectedRequest.shippingBreakdown &&
+                  selectedRequest.type === 'RETURN' && (
+                    <div className='p-3 bg-green-50 border border-green-200 rounded'>
+                      <strong>Số tiền hoàn:</strong> {formatPrice(selectedRequest.refundAmount)}
+                    </div>
+                  )}
 
                 {selectedRequest.adminNotes && (
                   <div className='p-3 bg-blue-50 border border-blue-200 rounded'>

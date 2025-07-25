@@ -13,6 +13,7 @@ interface ReturnRequest {
   refundAmount?: number;
   additionalCost?: number;
   adminNotes?: string;
+  exchangeOrderId?: string;
   createdAt: string;
   items: any[];
   order: {

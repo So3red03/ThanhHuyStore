@@ -453,7 +453,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
             {params.row.inStock > 0 ? (
               <Status text={params.row.inStock} bg='bg-teal-200' color='text-teal-700' />
             ) : (
-              <Status text='Hết hàng' icon={MdClose} bg='bg-rose-200' color='text-rose-700' />
+              <Status text='Hết hàng' bg='bg-rose-200' color='text-rose-700' />
             )}
           </div>
         );

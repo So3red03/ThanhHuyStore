@@ -110,9 +110,13 @@ model Order {
 
   // Order notes
   note            String?
+  orderNote       String?           // Additional order note field
 
   // Sales staff information
   salesStaff      String?           // Tên nhân viên bán hàng, null = "KH tự đặt"
+
+  // Exchange metadata (for orders created from exchanges)
+  exchangeInfo    Json?             // {originalOrderId, returnRequestId, priceDifference, exchangeType}
 
   // Return/Exchange tracking (simple) - Optional để tránh mất dữ liệu
   returnStatus    OrderReturnStatus?
@@ -723,6 +727,11 @@ model ReturnRequest {
   refundAmount    Float?            // Số tiền hoàn (đã tính phí)
   additionalCost  Float?            // Phí bù thêm (exchange)
   shippingBreakdown Json?           // Chi tiết phí vận chuyển trả hàng
+
+  // Exchange specific fields
+  exchangeToProductId String?       @db.ObjectId // Sản phẩm muốn đổi sang
+  exchangeToVariantId String?       @db.ObjectId // Variant muốn đổi sang (nếu có)
+  exchangeOrderId     String?       @db.ObjectId // ID của đơn hàng mới được tạo cho exchange
 
   // Admin workflow (simple) - Optional
   adminNotes      String?

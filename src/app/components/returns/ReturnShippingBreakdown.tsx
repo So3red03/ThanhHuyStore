@@ -154,67 +154,70 @@ const ReturnShippingBreakdown: React.FC<ReturnShippingBreakdownProps> = ({
         </span>
       </div>
 
-      {/* Detailed Breakdown */}
-      <div className='border-t pt-3 space-y-3'>
-        {/* Original Order Value */}
-        <div className='bg-gray-50 p-3 rounded-lg space-y-2'>
-          <h4 className='text-xs font-medium text-gray-700 mb-2'>Chi tiết tính toán:</h4>
+      {/* Clean, Professional Breakdown */}
+      <div className='border-t pt-4 space-y-4'>
+        {/* Detailed Calculation - Similar to AdminSettingsClient.tsx */}
+        <div className='bg-white rounded-xl border p-4'>
+          <h4 className='text-base font-semibold text-gray-800 mb-3'>Chi tiết tính toán</h4>
 
-          <div className='flex justify-between items-center text-xs'>
-            <span className='text-gray-600'>Giá trị hàng hóa trả:</span>
-            <span>{formatPrice(breakdown.refundAmount / 0.9)}</span>
-          </div>
+          <div className='space-y-2 text-sm'>
+            {/* Product Value */}
+            <div className='flex justify-between items-center py-1'>
+              <span className='text-gray-600'>Giá trị hàng hóa:</span>
+              <span className='font-medium'>{formatPrice(breakdown.refundAmount / 0.9)}</span>
+            </div>
 
-          <div className='flex justify-between items-center text-xs'>
-            <span className='text-gray-600'>Hoàn tiền hàng hóa (90%):</span>
-            <span className='text-green-600'>+{formatPrice(breakdown.refundAmount)}</span>
+            {/* Refund Amount (90% or 100%) */}
+            <div className='flex justify-between items-center py-1'>
+              <span className='text-gray-600'>
+                Hoàn tiền hàng ({breakdown.reason === 'CHANGE_MIND' ? '90%' : '100%'}):
+              </span>
+              <span className='font-medium text-green-600'>+{formatPrice(breakdown.refundAmount)}</span>
+            </div>
+
+            {/* Processing Fee */}
+            {breakdown.processingFee > 0 && (
+              <div className='flex justify-between items-center py-1'>
+                <span className='text-gray-600'>Phí xử lý (10%):</span>
+                <span className='font-medium text-red-600'>-{formatPrice(breakdown.processingFee)}</span>
+              </div>
+            )}
+
+            {/* Shipping Fee */}
+            {breakdown.customerShippingFee > 0 && (
+              <div className='flex justify-between items-center py-1'>
+                <span className='text-gray-600'>Phí ship trả hàng:</span>
+                <span className='font-medium text-red-600'>-{formatPrice(breakdown.customerShippingFee)}</span>
+              </div>
+            )}
+
+            {/* Final Result */}
+            <div className='border-t border-gray-200 pt-2 mt-3'>
+              <div className='flex justify-between items-center'>
+                <span className='font-medium text-gray-700'>Khách nhận được:</span>
+                <span className='font-bold text-green-600'>{formatPrice(breakdown.totalRefund)}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Fees Breakdown */}
-        <div className='space-y-2'>
-          <div className='flex justify-between items-center text-xs'>
-            <span className='text-gray-500'>Phí vận chuyển trả hàng:</span>
-            <span>{formatPrice(breakdown.returnShippingFee)}</span>
+        {/* Policy Note - Only for Change Mind */}
+        {breakdown.reason === 'CHANGE_MIND' && (
+          <div className='bg-amber-50 border border-amber-200 rounded-xl p-4'>
+            <div className='flex items-start gap-3'>
+              <div className='w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5'>
+                <span className='text-amber-600 text-xs'>!</span>
+              </div>
+              <div>
+                <h5 className='text-sm font-medium text-amber-800 mb-1'>Chính sách trả hàng do đổi ý</h5>
+                <p className='text-xs text-amber-700 leading-relaxed'>
+                  Khi trả hàng do đổi ý, khách hàng sẽ chịu phí xử lý 10% và phí vận chuyển. Chính sách này giúp bảo vệ
+                  lợi ích cửa hàng và ngăn chặn việc đổi ý tùy tiện.
+                </p>
+              </div>
+            </div>
           </div>
-
-          {breakdown.customerShippingFee > 0 && (
-            <div className='flex justify-between items-center text-xs'>
-              <span className='text-gray-500'>Khách hàng trả phí ship:</span>
-              <span className='text-red-600 font-medium'>-{formatPrice(breakdown.customerShippingFee)}</span>
-            </div>
-          )}
-
-          {breakdown.processingFee > 0 && (
-            <div className='flex justify-between items-center text-xs'>
-              <span className='text-gray-500'>Phí xử lý (10%):</span>
-              <span className='text-red-600 font-medium'>-{formatPrice(breakdown.processingFee)}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Final Result */}
-        <div className='bg-green-50 border border-green-200 rounded-lg p-3'>
-          <div className='flex justify-between items-center text-sm font-medium'>
-            <span>Số tiền khách nhận được:</span>
-            <span className='text-green-600 text-lg'>{formatPrice(breakdown.totalRefund)}</span>
-          </div>
-
-          {breakdown.reason === 'CHANGE_MIND' && (
-            <div className='mt-2 pt-2 border-t border-green-200'>
-              <p className='text-xs text-green-700'>
-                <strong>Lưu ý:</strong> Với lý do "đổi ý không muốn mua", khách hàng sẽ mất:
-              </p>
-              <ul className='text-xs text-green-700 mt-1 ml-3'>
-                <li>• 10% phí xử lý: {formatPrice(breakdown.processingFee)}</li>
-                <li>• Phí ship trả hàng: {formatPrice(breakdown.customerShippingFee)}</li>
-                <li>
-                  • <strong>Tổng mất: {formatPrice(breakdown.processingFee + breakdown.customerShippingFee)}</strong>
-                </li>
-              </ul>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Approval Notice */}

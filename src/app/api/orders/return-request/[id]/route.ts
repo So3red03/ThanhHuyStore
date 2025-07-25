@@ -11,8 +11,15 @@ async function reserveInventoryForReturn(tx: any, items: any[]) {
   console.log('Reserving inventory for return:', items.length, 'items');
 }
 
-async function restoreInventoryFromReturn(tx: any, items: any[]) {
+async function restoreInventoryFromReturn(tx: any, items: any[], reason: string) {
   console.log(`📦 [RETURN-RESTORE] Processing ${items.length} items for inventory restoration...`);
+  console.log(`📦 [RETURN-RESTORE] Return reason: ${reason}`);
+
+  // Don't restore inventory for defective products
+  if (reason === 'DEFECTIVE') {
+    console.log(`⚠️ [RETURN-RESTORE] Skipping inventory restoration for DEFECTIVE products - items cannot be resold`);
+    return;
+  }
 
   for (const item of items) {
     console.log(`🔄 [RETURN-RESTORE] Processing item:`, {
@@ -80,30 +87,138 @@ async function handleExchangeApproval(tx: any, returnRequest: any) {
 
   // For exchange approval, we need to:
   // 1. Reserve the items being returned (similar to return approval)
-  // 2. Reduce stock for the new item being exchanged to
+  // 2. Create new order for exchange item
+  // 3. Process payment difference if needed
 
   // Reserve old items (customer will send back)
   await reserveInventoryForReturn(tx, returnRequest.items as any[]);
 
-  // Reduce stock for new exchange item if specified
+  // Create new order for exchange item
   if (returnRequest.exchangeToProductId) {
-    console.log(`🔄 [EXCHANGE-APPROVE] Reducing stock for exchange item:`, {
-      productId: returnRequest.exchangeToProductId,
-      variantId: returnRequest.exchangeToVariantId
+    console.log(`🔄 [EXCHANGE-APPROVE] Creating new order for exchange...`);
+
+    // Get original order details
+    const originalOrder = await tx.order.findUnique({
+      where: { id: returnRequest.orderId },
+      include: { user: true }
     });
 
-    if (returnRequest.exchangeToVariantId) {
-      // Exchange to variant product (following rollback-inventory pattern)
-      console.log(`🔄 [EXCHANGE-APPROVE] Reducing variant product stock...`);
+    if (!originalOrder) {
+      throw new Error('Original order not found');
+    }
 
-      // 1. Reduce variant stock
+    // Get exchange product details
+    const exchangeProduct = await tx.product.findUnique({
+      where: { id: returnRequest.exchangeToProductId },
+      include: { variants: true }
+    });
+
+    if (!exchangeProduct) {
+      throw new Error('Exchange product not found');
+    }
+
+    // Determine exchange item details
+    let exchangePrice = 0;
+    let exchangeVariant = null;
+
+    if (returnRequest.exchangeToVariantId) {
+      exchangeVariant = exchangeProduct.variants.find((v: any) => v.id === returnRequest.exchangeToVariantId);
+      if (!exchangeVariant) {
+        throw new Error('Exchange variant not found');
+      }
+      // For variant products, use variant price
+      exchangePrice = exchangeVariant.price;
+      if (typeof exchangePrice !== 'number' || isNaN(exchangePrice)) {
+        throw new Error(`Invalid variant price: ${exchangePrice} for variant ${exchangeVariant.id}`);
+      }
+    } else {
+      // For simple products, use product price
+      exchangePrice = exchangeProduct.price || 0;
+      if (typeof exchangePrice !== 'number' || isNaN(exchangePrice)) {
+        throw new Error(`Invalid product price: ${exchangePrice} for product ${exchangeProduct.id}`);
+      }
+    }
+
+    // Calculate price difference
+    const oldItemsTotal = (returnRequest.items as any[]).reduce(
+      (total, item) => total + item.unitPrice * item.quantity,
+      0
+    );
+    const priceDifference = exchangePrice - oldItemsTotal;
+
+    // Create new order for exchange
+    const newOrder = await tx.order.create({
+      data: {
+        userId: originalOrder.userId,
+        amount: exchangePrice,
+        currency: 'VND',
+        status: 'confirmed', // Auto-confirm exchange orders
+        deliveryStatus: 'not_shipped',
+        address: originalOrder.address, // Use same address
+        shippingFee: 0, // Free shipping for exchanges
+        paymentMethod: priceDifference > 0 ? 'pending_payment' : 'exchange',
+        products: [
+          {
+            id: returnRequest.exchangeToProductId,
+            name: exchangeProduct.name,
+            description: exchangeProduct.description,
+            category: exchangeProduct.category,
+            brand: exchangeProduct.brand,
+            selectedImg: exchangeProduct.thumbnail || exchangeProduct.images?.[0] || '',
+            price: exchangePrice,
+            quantity: 1,
+            ...(exchangeVariant && {
+              variantId: exchangeVariant.id,
+              color: exchangeVariant.color,
+              size: exchangeVariant.size,
+              material: exchangeVariant.material
+            })
+          }
+        ],
+        // Link to original order and return request
+        orderNote: `Đổi hàng từ đơn #${originalOrder.id} - Return Request #${returnRequest.id}`,
+        // Store exchange metadata
+        exchangeInfo: {
+          originalOrderId: originalOrder.id,
+          returnRequestId: returnRequest.id,
+          priceDifference: priceDifference,
+          exchangeType: 'APPROVED_EXCHANGE'
+        }
+      }
+    });
+
+    console.log(`✅ [EXCHANGE-APPROVE] New order created: ${newOrder.id}`);
+
+    // Cancel original order (mark as exchanged)
+    console.log(`🔄 [EXCHANGE-APPROVE] Cancelling original order: ${originalOrder.id}`);
+    await tx.order.update({
+      where: { id: originalOrder.id },
+      data: {
+        status: 'canceled',
+        cancelReason: `Exchanged to new order #${newOrder.id}`,
+        cancelDate: new Date()
+      }
+    });
+    console.log(`✅ [EXCHANGE-APPROVE] Original order cancelled`);
+
+    // Update return request with new order info
+    await tx.returnRequest.update({
+      where: { id: returnRequest.id },
+      data: {
+        exchangeOrderId: newOrder.id,
+        additionalCost: priceDifference
+      }
+    });
+
+    // Reduce stock for new exchange item
+    if (returnRequest.exchangeToVariantId) {
+      // Variant product
       await tx.productVariant.update({
         where: { id: returnRequest.exchangeToVariantId },
-        data: { stock: { decrement: 1 } } // Assuming quantity 1 for exchange
+        data: { stock: { decrement: 1 } }
       });
-      console.log(`✅ [EXCHANGE-APPROVE] Variant stock reduced: -1 for variant ${returnRequest.exchangeToVariantId}`);
 
-      // 2. Recalculate main product stock (sum of all active variant stocks)
+      // Recalculate main product stock
       const totalStock = await tx.productVariant.aggregate({
         where: {
           productId: returnRequest.exchangeToProductId,
@@ -116,25 +231,18 @@ async function handleExchangeApproval(tx: any, returnRequest: any) {
         where: { id: returnRequest.exchangeToProductId },
         data: { inStock: totalStock._sum.stock || 0 }
       });
-      console.log(
-        `✅ [EXCHANGE-APPROVE] Main product stock updated: ${totalStock._sum.stock || 0} for product ${
-          returnRequest.exchangeToProductId
-        }`
-      );
     } else {
-      // Exchange to simple product
-      console.log(`🔄 [EXCHANGE-APPROVE] Reducing simple product stock...`);
+      // Simple product
       await tx.product.update({
         where: { id: returnRequest.exchangeToProductId },
         data: { inStock: { decrement: 1 } }
       });
-      console.log(
-        `✅ [EXCHANGE-APPROVE] Simple product stock reduced: -1 for product ${returnRequest.exchangeToProductId}`
-      );
     }
+
+    console.log(`✅ [EXCHANGE-APPROVE] Stock reduced for exchange item`);
   }
 
-  console.log(`🎉 [EXCHANGE-APPROVE] Exchange approval inventory handling completed`);
+  console.log(`🎉 [EXCHANGE-APPROVE] Exchange approval completed with new order creation`);
 }
 
 async function handleExchangeCompletion(tx: any, returnRequest: any) {
@@ -145,7 +253,8 @@ async function handleExchangeCompletion(tx: any, returnRequest: any) {
   // 2. The new item stock was already reduced during approval
 
   console.log(`🔄 [EXCHANGE-COMPLETE] Restoring returned items to inventory...`);
-  await restoreInventoryFromReturn(tx, returnRequest.items as any[]);
+  // For exchange, always restore returned items (they are being exchanged, not defective)
+  await restoreInventoryFromReturn(tx, returnRequest.items as any[], 'EXCHANGE');
 
   console.log(`🎉 [EXCHANGE-COMPLETE] Exchange completion inventory handling completed`);
 }
@@ -155,9 +264,50 @@ async function revertExchangeInventory(tx: any, returnRequest: any) {
 
   // When reverting an exchange:
   // 1. Unreserve the old items (they won't be returned now)
-  // 2. Restore stock for the new item (it was reduced during approval)
+  // 2. Cancel the exchange order if it was created
+  // 3. Restore stock for the new item (it was reduced during approval)
 
   await unreserveInventoryForReturn(tx, returnRequest.items as any[]);
+
+  // Cancel exchange order if it exists
+  if (returnRequest.exchangeOrderId) {
+    console.log(`🔄 [EXCHANGE-REVERT] Cancelling exchange order: ${returnRequest.exchangeOrderId}`);
+
+    await tx.order.update({
+      where: { id: returnRequest.exchangeOrderId },
+      data: {
+        status: 'canceled',
+        cancelReason: 'Exchange request rejected',
+        cancelDate: new Date()
+      }
+    });
+
+    console.log(`✅ [EXCHANGE-REVERT] Exchange order cancelled`);
+
+    // Restore original order status (if it was cancelled for exchange)
+    const originalOrder = await tx.order.findUnique({
+      where: { id: returnRequest.orderId }
+    });
+
+    if (
+      originalOrder &&
+      originalOrder.status === 'canceled' &&
+      originalOrder.cancelReason?.includes('Exchanged to new order')
+    ) {
+      console.log(`🔄 [EXCHANGE-REVERT] Restoring original order: ${returnRequest.orderId}`);
+
+      await tx.order.update({
+        where: { id: returnRequest.orderId },
+        data: {
+          status: 'completed', // Restore to completed status
+          cancelReason: null,
+          cancelDate: null
+        }
+      });
+
+      console.log(`✅ [EXCHANGE-REVERT] Original order restored`);
+    }
+  }
 
   // Restore stock for the exchange item if specified
   if (returnRequest.exchangeToProductId) {
@@ -364,7 +514,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           await reserveInventoryForReturn(tx, returnRequest.items as any[]);
         } else if (action === 'complete') {
           // Actually restore inventory when completed (received goods back)
-          await restoreInventoryFromReturn(tx, returnRequest.items as any[]);
+          // Pass the reason to determine if inventory should be restored
+          await restoreInventoryFromReturn(tx, returnRequest.items as any[], returnRequest.reason || 'UNKNOWN');
         } else if (action === 'reject') {
           // If previously approved, unreserve inventory
           if (returnRequest.status === 'APPROVED') {

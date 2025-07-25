@@ -53,11 +53,43 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
   // Exchange specific states
   const [exchangeProduct, setExchangeProduct] = useState<any>(null);
   const [exchangeVariant, setExchangeVariant] = useState<any>(null);
+  const [exchangeShippingInfo, setExchangeShippingInfo] = useState<{
+    customerPaysShipping: boolean;
+    description: string;
+    estimatedFee: number;
+  } | null>(null);
 
-  const reasonOptions = [
+  const returnReasonOptions = [
     { value: 'DEFECTIVE', label: 'Sản phẩm bị lỗi/hỏng', refundRate: '100%' },
     { value: 'WRONG_ITEM', label: 'Giao sai sản phẩm', refundRate: '100%' },
     { value: 'CHANGE_MIND', label: 'Đổi ý không muốn mua', refundRate: '95%' }
+  ];
+
+  const exchangeReasonOptions = [
+    {
+      value: 'WRONG_ITEM',
+      label: 'Giao sai sản phẩm',
+      customerPaysShipping: false,
+      description: 'Cửa hàng chịu phí vận chuyển'
+    },
+    {
+      value: 'SIZE_COLOR',
+      label: 'Muốn đổi size/màu khác',
+      customerPaysShipping: true,
+      description: 'Khách hàng chịu phí vận chuyển'
+    },
+    {
+      value: 'DIFFERENT_MODEL',
+      label: 'Muốn model/sản phẩm khác',
+      customerPaysShipping: true,
+      description: 'Khách hàng chịu phí vận chuyển'
+    },
+    {
+      value: 'CHANGE_MIND',
+      label: 'Thay đổi sở thích',
+      customerPaysShipping: true,
+      description: 'Khách hàng chịu phí vận chuyển'
+    }
   ];
 
   const handleItemSelect = (product: any, isSelected: boolean) => {
@@ -109,23 +141,36 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
     const updated = [...selectedItems];
     updated[index].reason = reason;
     setSelectedItems(updated);
+
+    // Update exchange shipping info when reason changes for exchange
+    if (type === 'EXCHANGE') {
+      updateExchangeShippingInfo(reason);
+    }
   };
 
-  const calculateRefund = () => {
-    return selectedItems.reduce((total, item) => {
-      const itemTotal = item.unitPrice * item.quantity;
-      // Use item's individual reason if available, otherwise use general reason
-      const effectiveReason = item.reason || reason;
-      const refundRate = effectiveReason === 'DEFECTIVE' || effectiveReason === 'WRONG_ITEM' ? 1.0 : 0.95;
-      return total + itemTotal * refundRate;
-    }, 0);
+  const updateExchangeShippingInfo = (selectedReason: string) => {
+    const reasonOption = exchangeReasonOptions.find(opt => opt.value === selectedReason);
+    if (reasonOption) {
+      setExchangeShippingInfo({
+        customerPaysShipping: reasonOption.customerPaysShipping,
+        description: reasonOption.description,
+        estimatedFee: reasonOption.customerPaysShipping ? 38000 : 0 // Estimated shipping fee
+      });
+    }
   };
 
   const calculateExchangeDifference = () => {
     if (!exchangeProduct || selectedItems.length === 0) return 0;
 
-    const oldTotal = selectedItems.reduce((total, item) => total + item.unitPrice * item.quantity, 0);
-    const newPrice = exchangeVariant ? exchangeVariant.price : exchangeProduct.price;
+    const oldTotal = selectedItems.reduce((total, item) => total + (item.unitPrice || 0) * item.quantity, 0);
+
+    // Safely get new price with fallback
+    let newPrice = 0;
+    if (exchangeVariant && typeof exchangeVariant.price === 'number') {
+      newPrice = exchangeVariant.price;
+    } else if (exchangeProduct && typeof exchangeProduct.price === 'number') {
+      newPrice = exchangeProduct.price;
+    }
 
     return newPrice - oldTotal;
   };
@@ -134,9 +179,10 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
     const files = e.target.files;
     if (!files) return;
 
-    // Limit to 3 images
-    if (images.length + files.length > 3) {
-      toast.error('Chỉ được tải lên tối đa 3 ảnh');
+    // Different limits for return vs exchange
+    const maxImages = type === 'EXCHANGE' ? 2 : 3;
+    if (images.length + files.length > maxImages) {
+      toast.error(`Chỉ được tải lên tối đa ${maxImages} ảnh`);
       return;
     }
 
@@ -166,6 +212,18 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
     // For exchange, check if exchange product is selected
     if (type === 'EXCHANGE' && !exchangeProduct) {
       toast.error('Vui lòng chọn sản phẩm để đổi');
+      return;
+    }
+
+    // For exchange with variants, ensure variant is selected if product has variants
+    if (
+      type === 'EXCHANGE' &&
+      exchangeProduct &&
+      exchangeProduct.variants &&
+      exchangeProduct.variants.length > 0 &&
+      !exchangeVariant
+    ) {
+      toast.error('Vui lòng chọn phiên bản cho sản phẩm đổi');
       return;
     }
 
@@ -304,9 +362,11 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
                           className='flex-1 sm:flex-none px-3 py-1 border rounded text-sm min-w-0'
                         >
                           <option value=''>Chọn lý do</option>
-                          {reasonOptions.map(option => (
+                          {(type === 'RETURN' ? returnReasonOptions : exchangeReasonOptions).map(option => (
                             <option key={option.value} value={option.value}>
-                              {option.label} ({option.refundRate})
+                              {type === 'RETURN'
+                                ? `${option.label} (${'refundRate' in option ? option.refundRate : '100%'})`
+                                : option.label}
                             </option>
                           ))}
                         </select>
@@ -369,18 +429,28 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
                     <div className='flex justify-between'>
                       <span>Sản phẩm cũ:</span>
                       <span>
-                        {formatPrice(selectedItems.reduce((total, item) => total + item.unitPrice * item.quantity, 0))}
+                        {formatPrice(
+                          selectedItems.reduce((total, item) => total + (item.unitPrice || 0) * item.quantity, 0)
+                        )}
                       </span>
                     </div>
                     <div className='flex justify-between'>
                       <span>Sản phẩm mới:</span>
-                      <span>{formatPrice(exchangeVariant ? exchangeVariant.price : exchangeProduct.price)}</span>
+                      <span>
+                        {formatPrice(
+                          exchangeVariant && typeof exchangeVariant.price === 'number'
+                            ? exchangeVariant.price
+                            : exchangeProduct && typeof exchangeProduct.price === 'number'
+                            ? exchangeProduct.price
+                            : 0
+                        )}
+                      </span>
                     </div>
                     <div className='flex justify-between font-medium border-t pt-1'>
                       <span>Chênh lệch:</span>
                       <span className={calculateExchangeDifference() >= 0 ? 'text-orange-600' : 'text-green-600'}>
                         {calculateExchangeDifference() >= 0 ? '+' : ''}
-                        {formatPrice(calculateExchangeDifference())}
+                        {formatPrice(Math.abs(calculateExchangeDifference()))}
                       </span>
                     </div>
                     {calculateExchangeDifference() > 0 && (
@@ -388,6 +458,67 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
                         * Bạn cần thanh toán thêm {formatPrice(calculateExchangeDifference())}
                       </p>
                     )}
+                    {calculateExchangeDifference() < 0 && (
+                      <p className='text-xs text-green-600 mt-2'>
+                        * Bạn sẽ được hoàn {formatPrice(Math.abs(calculateExchangeDifference()))}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Exchange Process Info */}
+                <div className='mt-4 bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4'>
+                  <h4 className='text-sm font-medium text-yellow-800 mb-3 flex items-center gap-2'>
+                    Quy trình đổi hàng
+                    <span className='text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full'>Tự động</span>
+                  </h4>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-yellow-700'>
+                    <div className='space-y-2'>
+                      <div className='flex items-start gap-2'>
+                        <span className='bg-yellow-200 text-yellow-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold'>
+                          1
+                        </span>
+                        <span>Admin duyệt yêu cầu đổi hàng</span>
+                      </div>
+                      <div className='flex items-start gap-2'>
+                        <span className='bg-yellow-200 text-yellow-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold'>
+                          2
+                        </span>
+                        <span>Hệ thống tự động tạo đơn hàng mới</span>
+                      </div>
+                      <div className='flex items-start gap-2'>
+                        <span className='bg-yellow-200 text-yellow-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold'>
+                          3
+                        </span>
+                        <span>Thanh toán chênh lệch (nếu có)</span>
+                      </div>
+                    </div>
+                    <div className='space-y-2'>
+                      <div className='flex items-start gap-2'>
+                        <span className='bg-yellow-200 text-yellow-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold'>
+                          4
+                        </span>
+                        <span>Shop giao sản phẩm mới</span>
+                      </div>
+                      <div className='flex items-start gap-2'>
+                        <span className='bg-yellow-200 text-yellow-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold'>
+                          5
+                        </span>
+                        <span>Bạn gửi sản phẩm cũ về shop</span>
+                      </div>
+                      <div className='flex items-start gap-2'>
+                        <span className='bg-green-200 text-green-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold'>
+                          ✓
+                        </span>
+                        <span className='font-medium'>Hoàn tất đổi hàng</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Important Note */}
+                  <div className='mt-3 p-2 bg-amber-100 border border-amber-300 rounded text-xs text-amber-800'>
+                    <strong>Lưu ý:</strong> Đơn hàng gốc sẽ được hủy và thay thế bằng đơn hàng mới. Quá trình này được
+                    thực hiện tự động sau khi admin duyệt.
                   </div>
                 </div>
               </div>
@@ -405,12 +536,17 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
                 <label className='block text-sm font-medium mb-2'>Lý do chung</label>
                 <select
                   value={reason}
-                  onChange={e => setReason(e.target.value)}
+                  onChange={e => {
+                    setReason(e.target.value);
+                    if (type === 'EXCHANGE') {
+                      updateExchangeShippingInfo(e.target.value);
+                    }
+                  }}
                   className='w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500'
                   required
                 >
                   <option value=''>Chọn lý do chung</option>
-                  {reasonOptions.map(option => (
+                  {(type === 'RETURN' ? returnReasonOptions : exchangeReasonOptions).map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -436,8 +572,18 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
         {selectedItems.length > 0 && (type === 'RETURN' || (type === 'EXCHANGE' && exchangeProduct)) && (
           <div className='mb-8'>
             <h3 className='text-lg font-semibold mb-4'>
-              {type === 'EXCHANGE' ? '4' : '3'}. Hình ảnh chứng minh (tùy chọn)
+              {type === 'EXCHANGE' ? '4' : '3'}.{' '}
+              {type === 'EXCHANGE' ? 'Hình ảnh sản phẩm hiện tại (tùy chọn)' : 'Hình ảnh chứng minh (tùy chọn)'}
             </h3>
+
+            {type === 'EXCHANGE' && (
+              <div className='mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg'>
+                <p className='text-sm text-blue-800'>
+                  <strong>Lưu ý:</strong> Chụp ảnh sản phẩm hiện tại để xác nhận tình trạng sản phẩm còn nguyên vẹn, có
+                  thể đổi được. Không bắt buộc nhưng sẽ giúp quá trình xử lý nhanh hơn.
+                </p>
+              </div>
+            )}
 
             <div
               className='border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 cursor-pointer'
@@ -467,7 +613,11 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
                 <MdCloudUpload className='mx-auto h-12 w-12 text-gray-400' />
                 <div className='mt-4'>
                   <p className='text-lg font-medium text-gray-900 mb-2'>Kéo thả ảnh vào đây hoặc click để chọn</p>
-                  <p className='text-sm text-gray-600'>Hỗ trợ: JPG, PNG, GIF (tối đa 3 ảnh)</p>
+                  <p className='text-sm text-gray-600'>
+                    {type === 'EXCHANGE'
+                      ? 'Chụp ảnh sản phẩm hiện tại - JPG, PNG, GIF (tối đa 2 ảnh)'
+                      : 'Hình ảnh chứng minh vấn đề - JPG, PNG, GIF (tối đa 3 ảnh)'}
+                  </p>
                   <input
                     id='image-upload'
                     type='file'
@@ -520,22 +670,124 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
           </div>
         )}
 
-        {/* Simple Summary for Exchange */}
-        {selectedItems.length > 0 && type === 'EXCHANGE' && (
-          <div className='mb-8 p-4 bg-gray-50 rounded-lg'>
-            <h3 className='text-lg font-semibold mb-2'>Tóm tắt đổi hàng</h3>
-            <div className='space-y-2'>
-              {selectedItems.map((item, index) => (
-                <div key={index} className='flex justify-between text-sm'>
-                  <span>
-                    {item.name} x{item.quantity}
+        {/* Enhanced Summary for Exchange */}
+        {selectedItems.length > 0 && type === 'EXCHANGE' && exchangeProduct && (
+          <div className='mb-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg'>
+            <h3 className='text-lg font-semibold mb-4 text-blue-800'>Tóm tắt đổi hàng</h3>
+
+            {/* Old Products */}
+            <div className='mb-4'>
+              <h4 className='text-sm font-medium text-gray-700 mb-2'>Sản phẩm trả lại:</h4>
+              <div className='space-y-1'>
+                {selectedItems.map((item, index) => (
+                  <div key={index} className='flex justify-between text-sm bg-white rounded p-2'>
+                    <span className='text-gray-600'>
+                      {item.name} {item.variantInfo && `(${item.variantInfo})`} x{item.quantity}
+                    </span>
+                    <span className='font-medium'>{formatPrice((item.unitPrice || 0) * item.quantity)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* New Product */}
+            <div className='mb-4'>
+              <h4 className='text-sm font-medium text-gray-700 mb-2'>Sản phẩm nhận về:</h4>
+              <div className='bg-white rounded p-2'>
+                <div className='flex justify-between text-sm'>
+                  <span className='text-gray-600'>
+                    {exchangeProduct.name} {exchangeVariant && `(${exchangeVariant.name})`}
                   </span>
-                  <span>{formatPrice(item.unitPrice * item.quantity)}</span>
+                  <span className='font-medium'>
+                    {formatPrice(
+                      exchangeVariant && typeof exchangeVariant.price === 'number'
+                        ? exchangeVariant.price
+                        : exchangeProduct && typeof exchangeProduct.price === 'number'
+                        ? exchangeProduct.price
+                        : 0
+                    )}
+                  </span>
                 </div>
-              ))}
-              <div className='border-t pt-2 flex justify-between font-semibold'>
-                <span>Tổng giá trị:</span>
-                <span className='text-blue-600'>{formatPrice(calculateRefund())}</span>
+              </div>
+            </div>
+
+            {/* Shipping Info */}
+            {exchangeShippingInfo && (
+              <div className='mb-4'>
+                <h4 className='text-sm font-medium text-gray-700 mb-2'>Thông tin vận chuyển:</h4>
+                <div
+                  className={`p-3 rounded-lg border ${
+                    exchangeShippingInfo.customerPaysShipping
+                      ? 'bg-orange-50 border-orange-200'
+                      : 'bg-green-50 border-green-200'
+                  }`}
+                >
+                  <div className='flex items-center justify-between'>
+                    <span className='text-sm font-medium'>{exchangeShippingInfo.description}</span>
+                    <span
+                      className={`text-sm font-bold ${
+                        exchangeShippingInfo.customerPaysShipping ? 'text-orange-600' : 'text-green-600'
+                      }`}
+                    >
+                      {exchangeShippingInfo.customerPaysShipping
+                        ? `+${formatPrice(exchangeShippingInfo.estimatedFee)}`
+                        : 'Miễn phí'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Price Summary */}
+            <div className='border-t border-blue-200 pt-3'>
+              <div className='space-y-2'>
+                <div className='flex justify-between items-center'>
+                  <span className='text-sm text-gray-600'>Chênh lệch sản phẩm:</span>
+                  <span
+                    className={`text-sm font-medium ${
+                      calculateExchangeDifference() >= 0 ? 'text-orange-600' : 'text-green-600'
+                    }`}
+                  >
+                    {calculateExchangeDifference() >= 0 ? '+' : ''}
+                    {formatPrice(calculateExchangeDifference())}
+                  </span>
+                </div>
+
+                {exchangeShippingInfo?.customerPaysShipping && (
+                  <div className='flex justify-between items-center'>
+                    <span className='text-sm text-gray-600'>Phí vận chuyển:</span>
+                    <span className='text-sm font-medium text-orange-600'>
+                      +{formatPrice(exchangeShippingInfo.estimatedFee)}
+                    </span>
+                  </div>
+                )}
+
+                <div className='border-t pt-2 flex justify-between items-center'>
+                  <span className='font-semibold text-gray-700'>Tổng cần thanh toán:</span>
+                  <span
+                    className={`font-bold text-lg ${
+                      calculateExchangeDifference() +
+                        (exchangeShippingInfo?.customerPaysShipping ? exchangeShippingInfo.estimatedFee : 0) >=
+                      0
+                        ? 'text-orange-600'
+                        : 'text-green-600'
+                    }`}
+                  >
+                    {calculateExchangeDifference() +
+                      (exchangeShippingInfo?.customerPaysShipping ? exchangeShippingInfo.estimatedFee : 0) >=
+                    0
+                      ? '+'
+                      : ''}
+                    {formatPrice(
+                      calculateExchangeDifference() +
+                        (exchangeShippingInfo?.customerPaysShipping ? exchangeShippingInfo.estimatedFee : 0)
+                    )}
+                  </span>
+                </div>
+
+                {calculateExchangeDifference() +
+                  (exchangeShippingInfo?.customerPaysShipping ? exchangeShippingInfo.estimatedFee : 0) ===
+                  0 && <p className='text-xs text-gray-500 mt-1'>Không cần thanh toán thêm</p>}
               </div>
             </div>
           </div>

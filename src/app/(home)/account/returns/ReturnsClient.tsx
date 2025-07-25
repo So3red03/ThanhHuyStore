@@ -19,6 +19,7 @@ interface ReturnRequest {
   refundAmount?: number;
   additionalCost?: number;
   adminNotes?: string;
+  exchangeOrderId?: string;
   createdAt: string;
   items: any[];
   order: {
@@ -319,6 +320,24 @@ const ReturnsClient: React.FC<ReturnsClientProps> = ({ currentUser }) => {
                           >
                             {formatPrice(Math.abs(request.additionalCost))}
                           </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Exchange Order Link */}
+                    {request.type === 'EXCHANGE' && request.exchangeOrderId && request.status === 'APPROVED' && (
+                      <div className='p-3 bg-blue-50 border border-blue-200 rounded-lg'>
+                        <div className='flex items-center justify-between'>
+                          <div>
+                            <p className='text-sm text-blue-700 font-medium'>🔄 Đơn hàng đổi mới</p>
+                            <p className='text-xs text-blue-600'>#{request.exchangeOrderId.slice(-8)}</p>
+                          </div>
+                          <Link
+                            href={`/account/orders/${request.exchangeOrderId}`}
+                            className='px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors'
+                          >
+                            Xem đơn hàng
+                          </Link>
                         </div>
                       </div>
                     )}

@@ -974,7 +974,7 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
 
                       {/* Detailed Calculation Example */}
                       <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
-                        <h4 className='font-medium text-yellow-800 mb-3'>📊 Ví dụ tính toán chi tiết</h4>
+                        <h4 className='font-medium text-yellow-800 mb-3'>Ví dụ tính toán chi tiết</h4>
                         <div className='text-sm text-yellow-800'>
                           <p className='font-medium mb-2'>Đơn hàng: 3,990,000₫ + 38,000₫ ship = 4,028,000₫</p>
                           <p className='font-medium mb-2 text-orange-700'>Trường hợp: Khách đổi ý không muốn mua</p>
