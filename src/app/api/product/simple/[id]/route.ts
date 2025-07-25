@@ -54,7 +54,7 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
     }
 
     const body = await request.json();
-    const { name, description, price, inStock, categoryId, thumbnail, galleryImages } = body;
+    const { name, description, price, inStock, categoryId, thumbnail, galleryImages, priority } = body;
 
     // Validation
     if (!name || !description || !categoryId) {
@@ -80,7 +80,8 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
         inStock: inStock !== undefined ? parseInt(inStock) : existingProduct.inStock,
         categoryId,
         thumbnail: thumbnail !== undefined ? thumbnail : existingProduct.thumbnail,
-        galleryImages: galleryImages !== undefined ? galleryImages : existingProduct.galleryImages
+        galleryImages: galleryImages !== undefined ? galleryImages : existingProduct.galleryImages,
+        priority: priority !== undefined ? parseInt(priority) : existingProduct.priority
       }
     });
 

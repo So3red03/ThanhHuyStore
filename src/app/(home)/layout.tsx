@@ -15,7 +15,7 @@ import NProgressProvider from '../components/NProgressProvider';
 import { AuthModalProvider } from '../components/auth/AuthModalProvider';
 import AuthModal from '../components/auth/AuthModal';
 import BlockedUserWrapper from '../components/BlockedUserWrapper';
-import { FavoritesProvider } from '../contexts/FavoritesContext';
+import { FavoritesProvider } from '../providers/FavoritesContext';
 
 const poppins = Poppins({ subsets: ['latin'], weight: ['400', '700'] });
 

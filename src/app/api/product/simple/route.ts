@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, description, price, categoryId, inStock, thumbnail, galleryImages } = body;
+    const { name, description, price, categoryId, inStock, thumbnail, galleryImages, priority } = body;
 
     // Validation
     if (!name || !description || !categoryId || !price || inStock === undefined) {
@@ -108,7 +108,8 @@ export async function POST(request: Request) {
         inStock: parseInt(inStock),
         productType: 'SIMPLE',
         thumbnail: thumbnail || null,
-        galleryImages: galleryImages || []
+        galleryImages: galleryImages || [],
+        priority: priority !== undefined ? parseInt(priority) : 0
       }
     });
 

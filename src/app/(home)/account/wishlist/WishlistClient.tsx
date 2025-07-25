@@ -3,7 +3,7 @@
 import React from 'react';
 import { Typography, Button } from '@mui/material';
 import { MdFavorite } from 'react-icons/md';
-import { useFavorites } from '@/app/contexts/FavoritesContext';
+import { useFavorites } from '@/app/providers/FavoritesContext';
 import ProductCard from '@/app/components/products/ProductCard';
 import Heading from '@/app/components/Heading';
 import { useRouter } from 'next/navigation';

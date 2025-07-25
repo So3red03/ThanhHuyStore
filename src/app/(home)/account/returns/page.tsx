@@ -2,7 +2,7 @@ import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import ReturnsClient from './ReturnsClient';
 import NullData from '@/app/components/NullData';
 import { Suspense } from 'react';
-import { ReturnRequestProvider } from '@/app/contexts/ReturnRequestContext';
+import { ReturnRequestProvider } from '@/app/providers/ReturnRequestContext';
 export const dynamic = 'force-dynamic';
 
 const ReturnsPage = async () => {

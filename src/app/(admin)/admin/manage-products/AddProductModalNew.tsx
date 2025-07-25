@@ -200,6 +200,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       setValue('price', initialData.price);
       setValue('inStock', initialData.inStock);
       setValue('categoryId', initialData.categoryId);
+      setValue('priority', initialData.priority || 0);
 
       // Set description text for Editor
       setText(initialData.description || '');
@@ -453,9 +454,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
       // Add product type specific data
       if (productType === ProductType.SIMPLE) {
-        // Simple products include price, stock, and images in main product
+        // Simple products include price, stock, priority, and images in main product
         submitData.price = parseFloat(data.price);
         submitData.inStock = parseInt(data.inStock);
+        submitData.priority = parseInt(data.priority || '0');
       } else if (productType === ProductType.VARIANT) {
         // For variant products, upload images to Firebase with proper folder structure
         try {
@@ -464,6 +466,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           // For variant products, main product doesn't have price/stock
           // Price will be calculated from variants on the server side
           submitData.variants = uploadedVariations;
+          submitData.priority = parseInt(data.priority || '0');
 
           // Transform attributes to match backend expected format
           submitData.attributes = attributes.map((attr: any) => ({
@@ -990,6 +993,25 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                       </Typography>
                     )}
                   </FormControl>
+
+                  {/* Priority Field */}
+                  <TextField
+                    fullWidth
+                    label='Độ ưu tiên'
+                    type='number'
+                    {...register('priority', {
+                      valueAsNumber: true,
+                      min: { value: 0, message: 'Độ ưu tiên phải từ 0 trở lên' },
+                      max: { value: 10, message: 'Độ ưu tiên tối đa là 10' }
+                    })}
+                    error={!!errors.priority}
+                    helperText={
+                      (errors.priority?.message as string) || 'Độ ưu tiên từ 0-10 (0: bình thường, 1-10: ưu tiên cao)'
+                    }
+                    disabled={isLoading}
+                    defaultValue={0}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                  />
                 </Box>
               </Card>
             </Grid>

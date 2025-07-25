@@ -92,6 +92,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [priceRangeFilter, setPriceRangeFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
+  const [productTypeFilter, setProductTypeFilter] = useState('all');
   const [filteredProducts, setFilteredProducts] = useState(products);
 
   const [text, setText] = useState('');
@@ -248,6 +249,20 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       });
     }
 
+    // Filter by product type
+    if (productTypeFilter !== 'all') {
+      filtered = filtered.filter(product => {
+        switch (productTypeFilter) {
+          case 'simple':
+            return product.productType === 'SIMPLE';
+          case 'variant':
+            return product.productType === 'VARIANT';
+          default:
+            return true;
+        }
+      });
+    }
+
     setFilteredProducts(filtered);
   };
 
@@ -256,6 +271,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     setCategoryFilter('all');
     setPriceRangeFilter('all');
     setStockFilter('all');
+    setProductTypeFilter('all');
     setFilteredProducts(products);
   };
 
@@ -459,10 +475,43 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         );
       }
     },
-
+    {
+      field: 'priority',
+      headerName: 'Ưu tiên',
+      width: 80,
+      renderCell: params => {
+        const priority = params.row.priority || 0;
+        return (
+          <div className='flex justify-center items-center h-full'>
+            <Status
+              text={priority.toString()}
+              bg={priority > 0 ? 'bg-orange-200' : 'bg-gray-200'}
+              color={priority > 0 ? 'text-orange-700' : 'text-gray-700'}
+            />
+          </div>
+        );
+      }
+    },
+    {
+      field: 'productType',
+      headerName: 'Loại SP',
+      width: 100,
+      renderCell: params => {
+        const isVariant = params.row.productType === 'VARIANT';
+        return (
+          <div className='flex justify-center items-center h-full'>
+            <Status
+              text={isVariant ? 'Biến thể' : 'Đơn giản'}
+              bg={isVariant ? 'bg-purple-200' : 'bg-green-200'}
+              color={isVariant ? 'text-purple-700' : 'text-green-700'}
+            />
+          </div>
+        );
+      }
+    },
     {
       field: 'rating',
-      headerName: 'Đánh giá',
+      headerName: 'TB rating',
       width: 130,
       renderCell: params => {
         return (
@@ -472,7 +521,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         );
       }
     },
-    { field: 'description', headerName: 'Mô tả', width: 170 },
     {
       field: 'createdAt',
       headerName: 'Ngày tạo',
@@ -575,6 +623,23 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     },
     { field: 'subCategory', headerName: 'Danh mục', width: 120 },
     {
+      field: 'productType',
+      headerName: 'Loại',
+      width: 80,
+      renderCell: params => {
+        const isVariant = params.row.productType === 'VARIANT';
+        return <div className='text-center text-xs'>{isVariant ? 'Biến thể' : 'Đơn giản'}</div>;
+      }
+    },
+    {
+      field: 'priority',
+      headerName: 'Ưu tiên',
+      width: 70,
+      renderCell: params => {
+        return <div className='text-center'>{params.row.priority || 0}</div>;
+      }
+    },
+    {
       field: 'inStock',
       headerName: 'Tồn kho',
       width: 80,
@@ -664,7 +729,8 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         description: data.description,
         price: Number(data.price),
         inStock: Number(data.inStock),
-        categoryId: data.categoryId
+        categoryId: data.categoryId,
+        priority: Number(data.priority || 0)
       })
       .then(() => {
         toast.success('Lưu thông tin thành công');
@@ -682,7 +748,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   // Auto-trigger search when filters change
   useEffect(() => {
     handleSearch();
-  }, [searchTerm, categoryFilter, priceRangeFilter, stockFilter, currentProducts]);
+  }, [searchTerm, categoryFilter, priceRangeFilter, stockFilter, productTypeFilter, currentProducts]);
 
   useEffect(() => {
     if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
@@ -822,7 +888,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
         {/* Enhanced Search Form */}
         <div className='bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6'>
-          <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
+          <div className='grid grid-cols-1 lg:grid-cols-5 gap-6'>
             {/* Search Input */}
             <div className='lg:col-span-2'>
               <label className='block text-sm font-semibold text-gray-700 mb-3'>Tìm kiếm</label>
@@ -933,11 +999,72 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
                 </Select>
               </FormControl>
             </div>
+
+            {/* Stock Status Filter */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Trạng thái kho</label>
+              <FormControl fullWidth size='medium'>
+                <Select
+                  value={stockFilter}
+                  onChange={e => setStockFilter(e.target.value)}
+                  displayEmpty
+                  sx={{
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover': {
+                        backgroundColor: '#f3f4f6'
+                      },
+                      '&.Mui-focused': {
+                        backgroundColor: '#ffffff'
+                      }
+                    }
+                  }}
+                >
+                  <MenuItem value='all'>Tất cả</MenuItem>
+                  <MenuItem value='in-stock'>Còn hàng</MenuItem>
+                  <MenuItem value='low-stock'>Sắp hết (≤10)</MenuItem>
+                  <MenuItem value='out-of-stock'>Hết hàng</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+
+            {/* Product Type Filter */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Loại sản phẩm</label>
+              <FormControl fullWidth size='medium'>
+                <Select
+                  value={productTypeFilter}
+                  onChange={e => setProductTypeFilter(e.target.value)}
+                  displayEmpty
+                  sx={{
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover': {
+                        backgroundColor: '#f3f4f6'
+                      },
+                      '&.Mui-focused': {
+                        backgroundColor: '#ffffff'
+                      }
+                    }
+                  }}
+                >
+                  <MenuItem value='all'>Tất cả loại</MenuItem>
+                  <MenuItem value='simple'>Sản phẩm đơn giản</MenuItem>
+                  <MenuItem value='variant'>Sản phẩm biến thể</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
           </div>
 
           {/* Action Buttons */}
           <div className='flex justify-between items-center mt-6'>
-            {(searchTerm || categoryFilter !== 'all' || priceRangeFilter !== 'all') && (
+            {(searchTerm ||
+              categoryFilter !== 'all' ||
+              priceRangeFilter !== 'all' ||
+              stockFilter !== 'all' ||
+              productTypeFilter !== 'all') && (
               <MuiButton
                 variant='outlined'
                 onClick={handleClearFilters}
@@ -957,7 +1084,11 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
             )}
 
             {/* Search Results Info */}
-            {(searchTerm || categoryFilter !== 'all' || priceRangeFilter !== 'all') && (
+            {(searchTerm ||
+              categoryFilter !== 'all' ||
+              priceRangeFilter !== 'all' ||
+              stockFilter !== 'all' ||
+              productTypeFilter !== 'all') && (
               <div className='px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg'>
                 <div className='text-sm font-medium text-green-800'>
                   <strong>Kết quả:</strong> {filteredProducts.length} sản phẩm

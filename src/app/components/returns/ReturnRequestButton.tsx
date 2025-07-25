@@ -5,7 +5,7 @@ import { Order, OrderStatus } from '@prisma/client';
 import { SafeUser } from '../../../../types';
 import { MdUndo, MdSwapHoriz, MdAccessTime, MdCheckCircle, MdCancel } from 'react-icons/md';
 import ReturnRequestModal from './ReturnRequestModal';
-import { useReturnRequests } from '../../contexts/ReturnRequestContext';
+import { useReturnRequests } from '../../providers/ReturnRequestContext';
 
 interface ReturnRequest {
   id: string;

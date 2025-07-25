@@ -16,9 +16,26 @@ interface DisplayProductsBySlugProps {
 const DisplayProductsBySlug: React.FC<DisplayProductsBySlugProps> = ({ data }) => {
   const [products, setProducts] = useState<[]>(data.products);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     if (data.products && data.products.length > 0) {
-      setProducts(data.products);
+      // Sort products by priority (highest first), then by creation date (newest first)
+      const sortedProducts = [...data.products].sort((a: any, b: any) => {
+        // First sort by priority (higher priority first)
+        const priorityA = a.priority || 0;
+        const priorityB = b.priority || 0;
+
+        if (priorityA !== priorityB) {
+          return priorityB - priorityA; // Higher priority first
+        }
+
+        // If priority is the same, sort by creation date (newer first)
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+
+      setProducts(sortedProducts as []);
       setLoading(false);
     }
   }, [data]);

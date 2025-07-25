@@ -72,7 +72,7 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
     }
 
     const body = await request.json();
-    const { name, description, brand, categoryId, images, attributes, variants } = body;
+    const { name, description, brand, categoryId, images, attributes, variants, priority } = body;
 
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
@@ -95,6 +95,7 @@ export async function PUT(request: Request, { params }: { params: IParams }) {
           categoryId,
           thumbnail: body.thumbnail || null,
           galleryImages: body.galleryImages || [],
+          priority: priority !== undefined ? parseInt(priority) : existingProduct.priority,
           updatedAt: new Date()
         }
       });

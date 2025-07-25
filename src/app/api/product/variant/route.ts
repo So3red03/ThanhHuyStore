@@ -94,7 +94,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const { name, description, brand = 'Apple', categoryId, attributes = [], variants = [] } = body;
+    const { name, description, brand = 'Apple', categoryId, attributes = [], variants = [], priority } = body;
 
     // Detailed validation with specific error messages
     // For variant products, only name, description, and categoryId are required
@@ -128,7 +128,8 @@ export async function POST(request: Request) {
           thumbnail: null,
           galleryImages: [],
           inStock: null, // Variant products don't have direct stock
-          price: null // Variant products don't have direct price
+          price: null, // Variant products don't have direct price
+          priority: priority !== undefined ? parseInt(priority) : 0
         }
       });
 

@@ -7,7 +7,7 @@ import { formatDate } from '../orders/OrdersClient';
 import { MdRefresh, MdVisibility, MdShoppingBag, MdSwapHoriz, MdUndo } from 'react-icons/md';
 import Link from 'next/link';
 import AdminModal from '../../../components/admin/AdminModal';
-import { useReturnRequests } from '../../../contexts/ReturnRequestContext';
+import { useReturnRequests } from '../../../providers/ReturnRequestContext';
 import ReturnRequestProductItem from '../../../components/returns/ReturnRequestProductItem';
 
 interface ReturnRequest {

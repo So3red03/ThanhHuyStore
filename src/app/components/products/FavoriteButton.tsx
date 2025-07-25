@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { IconButton, Tooltip } from '@mui/material';
 import { MdFavorite, MdFavoriteBorder } from 'react-icons/md';
-import { useFavorites } from '@/app/contexts/FavoritesContext';
+import { useFavorites } from '@/app/providers/FavoritesContext';
 
 interface FavoriteButtonProps {
   productId: string;
