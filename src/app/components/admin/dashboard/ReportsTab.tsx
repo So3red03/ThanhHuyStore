@@ -129,26 +129,34 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, pr
 
       // Prepare product data with sales info (consistent with ManageProductsClient logic)
       const productData = uniqueProducts.map((product: any) => {
-        // Calculate sold quantity from completed orders only (excluding returned orders)
-        const soldQuantity = orders.reduce((total: number, order: any) => {
-          // Only count completed orders
+        // Tính số lượng thực tế đã bán = Tổng mua - Tổng trả (cho từng sản phẩm)
+        const totalPurchased = orders.reduce((total: number, order: any) => {
           if (order.status !== 'completed' || !order.products || !Array.isArray(order.products)) {
             return total;
-          }
-
-          // Exclude orders with approved/completed return requests
-          if (order.returnRequests && order.returnRequests.length > 0) {
-            const hasActiveReturn = order.returnRequests.some(
-              (returnReq: any) => returnReq.status === 'APPROVED' || returnReq.status === 'COMPLETED'
-            );
-            if (hasActiveReturn) {
-              return total; // Skip this order
-            }
           }
 
           const orderProduct = order.products.find((p: any) => p.id === product.id);
           return total + (orderProduct?.quantity || 0);
         }, 0);
+
+        const totalReturned = orders.reduce((total: number, order: any) => {
+          if (order.status !== 'completed' || !order.returnRequests || !Array.isArray(order.returnRequests)) {
+            return total;
+          }
+
+          const returnedQuantity = order.returnRequests.reduce((returnTotal: number, returnReq: any) => {
+            if (returnReq.status !== 'COMPLETED' || !returnReq.items || !Array.isArray(returnReq.items)) {
+              return returnTotal;
+            }
+
+            const returnedItem = returnReq.items.find((item: any) => item.productId === product.id);
+            return returnTotal + (returnedItem?.quantity || 0);
+          }, 0);
+
+          return total + returnedQuantity;
+        }, 0);
+
+        const soldQuantity = Math.max(0, totalPurchased - totalReturned);
 
         // Calculate stock for variant products (consistent with other components)
         let displayStock = product.inStock || 0;

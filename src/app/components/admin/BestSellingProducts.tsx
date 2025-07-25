@@ -17,32 +17,53 @@ const BestSellingProducts: React.FC<BestSellingProductsProps> = ({ uniqueProduct
     return (
       uniqueProducts
         ?.map(product => {
-          // Filter only completed orders (excluding returned orders)
-          const completedOrders = orders.filter(order => {
-            // Only include completed orders
-            if (order.status !== 'completed') return false;
+          // Tính tổng số lượng đã mua cho sản phẩm này
+          const totalPurchased = orders.reduce((total, order) => {
+            if (order.status !== 'completed' || !order.products) return total;
 
-            // Exclude orders with approved/completed return requests
-            if (order.returnRequests && order.returnRequests.length > 0) {
-              const hasActiveReturn = order.returnRequests.some(
-                (returnReq: any) => returnReq.status === 'APPROVED' || returnReq.status === 'COMPLETED'
-              );
-              if (hasActiveReturn) return false;
-            }
-
-            return true;
-          });
-
-          // Calculate total quantity purchased across completed orders only
-          const totalPurchased = completedOrders.reduce((total, order) => {
-            const orderProduct = order.products?.find((p: any) => p.id === product.id);
+            const orderProduct = order.products.find((p: any) => p.id === product.id);
             return total + (orderProduct?.quantity || 0);
           }, 0);
 
-          // Calculate total revenue for this product from completed orders only
-          const totalRevenue = completedOrders.reduce((total, order) => {
-            const orderProduct = order.products?.find((p: any) => p.id === product.id);
-            return total + (orderProduct?.quantity || 0) * (orderProduct?.price || product.price || 0);
+          // Tính tổng số lượng đã trả cho sản phẩm này
+          const totalReturned = orders.reduce((total, order) => {
+            if (order.status !== 'completed' || !order.returnRequests) return total;
+
+            const returnedQuantity = order.returnRequests.reduce((returnTotal: any, returnReq: any) => {
+              if (returnReq.status !== 'COMPLETED' || !returnReq.items) return returnTotal;
+
+              const returnedItem = returnReq.items.find((item: any) => item.productId === product.id);
+              return returnTotal + (returnedItem?.quantity || 0);
+            }, 0);
+
+            return total + returnedQuantity;
+          }, 0);
+
+          // Số lượng thực tế đã bán = Tổng mua - Tổng trả
+          const actualSold = Math.max(0, totalPurchased - totalReturned);
+
+          // Tính doanh thu thực tế (chỉ tính phần đã bán thực sự, không tính phần trả)
+          const totalRevenue = orders.reduce((total, order) => {
+            if (order.status !== 'completed' || !order.products) return total;
+
+            const orderProduct = order.products.find((p: any) => p.id === product.id);
+            if (!orderProduct) return total;
+
+            // Tính doanh thu từ đơn hàng này
+            const orderRevenue = orderProduct.quantity * (orderProduct.price || product.price || 0);
+
+            // Trừ đi doanh thu từ phần trả hàng
+            const returnedRevenue =
+              order.returnRequests?.reduce((returnTotal: any, returnReq: any) => {
+                if (returnReq.status !== 'COMPLETED' || !returnReq.items) return returnTotal;
+
+                const returnedItem = returnReq.items.find((item: any) => item.productId === product.id);
+                if (!returnedItem) return returnTotal;
+
+                return returnTotal + returnedItem.quantity * (orderProduct.price || product.price || 0);
+              }, 0) || 0;
+
+            return total + (orderRevenue - returnedRevenue);
           }, 0);
 
           // Calculate correct stock (including variants)
@@ -90,7 +111,7 @@ const BestSellingProducts: React.FC<BestSellingProductsProps> = ({ uniqueProduct
 
           return {
             ...product,
-            totalPurchased,
+            totalPurchased: actualSold, // Số lượng thực tế đã bán (đã trừ trả hàng)
             totalRevenue,
             inStock: displayStock, // Override with calculated stock
             imageUrl

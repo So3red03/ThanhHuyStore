@@ -841,13 +841,6 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
                 paginationModel: { page: 0, pageSize: 10 }
               }
             }}
-            slots={{ toolbar: GridToolbar }}
-            slotProps={{
-              toolbar: {
-                showQuickFilter: true,
-                quickFilterProps: { debounceMs: 500 }
-              }
-            }}
             pageSizeOptions={[10, 20, 30]}
             checkboxSelection
             disableRowSelectionOnClick

@@ -513,29 +513,70 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           // Reserve inventory when approved (customer will send back)
           await reserveInventoryForReturn(tx, returnRequest.items as any[]);
 
-          // Check if this is a full return and cancel order immediately
+          // Update order return status (but keep order active)
           const totalReturnValue = returnRequest.refundAmount || 0;
-          const orderAmount = returnRequest.order?.amount || 0;
-          const isFullReturn = totalReturnValue >= orderAmount;
+          const currentReturnedAmount = returnRequest.order?.returnedAmount || 0;
+          const newReturnedAmount = currentReturnedAmount + totalReturnValue;
 
-          if (isFullReturn) {
-            console.log(`🔄 [RETURN-APPROVE] Cancelling order due to full return approval...`);
+          // Determine if this is full return based on product quantities, not money amount
+          // Get all return requests for this order to check total returned quantities
+          const allReturnRequests = await tx.returnRequest.findMany({
+            where: {
+              orderId: returnRequest.orderId,
+              status: { in: ['APPROVED', 'COMPLETED'] }
+            }
+          });
 
-            await tx.order.update({
-              where: { id: returnRequest.orderId! },
-              data: {
-                status: 'canceled',
-                cancelReason: `Trả hàng toàn bộ được duyệt - Yêu cầu #${returnRequest.id}`,
-                cancelDate: new Date(),
-                returnStatus: OrderReturnStatus.FULL,
-                returnedAmount: totalReturnValue
-              }
+          // Calculate total returned quantities for each product
+          const returnedQuantities: { [productId: string]: number } = {};
+          allReturnRequests.forEach((req: any) => {
+            // items is a JSON field, not a relation
+            const items = req.items || [];
+            items.forEach((item: any) => {
+              const key = `${item.productId}-${item.variantId || 'simple'}`;
+              returnedQuantities[key] = (returnedQuantities[key] || 0) + item.quantity;
             });
+          });
 
-            console.log(`✅ [RETURN-APPROVE] Order cancelled due to full return approval`);
-          } else {
-            console.log(`🔄 [RETURN-APPROVE] Partial return approved, keeping order active`);
+          // Get original order products to compare
+          const orderProducts = returnRequest.order?.products || [];
+          let isFullReturn = true;
+
+          // Check if all products in order have been fully returned
+          for (const product of orderProducts) {
+            const key = `${product.id}-${product.variantId || 'simple'}`;
+            const returnedQty = returnedQuantities[key] || 0;
+            const originalQty = product.quantity || 0;
+
+            if (returnedQty < originalQty) {
+              isFullReturn = false;
+              break;
+            }
           }
+
+          console.log(`🔍 [RETURN-APPROVE] Return analysis:`, {
+            returnedQuantities,
+            orderProducts: orderProducts.map(p => ({ id: p.id, quantity: p.quantity })),
+            isFullReturn
+          });
+
+          console.log(`🔄 [RETURN-APPROVE] Updating return status for ${isFullReturn ? 'full' : 'partial'} return...`);
+
+          await tx.order.update({
+            where: { id: returnRequest.orderId! },
+            data: {
+              // Keep order status as 'completed' - do NOT cancel
+              returnStatus: isFullReturn ? OrderReturnStatus.FULL : OrderReturnStatus.PARTIAL,
+              returnedAmount: newReturnedAmount
+            }
+          });
+
+          console.log(
+            `✅ [RETURN-APPROVE] Order updated with ${
+              isFullReturn ? 'FULL' : 'PARTIAL'
+            } return status, amount: ${newReturnedAmount}`
+          );
+          console.log(`ℹ️ [RETURN-APPROVE] Order remains active (status: completed) for proper business tracking`);
         } else if (action === 'complete') {
           // Actually restore inventory when completed (received goods back)
           // Pass the reason to determine if inventory should be restored
@@ -545,32 +586,65 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           if (returnRequest.status === 'APPROVED') {
             await unreserveInventoryForReturn(tx, returnRequest.items as any[]);
 
-            // If order was cancelled due to this return (either during approval or completion), restore it
+            // Reset order return status (order was never cancelled, just reset return tracking)
+            console.log(`🔄 [RETURN-REVERT] Resetting return status for order: ${returnRequest.orderId}`);
+
+            // Recalculate return status after removing this return request
+            const totalReturnValue = returnRequest.refundAmount || 0;
             const currentOrder = await tx.order.findUnique({
-              where: { id: returnRequest.orderId }
+              where: { id: returnRequest.orderId },
+              include: { products: true }
             });
 
-            if (
-              currentOrder &&
-              currentOrder.status === 'canceled' &&
-              currentOrder.cancelReason?.includes(`Yêu cầu #${returnRequest.id}`)
-            ) {
-              console.log(`🔄 [RETURN-REVERT] Restoring cancelled order: ${returnRequest.orderId}`);
+            if (currentOrder) {
+              const newReturnedAmount = Math.max(0, (currentOrder.returnedAmount || 0) - totalReturnValue);
+
+              // Get remaining return requests (excluding the one being rejected)
+              const remainingReturnRequests = await tx.returnRequest.findMany({
+                where: {
+                  orderId: returnRequest.orderId,
+                  status: { in: ['APPROVED', 'COMPLETED'] },
+                  id: { not: returnRequest.id } // Exclude current request being rejected
+                }
+              });
+
+              // Calculate remaining returned quantities
+              const remainingReturnedQuantities: { [productId: string]: number } = {};
+              remainingReturnRequests.forEach((req: any) => {
+                // items is a JSON field, not a relation
+                const items = req.items || [];
+                items.forEach((item: any) => {
+                  const key = `${item.productId}-${item.variantId || 'simple'}`;
+                  remainingReturnedQuantities[key] = (remainingReturnedQuantities[key] || 0) + item.quantity;
+                });
+              });
+
+              // Check if any products are still returned
+              let hasAnyReturns = false;
+              for (const product of currentOrder.products) {
+                const key = `${product.id}-${product.variantId || 'simple'}`;
+                if (remainingReturnedQuantities[key] > 0) {
+                  hasAnyReturns = true;
+                  break;
+                }
+              }
+
+              const newReturnStatus = hasAnyReturns ? OrderReturnStatus.PARTIAL : OrderReturnStatus.NONE;
 
               await tx.order.update({
                 where: { id: returnRequest.orderId },
                 data: {
-                  status: 'completed', // Restore to completed status
-                  cancelReason: null,
-                  cancelDate: null,
-                  returnStatus: OrderReturnStatus.NONE, // Reset return status
-                  returnedAmount: 0 // Reset returned amount
+                  // Order status remains 'completed' - never changed
+                  returnStatus: newReturnStatus,
+                  returnedAmount: newReturnedAmount
                 }
               });
 
-              console.log(`✅ [RETURN-REVERT] Order restored to completed status`);
+              console.log(
+                `✅ [RETURN-REVERT] Order return status reset: ${newReturnStatus}, amount: ${newReturnedAmount}`
+              );
             } else {
-              console.log(`ℹ️ [RETURN-REVERT] Order not cancelled by this return or already restored`);
+              console.log(`⚠️ [RETURN-REVERT] Order not found: ${returnRequest.orderId}`);
             }
           }
         }
@@ -589,45 +663,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         }
       }
 
-      // Update order return status for completed returns (if not already updated during approval)
+      // Return completion - inventory already restored above, no order status changes needed
       if (action === 'complete' && returnRequest.type === 'RETURN') {
-        console.log(`🔄 [RETURN-COMPLETE] Finalizing return completion...`);
+        console.log(`🔄 [RETURN-COMPLETE] Return completion processed - inventory restored`);
+        console.log(
+          `ℹ️ [RETURN-COMPLETE] Order status remains 'completed' with return tracking via returnStatus field`
+        );
 
-        // Check current order status to avoid duplicate updates
-        const currentOrder = await tx.order.findUnique({
-          where: { id: returnRequest.orderId! }
-        });
-
-        const totalReturnValue = returnRequest.refundAmount || 0;
-        const orderAmount = returnRequest.order?.amount || 0;
-        const isFullReturn = totalReturnValue >= orderAmount;
-
-        // Only update if order wasn't already cancelled during approval
-        if (currentOrder && currentOrder.status !== 'canceled') {
-          console.log(`🔄 [RETURN-COMPLETE] Updating order status for completion...`);
-
-          const updateData: any = {
-            returnStatus: isFullReturn ? OrderReturnStatus.FULL : OrderReturnStatus.PARTIAL,
-            returnedAmount: totalReturnValue
-          };
-
-          // Cancel order if full return and not already cancelled
-          if (isFullReturn) {
-            updateData.status = 'canceled';
-            updateData.cancelReason = `Trả hàng toàn bộ hoàn tất - Yêu cầu #${returnRequest.id}`;
-            updateData.cancelDate = new Date();
-            console.log(`🔄 [RETURN-COMPLETE] Cancelling order due to full return completion...`);
-          }
-
-          await tx.order.update({
-            where: { id: returnRequest.orderId! },
-            data: updateData
-          });
-
-          console.log(`✅ [RETURN-COMPLETE] Order status updated for ${isFullReturn ? 'full' : 'partial'} return`);
-        } else {
-          console.log(`ℹ️ [RETURN-COMPLETE] Order already cancelled during approval, skipping update`);
-        }
+        // Note: Order return status was already updated during approval
+        // No additional order updates needed for completion
       }
 
       console.log(`🎉 [RETURN-REQUEST] Transaction completed successfully for ${action} action`);

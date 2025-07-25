@@ -323,26 +323,39 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       // Tìm tên danh mục cha dựa vào parentId
       const subCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.name;
 
-      // Tính số lượng đã bán (chỉ tính orders completed, không tính canceled và returned)
+      // Tính số lượng đã bán = Tổng mua - Tổng trả (cho từng sản phẩm riêng lẻ)
       const totalPurchased = orders.reduce((total: number, order: any) => {
-        // Chỉ tính orders đã hoàn thành, không tính orders bị hủy
+        // Chỉ tính orders đã hoàn thành
         if (order.status !== 'completed' || !order.products || !Array.isArray(order.products)) {
           return total;
-        }
-
-        // Exclude orders with approved/completed return requests
-        if (order.returnRequests && order.returnRequests.length > 0) {
-          const hasActiveReturn = order.returnRequests.some(
-            (returnReq: any) => returnReq.status === 'APPROVED' || returnReq.status === 'COMPLETED'
-          );
-          if (hasActiveReturn) {
-            return total; // Skip this order
-          }
         }
 
         const orderProduct = order.products.find((p: any) => p.id === product.id);
         return total + (orderProduct?.quantity || 0);
       }, 0);
+
+      // Tính tổng số lượng đã trả cho sản phẩm này
+      const totalReturned = orders.reduce((total: number, order: any) => {
+        // Chỉ tính orders đã hoàn thành và có return requests
+        if (order.status !== 'completed' || !order.returnRequests || !Array.isArray(order.returnRequests)) {
+          return total;
+        }
+
+        // Tính tổng số lượng trả của sản phẩm này từ tất cả return requests đã completed
+        const returnedQuantity = order.returnRequests.reduce((returnTotal: number, returnReq: any) => {
+          if (returnReq.status !== 'COMPLETED' || !returnReq.items || !Array.isArray(returnReq.items)) {
+            return returnTotal;
+          }
+
+          const returnedItem = returnReq.items.find((item: any) => item.productId === product.id);
+          return returnTotal + (returnedItem?.quantity || 0);
+        }, 0);
+
+        return total + returnedQuantity;
+      }, 0);
+
+      // Số lượng thực tế đã bán = Tổng mua - Tổng trả
+      const actualSold = Math.max(0, totalPurchased - totalReturned);
       const parentCategory = subCategories.find((sub: any) => sub.id === product.categoryId)?.parentId;
       // For variant products, calculate total stock and use base price or first variant price
       let displayPrice = product.price;
@@ -375,7 +388,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         deletedAt: product.deletedAt,
         deletedBy: product.deletedBy,
         productType: product.productType,
-        totalPurchased: totalPurchased, // ✅ Add sold quantity
+        totalPurchased: actualSold, // ✅ Số lượng thực tế đã bán (đã trừ trả hàng)
         createdAt: product.createdAt, // ✅ Add creation date
         variants: product.variants || [], // Include variants data
         // Include all original product data for editing
