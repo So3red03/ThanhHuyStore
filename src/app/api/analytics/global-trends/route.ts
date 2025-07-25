@@ -129,14 +129,10 @@ export async function GET(request: Request) {
     // 6. Sort by recommendation score
     const sortedProducts = enrichedProducts.sort((a, b) => b.recommendationScore - a.recommendationScore);
 
-    // 7. Get collaborative filtering data (users who viewed X also viewed Y)
-    const collaborativeData = await getCollaborativeFilteringData(productIds.slice(0, 10));
-
     return NextResponse.json({
       success: true,
       data: {
         trendingProducts: sortedProducts,
-        collaborativeFiltering: collaborativeData,
         period: {
           days,
           startDate: startDate.toISOString(),
@@ -152,58 +148,5 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Error fetching global trends:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-// Bổ sung cho đề xuất sản phẩm: “Người xem sản phẩm X cũng xem sản phẩm Y”.
-async function getCollaborativeFilteringData(productIds: string[]) {
-  try {
-    const collaborativeData: Record<string, string[]> = {};
-
-    for (const productId of productIds) {
-      // Truy vấn tất cả userId (có đăng nhập) đã từng xem sản phẩm này
-      const usersWhoViewed = await prisma.analyticsEvent.findMany({
-        where: {
-          entityId: productId,
-          eventType: EventType.PRODUCT_VIEW,
-          userId: { not: null }
-        },
-        select: {
-          userId: true
-        },
-        distinct: ['userId']
-      });
-
-      const userIds = usersWhoViewed.map(u => u.userId).filter(Boolean) as string[];
-
-      if (userIds.length > 0) {
-        // Ý nghĩa: Những người này còn xem thêm sản phẩm nào khác (ngoài productId)?
-        const alsoViewed = await prisma.analyticsEvent.groupBy({
-          by: ['entityId'], // gom nhóm theo sản phẩm
-          where: {
-            userId: { in: userIds }, // chỉ xét những user vừa tìm được
-            entityId: { not: productId }, // loại bỏ chính sản phẩm đang xét
-            eventType: EventType.PRODUCT_VIEW,
-            entityType: 'product'
-          },
-          _count: {
-            id: true
-          },
-          orderBy: {
-            _count: {
-              id: 'desc'
-            }
-          },
-          take: 5
-        });
-
-        collaborativeData[productId] = alsoViewed.map(item => item.entityId).filter(Boolean) as string[];
-      }
-    }
-
-    return collaborativeData;
-  } catch (error) {
-    console.error('Error getting collaborative filtering data:', error);
-    return {};
   }
 }

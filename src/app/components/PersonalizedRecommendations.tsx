@@ -23,7 +23,6 @@ interface ViewHistory {
 
 interface GlobalTrendsData {
   trendingProducts: any[];
-  collaborativeFiltering: Record<string, string[]>;
   period: {
     days: number;
     startDate: string;
@@ -88,6 +87,71 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
     }
   }, [allProducts, getRecentProducts]);
 
+  // NEW: Proportional distribution function based on category weights
+  const getProportionalRecommendations = useCallback(
+    (scoredProducts: Product[], categoryWeights: Map<string, number>, targetCount: number): Product[] => {
+      console.log('🎯 [PROPORTIONAL] Starting proportional distribution...');
+      console.log('🎯 [PROPORTIONAL] Category weights:', Object.fromEntries(categoryWeights));
+
+      // If no category preferences, return top scored products
+      if (categoryWeights.size === 0) {
+        console.log('🎯 [PROPORTIONAL] No category weights, returning top scored products');
+        return scoredProducts.slice(0, targetCount);
+      }
+
+      // Calculate total weight
+      const totalWeight = Array.from(categoryWeights.values()).reduce((sum, weight) => sum + weight, 0);
+      console.log('🎯 [PROPORTIONAL] Total weight:', totalWeight);
+
+      // Calculate target count for each category
+      const categoryDistribution = new Map<string, number>();
+      categoryWeights.forEach((weight, categoryId) => {
+        const proportion = weight / totalWeight;
+        const count = Math.round(proportion * targetCount);
+        // Ensure at least 1 product for each interested category (if available)
+        categoryDistribution.set(categoryId, Math.max(1, count));
+      });
+
+      console.log('🎯 [PROPORTIONAL] Category distribution:', Object.fromEntries(categoryDistribution));
+
+      // Collect products by category
+      const recommendedProducts: Product[] = [];
+      const usedProductIds = new Set<string>();
+
+      // First pass: Get products for each category according to distribution
+      categoryDistribution.forEach((targetCount, categoryId) => {
+        const categoryProducts = scoredProducts
+          .filter(p => p.categoryId === categoryId && !usedProductIds.has(p.id))
+          .slice(0, targetCount);
+
+        categoryProducts.forEach(product => {
+          recommendedProducts.push(product);
+          usedProductIds.add(product.id);
+        });
+
+        console.log(
+          `🎯 [PROPORTIONAL] Added ${categoryProducts.length}/${targetCount} products for category ${categoryId}`
+        );
+      });
+
+      // Second pass: Fill remaining slots with top scored products
+      if (recommendedProducts.length < targetCount) {
+        const remaining = targetCount - recommendedProducts.length;
+        const additionalProducts = scoredProducts.filter(p => !usedProductIds.has(p.id)).slice(0, remaining);
+
+        recommendedProducts.push(...additionalProducts);
+        console.log(`🎯 [PROPORTIONAL] Added ${additionalProducts.length} additional products to reach target`);
+      }
+
+      // Ensure we don't exceed target count
+      const finalProducts = recommendedProducts.slice(0, targetCount);
+      console.log(`🎯 [PROPORTIONAL] Final result: ${finalProducts.length} products`);
+
+      return finalProducts;
+    },
+    []
+  );
+
   //Tính năng mở rộng: Lấy gợi ý nâng cao cho người dùng đã đăng nhập (sử dụng global trends + personal data)
   const getEnhancedPersonalizedRecommendations = useCallback(async (): Promise<Product[]> => {
     try {
@@ -97,7 +161,6 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         ? (await globalTrendsResponse.json()).data
         : {
             trendingProducts: [],
-            collaborativeFiltering: {},
             period: { days: 7, startDate: '', endDate: '' },
             metadata: { totalProducts: 0, avgRating: 0, totalViews: 0 }
           };
@@ -121,23 +184,31 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
       // 5. Tạo scoring system cho người dùng có dữ liệu
       const productScores = new Map<string, number>();
-      const interestedCategories = new Set<string>();
+      const categoryWeights = new Map<string, number>(); // NEW: Category weights instead of Set
 
-      // 6. Score từ lịch sử xem cá nhân (weight: 3)
+      // 6. Score từ lịch sử xem cá nhân (weight: 3) + Category weights
       if (viewHistory.length > 0) {
         viewHistory.forEach(item => {
-          interestedCategories.add(item.category);
+          // Track category weights (view = +1 weight)
+          const currentCategoryWeight = categoryWeights.get(item.category) || 0;
+          categoryWeights.set(item.category, currentCategoryWeight + 1);
+
+          // Track product scores
           const currentScore = productScores.get(item.productId) || 0;
           productScores.set(item.productId, currentScore + 3);
         });
       }
 
-      // 7. Score từ lịch sử mua hàng (weight: 5)
+      // 7. Score từ lịch sử mua hàng (weight: 5) + Category weights (purchase = +2 weight)
       if (purchaseHistory && purchaseHistory.length > 0) {
         purchaseHistory.forEach((order: any) => {
           if (order.products && order.products.length > 0) {
             order.products.forEach((product: any) => {
-              interestedCategories.add(product.category);
+              // Track category weights (purchase = +2 weight, more important than view)
+              const currentCategoryWeight = categoryWeights.get(product.category) || 0;
+              categoryWeights.set(product.category, currentCategoryWeight + 2);
+
+              // Track product scores
               const currentScore = productScores.get(product.id) || 0;
               productScores.set(product.id, currentScore + 5);
             });
@@ -145,16 +216,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         });
       }
 
-      // 8. Score từ collaborative filtering (weight: 2)
-      if (viewHistory.length > 0) {
-        viewHistory.forEach(item => {
-          const relatedProducts = globalTrendsData.collaborativeFiltering[item.productId] || [];
-          relatedProducts.forEach(relatedId => {
-            const currentScore = productScores.get(relatedId) || 0;
-            productScores.set(relatedId, currentScore + 2);
-          });
-        });
-      }
+      // 8. Collaborative filtering removed - now using category-weighted distribution instead
 
       // 9. Lọc và score sản phẩm
       const scoredProducts = allProducts
@@ -166,9 +228,11 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
           const personalScore = productScores.get(product.id) || 0;
           score += personalScore;
 
-          // Category interest score
-          if (interestedCategories.has(product.categoryId)) {
-            score += 1;
+          // Category interest score (weighted by user's interest level)
+          const categoryWeight = categoryWeights.get(product.categoryId) || 0;
+          if (categoryWeight > 0) {
+            // Scale category weight to reasonable range (max +5 points)
+            score += Math.min(categoryWeight * 0.5, 5);
           }
 
           // Global trending score (from global analytics)
@@ -179,10 +243,12 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
           return { ...product, recommendationScore: score };
         })
-        .sort((a, b) => b.recommendationScore - a.recommendationScore)
-        .slice(0, 6); // Limit to 6 products
+        .sort((a, b) => b.recommendationScore - a.recommendationScore);
 
-      return scoredProducts.length > 0 ? scoredProducts : getRecentProducts();
+      // 10. NEW: Proportional distribution based on category weights
+      const finalRecommendations = getProportionalRecommendations(scoredProducts, categoryWeights, 6);
+
+      return finalRecommendations.length > 0 ? finalRecommendations : getRecentProducts();
     } catch (error) {
       return getRecentProducts();
     }
@@ -191,18 +257,19 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   useEffect(() => {
     const getRecommendations = async () => {
       try {
-        // if (currentUser) {
-        //   // Người dùng đã đăng nhập - gợi ý nâng cao với global trends (tính năng mở rộng)
-        //   const recommendations = await getEnhancedPersonalizedRecommendations();
-        //   setRecommendedProducts(recommendations);
-        // } else {
-        //   // Người dùng chưa đăng nhập - hiển thị trending products từ global analytics
-        //   const trendingProducts = await getGlobalTrendingProducts();
-        //   setRecommendedProducts(trendingProducts);
-        // }
-        const trendingProducts = await getGlobalTrendingProducts();
-        setRecommendedProducts(trendingProducts);
+        if (currentUser) {
+          // Người dùng đã đăng nhập - gợi ý nâng cao với category-weighted distribution
+          console.log('🔐 [RECOMMENDATIONS] Logged user detected, using enhanced personalized recommendations');
+          const recommendations = await getEnhancedPersonalizedRecommendations();
+          setRecommendedProducts(recommendations);
+        } else {
+          // Người dùng chưa đăng nhập - hiển thị trending products từ global analytics
+          console.log('👤 [RECOMMENDATIONS] Anonymous user, using global trending products');
+          const trendingProducts = await getGlobalTrendingProducts();
+          setRecommendedProducts(trendingProducts);
+        }
       } catch (error) {
+        console.error('❌ [RECOMMENDATIONS] Error getting recommendations:', error);
         // Fallback: hiển thị sản phẩm ngẫu nhiên
         const recentProducts = getRecentProducts();
         setRecommendedProducts(recentProducts);
