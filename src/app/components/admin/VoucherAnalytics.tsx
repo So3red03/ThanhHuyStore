@@ -249,7 +249,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                   <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
                     Lượt sử dụng
                   </Typography>
-                  <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>🎯 Tổng tương tác</div>
+                  <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng tương tác</div>
                 </CardContent>
               </Card>
             </Grid>
@@ -281,7 +281,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                   <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
                     Doanh thu tạo ra
                   </Typography>
-                  <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>💰 Tổng thu nhập</div>
+                  <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng thu nhập</div>
                 </CardContent>
               </Card>
             </Grid>
@@ -313,7 +313,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                   <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
                     Tổng giảm giá
                   </Typography>
-                  <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>🎁 Tiết kiệm khách hàng</div>
+                  <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tiết kiệm khách hàng</div>
                 </CardContent>
               </Card>
             </Grid>
@@ -345,7 +345,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = ({ timeFilter }) => {
                   <Typography variant='body2' sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
                     Voucher hoạt động
                   </Typography>
-                  <div className='mt-1 text-xs bg-white/60 text-purple-700 rounded-full px-2 py-0.5'>✅ Đang chạy</div>
+                  <div className='mt-1 text-xs bg-white/60 text-purple-700 rounded-full px-2 py-0.5'>Đang chạy</div>
                 </CardContent>
               </Card>
             </Grid>

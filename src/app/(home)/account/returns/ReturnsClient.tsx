@@ -9,6 +9,7 @@ import Link from 'next/link';
 import AdminModal from '../../../components/admin/AdminModal';
 import { useReturnRequests } from '../../../providers/ReturnRequestContext';
 import ReturnRequestProductItem from '../../../components/returns/ReturnRequestProductItem';
+import ReturnShippingBreakdown from '../../../components/returns/ReturnShippingBreakdown';
 
 interface ReturnRequest {
   id: string;
@@ -22,6 +23,7 @@ interface ReturnRequest {
   exchangeOrderId?: string;
   createdAt: string;
   items: any[];
+  shippingBreakdown?: any;
   order: {
     id: string;
     amount: number;
@@ -413,6 +415,132 @@ const ReturnsClient: React.FC<ReturnsClientProps> = ({ currentUser }) => {
                 ))}
               </div>
             </div>
+
+            {/* Cost Breakdown for Return Requests */}
+            {selectedRequest.type === 'RETURN' && selectedRequest.status !== 'PENDING' && (
+              <div>
+                <h3 className='font-semibold text-gray-700 mb-3'>Chi tiết chi phí</h3>
+                {selectedRequest.shippingBreakdown ? (
+                  <ReturnShippingBreakdown
+                    orderId={selectedRequest.order.id}
+                    reason={selectedRequest.reason}
+                    items={selectedRequest.items}
+                    onCalculationComplete={() => {}}
+                  />
+                ) : (
+                  <div className='bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6'>
+                    <div className='space-y-3'>
+                      <div className='flex justify-between items-center py-2 border-b border-blue-100'>
+                        <span className='text-gray-600 font-medium'>Lý do trả hàng:</span>
+                        <span className='font-semibold text-gray-800'>{getReasonText(selectedRequest.reason)}</span>
+                      </div>
+
+                      {selectedRequest.refundAmount && (
+                        <div className='flex justify-between items-center py-2 border-b border-blue-100'>
+                          <span className='text-gray-600 font-medium'>Số tiền hoàn:</span>
+                          <span className='font-bold text-green-600 text-lg'>
+                            +{formatPrice(selectedRequest.refundAmount)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className='flex justify-between items-center py-2 border-b border-blue-100'>
+                        <span className='text-gray-600 font-medium'>Phí vận chuyển:</span>
+                        <span
+                          className={`font-bold text-base ${
+                            ['DEFECTIVE', 'WRONG_ITEM'].includes(selectedRequest.reason)
+                              ? 'text-green-600'
+                              : 'text-red-600'
+                          }`}
+                        >
+                          {['DEFECTIVE', 'WRONG_ITEM'].includes(selectedRequest.reason)
+                            ? 'Shop chịu trách nhiệm'
+                            : 'Khách hàng thanh toán'}
+                        </span>
+                      </div>
+
+                      <div className='bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mt-4'>
+                        <div className='flex justify-between items-center'>
+                          <span className='font-semibold text-blue-800'>Trách nhiệm chi phí:</span>
+                          <span
+                            className={`font-bold text-lg ${
+                              ['DEFECTIVE', 'WRONG_ITEM'].includes(selectedRequest.reason)
+                                ? 'text-red-600'
+                                : 'text-orange-600'
+                            }`}
+                          >
+                            {['DEFECTIVE', 'WRONG_ITEM'].includes(selectedRequest.reason)
+                              ? 'Shop chịu toàn bộ'
+                              : 'Khách hàng một phần'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Exchange Cost Information */}
+            {selectedRequest.type === 'EXCHANGE' && selectedRequest.status !== 'PENDING' && (
+              <div>
+                <h3 className='font-semibold text-gray-700 mb-3'>Chi tiết chi phí đổi hàng</h3>
+                <div className='bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6'>
+                  <div className='space-y-3'>
+                    <div className='flex justify-between items-center py-2 border-b border-purple-100'>
+                      <span className='text-gray-600 font-medium'>Lý do đổi hàng:</span>
+                      <span className='font-semibold text-gray-800'>{getReasonText(selectedRequest.reason)}</span>
+                    </div>
+
+                    {selectedRequest.additionalCost !== undefined && selectedRequest.additionalCost !== 0 && (
+                      <div className='flex justify-between items-center py-2 border-b border-purple-100'>
+                        <span className='text-gray-600 font-medium'>Chênh lệch giá:</span>
+                        <span
+                          className={`font-bold text-lg ${
+                            selectedRequest.additionalCost > 0 ? 'text-red-600' : 'text-green-600'
+                          }`}
+                        >
+                          {selectedRequest.additionalCost > 0 ? '+' : ''}
+                          {formatPrice(selectedRequest.additionalCost)}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className='flex justify-between items-center py-2 border-b border-purple-100'>
+                      <span className='text-gray-600 font-medium'>Phí vận chuyển:</span>
+                      <span
+                        className={`font-bold text-base ${
+                          ['DEFECTIVE', 'WRONG_ITEM'].includes(selectedRequest.reason)
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {['DEFECTIVE', 'WRONG_ITEM'].includes(selectedRequest.reason)
+                          ? 'Shop chịu trách nhiệm'
+                          : 'Khách hàng thanh toán'}
+                      </span>
+                    </div>
+
+                    <div className='bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 mt-4'>
+                      <div className='flex justify-between items-center'>
+                        <span className='font-semibold text-purple-800'>Trách nhiệm chi phí:</span>
+                        <span
+                          className={`font-bold text-lg ${
+                            ['DEFECTIVE', 'WRONG_ITEM'].includes(selectedRequest.reason)
+                              ? 'text-red-600'
+                              : 'text-orange-600'
+                          }`}
+                        >
+                          {['DEFECTIVE', 'WRONG_ITEM'].includes(selectedRequest.reason)
+                            ? 'Shop chịu toàn bộ'
+                            : 'Khách hàng một phần'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Admin Notes */}
             {selectedRequest.adminNotes && (

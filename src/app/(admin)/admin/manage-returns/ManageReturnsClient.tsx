@@ -5,16 +5,36 @@ import { SafeUser } from '../../../../../types';
 import { formatPrice } from '../../../../../utils/formatPrice';
 import { formatDate } from '../../../(home)/account/orders/OrdersClient';
 import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar } from '@mui/x-data-grid';
-import { MdVisibility, MdCheck, MdClose, MdRefresh, MdUndo, MdAssignment, MdImage } from 'react-icons/md';
-import { Button } from '@mui/material';
+import {
+  MdVisibility,
+  MdCheck,
+  MdClose,
+  MdRefresh,
+  MdUndo,
+  MdAssignment,
+  MdImage,
+  MdSearch,
+  MdClear
+} from 'react-icons/md';
+import {
+  Button,
+  TextField,
+  FormControl,
+  Select,
+  MenuItem,
+  InputAdornment,
+  Button as MuiButton,
+  Card,
+  CardContent,
+  Typography,
+  Grid
+} from '@mui/material';
 import AdminModal from '../../../components/admin/AdminModal';
 import ActionBtn from '../../../components/ActionBtn';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
-import ReturnRequestProductItem from '../../../components/returns/ReturnRequestProductItem';
-import ReturnShippingDisplay from '../../../components/admin/returns/ReturnShippingDisplay';
-import ReturnRequestImages from '../../../components/admin/returns/ReturnRequestImages';
+import ReturnsDetailsModal from '../../../components/admin/returns/ReturnsDetailsModal';
 
 interface ReturnRequest {
   id: string;
@@ -72,9 +92,13 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
   const [stats, setStats] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filters
+  // Enhanced Filters
+  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [reasonFilter, setReasonFilter] = useState('');
+
+  const [filteredRequests, setFilteredRequests] = useState<ReturnRequest[]>([]);
 
   // Exchange orders data
   const [exchangeOrders, setExchangeOrders] = useState<{ [key: string]: any }>({});
@@ -130,10 +154,56 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
     }
   };
 
+  // Enhanced search and filter logic
+  const handleSearch = () => {
+    let filtered = returnRequests;
+
+    // Search by order ID, customer email, or product name
+    if (searchTerm) {
+      filtered = filtered.filter(
+        request =>
+          request.order?.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.items.some(item => item.productName.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    // Filter by status
+    if (statusFilter && statusFilter !== 'all') {
+      filtered = filtered.filter(request => request.status === statusFilter);
+    }
+
+    // Filter by type
+    if (typeFilter && typeFilter !== 'all') {
+      filtered = filtered.filter(request => request.type === typeFilter);
+    }
+
+    // Filter by reason
+    if (reasonFilter && reasonFilter !== 'all') {
+      filtered = filtered.filter(request => request.reason === reasonFilter);
+    }
+
+    setFilteredRequests(filtered);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('');
+    setTypeFilter('');
+    setReasonFilter('');
+    setFilteredRequests(returnRequests);
+  };
+
   useEffect(() => {
     fetchReturnRequests();
     fetchStats();
   }, [statusFilter, typeFilter]);
+
+  // Auto-trigger search when filters change
+  useEffect(() => {
+    handleSearch();
+  }, [searchTerm, statusFilter, typeFilter, reasonFilter, returnRequests]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -252,6 +322,7 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
         </span>
       )
     },
+
     {
       field: 'status',
       headerName: 'Trạng thái',
@@ -265,7 +336,7 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
     {
       field: 'user',
       headerName: 'Khách hàng',
-      width: 200,
+      width: 160,
       renderCell: (params: GridRenderCellParams) => (
         <div>
           <div className='font-medium'>{params.value.name}</div>
@@ -276,43 +347,126 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
     {
       field: 'reason',
       headerName: 'Lý do',
-      width: 150,
-      renderCell: (params: GridRenderCellParams) => <span className='text-sm'>{getReasonText(params.value)}</span>
-    },
-    {
-      field: 'images',
-      headerName: 'Hình ảnh',
-      width: 100,
-      sortable: false,
+      width: 180,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params: GridRenderCellParams) => {
-        const images = params.value as string[] | undefined;
-        const hasImages = images && images.length > 0;
+        const reason = params.value;
+        const getReasonColor = (reason: string) => {
+          switch (reason) {
+            case 'DEFECTIVE':
+              return 'bg-red-100 text-red-800 border-red-200';
+            case 'WRONG_ITEM':
+              return 'bg-orange-100 text-orange-800 border-orange-200';
+            case 'CHANGE_MIND':
+              return 'bg-blue-100 text-blue-800 border-blue-200';
+            default:
+              return 'bg-gray-100 text-gray-800 border-gray-200';
+          }
+        };
+
         return (
-          <div className='flex items-center justify-center h-full'>
-            {hasImages ? (
-              <div className='flex items-center gap-1'>
-                <MdImage className='text-blue-600' size={16} />
-                <span className='text-xs font-medium text-blue-600'>{images.length}</span>
-              </div>
-            ) : (
-              <span className='text-xs text-gray-400'>Không có</span>
-            )}
+          <div className='h-full flex justify-center items-center'>
+            <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getReasonColor(reason)} mx-auto`}>
+              {getReasonText(reason)}
+            </div>
           </div>
         );
       }
     },
     {
+      field: 'financialImpact',
+      headerName: 'Tác động tài chính',
+      width: 160,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params: GridRenderCellParams) => {
+        const row = params.row;
+        const reason = row.reason;
+        const type = row.type;
+
+        // Calculate who pays what based on reason
+        const getFinancialImpact = () => {
+          if (type === 'RETURN') {
+            switch (reason) {
+              case 'DEFECTIVE':
+                return { text: 'Shop chịu 100%', color: 'text-red-600', bg: 'bg-red-50' };
+              case 'WRONG_ITEM':
+                return { text: 'Shop chịu 100%', color: 'text-red-600', bg: 'bg-red-50' };
+              case 'CHANGE_MIND':
+                return { text: 'Khách chịu phí ship', color: 'text-orange-600', bg: 'bg-orange-50' };
+              default:
+                return { text: 'Chưa xác định', color: 'text-gray-600', bg: 'bg-gray-50' };
+            }
+          } else {
+            switch (reason) {
+              case 'DEFECTIVE':
+              case 'WRONG_ITEM':
+                return { text: 'Shop chịu ship', color: 'text-red-600', bg: 'bg-red-50' };
+              case 'CHANGE_MIND':
+                return { text: 'Khách chịu ship', color: 'text-orange-600', bg: 'bg-orange-50' };
+              default:
+                return { text: 'Chưa xác định', color: 'text-gray-600', bg: 'bg-gray-50' };
+            }
+          }
+        };
+
+        const impact = getFinancialImpact();
+        return (
+          <div className='h-full flex justify-center items-center'>
+            <div className={`px-2 py-1 rounded-full text-xs font-medium ${impact.color} ${impact.bg}`}>
+              {impact.text}
+            </div>
+          </div>
+        );
+      }
+    },
+
+    {
       field: 'refundAmount',
-      headerName: 'Số tiền',
-      width: 120,
-      renderCell: (params: GridRenderCellParams) => (
-        <span className='font-medium text-green-600'>{params.value ? formatPrice(params.value) : '-'}</span>
-      )
+      headerName: 'Chi tiết tài chính',
+      width: 130,
+      renderCell: (params: GridRenderCellParams) => {
+        const row = params.row;
+        const type = row.type;
+        const refundAmount = params.value;
+        const additionalCost = row.additionalCost;
+
+        if (type === 'RETURN') {
+          return (
+            <div className='space-y-1'>
+              <div className='text-sm font-medium text-green-600'>{refundAmount ? formatPrice(refundAmount) : '-'}</div>
+              {row.shippingBreakdown && (
+                <div className='text-xs text-gray-500'>
+                  Ship: {formatPrice(row.shippingBreakdown.returnShippingFee || 0)}
+                </div>
+              )}
+            </div>
+          );
+        } else {
+          // Exchange
+          return (
+            <div className='space-y-1'>
+              {additionalCost !== undefined && additionalCost !== 0 ? (
+                <div className={`text-sm font-medium ${additionalCost > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {additionalCost > 0 ? '+' : ''}
+                  {formatPrice(additionalCost)}
+                </div>
+              ) : (
+                <div className='text-sm text-gray-500'>Không chênh lệch</div>
+              )}
+              <div className='text-xs text-gray-500'>
+                {row.reason === 'CHANGE_MIND' ? 'Khách trả ship' : 'Shop trả ship'}
+              </div>
+            </div>
+          );
+        }
+      }
     },
     {
       field: 'createdAt',
       headerName: 'Ngày tạo',
-      width: 120,
+      width: 190,
       renderCell: (params: GridRenderCellParams) => <span className='text-sm'>{formatDate(params.value)}</span>
     },
     {
@@ -345,109 +499,340 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
   return (
     <>
       <div className='w-full m-auto text-xl mt-6'>
-        {/* Stats Cards */}
+        {/* Compact Summary Cards */}
         {stats && (
-          <div className='grid grid-cols-1 md:grid-cols-4 gap-6 mb-8'>
-            <div className='bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white shadow-lg'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <div className='text-3xl font-bold'>{stats.total}</div>
-                  <div className='text-blue-100 text-sm'>Tổng yêu cầu</div>
-                </div>
-                <MdAssignment size={32} className='text-blue-200' />
-              </div>
-            </div>
-            <div className='bg-gradient-to-r from-yellow-500 to-yellow-600 p-6 rounded-xl text-white shadow-lg'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <div className='text-3xl font-bold'>{stats.pending}</div>
-                  <div className='text-yellow-100 text-sm'>Chờ duyệt</div>
-                </div>
-                <MdRefresh size={32} className='text-yellow-200' />
-              </div>
-            </div>
-            <div className='bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white shadow-lg'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <div className='text-3xl font-bold'>{stats.completed}</div>
-                  <div className='text-green-100 text-sm'>Hoàn tất</div>
-                </div>
-                <MdCheck size={32} className='text-green-200' />
-              </div>
-            </div>
-            <div className='bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white shadow-lg'>
-              <div className='flex items-center justify-between'>
-                <div>
-                  <div className='text-2xl font-bold'>{formatPrice(stats.totalRefundAmount)}</div>
-                  <div className='text-purple-100 text-sm'>Tổng hoàn tiền</div>
-                </div>
-                <MdUndo size={32} className='text-purple-200' />
-              </div>
-            </div>
+          <div className='p-4'>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card
+                  sx={{
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    color: 'white',
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 4px 16px rgba(59, 130, 246, 0.2)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 20px rgba(59, 130, 246, 0.3)'
+                    }
+                  }}
+                >
+                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                    <div className='flex justify-center mb-2'>
+                      <div className='p-2 bg-white/20 rounded-full'>
+                        <MdAssignment size={20} />
+                      </div>
+                    </div>
+                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                      {stats.total?.toLocaleString() || '0'}
+                    </Typography>
+                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                      Tổng yêu cầu
+                    </Typography>
+                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng quan</div>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Card
+                  sx={{
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: 'white',
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 4px 16px rgba(245, 158, 11, 0.2)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 20px rgba(245, 158, 11, 0.3)'
+                    }
+                  }}
+                >
+                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                    <div className='flex justify-center mb-2'>
+                      <div className='p-2 bg-white/20 rounded-full'>
+                        <MdRefresh size={20} />
+                      </div>
+                    </div>
+                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                      {stats.pending?.toLocaleString() || '0'}
+                    </Typography>
+                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                      Chờ duyệt
+                    </Typography>
+                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Cần xử lý</div>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Card
+                  sx={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.2)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 20px rgba(16, 185, 129, 0.3)'
+                    }
+                  }}
+                >
+                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                    <div className='flex justify-center mb-2'>
+                      <div className='p-2 bg-white/20 rounded-full'>
+                        <MdCheck size={20} />
+                      </div>
+                    </div>
+                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                      {stats.completed?.toLocaleString() || '0'}
+                    </Typography>
+                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                      Hoàn tất
+                    </Typography>
+                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Thành công</div>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Card
+                  sx={{
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                    color: 'white',
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 4px 16px rgba(139, 92, 246, 0.2)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 20px rgba(139, 92, 246, 0.3)'
+                    }
+                  }}
+                >
+                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                    <div className='flex justify-center mb-2'>
+                      <div className='p-2 bg-white/20 rounded-full'>
+                        <MdUndo size={20} />
+                      </div>
+                    </div>
+                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
+                      {formatPrice(stats.totalRefundAmount || 0)}
+                    </Typography>
+                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                      Tổng hoàn tiền
+                    </Typography>
+                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tài chính</div>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
           </div>
         )}
 
-        {/* Filters */}
-        <div className='flex justify-end items-center'>
-          <div></div>
-          <div className='bg-white rounded-lg border p-4 mb-6 shadow-sm w-[65%]'>
-            <div className='flex flex-wrap items-end gap-4'>
-              <div className='flex-1 min-w-[180px]'>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Trạng thái</label>
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className='w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors'
-                >
-                  <option value=''>Tất cả trạng thái</option>
-                  <option value='PENDING'>Chờ duyệt</option>
-                  <option value='APPROVED'>Đã duyệt</option>
-                  <option value='REJECTED'>Từ chối</option>
-                  <option value='COMPLETED'>Hoàn tất</option>
-                </select>
-              </div>
+        {/* Enhanced Search Form */}
+        <div className='bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6'>
+          <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
+            {/* Search Input */}
+            <div className='lg:col-span-2'>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Tìm kiếm</label>
+              <TextField
+                size='medium'
+                placeholder='Tìm theo mã đơn, khách hàng, sản phẩm...'
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                sx={{
+                  width: '100%',
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    '&:hover': {
+                      backgroundColor: '#f3f4f6'
+                    },
+                    '&.Mui-focused': {
+                      backgroundColor: '#ffffff',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#3b82f6',
+                        borderWidth: '2px'
+                      }
+                    }
+                  }
+                }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position='end'>
+                      <MuiButton
+                        size='medium'
+                        onClick={handleSearch}
+                        startIcon={<MdSearch />}
+                        variant='contained'
+                        sx={{
+                          minWidth: 'auto',
+                          px: 2,
+                          backgroundColor: '#3b82f6',
+                          '&:hover': { backgroundColor: '#2563eb' }
+                        }}
+                      >
+                        Tìm
+                      </MuiButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </div>
 
-              <div className='flex-1 min-w-[180px]'>
-                <label className='block text-sm font-medium text-gray-700 mb-1'>Loại yêu cầu</label>
-                <select
+            {/* Type Filter */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Loại yêu cầu</label>
+              <FormControl fullWidth size='medium'>
+                <Select
                   value={typeFilter}
                   onChange={e => setTypeFilter(e.target.value)}
-                  className='w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors'
-                >
-                  <option value=''>Tất cả loại</option>
-                  <option value='RETURN'>Trả hàng</option>
-                  <option value='EXCHANGE'>Đổi hàng</option>
-                </select>
-              </div>
-
-              <div className='flex gap-2'>
-                <Button
-                  onClick={() => {
-                    fetchReturnRequests();
-                    fetchStats();
-                  }}
-                  disabled={isLoading}
-                  variant='contained'
-                  size='small'
-                  startIcon={<MdRefresh className={isLoading ? 'animate-spin' : ''} />}
+                  displayEmpty
                   sx={{
-                    backgroundColor: '#2563eb',
-                    '&:hover': { backgroundColor: '#1d4ed8' },
-                    textTransform: 'none',
-                    fontSize: '0.875rem',
-                    padding: '6px 16px'
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    '&:hover': { backgroundColor: '#f3f4f6' },
+                    '&.Mui-focused': {
+                      backgroundColor: '#ffffff',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#3b82f6',
+                        borderWidth: '2px'
+                      }
+                    }
                   }}
                 >
-                  {isLoading ? 'Đang tải...' : 'Làm mới'}
-                </Button>
-              </div>
+                  <MenuItem value=''>Tất cả loại</MenuItem>
+                  <MenuItem value='RETURN'>Trả hàng</MenuItem>
+                  <MenuItem value='EXCHANGE'>Đổi hàng</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Trạng thái</label>
+              <FormControl fullWidth size='medium'>
+                <Select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value)}
+                  displayEmpty
+                  sx={{
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    '&:hover': { backgroundColor: '#f3f4f6' },
+                    '&.Mui-focused': {
+                      backgroundColor: '#ffffff',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#3b82f6',
+                        borderWidth: '2px'
+                      }
+                    }
+                  }}
+                >
+                  <MenuItem value=''>Tất cả trạng thái</MenuItem>
+                  <MenuItem value='PENDING'>Chờ duyệt</MenuItem>
+                  <MenuItem value='APPROVED'>Đã duyệt</MenuItem>
+                  <MenuItem value='REJECTED'>Từ chối</MenuItem>
+                  <MenuItem value='COMPLETED'>Hoàn tất</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+
+            {/* Reason Filter */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-700 mb-3'>Lý do</label>
+              <FormControl fullWidth size='medium'>
+                <Select
+                  value={reasonFilter}
+                  onChange={e => setReasonFilter(e.target.value)}
+                  displayEmpty
+                  sx={{
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    '&:hover': { backgroundColor: '#f3f4f6' },
+                    '&.Mui-focused': {
+                      backgroundColor: '#ffffff',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#3b82f6',
+                        borderWidth: '2px'
+                      }
+                    }
+                  }}
+                >
+                  <MenuItem value=''>Tất cả lý do</MenuItem>
+                  <MenuItem value='DEFECTIVE'>Sản phẩm bị lỗi</MenuItem>
+                  <MenuItem value='WRONG_ITEM'>Giao sai sản phẩm</MenuItem>
+                  <MenuItem value='CHANGE_MIND'>Đổi ý không muốn mua</MenuItem>
+                  <MenuItem value='SIZE_COLOR'>Muốn đổi size/màu khác</MenuItem>
+                  <MenuItem value='DIFFERENT_MODEL'>Muốn model/sản phẩm khác</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+          </div>
+
+          {/* Filter Actions */}
+          <div className='flex justify-between items-center mt-6 pt-4 border-t border-gray-200'>
+            <div className='text-sm text-gray-600'>
+              {filteredRequests.length > 0 || searchTerm || statusFilter || typeFilter || reasonFilter
+                ? `Hiển thị ${filteredRequests.length} / ${returnRequests.length} yêu cầu`
+                : `Tổng ${returnRequests.length} yêu cầu`}
+            </div>
+
+            <div className='flex gap-3'>
+              {(searchTerm || statusFilter || typeFilter || reasonFilter) && (
+                <MuiButton
+                  onClick={handleClearFilters}
+                  startIcon={<MdClear />}
+                  variant='outlined'
+                  sx={{
+                    borderColor: '#d1d5db',
+                    color: '#6b7280',
+                    '&:hover': {
+                      borderColor: '#9ca3af',
+                      backgroundColor: '#f9fafb'
+                    },
+                    textTransform: 'none',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Xóa bộ lọc
+                </MuiButton>
+              )}
+
+              <MuiButton
+                onClick={() => {
+                  fetchReturnRequests();
+                  fetchStats();
+                }}
+                disabled={isLoading}
+                startIcon={<MdRefresh className={isLoading ? 'animate-spin' : ''} />}
+                variant='contained'
+                sx={{
+                  backgroundColor: '#3b82f6',
+                  '&:hover': { backgroundColor: '#2563eb' },
+                  textTransform: 'none',
+                  fontSize: '0.875rem'
+                }}
+              >
+                {isLoading ? 'Đang tải...' : 'Làm mới'}
+              </MuiButton>
             </div>
           </div>
         </div>
 
         <div className='h-[600px] w-full'>
           <DataGrid
-            rows={returnRequests}
+            rows={
+              filteredRequests.length > 0 || searchTerm || statusFilter || typeFilter || reasonFilter
+                ? filteredRequests
+                : returnRequests
+            }
             columns={columns}
             className='py-5'
             loading={isLoading}
@@ -491,123 +876,12 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
         </div>
 
         {/* Detail Modal */}
-        {isDetailModalOpen && selectedRequest && (
-          <AdminModal isOpen={isDetailModalOpen} handleClose={() => setIsDetailModalOpen(false)}>
-            <div className='max-w-2xl mx-auto p-6'>
-              <h2 className='text-xl font-bold mb-4'>Chi tiết yêu cầu #{selectedRequest.id.substring(0, 8)}</h2>
-
-              <div className='space-y-4'>
-                <div className='grid grid-cols-2 gap-4'>
-                  <div>
-                    <strong>Loại:</strong> {getTypeText(selectedRequest.type)}
-                  </div>
-                  <div>
-                    <strong>Trạng thái:</strong> {getStatusText(selectedRequest.status)}
-                  </div>
-                  <div>
-                    <strong>Khách hàng:</strong> {selectedRequest.user.name}
-                  </div>
-                  <div>
-                    <strong>Email:</strong> {selectedRequest.user.email}
-                  </div>
-                  <div>
-                    <strong>Lý do:</strong> {getReasonText(selectedRequest.reason)}
-                  </div>
-                  <div>
-                    <strong>Ngày tạo:</strong> {formatDate(selectedRequest.createdAt)}
-                  </div>
-                </div>
-
-                {selectedRequest.description && (
-                  <div>
-                    <strong>Mô tả:</strong>
-                    <p className='mt-1 text-gray-600'>{selectedRequest.description}</p>
-                  </div>
-                )}
-
-                {/* Images Display */}
-                {selectedRequest.images && selectedRequest.images.length > 0 && (
-                  <ReturnRequestImages images={selectedRequest.images} type={selectedRequest.type} />
-                )}
-
-                <div>
-                  <strong>Sản phẩm ({selectedRequest.items.length}):</strong>
-                  <div className='mt-3 space-y-3'>
-                    {selectedRequest.items.map((item: any, index: number) => (
-                      <ReturnRequestProductItem key={index} item={item} showReason={true} />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Return Shipping Display */}
-                {selectedRequest.type === 'RETURN' && selectedRequest.shippingBreakdown && (
-                  <ReturnShippingDisplay
-                    shippingBreakdown={selectedRequest.shippingBreakdown}
-                    refundAmount={selectedRequest.refundAmount || 0}
-                    reason={selectedRequest.reason}
-                  />
-                )}
-
-                {/* Exchange Order Display */}
-                {selectedRequest.type === 'EXCHANGE' && selectedRequest.exchangeOrderId && (
-                  <div className='p-4 bg-blue-50 border border-blue-200 rounded-lg'>
-                    <h4 className='font-medium text-blue-800 mb-3'>🔄 Thông tin đổi hàng</h4>
-
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                      {/* Original Order */}
-                      <div className='bg-red-50 border border-red-200 rounded p-3'>
-                        <h5 className='font-medium text-red-800 mb-2'>Đơn hàng gốc</h5>
-                        <p className='text-sm text-red-700'>#{selectedRequest.order.id.slice(-8)}</p>
-                        <p className='text-sm text-red-700'>{formatPrice(selectedRequest.order.amount)}</p>
-                      </div>
-
-                      {/* Exchange Order */}
-                      {exchangeOrders[selectedRequest.exchangeOrderId] && (
-                        <div className='bg-green-50 border border-green-200 rounded p-3'>
-                          <h5 className='font-medium text-green-800 mb-2'>Đơn hàng mới</h5>
-                          <p className='text-sm text-green-700'>#{selectedRequest.exchangeOrderId.slice(-8)}</p>
-                          <p className='text-sm text-green-700'>
-                            {formatPrice(exchangeOrders[selectedRequest.exchangeOrderId].amount)}
-                          </p>
-                          <p className='text-xs text-green-600 mt-1'>
-                            Trạng thái: {exchangeOrders[selectedRequest.exchangeOrderId].status}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Price Difference */}
-                    {selectedRequest.additionalCost !== undefined && selectedRequest.additionalCost !== 0 && (
-                      <div className='mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded'>
-                        <h5 className='font-medium text-yellow-800 mb-1'>Chênh lệch giá</h5>
-                        <p className='text-sm text-yellow-700'>
-                          {selectedRequest.additionalCost > 0 ? 'Khách cần bù thêm: ' : 'Hoàn lại cho khách: '}
-                          <span className='font-medium'>{formatPrice(Math.abs(selectedRequest.additionalCost))}</span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Simple refund display for cases without shipping breakdown */}
-                {selectedRequest.refundAmount &&
-                  !selectedRequest.shippingBreakdown &&
-                  selectedRequest.type === 'RETURN' && (
-                    <div className='p-3 bg-green-50 border border-green-200 rounded'>
-                      <strong>Số tiền hoàn:</strong> {formatPrice(selectedRequest.refundAmount)}
-                    </div>
-                  )}
-
-                {selectedRequest.adminNotes && (
-                  <div className='p-3 bg-blue-50 border border-blue-200 rounded'>
-                    <strong>Ghi chú admin:</strong>
-                    <p className='mt-1'>{selectedRequest.adminNotes}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </AdminModal>
-        )}
+        <ReturnsDetailsModal
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          request={selectedRequest}
+          exchangeOrders={exchangeOrders}
+        />
 
         {/* Action Modal */}
         {isActionModalOpen && selectedRequest && (
