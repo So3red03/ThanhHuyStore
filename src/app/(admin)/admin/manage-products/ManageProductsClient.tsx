@@ -960,7 +960,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
             {(searchTerm || categoryFilter !== 'all' || priceRangeFilter !== 'all') && (
               <div className='px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg'>
                 <div className='text-sm font-medium text-green-800'>
-                  🎯 <strong>Kết quả:</strong> {filteredProducts.length} sản phẩm
+                  <strong>Kết quả:</strong> {filteredProducts.length} sản phẩm
                   {filteredProducts.length === 0 && (
                     <span className='text-red-600 ml-2'>- Không tìm thấy sản phẩm nào phù hợp</span>
                   )}

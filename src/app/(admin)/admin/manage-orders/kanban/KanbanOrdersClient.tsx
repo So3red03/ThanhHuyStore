@@ -505,7 +505,7 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({
               {(searchValues.length > 0 || dateFrom || dateTo || salesStaff || paymentMethod || shippingMethod) && (
                 <div className='px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg'>
                   <div className='text-sm font-medium text-green-800'>
-                    🎯 <strong>Kết quả</strong> {filteredOrders.length} đơn hàng
+                    <strong>Kết quả</strong> {filteredOrders.length} đơn hàng
                     {filteredOrders.length === 0 && (
                       <span className='text-red-600 ml-2'>- Không tìm thấy đơn hàng nào phù hợp</span>
                     )}

@@ -58,10 +58,8 @@ const ProductImage: React.FC<ProductImageProps> = ({ cartProduct, availableImage
               <div
                 key={index}
                 onClick={() => handleThumbnailClick(index)}
-                className={`relative aspect-square cursor-pointer rounded-lg border-2 transition-all duration-200 overflow-hidden ${
-                  selectedImageIndex === index
-                    ? 'border-blue-500 ring-2 ring-blue-200'
-                    : 'border-gray-200 hover:border-gray-300'
+                className={`relative aspect-square cursor-pointer rounded-lg  transition-all duration-200 overflow-hidden ${
+                  selectedImageIndex === index ? 'border-2 border-blue-500 ring-2 ring-blue-200' : ''
                 }`}
               >
                 <Image
@@ -87,7 +85,7 @@ const ProductImage: React.FC<ProductImageProps> = ({ cartProduct, availableImage
       {/* Main Image Display - Right Side */}
       <div className='flex-1 relative aspect-square'>
         <div
-          className='relative w-full h-full cursor-zoom-in overflow-hidden rounded-lg border border-gray-200 shadow-sm'
+          className='relative w-full h-full cursor-zoom-in overflow-hidden rounded-lg shadow-sm'
           onMouseEnter={() => setShowMagnifier(true)}
           onMouseLeave={() => setShowMagnifier(false)}
           onMouseMove={handleMouseHover}

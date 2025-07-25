@@ -586,7 +586,7 @@ const ManageVouchersClient: React.FC<ManageVouchersClientProps> = ({ vouchers, u
             {(searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || discountTypeFilter !== 'all') && (
               <div className='px-4 py-2 bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-lg'>
                 <div className='text-sm font-medium text-purple-800'>
-                  🎯 <strong>Kết quả:</strong> {filteredVouchers.length} voucher
+                  <strong>Kết quả:</strong> {filteredVouchers.length} voucher
                   {filteredVouchers.length === 0 && (
                     <span className='text-red-600 ml-2'>- Không tìm thấy voucher nào phù hợp</span>
                   )}
