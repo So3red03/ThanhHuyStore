@@ -9,7 +9,6 @@ This folder contains all APIs related to return and exchange functionality.
 ├── route.ts                    # Main return/exchange request creation
 ├── [id]/route.ts              # Return/exchange request management (approve/reject/complete)
 ├── admin/route.ts             # Admin: Get all return/exchange requests
-├── exchange-payment/route.ts   # Exchange: Handle payment for price difference
 └── batch-get-orders/route.ts  # Utility: Get multiple orders by IDs
 ```
 

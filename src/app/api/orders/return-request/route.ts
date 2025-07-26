@@ -4,6 +4,13 @@ import prisma from '@/app/libs/prismadb';
 import { ReturnType, OrderStatus } from '@prisma/client';
 import { SimpleReturnCalculator } from '../../../../../utils/shipping/calculator';
 
+/**
+ * ===== RETURN REQUEST CREATION API =====
+ * This file handles creating new return/exchange requests from customers
+ * Used by: Customer-facing return request modal
+ * Supports: Both RETURN and EXCHANGE types
+ */
+
 interface ReturnItem {
   productId: string;
   variantId?: string;
@@ -24,6 +31,13 @@ interface CreateReturnRequest {
   exchangeToVariantId?: string;
 }
 
+/**
+ * POST /api/orders/return-request
+ * Purpose: Create new return/exchange request from customer
+ * Used by: Customer return request modal
+ * Flow: validate → calculate costs → create request → return response
+ * Supports: Both RETURN and EXCHANGE types with shipping calculations
+ */
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
@@ -323,7 +337,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - List return requests for current user
+/**
+ * GET /api/orders/return-request
+ * Purpose: List all return requests for current user
+ * Used by: Customer account page - returns section
+ * Returns: Array of user's return requests with order details
+ */
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();

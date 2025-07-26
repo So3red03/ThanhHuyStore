@@ -4,13 +4,35 @@ import prisma from '@/app/libs/prismadb';
 import { ReturnStatus, OrderReturnStatus } from '@prisma/client';
 import { sendReturnStatusEmail } from '@/app/utils/emailService';
 
-// Helper functions for inventory management
+/**
+ * ===== API XỬ LÝ YÊU CẦU TRẢ HÀNG / ĐỔI HÀNG =====
+ * File này xử lý approve/reject/complete cho cả RETURN và EXCHANGE requests
+ * Flow chính: validate → transaction → xử lý inventory → gửi email → trả response
+ */
+
+/**
+ * ===== 1. CÁC HÀM XỬ LÝ INVENTORY (DÙNG CHUNG CHO TRẢ & ĐỔI HÀNG) =====
+ */
+
+/**
+ * Đặt trước hàng tồn kho cho việc trả hàng (TRẢ HÀNG & ĐỔI HÀNG)
+ * Mục đích: Đánh dấu sản phẩm được reserve khi admin approve yêu cầu
+ * Được dùng bởi: handleReturnApprove(), handleExchangeApprove()
+ * Luồng: approve → reserve → (complete → khôi phục inventory)
+ */
 async function reserveInventoryForReturn(tx: any, items: any[]) {
   // For returns, we don't actually change stock yet, just mark as reserved
   // This could be implemented with a separate reservation table if needed
   console.log('Reserving inventory for return:', items.length, 'items');
 }
 
+/**
+ * Khôi phục hàng tồn kho từ việc trả hàng (TRẢ HÀNG & ĐỔI HÀNG)
+ * Mục đích: Cộng lại số lượng vào kho khi khách hàng trả sản phẩm về
+ * Được dùng bởi: handleReturnComplete(), handleExchangeCompletion()
+ * Luồng: complete → khôi phục inventory (khách đã gửi hàng về)
+ * Lưu ý: Không khôi phục hàng lỗi (DEFECTIVE) vì không thể bán lại
+ */
 async function restoreInventoryFromReturn(tx: any, items: any[], reason: string) {
   console.log(`📦 [RETURN-RESTORE] Processing ${items.length} items for inventory restoration...`);
   console.log(`📦 [RETURN-RESTORE] Return reason: ${reason}`);
@@ -70,6 +92,12 @@ async function restoreInventoryFromReturn(tx: any, items: any[], reason: string)
   console.log(`🎉 [RETURN-RESTORE] Inventory restoration completed successfully`);
 }
 
+/**
+ * Hủy đặt trước hàng tồn kho (TRẢ HÀNG & ĐỔI HÀNG)
+ * Mục đích: Hủy reservation khi admin reject yêu cầu sau khi đã approve
+ * Được dùng bởi: handleReturnReject(), handleExchangeReject()
+ * Luồng: approve → reserve → reject → unreserve
+ */
 async function unreserveInventoryForReturn(tx: any, items: any[]) {
   // Unreserve inventory if return was rejected after approval
   // For now, this is just logging since we don't have a reservation system
@@ -80,8 +108,20 @@ async function unreserveInventoryForReturn(tx: any, items: any[]) {
   // 1. Find reservation records for these items
   // 2. Delete or mark them as released
   // 3. Update available inventory counts
+  console.log(`🎉 [UNRESERVE] Inventory unreservation completed`);
 }
 
+/**
+ * ===== 2. CÁC HÀM XỬ LÝ ĐỔI HÀNG (EXCHANGE) =====
+ * Các functions này xử lý logic phức tạp cho đổi hàng bao gồm tạo đơn mới và quản lý inventory
+ */
+
+/**
+ * Xử lý logic approve đổi hàng (CHỈ ĐỔI HÀNG)
+ * Mục đích: Tạo đơn hàng mới, hủy/sửa đơn cũ, quản lý inventory
+ * Được dùng bởi: PUT handler khi action=approve và type=EXCHANGE
+ * Luồng: approve → tạo đơn mới → cập nhật đơn cũ → quản lý inventory → gửi email
+ */
 async function handleExchangeApproval(tx: any, returnRequest: any) {
   console.log(`🔄 [EXCHANGE-APPROVE] Handling exchange approval for request: ${returnRequest.id}`);
 
@@ -115,6 +155,12 @@ async function handleExchangeApproval(tx: any, returnRequest: any) {
   }
 }
 
+/**
+ * Xử lý đổi hàng toàn phần (CHỈ ĐỔI HÀNG)
+ * Mục đích: Hủy đơn hàng gốc hoàn toàn, tạo đơn hàng mới cho sản phẩm đổi
+ * Được dùng bởi: handleExchangeApproval() khi isFullExchange=true
+ * Luồng: reserve hàng cũ → tạo đơn mới → hủy đơn gốc → cập nhật return request
+ */
 async function handleFullExchange(tx: any, returnRequest: any, originalOrder: any) {
   console.log(`🔄 [FULL-EXCHANGE] Processing full exchange - cancel old + create new`);
 
@@ -276,6 +322,12 @@ async function handleFullExchange(tx: any, returnRequest: any, originalOrder: an
   console.log(`🎉 [FULL-EXCHANGE] Full exchange approval completed with new order creation`);
 }
 
+/**
+ * Xử lý đổi hàng một phần (CHỈ ĐỔI HÀNG)
+ * Mục đích: Tách đơn hàng gốc, tạo đơn hàng mới cho sản phẩm đổi, sửa đơn gốc
+ * Được dùng bởi: handleExchangeApproval() khi isFullExchange=false
+ * Luồng: reserve hàng cũ → tạo đơn mới → sửa đơn gốc → cập nhật return request
+ */
 async function handlePartialExchange(tx: any, returnRequest: any, originalOrder: any) {
   console.log(`🔄 [PARTIAL-EXCHANGE] Processing partial exchange - split order logic`);
 
@@ -426,6 +478,12 @@ async function handlePartialExchange(tx: any, returnRequest: any, originalOrder:
   console.log(`🎉 [PARTIAL-EXCHANGE] Partial exchange approval completed with order split`);
 }
 
+/**
+ * Handle partial exchange logic (EXCHANGE only)
+ * Purpose: Split original order, create new order for exchange product, modify original order
+ * Used by: handleExchangeApproval() when isFullExchange=false
+ * Flow: reserve old items → create new order → modify original order → update return request
+ */
 async function handleExchangeCompletion(tx: any, returnRequest: any) {
   console.log(`🔄 [EXCHANGE-COMPLETE] Handling exchange completion for request: ${returnRequest.id}`);
 
@@ -440,6 +498,12 @@ async function handleExchangeCompletion(tx: any, returnRequest: any) {
   console.log(`🎉 [EXCHANGE-COMPLETE] Exchange completion inventory handling completed`);
 }
 
+/**
+ * Xử lý hoàn tất đổi hàng (CHỈ ĐỔI HÀNG)
+ * Mục đích: Khôi phục hàng trả về kho khi đổi hàng hoàn tất
+ * Được dùng bởi: PUT handler khi action=complete và type=EXCHANGE
+ * Luồng: complete → khôi phục hàng trả về kho
+ */
 async function revertExchangeInventory(tx: any, returnRequest: any) {
   console.log(`🔄 [EXCHANGE-REVERT] Reverting exchange inventory for request: ${returnRequest.id}`);
 
@@ -542,6 +606,24 @@ async function revertExchangeInventory(tx: any, returnRequest: any) {
   console.log(`🎉 [EXCHANGE-REVERT] Exchange revert inventory handling completed`);
 }
 
+/**
+ * ===== 3. CÁC HÀM XỬ LÝ TRẢ HÀNG (RETURN) =====
+ * Các functions này xử lý logic đơn giản hơn cho trả hàng
+ */
+
+// TODO: Thêm các functions xử lý return nếu cần
+
+/**
+ * ===== 4. MAIN API HANDLERS =====
+ * Các endpoints chính của API
+ */
+
+/**
+ * GET /api/orders/return-request/[id]
+ * Mục đích: Lấy chi tiết một yêu cầu trả/đổi hàng cho admin/user
+ * Được dùng bởi: Admin panel, trang tài khoản user
+ * Trả về: Return request với thông tin order và user
+ */
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const currentUser = await getCurrentUser();
@@ -599,7 +681,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-// PUT - Admin approve/reject return request
+/**
+ * PUT /api/orders/return-request/[id]
+ * Mục đích: Admin approve/reject/complete yêu cầu trả/đổi hàng
+ * Được dùng bởi: Admin panel - trang quản lý returns
+ * Actions: approve, reject, complete
+ * Luồng: validate → transaction → xử lý inventory → gửi email → trả response
+ * Hỗ trợ: Cả RETURN và EXCHANGE types
+ */
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const currentUser = await getCurrentUser();
