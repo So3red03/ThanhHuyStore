@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatPrice } from '../../../../utils/formatPrice';
+import { truncateText } from '../../../../utils/truncateText';
 import {
   fetchProductInfo,
   fetchVariantInfo,
@@ -119,9 +120,15 @@ const ReturnRequestProductItem: React.FC<ReturnRequestProductItemProps> = ({ ite
 
       {/* Product Info */}
       <div className='flex-1 min-w-0'>
-        <h4 className='text-sm font-medium text-gray-900 truncate'>{displayName}</h4>
+        <h4 className='text-sm font-medium text-gray-900' title={displayName}>
+          {truncateText(displayName, 50)}
+        </h4>
 
-        {variantAttributes && <p className='text-xs text-gray-600 mt-1'>{variantAttributes}</p>}
+        {variantAttributes && (
+          <p className='text-xs text-gray-600 mt-1' title={variantAttributes}>
+            {truncateText(variantAttributes, 60)}
+          </p>
+        )}
 
         <div className='flex items-center justify-between mt-2'>
           <div className='flex items-center gap-2 text-sm'>

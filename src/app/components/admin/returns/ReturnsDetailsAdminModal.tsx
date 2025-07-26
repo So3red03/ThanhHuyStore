@@ -49,14 +49,19 @@ interface ReturnRequest {
   shippingBreakdown?: any;
 }
 
-interface ReturnsDetailsModalProps {
+interface ReturnsDetailsAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
   request: ReturnRequest | null;
   exchangeOrders?: { [key: string]: any };
 }
 
-const ReturnsDetailsModal: React.FC<ReturnsDetailsModalProps> = ({ isOpen, onClose, request, exchangeOrders = {} }) => {
+const ReturnsDetailsAdminModal: React.FC<ReturnsDetailsAdminModalProps> = ({
+  isOpen,
+  onClose,
+  request,
+  exchangeOrders = {}
+}) => {
   if (!request) return null;
 
   const getTypeText = (type: string) => {
@@ -131,12 +136,16 @@ const ReturnsDetailsModal: React.FC<ReturnsDetailsModalProps> = ({ isOpen, onClo
   };
 
   return (
-    <AdminModal isOpen={isOpen} handleClose={onClose}>
+    <AdminModal
+      isOpen={isOpen}
+      handleClose={onClose}
+      title={`Chi tiết yêu cầu #${request.id.substring(0, 8)}`}
+      maxWidth='lg'
+    >
       <div className='max-w-4xl mx-auto p-6'>
         {/* Header */}
         <div className='flex items-center justify-between mb-6 pb-4 border-b border-gray-200'>
           <div>
-            <h2 className='text-2xl font-bold text-gray-900 mb-2'>Chi tiết yêu cầu #{request.id.substring(0, 8)}</h2>
             <div className='flex items-center gap-3'>
               <span className={getTypeBadge(request.type)}>{getTypeText(request.type)}</span>
               <span className={getStatusBadge(request.status)}>{getStatusText(request.status)}</span>
@@ -243,11 +252,6 @@ const ReturnsDetailsModal: React.FC<ReturnsDetailsModalProps> = ({ isOpen, onClo
           {/* Exchange Order Display */}
           {request.type === 'EXCHANGE' && request.exchangeOrderId && (
             <div className='bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6 shadow-sm'>
-              <h3 className='text-lg font-semibold text-purple-900 mb-4 flex items-center gap-2'>
-                <MdSwapHoriz className='text-purple-600' size={24} />
-                Thông tin đổi hàng
-              </h3>
-
               <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                 {/* Original Order */}
                 <div className='bg-white border border-red-200 rounded-xl p-4 shadow-sm'>
@@ -350,4 +354,4 @@ const ReturnsDetailsModal: React.FC<ReturnsDetailsModalProps> = ({ isOpen, onClo
   );
 };
 
-export default ReturnsDetailsModal;
+export default ReturnsDetailsAdminModal;

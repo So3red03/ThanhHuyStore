@@ -137,7 +137,7 @@ const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps
 
   const calculatePriceDifference = (product: Product, variant?: ProductVariant) => {
     const newPrice = getProductPrice(product, variant);
-    const oldPrice = currentProduct.price;
+    const oldPrice = currentProduct.unitPrice || currentProduct.price || 0;
     return newPrice - oldPrice;
   };
 

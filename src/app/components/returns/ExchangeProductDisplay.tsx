@@ -14,6 +14,7 @@ import {
   ProductInfo,
   VariantInfo
 } from '../../utils/productUtils';
+import { truncateText } from '../../../../utils/truncateText';
 
 interface ExchangeProductDisplayProps {
   // Original product being returned
@@ -180,12 +181,6 @@ const ExchangeProductDisplay: React.FC<ExchangeProductDisplayProps> = ({
 
   return (
     <div className='p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl'>
-      {/* Header */}
-      <div className='flex items-center gap-2 mb-4'>
-        <MdSwapHoriz className='text-blue-600' size={20} />
-        <span className='text-sm font-semibold text-blue-800'>Thông tin đổi hàng</span>
-      </div>
-
       {/* Exchange Flow */}
       <div className='flex items-center gap-4'>
         {/* Original Product */}
@@ -203,7 +198,7 @@ const ExchangeProductDisplay: React.FC<ExchangeProductDisplayProps> = ({
             </div>
             <div className='flex-1 min-w-0'>
               <h4 className='text-sm font-medium text-gray-900 truncate' title={originalDisplayName}>
-                {originalDisplayName}
+                {truncateText(originalDisplayName)}
               </h4>
               {originalVariantAttributes && (
                 <p className='text-xs text-gray-600 mt-1 truncate' title={originalVariantAttributes}>
@@ -241,7 +236,7 @@ const ExchangeProductDisplay: React.FC<ExchangeProductDisplayProps> = ({
             </div>
             <div className='flex-1 min-w-0'>
               <h4 className='text-sm font-medium text-gray-900 truncate' title={exchangeDisplayName}>
-                {exchangeDisplayName}
+                {truncateText(exchangeDisplayName)}
               </h4>
               {exchangeVariantAttributes && (
                 <p className='text-xs text-gray-600 mt-1 truncate' title={exchangeVariantAttributes}>

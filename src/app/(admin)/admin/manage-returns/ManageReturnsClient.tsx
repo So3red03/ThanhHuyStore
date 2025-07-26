@@ -33,9 +33,7 @@ import AdminModal from '../../../components/admin/AdminModal';
 import ActionBtn from '../../../components/ActionBtn';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-
-import ReturnsDetailsModal from '../../../components/admin/returns/ReturnsDetailsModal';
-import ExchangeProductDisplay from '../../../components/returns/ExchangeProductDisplay';
+import ReturnsDetailsAdminModal from '@/app/components/admin/returns/ReturnsDetailsAdminModal';
 
 interface ReturnRequest {
   id: string;
@@ -870,7 +868,7 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
         </div>
 
         {/* Detail Modal */}
-        <ReturnsDetailsModal
+        <ReturnsDetailsAdminModal
           isOpen={isDetailModalOpen}
           onClose={() => setIsDetailModalOpen(false)}
           request={selectedRequest}

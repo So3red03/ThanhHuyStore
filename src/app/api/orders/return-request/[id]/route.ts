@@ -229,7 +229,7 @@ async function handleFullExchange(tx: any, returnRequest: any, originalOrder: an
         paymentIntentId: `exchange_${returnRequest.id}_${Date.now()}`, // Generate unique payment intent ID
         phoneNumber: originalOrder.phoneNumber,
         address: originalOrder.address, // Use same address
-        shippingFee: 0, // Free shipping for exchanges
+        shippingFee: 0, // Free shipping for exchanges (policy: exchange orders always freeship)
         paymentMethod: priceDifference > 0 ? 'pending_payment' : 'exchange',
         discountAmount: 0, // No discount for exchange orders
         salesStaff: 'System Exchange', // Mark as system-generated exchange
@@ -412,7 +412,7 @@ async function handlePartialExchange(tx: any, returnRequest: any, originalOrder:
         paymentIntentId: `exchange_partial_${returnRequest.id}_${Date.now()}`,
         phoneNumber: originalOrder.phoneNumber,
         address: originalOrder.address,
-        shippingFee: 0, // No additional shipping for exchange
+        shippingFee: 0, // Free shipping for exchanges (policy: exchange orders always freeship)
         paymentMethod: originalOrder.paymentMethod,
         discountAmount: 0, // No discount for exchange orders
         salesStaff: 'System Exchange', // Mark as system-generated exchange
