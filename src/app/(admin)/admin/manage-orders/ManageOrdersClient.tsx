@@ -651,7 +651,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
         </div>
       </div>
       {isOpen && selectedOrder && currentUser && (
-        <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
+        <AdminModal isOpen={isOpen} handleClose={toggleOpen} maxWidth='lg'>
           <OrderDetails
             order={{
               ...selectedOrder,

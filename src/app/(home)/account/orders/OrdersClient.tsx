@@ -1,23 +1,18 @@
 'use client';
 
 import { CartProductType, DeliveryStatus, Order, OrderStatus } from '@prisma/client';
-import Status from '@/app/components/Status';
-import { MdAccessTimeFilled, MdDeliveryDining, MdDone, MdClose } from 'react-icons/md';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useState } from 'react';
-import AdminModal from '@/app/components/admin/AdminModal';
 import { SafeUser } from '../../../../../types';
 import { formatPrice } from '../../../../../utils/formatPrice';
-import Button from '@/app/components/Button';
-import NotFound from '@/app/components/NotFound';
-import { Box, Rating, styled, Tab, Tabs } from '@mui/material';
-import 'moment/locale/vi';
-import Image from 'next/image';
+import { Box, styled, Tab, Tabs } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import OrderDetails from '@/app/components/OrderDetails';
-import CancelOrderDialog from '@/app/components/CancelOrderDialog';
+import { MdShoppingBag } from 'react-icons/md';
 import ReturnRequestButton from '@/app/components/returns/ReturnRequestButton';
+import Image from 'next/image';
+import AdminModal from '@/app/components/admin/AdminModal';
+import OrderDetails from '@/app/components/OrderDetails';
 
 export const formatDate = (date: any) => {
   if (!date) return 'N/A';
@@ -45,12 +40,85 @@ interface OrdersClientProps {
 }
 
 const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<(Order & { products: CartProductType[] }) | null>(null);
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const router = useRouter();
-  const toggleOpen = () => {
-    setIsOpen(!isOpen);
+  const [filteredOrders, setFilteredOrders] = useState(orders);
+  const [value, setValue] = useState(0);
+  const [selectedOrder, setSelectedOrder] = useState<(Order & { products: CartProductType[] }) | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // Handle view details
+  const handleViewDetails = (order: Order & { products: CartProductType[] }) => {
+    setSelectedOrder(order);
+    setIsDetailModalOpen(true);
+  };
+
+  // Helper functions for styling
+  const getDeliveryStatusBadgeStyle = (status: string | null) => {
+    switch (status) {
+      case 'not_shipped':
+        return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+      case 'in_transit':
+        return 'text-blue-700 bg-blue-50 border-blue-200';
+      case 'delivered':
+        return 'text-green-700 bg-green-50 border-green-200';
+      default:
+        return 'text-gray-700 bg-gray-50 border-gray-200';
+    }
+  };
+
+  const getDeliveryStatusText = (status: string | null) => {
+    switch (status) {
+      case 'not_shipped':
+        return 'Chờ giao';
+      case 'in_transit':
+        return 'Đang giao';
+      case 'delivered':
+        return 'Đã giao';
+      default:
+        return status || 'Không xác định';
+    }
+  };
+
+  // Enhanced OrderItem component with proper image display
+  const OrderItem = ({ item }: { item: any }) => {
+    // Get the appropriate image - prioritize selectedImg, then thumbnail, then first image
+    const getItemImage = () => {
+      if (item.selectedImg) return item.selectedImg;
+      if (item.thumbnail) return item.thumbnail;
+      if (item.image) return item.image;
+      if (item.images && item.images.length > 0) return item.images[0];
+      return '/placeholder-image.jpg'; // fallback
+    };
+
+    return (
+      <div className='flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200'>
+        {/* Product Image */}
+        <div className='relative w-16 h-16 flex-shrink-0'>
+          <Image
+            src={getItemImage()}
+            alt={item.name || 'Product'}
+            fill
+            className='object-cover rounded-lg'
+            sizes='64px'
+            onError={e => {
+              const target = e.target as HTMLImageElement;
+              target.src = '/placeholder-image.jpg';
+            }}
+          />
+        </div>
+
+        {/* Product Info */}
+        <div className='flex-1'>
+          <h4 className='font-medium text-gray-900 text-sm'>{item.name}</h4>
+          {item.selectedColor && <p className='text-xs text-gray-500'>Màu: {item.selectedColor}</p>}
+          {item.selectedSize && <p className='text-xs text-gray-500'>Size: {item.selectedSize}</p>}
+          <div className='flex justify-between items-center mt-1'>
+            <p className='text-sm text-gray-600'>SL: {item.quantity}</p>
+            <p className='text-sm font-semibold text-blue-600'>{formatPrice(item.price)}</p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const AntTabs = styled(Tabs)({
@@ -76,19 +144,10 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
     color: 'text.primary',
     borderColor: '#D2D2D7'
   };
-  // Giá trị hiển thị để chuyển đổi các tab
-  const [filteredOrders, setFilteredOrders] = useState(orders);
-  const [value, setValue] = useState(0);
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+
+  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
     filterOrders(newValue);
-  };
-  // Kiểm tra xem đơn hàng có thể hủy không
-  const canCancelOrder = (order: Order) => {
-    return (
-      order.status === OrderStatus.pending ||
-      (order.status === OrderStatus.confirmed && order.deliveryStatus === DeliveryStatus.not_shipped)
-    );
   };
 
   // Hàm lọc đơn hàng
@@ -101,7 +160,7 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
         setFilteredOrders(
           orders.filter(
             order =>
-              order.status !== OrderStatus.canceled && // Loại trừ đơn hàng đã hủy
+              order.status !== OrderStatus.canceled &&
               (order.status === OrderStatus.pending ||
                 (order.status === OrderStatus.confirmed && order.deliveryStatus === DeliveryStatus.not_shipped))
           )
@@ -124,182 +183,123 @@ const OrdersClient: React.FC<OrdersClientProps> = ({ orders, currentUser }) => {
         setFilteredOrders(orders);
     }
   };
-  return (
-    <>
-      <div className='max-w-4xl p-6 py-0'>
-        {orders.length > 0 ? (
-          <>
-            <div className={`flex justify-between items-center mb-4`}>
-              <h1 className='text-2xl font-bold'>ĐƠN HÀNG CỦA TÔI</h1>
-              <span className='text-sm text-gray-600'>({filteredOrders.length} đơn hàng)</span>
-            </div>
-            <div className='w-100 overflow-auto'>
-              <Box sx={{ overflowX: 'auto' }}>
-                <AntTabs value={value} onChange={handleChange} centered>
-                  <Tab label='Tất cả' sx={tabStyles} />
-                  <Tab label='Chờ xác nhận' sx={tabStyles} />
-                  <Tab label='Đang vận chuyển' sx={tabStyles} />
-                  <Tab label='Hoàn thành' sx={tabStyles} />
-                  <Tab label='Đã hủy' sx={tabStyles} />
-                </AntTabs>
-              </Box>
-            </div>
-            {filteredOrders.map(order => (
-              <div key={order.id} className='my-4 border border-gray-300 rounded-lg'>
-                <div className='p-4 bg-gray-50'>
-                  <div className='flex justify-between items-center mb-2'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-lg font-semibold text-gray-700'>{order.id}</span>
-                      {order.status === OrderStatus.canceled && (
-                        <span className='text-sm font-medium text-red-600 bg-red-50 px-2 py-1 rounded-md border border-red-200'>
-                          Đã hủy
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
-                  <p className='text-sm text-gray-500'>{formatDate(order.createdAt)}</p>
-                  <div className='text-sm text-gray-600 flex items-center gap-2'>
-                    Tình trạng đặt hàng:{' '}
-                    <span className='font-medium'>
-                      {order.deliveryStatus === 'not_shipped' ? (
-                        <Status
-                          text='Đang chờ'
-                          icon={MdAccessTimeFilled}
-                          bg='bg-slate-200'
-                          color='text-slate-700 !py-0 !px-1'
-                        />
-                      ) : order.deliveryStatus === 'in_transit' ? (
-                        <Status
-                          text='Đang giao hàng'
-                          icon={MdDeliveryDining}
-                          bg='bg-purple-200'
-                          color='text-purple-700 !py-0 !px-1'
-                        />
-                      ) : order.deliveryStatus === 'delivered' ? (
-                        <Status
-                          text='Giao thành công'
-                          icon={MdDone}
-                          bg='bg-green-200'
-                          color='text-green-700 !py-0 !px-1'
-                        />
-                      ) : (
-                        <></>
-                      )}
-                    </span>
-                  </div>
-                  <div className='text-sm text-gray-600 flex items-center gap-2'>
-                    Trạng thái đơn hàng:{' '}
-                    <span className='font-medium'>
-                      {order.status === 'pending' ? (
-                        <Status
-                          text='Đang chờ'
-                          icon={MdAccessTimeFilled}
-                          bg='bg-slate-200'
-                          color='text-slate-700 !py-0 !px-1'
-                        />
-                      ) : order.status === 'confirmed' ? (
-                        <Status text='Đã xác nhận' icon={MdDone} bg='bg-blue-200' color='text-blue-700 !py-0 !px-1' />
-                      ) : order.status === 'completed' ? (
-                        <Status text='Hoàn thành' icon={MdDone} bg='bg-green-200' color='text-green-700 !py-0 !px-1' />
-                      ) : order.status === 'canceled' ? (
-                        <Status text='Đã hủy' icon={MdClose} bg='bg-red-200' color='text-red-700 !py-0 !px-1' />
-                      ) : (
-                        <Status text='Thành công' icon={MdDone} bg='bg-green-200' color='text-green-700 !py-0 !px-1' />
-                      )}
+  return (
+    <div className='max-w-4xl p-6 py-0'>
+      {orders.length > 0 ? (
+        <>
+          {/* Header */}
+          <div className='flex justify-between items-center mb-4'>
+            <h1 className='text-2xl font-bold'>ĐƠN HÀNG CỦA TÔI</h1>
+            <span className='text-sm text-gray-600'>({filteredOrders.length} đơn hàng)</span>
+          </div>
+
+          {/* Tabs */}
+          <div className='w-100 overflow-auto mb-4'>
+            <Box sx={{ overflowX: 'auto' }}>
+              <AntTabs value={value} onChange={handleChange} centered>
+                <Tab label='Tất cả' sx={tabStyles} />
+                <Tab label='Chờ xác nhận' sx={tabStyles} />
+                <Tab label='Đang vận chuyển' sx={tabStyles} />
+                <Tab label='Hoàn thành' sx={tabStyles} />
+                <Tab label='Đã hủy' sx={tabStyles} />
+              </AntTabs>
+            </Box>
+          </div>
+
+          {/* Orders List */}
+          {filteredOrders.map(order => (
+            <div key={order.id} className='my-4 border border-gray-300 rounded-lg'>
+              <div className='p-4 bg-gray-50'>
+                <div className='flex justify-between items-center mb-2'>
+                  <div className='flex items-center gap-2'>
+                    <span className='text-lg font-semibold text-gray-700'>{order.id}</span>
+                    {order.status === OrderStatus.canceled && (
+                      <span className='text-sm font-medium px-2 py-1 rounded-md border text-red-700 bg-red-50 border-red-200'>
+                        Đã hủy
+                      </span>
+                    )}
+                    <span
+                      className={`text-sm font-medium px-2 py-1 rounded-md border ${getDeliveryStatusBadgeStyle(
+                        order.deliveryStatus
+                      )}`}
+                    >
+                      {getDeliveryStatusText(order.deliveryStatus)}
                     </span>
                   </div>
                 </div>
-
-                <div className='border-t p-4 border-gray-300 flex justify-between items-center'>
-                  <div className='flex gap-3'>
-                    <button
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        toggleOpen();
-                      }}
-                      className='px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-slate-600 hover:text-white hover:boder-slate-600'
-                    >
-                      Thông tin đơn hàng
-                    </button>
-                    {canCancelOrder(order) && (
-                      <button
-                        onClick={() => {
-                          setSelectedOrder(order);
-                          setShowCancelDialog(true);
-                        }}
-                        className='px-4 py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-400'
-                      >
-                        Hủy đơn hàng
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Return/Exchange Buttons */}
-                  {currentUser && (
-                    <ReturnRequestButton
-                      order={{ ...order, user: currentUser }}
-                      currentUser={currentUser}
-                      onReturnRequested={() => {
-                        // Refresh orders after return request
-                        window.location.reload();
-                      }}
-                    />
-                  )}
-                  <span className='text-md font-semibold'>{formatPrice(order.amount)}</span>
+                <p className='text-sm text-gray-500'>{formatDate(order.createdAt)}</p>
+                <div className='text-sm text-gray-600 flex items-center gap-2'>
+                  Tình trạng: <span className='font-medium'>{getDeliveryStatusText(order.deliveryStatus)}</span>
                 </div>
               </div>
-            ))}
-          </>
-        ) : (
-          <div className='mt-8'>
-            <NotFound />
-            <p className='text-center font-semibold text-lg my-5'>Quý khách chưa có đơn hàng nào</p>
-            <Button
-              label='Tiếp tục mua hàng'
-              onClick={() => {
-                router.push('/');
-              }}
-              custom='!max-w-[200px] !mx-auto'
-            />
-          </div>
-        )}
-      </div>
-      {isOpen && selectedOrder && currentUser && (
-        <AdminModal isOpen={isOpen} handleClose={toggleOpen}>
+
+              {/* Products */}
+              <div className='p-4 border-t border-gray-200'>
+                <div className='space-y-3'>
+                  {order.products.map((item: any, index: number) => (
+                    <OrderItem key={index} item={item} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className='p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center'>
+                <div className='text-sm text-gray-600'>
+                  Tổng tiền: <span className='font-semibold text-gray-900'>{formatPrice(order.amount)}</span>
+                </div>
+                <div className='flex gap-2 items-center'>
+                  {/* Return/Exchange Buttons */}
+                  {order.status === OrderStatus.completed && order.deliveryStatus === 'delivered' && (
+                    <ReturnRequestButton order={order as any} currentUser={currentUser!} />
+                  )}
+
+                  {/* View Details Button */}
+                  <button
+                    onClick={() => handleViewDetails(order)}
+                    className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
+                  >
+                    Xem chi tiết
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </>
+      ) : (
+        <div className='text-center py-20'>
+          <div className='text-6xl mb-6'>📦</div>
+          <h3 className='text-xl font-semibold text-gray-900 mb-3'>Chưa có đơn hàng nào</h3>
+          <p className='text-gray-600 mb-8 max-w-md mx-auto'>
+            Bạn chưa có đơn hàng nào. Hãy khám phá sản phẩm và đặt hàng ngay!
+          </p>
+          <button
+            onClick={() => router.push('/')}
+            className='inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200'
+          >
+            <MdShoppingBag size={20} />
+            Mua sắm ngay
+          </button>
+        </div>
+      )}
+
+      {/* Order Details Modal */}
+      {isDetailModalOpen && selectedOrder && currentUser && (
+        <AdminModal isOpen={isDetailModalOpen} handleClose={() => setIsDetailModalOpen(false)} maxWidth='md'>
           <OrderDetails
             order={{
               ...selectedOrder,
               user: currentUser
             }}
             currentUser={currentUser}
-            showCancelButton={true}
+            showCancelButton={false}
             onOrderCancelled={() => {
-              // Refresh orders list or update state
-              toggleOpen();
-              window.location.reload(); // Simple refresh for now
+              setIsDetailModalOpen(false);
             }}
           />
         </AdminModal>
       )}
-
-      {/* Cancel Order Dialog */}
-      {showCancelDialog && selectedOrder && currentUser && (
-        <CancelOrderDialog
-          isOpen={showCancelDialog}
-          onClose={() => setShowCancelDialog(false)}
-          order={{
-            ...selectedOrder,
-            user: currentUser
-          }}
-          currentUser={currentUser}
-          onSuccess={() => {
-            setShowCancelDialog(false);
-            window.location.reload(); // Simple refresh for now
-          }}
-        />
-      )}
-    </>
+    </div>
   );
 };
 

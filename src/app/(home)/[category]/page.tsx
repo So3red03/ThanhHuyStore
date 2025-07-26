@@ -14,7 +14,8 @@ export default async function SubItemPage({ params }: { params: { category: stri
     category.includes('.') ||
     category.includes('placeholder') ||
     category.length < 2 ||
-    /^[0-9]+$/.test(category)
+    /^[0-9a-f]{24}$/.test(category) || // MongoDB ObjectId pattern
+    /^[0-9]+$/.test(category) // Pure numbers
   ) {
     notFound();
   }

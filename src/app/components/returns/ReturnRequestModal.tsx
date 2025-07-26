@@ -151,10 +151,14 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
   const updateExchangeShippingInfo = (selectedReason: string) => {
     const reasonOption = exchangeReasonOptions.find(opt => opt.value === selectedReason);
     if (reasonOption) {
+      // Check if order qualifies for free shipping (> 5 million VND)
+      const orderTotal = order.amount || 0;
+      const qualifiesForFreeShip = orderTotal >= 5000000;
+
       setExchangeShippingInfo({
-        customerPaysShipping: reasonOption.customerPaysShipping,
-        description: reasonOption.description,
-        estimatedFee: reasonOption.customerPaysShipping ? 38000 : 0 // Estimated shipping fee
+        customerPaysShipping: qualifiesForFreeShip ? false : reasonOption.customerPaysShipping,
+        description: qualifiesForFreeShip ? 'Miễn phí vận chuyển (đơn hàng trên 5 triệu)' : reasonOption.description,
+        estimatedFee: qualifiesForFreeShip ? 0 : reasonOption.customerPaysShipping ? 38000 : 0
       });
     }
   };
