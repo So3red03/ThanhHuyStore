@@ -58,20 +58,37 @@ const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps
     setIsLoading(true);
     try {
       const response = await axios.get('/api/product');
+
+      // Get current product price for comparison
+      const currentProductPrice = currentProduct.unitPrice || currentProduct.price || 0;
+
       const availableProducts = response.data.products.filter((product: Product) => {
-        // Exclude current product and ensure stock availability
+        // Exclude current product
         if (product.id === currentProduct.productId) return false;
 
-        // For simple products, check inStock
-        if (product.inStock !== undefined && product.inStock > 0) return true;
+        // Check if product has higher value than current product
+        let hasHigherValueOption = false;
 
-        // For variant products, check if any variant has stock
-        if (product.variants && product.variants.length > 0) {
-          return product.variants.some((variant: ProductVariant) => variant.stock > 0);
+        // For simple products, check price and stock
+        if (product.inStock !== undefined && product.inStock > 0) {
+          if (product.price > currentProductPrice) {
+            hasHigherValueOption = true;
+          }
         }
 
-        return false;
+        // For variant products, check if any variant has higher price and stock
+        if (product.variants && product.variants.length > 0) {
+          const hasValidVariant = product.variants.some(
+            (variant: ProductVariant) => variant.stock > 0 && variant.price > currentProductPrice
+          );
+          if (hasValidVariant) {
+            hasHigherValueOption = true;
+          }
+        }
+
+        return hasHigherValueOption;
       });
+
       setProducts(availableProducts);
       setFilteredProducts(availableProducts);
     } catch (error) {
@@ -156,6 +173,14 @@ const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps
               <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto'></div>
               <p className='mt-2 text-gray-600'>Đang tải...</p>
             </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className='text-center py-8'>
+              <p className='text-gray-600 mb-2'>Không có sản phẩm nào có giá trị cao hơn để đổi</p>
+              <p className='text-sm text-gray-500'>
+                Chỉ có thể đổi sang sản phẩm có giá trị cao hơn{' '}
+                {formatPrice(currentProduct.unitPrice || currentProduct.price || 0)}
+              </p>
+            </div>
           ) : (
             <div className='max-h-96 overflow-y-auto'>
               {filteredProducts.map(product => (
@@ -202,44 +227,49 @@ const ExchangeProductInlineSelector: React.FC<ExchangeProductInlineSelectorProps
         <div className='border rounded-lg p-4 bg-gray-50'>
           <h4 className='font-medium text-gray-700 mb-3'>Chọn phiên bản cho {selectedProduct.name}:</h4>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
-            {selectedProduct.variants.map(variant => (
-              <div
-                key={variant.id}
-                onClick={() => handleVariantSelect(variant)}
-                className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                  selectedVariant?.id === variant.id
-                    ? 'bg-blue-100 border-2 border-blue-500'
-                    : 'bg-white border-2 border-gray-200 hover:border-blue-300'
-                }`}
-              >
-                <div className='flex justify-between items-center'>
-                  <div>
-                    <p className='font-medium text-sm'>{getVariantDisplayName(variant)}</p>
-                    <p className='text-xs text-gray-500'>SKU: {variant.sku}</p>
-                    {variant.attributes?.color && (
-                      <p className='text-xs text-gray-500'>Màu: {variant.attributes.color}</p>
-                    )}
-                    {variant.attributes?.size && (
-                      <p className='text-xs text-gray-500'>Size: {variant.attributes.size}</p>
-                    )}
-                  </div>
-                  <div className='text-right'>
-                    <p className='font-medium text-sm'>{formatPrice(variant.price)}</p>
-                    <p className='text-xs text-gray-500'>Còn: {variant.stock}</p>
-                    <div
-                      className={`text-xs px-2 py-1 rounded mt-1 ${
-                        calculatePriceDifference(selectedProduct, variant) >= 0
-                          ? 'bg-orange-100 text-orange-600'
-                          : 'bg-green-100 text-green-600'
-                      }`}
-                    >
-                      {calculatePriceDifference(selectedProduct, variant) >= 0 ? '+' : ''}
-                      {formatPrice(calculatePriceDifference(selectedProduct, variant))}
+            {selectedProduct.variants
+              .filter(variant => {
+                const currentProductPrice = currentProduct.unitPrice || currentProduct.price || 0;
+                return variant.stock > 0 && variant.price > currentProductPrice;
+              })
+              .map(variant => (
+                <div
+                  key={variant.id}
+                  onClick={() => handleVariantSelect(variant)}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                    selectedVariant?.id === variant.id
+                      ? 'bg-blue-100 border-2 border-blue-500'
+                      : 'bg-white border-2 border-gray-200 hover:border-blue-300'
+                  }`}
+                >
+                  <div className='flex justify-between items-center'>
+                    <div>
+                      <p className='font-medium text-sm'>{getVariantDisplayName(variant)}</p>
+                      <p className='text-xs text-gray-500'>SKU: {variant.sku}</p>
+                      {variant.attributes?.color && (
+                        <p className='text-xs text-gray-500'>Màu: {variant.attributes.color}</p>
+                      )}
+                      {variant.attributes?.size && (
+                        <p className='text-xs text-gray-500'>Size: {variant.attributes.size}</p>
+                      )}
+                    </div>
+                    <div className='text-right'>
+                      <p className='font-medium text-sm'>{formatPrice(variant.price)}</p>
+                      <p className='text-xs text-gray-500'>Còn: {variant.stock}</p>
+                      <div
+                        className={`text-xs px-2 py-1 rounded mt-1 ${
+                          calculatePriceDifference(selectedProduct, variant) >= 0
+                            ? 'bg-orange-100 text-orange-600'
+                            : 'bg-green-100 text-green-600'
+                        }`}
+                      >
+                        {calculatePriceDifference(selectedProduct, variant) >= 0 ? '+' : ''}
+                        {formatPrice(calculatePriceDifference(selectedProduct, variant))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}
