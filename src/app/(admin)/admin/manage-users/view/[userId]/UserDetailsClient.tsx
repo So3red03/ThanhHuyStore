@@ -31,7 +31,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import ActivityTimeline from '@/app/components/admin/ActivityTimeline';
-import { useUserActivities } from '@/app/components/admin/useUserActivities';
+import { useUserActivities } from '@/app/hooks/useUserActivities';
 import OrderDetails from '@/app/components/OrderDetails';
 import { SafeUser } from '../../../../../../../types';
 

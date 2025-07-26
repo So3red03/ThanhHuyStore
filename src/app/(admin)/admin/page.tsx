@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 import { getConversations } from '@/app/actions/getConversations';
 import { getReviews } from '@/app/actions/getReviews';
 import { getProducts } from '@/app/actions/getProducts';
-import DashboardTabs from '@/app/components/admin/DashboardTabs';
+import DashboardTabs from '@/app/components/admin/dashboard/DashboardTabs';
 import OverviewTab from '@/app/components/admin/dashboard/OverviewTab';
 import AnalyticsTab from '@/app/components/admin/dashboard/AnalyticsTab';
 import ReportsTab from '@/app/components/admin/dashboard/ReportsTab';

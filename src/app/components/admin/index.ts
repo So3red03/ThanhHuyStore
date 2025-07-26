@@ -3,7 +3,7 @@ export { default as ActivityTimeline } from './ActivityTimeline';
 export { default as AllActivitiesTimeline } from './AllActivitiesTimeline';
 
 // Activity Tracking Hooks and Utils
-export { useUserActivities } from './useUserActivities';
+export { useUserActivities } from '../../hooks/useUserActivities';
 
 // 🚀 UNIFIED EVENT TRACKING FUNCTIONS (All Phases)
 export {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ActivityItem } from './ActivityTimeline';
+import { ActivityItem } from '../components/admin/ActivityTimeline';
 
 interface UseUserActivitiesProps {
   user: any; // Simplified to handle serialized data
