@@ -35,6 +35,7 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 
 import ReturnsDetailsModal from '../../../components/admin/returns/ReturnsDetailsModal';
+import ExchangeProductDisplay from '../../../components/returns/ExchangeProductDisplay';
 
 interface ReturnRequest {
   id: string;

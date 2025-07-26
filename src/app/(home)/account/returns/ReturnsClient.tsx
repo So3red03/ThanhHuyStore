@@ -10,6 +10,8 @@ import AdminModal from '../../../components/admin/AdminModal';
 import { useReturnRequests } from '../../../providers/ReturnRequestContext';
 import ReturnRequestProductItem from '../../../components/returns/ReturnRequestProductItem';
 import ReturnShippingBreakdown from '../../../components/returns/ReturnShippingBreakdown';
+import ExchangeProductDisplay from '../../../components/returns/ExchangeProductDisplay';
+import ExchangeOrderInfo from '../../../components/returns/ExchangeOrderInfo';
 
 interface ReturnRequest {
   id: string;
@@ -21,6 +23,9 @@ interface ReturnRequest {
   additionalCost?: number;
   adminNotes?: string;
   exchangeOrderId?: string;
+  // Exchange specific fields
+  exchangeToProductId?: string;
+  exchangeToVariantId?: string;
   createdAt: string;
   items: any[];
   shippingBreakdown?: any;
@@ -278,15 +283,28 @@ const ReturnsClient: React.FC<ReturnsClientProps> = ({ currentUser }) => {
                   </div>
                 </div>
 
-                {/* Reason */}
+                {/* Reason / Exchange Info */}
                 <div className='space-y-3'>
-                  <h4 className='font-semibold text-gray-700'>Lý do</h4>
+                  <h4 className='font-semibold text-gray-700'>
+                    {request.type === 'EXCHANGE' ? 'Thông tin đổi hàng' : 'Lý do'}
+                  </h4>
                   <div className='space-y-2 text-sm'>
                     <p className='text-gray-600'>{getReasonText(request.reason)}</p>
                     {request.description && (
                       <div className='p-3 bg-gray-50 rounded-lg'>
                         <p className='text-gray-700'>{request.description}</p>
                       </div>
+                    )}
+                    {/* Exchange Summary */}
+                    {request.type === 'EXCHANGE' && (request as any).exchangeToProductId && (
+                      <ExchangeProductDisplay
+                        originalItem={request.items[0]}
+                        exchangeToProductId={(request as any).exchangeToProductId}
+                        exchangeToVariantId={(request as any).exchangeToVariantId}
+                        additionalCost={request.additionalCost}
+                        mode='compact'
+                        showPriceDifference={true}
+                      />
                     )}
                   </div>
                 </div>
@@ -326,22 +344,13 @@ const ReturnsClient: React.FC<ReturnsClientProps> = ({ currentUser }) => {
                       </div>
                     )}
 
-                    {/* Exchange Order Link */}
+                    {/* Exchange Order Info */}
                     {request.type === 'EXCHANGE' && request.exchangeOrderId && request.status === 'APPROVED' && (
-                      <div className='p-3 bg-blue-50 border border-blue-200 rounded-lg'>
-                        <div className='flex items-center justify-between'>
-                          <div>
-                            <p className='text-sm text-blue-700 font-medium'>🔄 Đơn hàng đổi mới</p>
-                            <p className='text-xs text-blue-600'>#{request.exchangeOrderId.slice(-8)}</p>
-                          </div>
-                          <Link
-                            href={`/account/orders/${request.exchangeOrderId}`}
-                            className='px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors'
-                          >
-                            Xem đơn hàng
-                          </Link>
-                        </div>
-                      </div>
+                      <ExchangeOrderInfo
+                        exchangeOrderId={request.exchangeOrderId}
+                        returnRequestId={request.id}
+                        showFullDetails={false}
+                      />
                     )}
                   </div>
                 </div>
@@ -415,6 +424,21 @@ const ReturnsClient: React.FC<ReturnsClientProps> = ({ currentUser }) => {
                 ))}
               </div>
             </div>
+
+            {/* Exchange Information */}
+            {selectedRequest.type === 'EXCHANGE' && (selectedRequest as any).exchangeToProductId && (
+              <div>
+                <h3 className='font-semibold text-gray-700 mb-3'>Thông tin đổi hàng</h3>
+                <ExchangeProductDisplay
+                  originalItem={selectedRequest.items[0]} // Assuming single item exchange
+                  exchangeToProductId={(selectedRequest as any).exchangeToProductId}
+                  exchangeToVariantId={(selectedRequest as any).exchangeToVariantId}
+                  additionalCost={selectedRequest.additionalCost}
+                  mode='detailed'
+                  showPriceDifference={true}
+                />
+              </div>
+            )}
 
             {/* Cost Breakdown for Return Requests */}
             {selectedRequest.type === 'RETURN' && selectedRequest.status !== 'PENDING' && (
@@ -539,6 +563,18 @@ const ReturnsClient: React.FC<ReturnsClientProps> = ({ currentUser }) => {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Exchange Order Details */}
+            {selectedRequest.type === 'EXCHANGE' && selectedRequest.exchangeOrderId && (
+              <div>
+                <h3 className='font-semibold text-gray-700 mb-3'>Đơn hàng đổi mới</h3>
+                <ExchangeOrderInfo
+                  exchangeOrderId={selectedRequest.exchangeOrderId}
+                  returnRequestId={selectedRequest.id}
+                  showFullDetails={true}
+                />
               </div>
             )}
 

@@ -85,23 +85,45 @@ async function unreserveInventoryForReturn(tx: any, items: any[]) {
 async function handleExchangeApproval(tx: any, returnRequest: any) {
   console.log(`🔄 [EXCHANGE-APPROVE] Handling exchange approval for request: ${returnRequest.id}`);
 
-  // For exchange approval, we need to:
-  // 1. Reserve the items being returned (similar to return approval)
-  // 2. Create new order for exchange item
-  // 3. Process payment difference if needed
+  // Get original order to determine exchange type
+  const originalOrder = await tx.order.findUnique({
+    where: { id: returnRequest.orderId },
+    include: { user: true, products: true }
+  });
+
+  if (!originalOrder) {
+    throw new Error(`Original order not found: ${returnRequest.orderId}`);
+  }
+
+  // Determine if this is full or partial exchange
+  const exchangeItems = returnRequest.items || [];
+  const originalProducts = originalOrder.products || [];
+  const isFullExchange = exchangeItems.length === originalProducts.length;
+
+  console.log(`🔍 [EXCHANGE-APPROVE] Exchange type analysis:`, {
+    exchangeItemsCount: exchangeItems.length,
+    originalProductsCount: originalProducts.length,
+    isFullExchange
+  });
+
+  if (isFullExchange) {
+    console.log(`🔄 [EXCHANGE-APPROVE] Processing FULL exchange (existing logic)`);
+    await handleFullExchange(tx, returnRequest, originalOrder);
+  } else {
+    console.log(`🔄 [EXCHANGE-APPROVE] Processing PARTIAL exchange (split logic)`);
+    await handlePartialExchange(tx, returnRequest, originalOrder);
+  }
+}
+
+async function handleFullExchange(tx: any, returnRequest: any, originalOrder: any) {
+  console.log(`🔄 [FULL-EXCHANGE] Processing full exchange - cancel old + create new`);
 
   // Reserve old items (customer will send back)
   await reserveInventoryForReturn(tx, returnRequest.items as any[]);
 
   // Create new order for exchange item
   if (returnRequest.exchangeToProductId) {
-    console.log(`🔄 [EXCHANGE-APPROVE] Creating new order for exchange...`);
-
-    // Get original order details
-    const originalOrder = await tx.order.findUnique({
-      where: { id: returnRequest.orderId },
-      include: { user: true }
-    });
+    console.log(`🔄 [FULL-EXCHANGE] Creating new order for exchange...`);
 
     if (!originalOrder) {
       throw new Error('Original order not found');
@@ -110,7 +132,10 @@ async function handleExchangeApproval(tx: any, returnRequest: any) {
     // Get exchange product details
     const exchangeProduct = await tx.product.findUnique({
       where: { id: returnRequest.exchangeToProductId },
-      include: { variants: true }
+      include: {
+        variants: true,
+        category: true
+      }
     });
 
     if (!exchangeProduct) {
@@ -151,22 +176,28 @@ async function handleExchangeApproval(tx: any, returnRequest: any) {
       data: {
         userId: originalOrder.userId,
         amount: exchangePrice,
+        originalAmount: exchangePrice,
         currency: 'VND',
         status: 'confirmed', // Auto-confirm exchange orders
         deliveryStatus: 'not_shipped',
+        paymentIntentId: `exchange_${returnRequest.id}_${Date.now()}`, // Generate unique payment intent ID
+        phoneNumber: originalOrder.phoneNumber,
         address: originalOrder.address, // Use same address
         shippingFee: 0, // Free shipping for exchanges
         paymentMethod: priceDifference > 0 ? 'pending_payment' : 'exchange',
+        discountAmount: 0, // No discount for exchange orders
+        salesStaff: 'System Exchange', // Mark as system-generated exchange
         products: [
           {
             id: returnRequest.exchangeToProductId,
             name: exchangeProduct.name,
             description: exchangeProduct.description,
-            category: exchangeProduct.category,
+            category: exchangeProduct.category?.name || 'Uncategorized',
             brand: exchangeProduct.brand,
             selectedImg: exchangeProduct.thumbnail || exchangeProduct.images?.[0] || '',
             price: exchangePrice,
             quantity: 1,
+            inStock: exchangeVariant ? exchangeVariant.stock : exchangeProduct.inStock,
             ...(exchangeVariant && {
               variantId: exchangeVariant.id,
               color: exchangeVariant.color,
@@ -242,7 +273,157 @@ async function handleExchangeApproval(tx: any, returnRequest: any) {
     console.log(`✅ [EXCHANGE-APPROVE] Stock reduced for exchange item`);
   }
 
-  console.log(`🎉 [EXCHANGE-APPROVE] Exchange approval completed with new order creation`);
+  console.log(`🎉 [FULL-EXCHANGE] Full exchange approval completed with new order creation`);
+}
+
+async function handlePartialExchange(tx: any, returnRequest: any, originalOrder: any) {
+  console.log(`🔄 [PARTIAL-EXCHANGE] Processing partial exchange - split order logic`);
+
+  // Reserve old items (customer will send back)
+  await reserveInventoryForReturn(tx, returnRequest.items as any[]);
+
+  // Step 1: Modify original order - remove exchanged items
+  const exchangeItems = returnRequest.items || [];
+  const originalProducts = originalOrder.products || [];
+
+  // Filter out exchanged items from original order
+  const remainingProducts = originalProducts.filter((product: any) => {
+    return !exchangeItems.some(
+      (exchangeItem: any) =>
+        exchangeItem.productId === product.id &&
+        (exchangeItem.variantId || 'simple') === (product.variantId || 'simple')
+    );
+  });
+
+  // Calculate new amount for remaining products
+  const newAmount =
+    remainingProducts.reduce((total: number, product: any) => {
+      return total + product.price * product.quantity;
+    }, 0) + (originalOrder.shippingFee || 0);
+
+  console.log(`🔄 [PARTIAL-EXCHANGE] Modifying original order:`, {
+    originalProductsCount: originalProducts.length,
+    remainingProductsCount: remainingProducts.length,
+    originalAmount: originalOrder.amount,
+    newAmount
+  });
+
+  // Update original order with remaining products
+  await tx.order.update({
+    where: { id: originalOrder.id },
+    data: {
+      products: remainingProducts,
+      amount: newAmount,
+      originalAmount: newAmount,
+      note: originalOrder.note
+        ? `${originalOrder.note} | Partial exchange: some items moved to new order`
+        : 'Partial exchange: some items moved to new order'
+    }
+  });
+
+  console.log(`✅ [PARTIAL-EXCHANGE] Original order modified - removed exchanged items`);
+
+  // Step 2: Create new order for exchange item
+  if (returnRequest.exchangeToProductId) {
+    console.log(`🔄 [PARTIAL-EXCHANGE] Creating new order for exchange item...`);
+
+    // Get exchange product details
+    const exchangeProduct = await tx.product.findUnique({
+      where: { id: returnRequest.exchangeToProductId },
+      include: { category: true }
+    });
+
+    if (!exchangeProduct) {
+      throw new Error(`Exchange product not found: ${returnRequest.exchangeToProductId}`);
+    }
+
+    // Calculate price difference
+    const originalItemPrice = exchangeItems.reduce((total: number, item: any) => total + item.price, 0);
+    const newItemPrice = exchangeProduct.price;
+    const priceDifference = newItemPrice - originalItemPrice;
+
+    console.log(`💰 [PARTIAL-EXCHANGE] Price calculation:`, {
+      originalItemPrice,
+      newItemPrice,
+      priceDifference
+    });
+
+    // Create new order for exchange
+    const newOrder = await tx.order.create({
+      data: {
+        userId: originalOrder.userId,
+        amount: newItemPrice,
+        originalAmount: newItemPrice,
+        currency: originalOrder.currency || 'VND',
+        status: 'pending',
+        deliveryStatus: 'not_shipped',
+        paymentIntentId: `exchange_partial_${returnRequest.id}_${Date.now()}`,
+        phoneNumber: originalOrder.phoneNumber,
+        address: originalOrder.address,
+        shippingFee: 0, // No additional shipping for exchange
+        paymentMethod: originalOrder.paymentMethod,
+        discountAmount: 0, // No discount for exchange orders
+        salesStaff: 'System Exchange', // Mark as system-generated exchange
+        note: `Exchange order from #${originalOrder.id} - Partial exchange`,
+        products: [
+          {
+            id: exchangeProduct.id,
+            name: exchangeProduct.name,
+            description: exchangeProduct.description,
+            category: exchangeProduct.category?.name || 'Uncategorized',
+            brand: exchangeProduct.brand,
+            selectedImg: exchangeProduct.thumbnail || '',
+            price: exchangeProduct.price,
+            quantity: 1,
+            inStock: exchangeProduct.inStock,
+            productType: exchangeProduct.productType
+          }
+        ],
+        // Store exchange metadata with reference to original order
+        exchangeInfo: {
+          originalOrderId: originalOrder.id,
+          returnRequestId: returnRequest.id,
+          priceDifference: priceDifference,
+          exchangeType: 'PARTIAL_EXCHANGE',
+          exchangedItems: exchangeItems.map((item: any) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        }
+      }
+    });
+
+    console.log(`✅ [PARTIAL-EXCHANGE] New exchange order created: ${newOrder.id}`);
+
+    // Update return request with new order info
+    await tx.returnRequest.update({
+      where: { id: returnRequest.id },
+      data: {
+        exchangeOrderId: newOrder.id,
+        additionalCost: priceDifference
+      }
+    });
+
+    // Reduce stock for new exchange item
+    if (exchangeProduct.productType === 'simple') {
+      await tx.product.update({
+        where: { id: returnRequest.exchangeToProductId },
+        data: { inStock: { decrement: 1 } }
+      });
+    } else {
+      // Handle variant stock reduction if needed
+      await tx.product.update({
+        where: { id: returnRequest.exchangeToProductId },
+        data: { inStock: { decrement: 1 } }
+      });
+    }
+
+    console.log(`✅ [PARTIAL-EXCHANGE] Stock reduced for exchange item`);
+  }
+
+  console.log(`🎉 [PARTIAL-EXCHANGE] Partial exchange approval completed with order split`);
 }
 
 async function handleExchangeCompletion(tx: any, returnRequest: any) {

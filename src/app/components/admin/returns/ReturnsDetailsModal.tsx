@@ -7,6 +7,7 @@ import AdminModal from '../AdminModal';
 import ReturnRequestProductItem from '../../returns/ReturnRequestProductItem';
 import ReturnShippingDisplay from './ReturnShippingDisplay';
 import ReturnRequestImages from './ReturnRequestImages';
+import ExchangeProductDisplay from '../../returns/ExchangeProductDisplay';
 import {
   MdInfo,
   MdCheckCircle,
@@ -32,6 +33,9 @@ interface ReturnRequest {
   additionalCost?: number;
   adminNotes?: string;
   exchangeOrderId?: string;
+  // Exchange specific fields
+  exchangeToProductId?: string;
+  exchangeToVariantId?: string;
   createdAt: string;
   user: {
     name: string;
@@ -217,6 +221,24 @@ const ReturnsDetailsModal: React.FC<ReturnsDetailsModalProps> = ({ isOpen, onClo
               ))}
             </div>
           </div>
+
+          {/* Exchange Product Information */}
+          {request.type === 'EXCHANGE' && request.exchangeToProductId && (
+            <div className='bg-white border border-gray-200 rounded-xl p-6 shadow-sm'>
+              <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2'>
+                <MdSwapHoriz className='text-blue-600' size={24} />
+                Chi tiết đổi hàng
+              </h3>
+              <ExchangeProductDisplay
+                originalItem={request.items[0]} // Assuming single item exchange
+                exchangeToProductId={request.exchangeToProductId}
+                exchangeToVariantId={request.exchangeToVariantId}
+                additionalCost={request.additionalCost}
+                mode='detailed'
+                showPriceDifference={true}
+              />
+            </div>
+          )}
 
           {/* Exchange Order Display */}
           {request.type === 'EXCHANGE' && request.exchangeOrderId && (

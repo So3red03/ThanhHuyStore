@@ -266,7 +266,17 @@ CREATE TABLE [order].[Orders] (
     [CancelReason] NVARCHAR(500) NULL,
     [CancelDate] DATETIME2 NULL,
 
-    -- Return/Exchange tracking
+    -- Order notes
+    [Note] NVARCHAR(MAX) NULL,
+    [OrderNote] NVARCHAR(MAX) NULL, -- Additional order note field
+
+    -- Sales staff information
+    [SalesStaff] NVARCHAR(255) NULL, -- Tên nhân viên bán hàng, null = "KH tự đặt"
+
+    -- Exchange metadata (for orders created from exchanges)
+    [ExchangeInfo] NVARCHAR(MAX) NULL, -- JSON: {originalOrderId, returnRequestId, priceDifference, exchangeType}
+
+    -- Return/Exchange tracking (simple) - Optional để tránh mất dữ liệu
     [ReturnStatus] NVARCHAR(20) NULL CHECK ([ReturnStatus] IN ('NONE', 'PARTIAL', 'FULL', 'EXCHANGED')),
     [ReturnedAmount] DECIMAL(18,2) NULL,
 
@@ -567,17 +577,31 @@ CREATE TABLE [order].[ReturnRequests] (
     [OrderId] UNIQUEIDENTIFIER NULL,
     [UserId] UNIQUEIDENTIFIER NULL,
     [Type] NVARCHAR(20) NULL CHECK ([Type] IN ('RETURN', 'EXCHANGE')),
-    [Status] NVARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK ([Status] IN ('PENDING', 'APPROVED', 'REJECTED', 'COMPLETED')),
+    [Status] NVARCHAR(20) NULL DEFAULT 'PENDING' CHECK ([Status] IN ('PENDING', 'APPROVED', 'REJECTED', 'COMPLETED')),
+
     [Items] NVARCHAR(MAX) NULL, -- JSON: [{productId, variantId?, quantity, unitPrice, reason}]
-    [Reason] NVARCHAR(500) NULL,
+
+    -- Basic info - Optional
+    [Reason] NVARCHAR(500) NULL, -- "DEFECTIVE", "WRONG_ITEM", "CHANGE_MIND"
     [Description] NVARCHAR(MAX) NULL,
-    [RefundAmount] DECIMAL(18,2) NULL,
-    [AdditionalCost] DECIMAL(18,2) NULL,
+
+    -- Financial (simple) - Optional
+    [RefundAmount] DECIMAL(18,2) NULL, -- Số tiền hoàn (đã tính phí)
+    [AdditionalCost] DECIMAL(18,2) NULL, -- Phí bù thêm (exchange)
+    [ShippingBreakdown] NVARCHAR(MAX) NULL, -- JSON: Chi tiết phí vận chuyển trả hàng
+
+    -- Exchange specific fields
+    [ExchangeToProductId] UNIQUEIDENTIFIER NULL, -- Sản phẩm muốn đổi sang
+    [ExchangeToVariantId] UNIQUEIDENTIFIER NULL, -- Variant muốn đổi sang (nếu có)
+    [ExchangeOrderId] UNIQUEIDENTIFIER NULL, -- ID của đơn hàng mới được tạo cho exchange
+
+    -- Admin workflow (simple) - Optional
     [AdminNotes] NVARCHAR(MAX) NULL,
     [ApprovedBy] UNIQUEIDENTIFIER NULL,
     [ApprovedAt] DATETIME2 NULL,
-    [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    [UpdatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+
+    [CreatedAt] DATETIME2 NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] DATETIME2 NULL DEFAULT GETUTCDATE(),
 
     CONSTRAINT FK_ReturnRequests_Orders FOREIGN KEY ([OrderId]) REFERENCES [order].[Orders]([Id]) ON DELETE CASCADE,
     CONSTRAINT FK_ReturnRequests_Users FOREIGN KEY ([UserId]) REFERENCES [user].[Users]([Id]) ON DELETE CASCADE,

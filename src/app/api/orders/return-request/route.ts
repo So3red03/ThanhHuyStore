@@ -286,7 +286,13 @@ export async function POST(request: NextRequest) {
         images: images || [],
         refundAmount: refundAmount > 0 ? refundAmount : null,
         additionalCost: additionalCost !== 0 ? additionalCost : null,
-        shippingBreakdown: shippingBreakdown
+        shippingBreakdown: shippingBreakdown,
+        // Exchange specific fields
+        ...(type === 'EXCHANGE' &&
+          exchangeToProductId && {
+            exchangeToProductId,
+            exchangeToVariantId: exchangeToVariantId || null
+          })
       },
       include: {
         order: {
