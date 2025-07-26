@@ -11,12 +11,25 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get('days') || '30');
+    const daysParam = searchParams.get('days');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
 
     // Calculate date range
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
+    let endDate = new Date();
+    let startDate = new Date();
+
+    if (startDateParam && endDateParam) {
+      // Custom date range
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      // Ensure endDate is end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      // Use days parameter
+      const days = parseInt(daysParam || '30');
+      startDate.setDate(endDate.getDate() - days);
+    }
 
     // Get voucher usage statistics
     const voucherStats = await prisma.voucher.findMany({
@@ -158,7 +171,9 @@ export async function GET(request: NextRequest) {
       summary,
       topProducts: allProducts.slice(0, 10),
       period: {
-        days,
+        days: daysParam
+          ? parseInt(daysParam)
+          : Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString()
       }

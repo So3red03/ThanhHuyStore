@@ -20,23 +20,45 @@ export async function getTotalRevenue() {
       }
     });
 
-    // Calculate revenue excluding orders with approved/completed return requests
+    // Calculate actual revenue = original revenue - refunded amounts
     let totalRevenue = 0;
+    let totalRefunded = 0;
+    let ordersWithReturns = 0;
 
     for (const order of orders) {
-      // If order has approved/completed return requests, exclude from revenue
+      const orderRevenue = order.amount || 0;
+      let orderRefunded = 0;
+
+      // Calculate total refunded amount for this order
       if (order.returnRequests && order.returnRequests.length > 0) {
-        console.log(`🔄 [REVENUE] Excluding order ${order.id} from revenue due to return request`);
-        continue;
+        ordersWithReturns++;
+
+        for (const returnRequest of order.returnRequests) {
+          // Only count COMPLETED returns for actual refunds
+          if (returnRequest.status === 'COMPLETED' && returnRequest.type === 'RETURN') {
+            orderRefunded += returnRequest.refundAmount || 0;
+          }
+        }
+
+        console.log(
+          `🔄 [REVENUE] Order ${order.id}: Original ${orderRevenue}, Refunded ${orderRefunded}, Net ${
+            orderRevenue - orderRefunded
+          }`
+        );
       }
 
-      totalRevenue += order.amount || 0;
+      // Add net revenue (original - refunded) to total
+      totalRevenue += Math.max(0, orderRevenue - orderRefunded);
+      totalRefunded += orderRefunded;
     }
 
     console.log(
-      `💰 [REVENUE] Total revenue calculated: ${totalRevenue} (from ${orders.length} orders, excluded ${
-        orders.filter(o => o.returnRequests?.length > 0).length
-      } returned orders)`
+      `💰 [REVENUE] Revenue calculation complete:
+      - Total orders: ${orders.length}
+      - Orders with returns: ${ordersWithReturns}
+      - Gross revenue: ${orders.reduce((sum, o) => sum + (o.amount || 0), 0)}
+      - Total refunded: ${totalRefunded}
+      - Net revenue: ${totalRevenue}`
     );
 
     return totalRevenue;

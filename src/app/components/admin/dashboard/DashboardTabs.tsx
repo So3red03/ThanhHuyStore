@@ -34,11 +34,13 @@ import {
   MdArrowDropDown,
   MdCampaign,
   MdBarChart,
-  MdDateRange
+  MdDateRange,
+  MdUndo
 } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 import VoucherAnalytics from './VoucherAnalytics';
 import CustomerAnalytics from './CustomerAnalytics';
+import ReturnOrderAnalytics from './ReturnOrderAnalytics';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -88,12 +90,12 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
 }) => {
   const [value, setValue] = useState(0);
   const [analyticsAnchorEl, setAnalyticsAnchorEl] = useState<null | HTMLElement>(null);
-  const [analyticsSubTab, setAnalyticsSubTab] = useState<'main' | 'campaigns' | 'customers'>('main');
+  const [analyticsSubTab, setAnalyticsSubTab] = useState<'main' | 'campaigns' | 'customers' | 'returns'>('main');
   const [timeFilter, setTimeFilter] = useState('7d');
   const theme = useTheme();
   const router = useRouter();
 
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     // Don't change tab if clicking on Analytics tab (index 1) - let dropdown handle it
     if (newValue === 1) {
       return;
@@ -118,7 +120,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
     setAnalyticsAnchorEl(null);
   };
 
-  const handleAnalyticsSubTabSelect = (subTab: 'main' | 'campaigns' | 'customers') => {
+  const handleAnalyticsSubTabSelect = (subTab: 'main' | 'campaigns' | 'customers' | 'returns') => {
     setAnalyticsSubTab(subTab);
     setAnalyticsAnchorEl(null);
     // Switch to analytics tab when selecting from dropdown
@@ -138,9 +140,11 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
         analyticsSubTab === 'main' ? (
           analyticsContent
         ) : analyticsSubTab === 'campaigns' ? (
-          <VoucherAnalytics timeFilter={timeFilter} />
-        ) : (
+          <VoucherAnalytics />
+        ) : analyticsSubTab === 'customers' ? (
           <CustomerAnalytics users={users} orders={orders} />
+        ) : (
+          <ReturnOrderAnalytics />
         ),
       hasDropdown: true
     },
@@ -312,6 +316,20 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                 primaryTypographyProps={{ fontWeight: 500 }}
               />
             </MenuItem>
+            <MenuItem
+              onClick={() => handleAnalyticsSubTabSelect('returns')}
+              selected={analyticsSubTab === 'returns'}
+              sx={{ py: 1.5 }}
+            >
+              <ListItemIcon>
+                <MdUndo size={20} />
+              </ListItemIcon>
+              <ListItemText
+                primary='Đổi/Trả hàng'
+                secondary='Phân tích kinh doanh đổi/trả'
+                primaryTypographyProps={{ fontWeight: 500 }}
+              />
+            </MenuItem>
           </Menu>
         </Paper>
 
@@ -411,35 +429,6 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
           </Card>
         </Box>
       </Box>
-
-      {/* Time Filter for Campaigns Tab */}
-      {value === 1 && analyticsSubTab === 'campaigns' && (
-        <Card sx={{ mb: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <CardContent sx={{ p: 3 }}>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-2'>
-                <MdDateRange size={20} className='text-blue-600' />
-                <Typography variant='h6' component='h3' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                  Bộ lọc thời gian
-                </Typography>
-              </div>
-
-              <div className='flex items-center gap-3'>
-                <FormControl size='small' sx={{ minWidth: 120 }}>
-                  <InputLabel>Thời gian</InputLabel>
-                  <Select value={timeFilter} label='Thời gian' onChange={e => setTimeFilter(e.target.value)}>
-                    <MenuItem value='1d'>24 giờ</MenuItem>
-                    <MenuItem value='7d'>7 ngày</MenuItem>
-                    <MenuItem value='30d'>30 ngày</MenuItem>
-                    <MenuItem value='90d'>90 ngày</MenuItem>
-                  </Select>
-                </FormControl>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Tab Content */}
       {tabs.map((tab, index) => (
         <TabPanel key={index} value={value} index={index}>

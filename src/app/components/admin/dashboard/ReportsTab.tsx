@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -12,9 +12,11 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel
+  InputLabel,
+  TextField,
+  Chip
 } from '@mui/material';
-import { MdSchedule, MdDownload, MdRefresh, MdDateRange } from 'react-icons/md';
+import { MdSchedule, MdDownload, MdRefresh, MdDateRange, MdFilterList } from 'react-icons/md';
 import OrdersTable from '../OrdersTable';
 import PaymentMethodChart from '../../analytics/PaymentMethodChart';
 import PaymentMethodStackedChart from '../../analytics/PaymentMethodStackedChart';
@@ -39,9 +41,20 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, pr
   const [timeFilter, setTimeFilter] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showDateRange, setShowDateRange] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Convert timeFilter to days
   const getDaysFromFilter = (filter: string) => {
+    if (filter === 'custom' && startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    }
+
     switch (filter) {
       case '1d':
         return 1;
@@ -56,12 +69,25 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, pr
     }
   };
 
+  // Calculate days based on filter and custom dates
+  const days = useMemo(() => {
+    return getDaysFromFilter(timeFilter);
+  }, [timeFilter, startDate, endDate]);
+
   // Analytics hooks từ AdminNewsDashboard với refetch functions
-  const {
-    data: paymentData,
-    loading: paymentLoading,
-    refetch: refetchPayments
-  } = usePaymentMethodAnalytics(getDaysFromFilter(timeFilter));
+  const { data: paymentData, loading: paymentLoading, refetch: refetchPayments } = usePaymentMethodAnalytics(days);
+
+  // Handle time filter change
+  const handleTimeFilterChange = (value: string) => {
+    setTimeFilter(value);
+    if (value === 'custom') {
+      setShowDateRange(true);
+    } else {
+      setShowDateRange(false);
+      setStartDate('');
+      setEndDate('');
+    }
+  };
 
   // Report sending state từ AdminNewsDashboard
   const [reportLoading, setReportLoading] = useState(false);
@@ -202,15 +228,39 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, pr
             </div>
 
             <div className='flex items-center gap-3'>
-              <FormControl size='small' sx={{ minWidth: 120 }}>
+              <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Thời gian</InputLabel>
-                <Select value={timeFilter} label='Thời gian' onChange={e => setTimeFilter(e.target.value)}>
+                <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
                   <MenuItem value='1d'>24 giờ</MenuItem>
                   <MenuItem value='7d'>7 ngày</MenuItem>
                   <MenuItem value='30d'>30 ngày</MenuItem>
                   <MenuItem value='90d'>90 ngày</MenuItem>
+                  <MenuItem value='custom'>Tùy chọn</MenuItem>
                 </Select>
               </FormControl>
+
+              {showDateRange && (
+                <>
+                  <TextField
+                    label='Từ ngày'
+                    type='date'
+                    size='small'
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ minWidth: 140 }}
+                  />
+                  <TextField
+                    label='Đến ngày'
+                    type='date'
+                    size='small'
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ minWidth: 140 }}
+                  />
+                </>
+              )}
 
               <Button
                 variant='outlined'

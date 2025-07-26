@@ -5,30 +5,8 @@ import { SafeUser } from '../../../../../types';
 import { formatPrice } from '../../../../../utils/formatPrice';
 import { formatDate } from '../../../(home)/account/orders/OrdersClient';
 import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar } from '@mui/x-data-grid';
-import {
-  MdVisibility,
-  MdCheck,
-  MdClose,
-  MdRefresh,
-  MdUndo,
-  MdAssignment,
-  MdImage,
-  MdSearch,
-  MdClear
-} from 'react-icons/md';
-import {
-  Button,
-  TextField,
-  FormControl,
-  Select,
-  MenuItem,
-  InputAdornment,
-  Button as MuiButton,
-  Card,
-  CardContent,
-  Typography,
-  Grid
-} from '@mui/material';
+import { MdVisibility, MdCheck, MdClose, MdRefresh, MdSearch, MdClear } from 'react-icons/md';
+import { Button, TextField, FormControl, Select, MenuItem, InputAdornment, Button as MuiButton } from '@mui/material';
 import AdminModal from '../../../components/admin/AdminModal';
 import ActionBtn from '../../../components/ActionBtn';
 import toast from 'react-hot-toast';
@@ -88,7 +66,7 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'complete'>('approve');
   const [adminNotes, setAdminNotes] = useState('');
-  const [stats, setStats] = useState<any>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Enhanced Filters
@@ -142,17 +120,6 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      const response = await axios.post('/api/orders/return-request/admin', {
-        action: 'stats'
-      });
-      setStats(response.data.stats);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
-
   // Enhanced search and filter logic
   const handleSearch = () => {
     let filtered = returnRequests;
@@ -196,7 +163,6 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
 
   useEffect(() => {
     fetchReturnRequests();
-    fetchStats();
   }, [statusFilter, typeFilter]);
 
   // Auto-trigger search when filters change
@@ -289,7 +255,7 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
 
       // Refresh data
       console.log(`🔄 [MANAGE-RETURNS] Refreshing data after ${actionType} action`);
-      await Promise.all([fetchReturnRequests(), fetchStats()]);
+      await fetchReturnRequests();
     } catch (error: any) {
       console.error(`❌ [MANAGE-RETURNS] Error processing ${actionType} action:`, error);
       toast.error(error.response?.data?.error || 'Có lỗi xảy ra');
@@ -498,141 +464,6 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
   return (
     <>
       <div className='w-full m-auto text-xl mt-6'>
-        {/* Compact Summary Cards */}
-        {stats && (
-          <div className='p-4'>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card
-                  sx={{
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                    color: 'white',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(59, 130, 246, 0.2)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 20px rgba(59, 130, 246, 0.3)'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                    <div className='flex justify-center mb-2'>
-                      <div className='p-2 bg-white/20 rounded-full'>
-                        <MdAssignment size={20} />
-                      </div>
-                    </div>
-                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
-                      {stats.total?.toLocaleString() || '0'}
-                    </Typography>
-                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                      Tổng yêu cầu
-                    </Typography>
-                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng quan</div>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card
-                  sx={{
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                    color: 'white',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(245, 158, 11, 0.2)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 20px rgba(245, 158, 11, 0.3)'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                    <div className='flex justify-center mb-2'>
-                      <div className='p-2 bg-white/20 rounded-full'>
-                        <MdRefresh size={20} />
-                      </div>
-                    </div>
-                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
-                      {stats.pending?.toLocaleString() || '0'}
-                    </Typography>
-                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                      Chờ duyệt
-                    </Typography>
-                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Cần xử lý</div>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card
-                  sx={{
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: 'white',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.2)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 20px rgba(16, 185, 129, 0.3)'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                    <div className='flex justify-center mb-2'>
-                      <div className='p-2 bg-white/20 rounded-full'>
-                        <MdCheck size={20} />
-                      </div>
-                    </div>
-                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
-                      {stats.completed?.toLocaleString() || '0'}
-                    </Typography>
-                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                      Hoàn tất
-                    </Typography>
-                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Thành công</div>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card
-                  sx={{
-                    background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                    color: 'white',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(139, 92, 246, 0.2)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 20px rgba(139, 92, 246, 0.3)'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                    <div className='flex justify-center mb-2'>
-                      <div className='p-2 bg-white/20 rounded-full'>
-                        <MdUndo size={20} />
-                      </div>
-                    </div>
-                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
-                      {formatPrice(stats.totalRefundAmount || 0)}
-                    </Typography>
-                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                      Tổng hoàn tiền
-                    </Typography>
-                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tài chính</div>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          </div>
-        )}
-
         {/* Enhanced Search Form */}
         <div className='bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6'>
           <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
@@ -807,7 +638,6 @@ const ManageReturnsClient: React.FC<ManageReturnsClientProps> = ({ currentUser }
               <MuiButton
                 onClick={() => {
                   fetchReturnRequests();
-                  fetchStats();
                 }}
                 disabled={isLoading}
                 startIcon={<MdRefresh className={isLoading ? 'animate-spin' : ''} />}

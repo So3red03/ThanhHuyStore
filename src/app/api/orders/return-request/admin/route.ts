@@ -105,10 +105,33 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { action } = body;
+    const { action, days, startDate, endDate } = body;
 
     if (action === 'stats') {
-      // Get return request statistics
+      // Calculate date range for filtering
+      let dateFilter = {};
+      if (startDate && endDate) {
+        // Custom date range
+        dateFilter = {
+          createdAt: {
+            gte: new Date(startDate),
+            lte: new Date(endDate + 'T23:59:59.999Z') // End of day
+          }
+        };
+      } else if (days) {
+        // Days filter
+        const endDateCalc = new Date();
+        const startDateCalc = new Date();
+        startDateCalc.setDate(endDateCalc.getDate() - days);
+        dateFilter = {
+          createdAt: {
+            gte: startDateCalc,
+            lte: endDateCalc
+          }
+        };
+      }
+
+      // Get return request statistics with date filtering
       const [
         totalReturns,
         pendingReturns,
@@ -118,16 +141,18 @@ export async function POST(request: NextRequest) {
         returnsByType,
         recentReturns
       ] = await Promise.all([
-        prisma.returnRequest.count(),
-        prisma.returnRequest.count({ where: { status: 'PENDING' } }),
-        prisma.returnRequest.count({ where: { status: 'APPROVED' } }),
-        prisma.returnRequest.count({ where: { status: 'COMPLETED' } }),
-        prisma.returnRequest.count({ where: { status: 'REJECTED' } }),
+        prisma.returnRequest.count({ where: dateFilter }),
+        prisma.returnRequest.count({ where: { ...dateFilter, status: 'PENDING' } }),
+        prisma.returnRequest.count({ where: { ...dateFilter, status: 'APPROVED' } }),
+        prisma.returnRequest.count({ where: { ...dateFilter, status: 'COMPLETED' } }),
+        prisma.returnRequest.count({ where: { ...dateFilter, status: 'REJECTED' } }),
         prisma.returnRequest.groupBy({
           by: ['type'],
+          where: dateFilter,
           _count: { type: true }
         }),
         prisma.returnRequest.findMany({
+          where: dateFilter,
           take: 5,
           orderBy: { createdAt: 'desc' },
           include: {
@@ -148,9 +173,13 @@ export async function POST(request: NextRequest) {
         })
       ]);
 
-      // Calculate refund amounts
+      // Calculate refund amounts with date filtering
       const totalRefundAmount = await prisma.returnRequest.aggregate({
-        where: { status: 'COMPLETED', type: 'RETURN' },
+        where: {
+          ...dateFilter,
+          status: 'COMPLETED',
+          type: 'RETURN'
+        },
         _sum: { refundAmount: true }
       });
 

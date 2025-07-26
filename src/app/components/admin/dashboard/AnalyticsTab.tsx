@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -14,9 +14,11 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Grid
+  Grid,
+  TextField,
+  Chip
 } from '@mui/material';
-import { MdRefresh, MdDateRange, MdVisibility, MdArticle } from 'react-icons/md';
+import { MdRefresh, MdDateRange, MdVisibility, MdArticle, MdFilterList } from 'react-icons/md';
 import { SiDiscord } from 'react-icons/si';
 import { useAnalyticsOverview, useProductAnalytics, useArticleAnalytics } from '@/app/hooks/useAnalytics';
 import AnalyticsTrendChart from '../../analytics/AnalyticsTrendChart';
@@ -34,9 +36,20 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
   const [timeFilter, setTimeFilter] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSendingDiscord, setIsSendingDiscord] = useState(false);
+  const [showDateRange, setShowDateRange] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Convert timeFilter to days
   const getDaysFromFilter = (filter: string) => {
+    if (filter === 'custom' && startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    }
+
     switch (filter) {
       case '1d':
         return 1;
@@ -51,24 +64,29 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
     }
   };
 
+  // Calculate days based on filter and custom dates
+  const days = useMemo(() => {
+    return getDaysFromFilter(timeFilter);
+  }, [timeFilter, startDate, endDate]);
+
   // Analytics hooks từ AdminNewsDashboard với refetch functions
-  const {
-    data: overviewData,
-    loading: overviewLoading,
-    refetch: refetchOverview
-  } = useAnalyticsOverview(getDaysFromFilter(timeFilter));
+  const { data: overviewData, loading: overviewLoading, refetch: refetchOverview } = useAnalyticsOverview(days);
 
-  const {
-    data: productData,
-    loading: productLoading,
-    refetch: refetchProducts
-  } = useProductAnalytics(getDaysFromFilter(timeFilter));
+  const { data: productData, loading: productLoading, refetch: refetchProducts } = useProductAnalytics(days);
 
-  const {
-    data: articleData,
-    loading: articleLoading,
-    refetch: refetchArticles
-  } = useArticleAnalytics(getDaysFromFilter(timeFilter));
+  const { data: articleData, loading: articleLoading, refetch: refetchArticles } = useArticleAnalytics(days);
+
+  // Handle time filter change
+  const handleTimeFilterChange = (value: string) => {
+    setTimeFilter(value);
+    if (value === 'custom') {
+      setShowDateRange(true);
+    } else {
+      setShowDateRange(false);
+      setStartDate('');
+      setEndDate('');
+    }
+  };
 
   // 🎯 IMPROVED: Handle refresh function using axios refetch instead of onRefresh
   const handleRefresh = async () => {
@@ -88,7 +106,6 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
   const handleSendDiscordInsights = async () => {
     setIsSendingDiscord(true);
     try {
-      const days = getDaysFromFilter(timeFilter);
       const response = await axios.post('/api/analytics/send-insights', { days });
 
       if (response.data.success) {
@@ -137,15 +154,39 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
             </div>
 
             <div className='flex items-center gap-3'>
-              <FormControl size='small' sx={{ minWidth: 120 }}>
+              <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Thời gian</InputLabel>
-                <Select value={timeFilter} label='Thời gian' onChange={e => setTimeFilter(e.target.value)}>
+                <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
                   <MenuItem value='1d'>24 giờ</MenuItem>
                   <MenuItem value='7d'>7 ngày</MenuItem>
                   <MenuItem value='30d'>30 ngày</MenuItem>
                   <MenuItem value='90d'>90 ngày</MenuItem>
+                  <MenuItem value='custom'>Tùy chọn</MenuItem>
                 </Select>
               </FormControl>
+
+              {showDateRange && (
+                <>
+                  <TextField
+                    label='Từ ngày'
+                    type='date'
+                    size='small'
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ minWidth: 140 }}
+                  />
+                  <TextField
+                    label='Đến ngày'
+                    type='date'
+                    size='small'
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ minWidth: 140 }}
+                  />
+                </>
+              )}
 
               <Button
                 variant='outlined'
