@@ -66,13 +66,13 @@ interface CustomerSegment {
   estimatedSize?: number;
 }
 
-interface SendNewProductEmailProps {
+interface SendMarketingEmailProps {
   products: Product[];
   onClose?: () => void;
   open?: boolean;
 }
 
-const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products, onClose, open = true }) => {
+const SendMarketingEmail: React.FC<SendMarketingEmailProps> = ({ products, onClose, open = true }) => {
   // Campaign configuration
   const [campaignType, setCampaignType] = useState<CampaignType>('NEW_PRODUCT');
   const [campaignTitle, setCampaignTitle] = useState('');
@@ -1338,7 +1338,4 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
   );
 };
 
-export default SendNewProductEmailClean;
-
-// Also export as the original name for compatibility
-export { SendNewProductEmailClean as SendNewProductEmail };
+export default SendMarketingEmail;

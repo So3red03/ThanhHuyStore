@@ -28,7 +28,7 @@ import 'moment/locale/vi';
 import NullData from '@/app/components/NullData';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useEffect, useState } from 'react';
-import SendNewProductEmail from '@/app/components/admin/SendNewProductEmail';
+import SendMarketingEmail from '@/app/components/admin/SendMarketingEmail';
 import Image from 'next/image';
 import {
   Rating,
@@ -1193,11 +1193,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
 
       {/* Email Marketing Modal */}
       {showEmailModal && (
-        <SendNewProductEmail
-          products={currentProducts}
-          onClose={() => setShowEmailModal(false)}
-          open={showEmailModal}
-        />
+        <SendMarketingEmail products={currentProducts} onClose={() => setShowEmailModal(false)} open={showEmailModal} />
       )}
     </div>
   );
