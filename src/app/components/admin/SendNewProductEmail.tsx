@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Product } from '@prisma/client';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -31,26 +31,40 @@ import {
   Checkbox,
   FormControlLabel,
   Switch,
-  Collapse,
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
-  Avatar
+  TextField
 } from '@mui/material';
 import {
   MdEmail,
-  MdSend,
-  MdCheckCircle,
-  MdInfo,
-  MdWarning,
   MdTrendingUp,
   MdPeople,
   MdPercent,
   MdClose,
-  MdFilterAlt,
-  MdPreview
+  MdPreview,
+  MdLocalOffer,
+  MdCampaign,
+  MdInfo
 } from 'react-icons/md';
+import CustomerDetailModal from './CustomerDetailModal';
+
+// Campaign types
+type CampaignType = 'NEW_PRODUCT' | 'VOUCHER_PROMOTION' | 'RETENTION' | 'CROSS_SELL';
+
+// Customer segments
+interface CustomerSegment {
+  id: string;
+  name: string;
+  description: string;
+  criteria: {
+    totalSpent?: { min?: number; max?: number };
+    orderCount?: { min?: number; max?: number };
+    lastOrderDays?: { min?: number; max?: number };
+    customerType?: 'NEW' | 'ACTIVE' | 'AT_RISK' | 'VIP';
+  };
+  estimatedSize?: number;
+}
 
 interface SendNewProductEmailProps {
   products: Product[];
@@ -58,359 +72,837 @@ interface SendNewProductEmailProps {
   open?: boolean;
 }
 
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  lastOrderDate: string | null;
-}
-
-interface CategoryStat {
-  categoryId: string;
-  categoryName: string;
-  parentId?: string;
-  parentName?: string;
-  isParent: boolean;
-  userCount: number;
-  recentUserCount: number;
-  mediumUserCount: number;
-  olderUserCount: number;
-  subcategories?: CategoryStat[];
-  customers?: {
-    recent: Customer[];
-    medium: Customer[];
-    older: Customer[];
-  };
-}
-
-interface CategoryAnalyticsData {
-  hierarchical: CategoryStat[];
-  flat: CategoryStat[];
-  summary: {
-    totalParentCategories: number;
-    totalSubcategories: number;
-    totalCategories: number;
-  };
-}
-
-const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onClose, open = true }) => {
+const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products, onClose, open = true }) => {
+  // Campaign configuration
+  const [campaignType, setCampaignType] = useState<CampaignType>('NEW_PRODUCT');
+  const [campaignTitle, setCampaignTitle] = useState('');
+  const [campaignDescription, setCampaignDescription] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedVoucherIds, setSelectedVoucherIds] = useState<string[]>([]);
+
+  // Wizard steps
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // Existing states
   const [isLoading, setIsLoading] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<'all' | 'recent' | 'medium' | 'older'>('all');
-  const [showResult, setShowResult] = useState(false);
+
   const [manualMode, setManualMode] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [selectedUserDetail, setSelectedUserDetail] = useState<any>(null);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [customerDetailData, setCustomerDetailData] = useState<any>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [availableVouchers, setAvailableVouchers] = useState<any[]>([]);
+
+  // Customer detail modal
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [customerDetailOpen, setCustomerDetailOpen] = useState(false);
+
+  // Customer segmentation
+  const [selectedSegments, setSelectedSegments] = useState<string[]>(['all']);
+  const [customerSegments, setCustomerSegments] = useState<Map<string, any>>(new Map());
+
+  // Predefined customer segments
+  const CUSTOMER_SEGMENTS: CustomerSegment[] = [
+    {
+      id: 'all',
+      name: 'Tất cả khách hàng',
+      description: 'Gửi cho tất cả khách hàng đã mua hàng',
+      criteria: {}
+    },
+    {
+      id: 'vip_customers',
+      name: 'Khách hàng VIP',
+      description: 'Chi tiêu > 5M, đặt hàng thường xuyên',
+      criteria: {
+        totalSpent: { min: 5000000 },
+        orderCount: { min: 3 },
+        lastOrderDays: { max: 60 }
+      }
+    },
+    {
+      id: 'new_customers',
+      name: 'Khách hàng mới',
+      description: 'Đăng ký gần đây, ít đơn hàng',
+      criteria: {
+        orderCount: { max: 2 },
+        lastOrderDays: { max: 30 }
+      }
+    },
+    {
+      id: 'at_risk_customers',
+      name: 'Khách hàng có nguy cơ rời bỏ',
+      description: 'Không mua hàng trong 90 ngày',
+      criteria: {
+        lastOrderDays: { min: 90 },
+        orderCount: { min: 1 }
+      }
+    },
+    {
+      id: 'active_customers',
+      name: 'Khách hàng tích cực',
+      description: 'Mua hàng thường xuyên trong 60 ngày',
+      criteria: {
+        lastOrderDays: { max: 60 },
+        orderCount: { min: 2 }
+      }
+    }
+  ];
+
+  // Get recent products (last 30 days)
+  const recentProducts = useMemo(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    return (
+      products
+        ?.filter(product => {
+          const createdAt = new Date(product.createdAt || Date.now());
+          return createdAt >= thirtyDaysAgo;
+        })
+        .sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB.getTime() - dateA.getTime();
+        }) || []
+    );
+  }, [products]);
+
+  // Fetch all users and vouchers when component mounts
+  useEffect(() => {
+    fetchAllUsers();
+    fetchVouchers();
+  }, []);
+
+  const fetchAllUsers = async () => {
+    try {
+      console.log('🔍 [DEBUG] Fetching customers from /api/customers...');
+      const response = await axios.get('/api/customers');
+      console.log('✅ [DEBUG] Customers response:', response.data);
+
+      if (response.data.success) {
+        const users = response.data.data || [];
+        setAllUsers(users);
+        console.log('📊 [DEBUG] Loaded customers:', users.length);
+
+        // Fetch customer segments
+        await fetchCustomerSegments(users);
+      } else {
+        console.error('❌ [DEBUG] API returned success: false');
+        setAllUsers([]);
+      }
+    } catch (error: any) {
+      console.error('❌ [DEBUG] Error fetching customers:', error);
+      console.error('❌ [DEBUG] Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      toast.error('Không thể tải danh sách khách hàng');
+      setAllUsers([]);
+    }
+  };
+
+  const fetchCustomerSegments = async (users: any[]) => {
+    try {
+      console.log('🔍 [DEBUG] Fetching customer segments for', users.length, 'users');
+
+      const segmentPromises = users.map(async (user: any) => {
+        if (user.role === 'USER') {
+          try {
+            const response = await axios.get(`/api/analytics/customer-detail?userId=${user.id}`);
+            if (response.data.success) {
+              const { data } = response.data;
+              const segment = determineCustomerSegment(data.user);
+              console.log('✅ [DEBUG] Segment for user', user.name, ':', segment);
+              return { userId: user.id, segment };
+            }
+          } catch (error) {
+            console.error('❌ [DEBUG] Error fetching segment for user', user.id, ':', error);
+          }
+        }
+        return { userId: user.id, segment: null };
+      });
+
+      const results = await Promise.all(segmentPromises);
+      const segmentMap = new Map();
+      results.forEach(result => {
+        if (result.segment) {
+          segmentMap.set(result.userId, result.segment);
+        }
+      });
+
+      console.log('📊 [DEBUG] Customer segments map:', segmentMap);
+      setCustomerSegments(segmentMap);
+    } catch (error) {
+      console.error('❌ [DEBUG] Error fetching customer segments:', error);
+    }
+  };
+
+  // Function to determine customer segment
+  const determineCustomerSegment = (customerData: any) => {
+    if (!customerData || customerData.role !== 'USER') return null;
+
+    const totalSpent = customerData.totalSpent || 0;
+    const orderCount = customerData.totalOrders || 0;
+    const lastOrderDate = customerData.lastOrderDate ? new Date(customerData.lastOrderDate) : null;
+    const daysSinceLastOrder = lastOrderDate
+      ? Math.floor((Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    if (totalSpent > 5000000 && orderCount >= 3 && (daysSinceLastOrder === null || daysSinceLastOrder <= 60)) {
+      return {
+        id: 'vip_customers',
+        name: 'VIP',
+        color: '#9c27b0',
+        description: 'Chi tiêu > 5M, đặt hàng thường xuyên'
+      };
+    } else if (orderCount <= 2 && (daysSinceLastOrder === null || daysSinceLastOrder <= 30)) {
+      return { id: 'new_customers', name: 'Mới', color: '#4caf50', description: 'Đăng ký gần đây, ít đơn hàng' };
+    } else if (daysSinceLastOrder !== null && daysSinceLastOrder >= 90 && orderCount >= 1) {
+      return {
+        id: 'at_risk_customers',
+        name: 'Có nguy cơ rời bỏ',
+        color: '#f44336',
+        description: 'Không mua hàng trong 90 ngày'
+      };
+    } else if (daysSinceLastOrder !== null && daysSinceLastOrder <= 60 && orderCount >= 2) {
+      return {
+        id: 'active_customers',
+        name: 'Tích cực',
+        color: '#2196f3',
+        description: 'Mua hàng thường xuyên trong 60 ngày'
+      };
+    }
+
+    return null;
+  };
+
+  const fetchVouchers = async () => {
+    try {
+      console.log('🔍 [DEBUG] Fetching vouchers from /api/voucher...');
+      const response = await axios.get('/api/voucher');
+      console.log('✅ [DEBUG] Vouchers response:', response.data);
+
+      setAvailableVouchers(response.data || []);
+      console.log('📊 [DEBUG] Loaded vouchers:', response.data?.length || 0);
+    } catch (error: any) {
+      console.error('❌ [DEBUG] Error fetching vouchers:', error);
+      console.error('❌ [DEBUG] Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      toast.error('Không thể tải danh sách voucher');
+      setAvailableVouchers([]);
+    }
+  };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
-  // Auto-hide result after 5 seconds
-  useEffect(() => {
-    if (lastResult) {
-      setShowResult(true);
-      const timer = setTimeout(() => {
-        setShowResult(false);
-        setTimeout(() => setLastResult(null), 300); // Wait for animation to complete
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [lastResult]);
-
-  // Load all users for manual selection
-  useEffect(() => {
-    const fetchAllUsers = async () => {
-      try {
-        const response = await axios.get('/api/customers');
-        if (response.data.success && response.data.data) {
-          setAllUsers(response.data.data);
-        } else {
-          setAllUsers([]);
-        }
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        setAllUsers([]);
-      }
-    };
-
-    if (open) {
-      fetchAllUsers();
-    }
-  }, [open]);
-
-  // Fetch customer detail
-  const fetchCustomerDetail = async (userId: string) => {
-    setLoadingDetail(true);
-    try {
-      // Find user data from allUsers array (already loaded)
-      const userData = allUsers.find(user => user.id === userId);
-      if (userData) {
-        setCustomerDetailData({
-          user: {
-            totalOrders: userData.totalOrders,
-            totalSpent: userData.totalSpent
-          },
-          categories: userData.categories || [],
-          products: userData.products || []
-        });
-      } else {
-        toast.error('Không tìm thấy thông tin khách hàng');
-      }
-    } catch (error) {
-      console.error('Error fetching customer detail:', error);
-      toast.error('Không thể tải thông tin chi tiết khách hàng');
-    } finally {
-      setLoadingDetail(false);
-    }
-  };
-
   const handleSendEmails = async () => {
-    if (!selectedProductId) {
+    console.log('🚀 [DEBUG] Starting email campaign...');
+    console.log('📋 [DEBUG] Campaign config:', {
+      campaignType,
+      campaignTitle,
+      campaignDescription,
+      selectedProductId,
+      selectedVoucherIds,
+      selectedSegments,
+      manualMode,
+      selectedUsersCount: selectedUsers.length
+    });
+
+    // Validation based on campaign type
+    if (campaignType === 'NEW_PRODUCT' && !selectedProductId) {
+      console.log('❌ [DEBUG] Validation failed: No product selected for NEW_PRODUCT campaign');
       toast.error('Vui lòng chọn sản phẩm');
       return;
     }
 
+    if (campaignType === 'VOUCHER_PROMOTION' && selectedVoucherIds.length === 0) {
+      console.log('❌ [DEBUG] Validation failed: No voucher selected for VOUCHER_PROMOTION campaign');
+      toast.error('Vui lòng chọn ít nhất một voucher');
+      return;
+    }
+
     if (manualMode && selectedUsers.length === 0) {
+      console.log('❌ [DEBUG] Validation failed: Manual mode but no users selected');
       toast.error('Vui lòng chọn ít nhất một khách hàng');
       return;
     }
 
+    if (!manualMode && (!selectedSegments || selectedSegments.length === 0)) {
+      console.log('❌ [DEBUG] Validation failed: Auto mode but no segments selected');
+      toast.error('Vui lòng chọn ít nhất một phân khúc khách hàng');
+      return;
+    }
+
+    console.log('✅ [DEBUG] Validation passed, sending API request...');
     setIsLoading(true);
     try {
-      const response = await axios.post('/api/send-new-product-emails', {
-        productId: selectedProductId,
-        timeframe: selectedTimeframe,
-        manualMode,
-        selectedUserIds: manualMode ? selectedUsers : undefined
-      });
+      const requestPayload = {
+        // Campaign configuration
+        campaignType,
+        campaignTitle,
+        campaignDescription,
 
+        // Product/Content selection
+        productId: selectedProductId,
+        voucherIds: selectedVoucherIds,
+
+        // Customer targeting
+        selectedSegments,
+        manualMode,
+        selectedUserIds: manualMode ? selectedUsers : undefined,
+
+        // Debug mode - always true for console logging
+        debugMode: true
+      };
+
+      console.log('📤 [DEBUG] Sending request to /api/marketing/emails');
+      console.log('📦 [DEBUG] Request payload:', requestPayload);
+
+      const response = await axios.post('/api/marketing/emails', requestPayload);
+
+      console.log('📥 [DEBUG] API Response:', response.data);
       const result = response.data;
       setLastResult(result);
 
-      toast.success(`Đã gửi email thành công cho ${result.sentCount}/${result.totalUsers} người dùng`);
+      const campaignTypeText = {
+        NEW_PRODUCT: 'sản phẩm mới',
+        VOUCHER_PROMOTION: 'voucher khuyến mãi',
+        RETENTION: 'giữ chân khách hàng',
+        CROSS_SELL: 'gợi ý sản phẩm'
+      }[campaignType];
+
+      console.log('✅ [DEBUG] Email campaign successful!');
+      console.log('📊 [DEBUG] Results:', {
+        sentCount: result.sentCount,
+        totalUsers: result.totalUsers,
+        campaignType: campaignTypeText
+      });
+
+      toast.success(
+        `Đã gửi email ${campaignTypeText} thành công cho ${result.sentCount}/${result.totalUsers} người dùng`
+      );
     } catch (error: any) {
-      console.error('Error sending emails:', error);
+      console.error('❌ [DEBUG] Error sending emails:', error);
+      console.error('❌ [DEBUG] Error response:', error.response?.data);
+      console.error('❌ [DEBUG] Error status:', error.response?.status);
+
       toast.error(error.response?.data?.error || 'Có lỗi xảy ra khi gửi email');
+      setLastResult({ error: error.response?.data?.error || 'Có lỗi xảy ra khi gửi email' });
     } finally {
+      console.log('🏁 [DEBUG] Email campaign finished');
       setIsLoading(false);
     }
   };
 
-  // Lọc sản phẩm mới (trong 30 ngày gần đây)
-  const recentProducts =
-    products
-      ?.filter(product => {
-        if (!product || !product.id) return false;
-        const productDate = new Date(product.createdAt || Date.now());
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        return productDate >= thirtyDaysAgo;
-      })
-      .sort((a, b) => {
-        const dateA = new Date(a.createdAt || Date.now());
-        const dateB = new Date(b.createdAt || Date.now());
-        return dateB.getTime() - dateA.getTime();
-      }) || [];
-
   return (
-    <Dialog
-      open={true}
-      onClose={onClose}
-      maxWidth='lg'
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: '16px',
-          minHeight: '600px'
-        }
-      }}
-    >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth='lg'
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            borderRadius: '16px',
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            p: 3,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: '12px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <MdEmail size={24} />
-            </Box>
+            <MdEmail size={28} />
             <Box>
-              <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937', mb: 0.5 }}>
-                Email Marketing
+              <Typography variant='h5' sx={{ fontWeight: 700, mb: 0.5 }}>
+                Smart Marketing Campaign
               </Typography>
-              <Typography variant='body2' sx={{ color: '#6b7280' }}>
-                Gửi thông báo sản phẩm mới đến khách hàng tiềm năng
+              <Typography variant='body2' sx={{ opacity: 0.9 }}>
+                Tạo và gửi email marketing thông minh
               </Typography>
             </Box>
           </Box>
-          <Button onClick={onClose} sx={{ minWidth: 'auto', p: 1, borderRadius: '8px' }}>
-            <MdClose size={20} />
-          </Button>
-        </Box>
-      </DialogTitle>
+          <IconButton onClick={onClose} sx={{ color: 'white' }}>
+            <MdClose />
+          </IconButton>
+        </DialogTitle>
 
-      <DialogContent sx={{ p: 0 }}>
-        {/* Tabs */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab
-              label='Gửi Email'
-              icon={<MdSend />}
-              iconPosition='start'
-              sx={{ textTransform: 'none', fontWeight: 600 }}
-            />
-            <Tab
-              label='Chi tiết khách hàng'
-              icon={<MdPeople />}
-              iconPosition='start'
-              sx={{ textTransform: 'none', fontWeight: 600 }}
-            />
-            <Tab
-              label='Thống kê danh mục'
-              icon={<MdFilterAlt />}
-              iconPosition='start'
-              sx={{ textTransform: 'none', fontWeight: 600 }}
-            />
-            <Tab
-              label='Xem trước Email'
-              icon={<MdPreview />}
-              iconPosition='start'
-              sx={{ textTransform: 'none', fontWeight: 600 }}
-            />
-          </Tabs>
-        </Box>
+        <DialogContent sx={{ p: 0 }}>
+          {/* Tabs */}
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
+            <Tabs value={tabValue} onChange={handleTabChange}>
+              <Tab
+                label='Tạo chiến dịch'
+                icon={<MdCampaign />}
+                iconPosition='start'
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              />
+              <Tab
+                label='Danh sách khách hàng'
+                icon={<MdPeople />}
+                iconPosition='start'
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              />
+              <Tab
+                label='Xem trước Email'
+                icon={<MdPreview />}
+                iconPosition='start'
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              />
+            </Tabs>
+          </Box>
 
-        <Box sx={{ p: 3 }}>
-          {/* Tab Panel 0: Gửi Email */}
-          {tabValue === 0 && (
-            <Box>
-              {/* Product Selection */}
-              <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel>Chọn sản phẩm mới</InputLabel>
-                <Select
-                  value={selectedProductId}
-                  label='Chọn sản phẩm mới'
-                  onChange={e => setSelectedProductId(e.target.value)}
-                  disabled={isLoading}
-                  sx={{ borderRadius: '12px' }}
-                >
-                  <MenuItem value=''>
-                    <em>-- Chọn sản phẩm --</em>
-                  </MenuItem>
-                  {recentProducts?.map(product =>
-                    product && product.id && product.name ? (
-                      <MenuItem key={product.id} value={product.id}>
-                        <Box
-                          sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}
-                        >
-                          <Typography sx={{ fontWeight: 500 }}>{product.name}</Typography>
-                          <Chip
-                            label={new Date(product.createdAt || Date.now()).toLocaleDateString('vi-VN')}
-                            size='small'
-                            color='primary'
-                            variant='outlined'
-                          />
-                        </Box>
-                      </MenuItem>
-                    ) : null
-                  )}
-                </Select>
-              </FormControl>
-
-              {/* Timeframe Selection - Only show in auto mode */}
-              {/* <Collapse in={!manualMode}>
-                <FormControl fullWidth sx={{ mb: 3 }}>
-                  <InputLabel>Lọc khách hàng theo thời gian mua hàng</InputLabel>
-                  <Select
-                    value={selectedTimeframe}
-                    label='Lọc khách hàng theo thời gian mua hàng'
-                    onChange={e => setSelectedTimeframe(e.target.value as any)}
-                    disabled={isLoading}
-                    sx={{ borderRadius: '12px' }}
-                  >
-                    <MenuItem value='all'>Tất cả khách hàng đã mua cùng danh mục</MenuItem>
-                    <MenuItem value='recent'>Khách hàng mua trong 30 ngày gần đây</MenuItem>
-                    <MenuItem value='medium'>Khách hàng mua trong 30-90 ngày trước</MenuItem>
-                    <MenuItem value='older'>Khách hàng mua trên 90 ngày trước</MenuItem>
-                  </Select>
-                </FormControl>
-              </Collapse> */}
-
-              {/* Manual Customer Selection Toggle */}
-              <Box sx={{ mb: 3 }}>
-                <FormControlLabel
-                  control={
-                    <Switch checked={manualMode} onChange={e => setManualMode(e.target.checked)} color='primary' />
-                  }
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <MdPeople size={20} />
-                      <Typography variant='body1' sx={{ fontWeight: 500 }}>
-                        Chọn khách hàng thủ công
-                      </Typography>
-                    </Box>
-                  }
-                  sx={{
-                    '& .MuiFormControlLabel-label': {
-                      color: manualMode ? '#3b82f6' : 'text.primary'
-                    }
-                  }}
-                />
-                <Typography variant='body2' color='text.secondary' sx={{ ml: 4, mt: 0.5 }}>
-                  {manualMode
-                    ? 'Tự chọn khách hàng từ danh sách bên dưới (bỏ qua filter thời gian)'
-                    : 'Hệ thống tự động tìm khách hàng đã mua sản phẩm cùng danh mục theo filter thời gian'}
-                </Typography>
-              </Box>
-
-              {/* Info Alert */}
-              {/* {selectedProductId && !manualMode && (
-                <Alert icon={<MdInfo />} severity='info' sx={{ mb: 3, borderRadius: '12px' }}>
-                  <Typography variant='body2'>
-                    <strong>Lưu ý:</strong> Email sẽ được gửi đến những khách hàng đã từng mua sản phẩm trong cùng danh
-                    mục với sản phẩm được chọn (
-                    {selectedTimeframe === 'all'
-                      ? 'tất cả'
-                      : selectedTimeframe === 'recent'
-                      ? 'mua trong 30 ngày gần đây'
-                      : selectedTimeframe === 'medium'
-                      ? 'mua trong 30-90 ngày trước'
-                      : 'mua trên 90 ngày trước'}
-                    ).
+          <Box sx={{ p: 3 }}>
+            {/* Tab Panel 0: Tạo chiến dịch */}
+            {tabValue === 0 && (
+              <Box>
+                {/* Step Indicator */}
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant='h6' sx={{ mb: 2, fontWeight: 600 }}>
+                    Tạo chiến dịch email marketing
                   </Typography>
-                </Alert>
-              )} */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                    {[1, 2, 3].map(step => (
+                      <Box key={step} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: currentStep >= step ? '#1976d2' : '#e0e0e0',
+                            color: currentStep >= step ? 'white' : '#666',
+                            fontWeight: 600,
+                            fontSize: '14px'
+                          }}
+                        >
+                          {step}
+                        </Box>
+                        <Typography
+                          variant='body2'
+                          sx={{
+                            color: currentStep >= step ? '#1976d2' : '#666',
+                            fontWeight: currentStep === step ? 600 : 400
+                          }}
+                        >
+                          {step === 1 && 'Chọn mục đích'}
+                          {step === 2 && 'Cấu hình nội dung'}
+                          {step === 3 && 'Chọn khách hàng'}
+                        </Typography>
+                        {step < 3 && (
+                          <Box
+                            sx={{
+                              width: 40,
+                              height: 2,
+                              backgroundColor: currentStep > step ? '#1976d2' : '#e0e0e0',
+                              mx: 1
+                            }}
+                          />
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
 
-              {/* Manual Customer Selection List */}
-              <Collapse in={manualMode}>
+                {/* Step 1: Campaign Purpose Selection */}
+                {currentStep === 1 && (
+                  <Card sx={{ mb: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                    <CardContent sx={{ p: 4 }}>
+                      <Typography
+                        variant='h6'
+                        sx={{ mb: 3, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
+                      >
+                        <MdCampaign className='text-blue-600' />
+                        Bạn muốn gửi email để làm gì?
+                      </Typography>
+
+                      <Box
+                        sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 2 }}
+                      >
+                        {[
+                          {
+                            type: 'NEW_PRODUCT',
+                            icon: <MdTrendingUp size={24} />,
+                            title: 'Giới thiệu sản phẩm mới',
+                            description: 'Thông báo về sản phẩm mới ra mắt cho khách hàng quan tâm',
+                            color: '#4caf50',
+                            examples: ['iPhone 15 mới ra mắt', 'Laptop gaming mới nhất', 'Phụ kiện công nghệ hot']
+                          },
+                          {
+                            type: 'VOUCHER_PROMOTION',
+                            icon: <MdLocalOffer size={24} />,
+                            title: 'Khuyến mãi & Voucher',
+                            description: 'Gửi mã giảm giá và chương trình khuyến mãi đặc biệt',
+                            color: '#9c27b0',
+                            examples: ['Sale 50% cuối năm', 'Voucher sinh nhật', 'Khuyến mãi Black Friday']
+                          },
+                          // {
+                          //   type: 'RETENTION',
+                          //   icon: <MdPeople size={24} />,
+                          //   title: 'Giữ chân khách hàng',
+                          //   description: 'Gửi voucher đặc biệt cho khách hàng lâu không mua hàng (>90 ngày)',
+                          //   color: '#ff9800',
+                          //   examples: ['Comeback offer 30%', 'Chúng tôi nhớ bạn', 'Voucher độc quyền 25%']
+                          // },
+                          {
+                            type: 'CROSS_SELL',
+                            icon: <MdPercent size={24} />,
+                            title: 'Gợi ý sản phẩm liên quan',
+                            description: 'Gửi sản phẩm bổ sung dựa trên lịch sử mua hàng của khách',
+                            color: '#2196f3',
+                            examples: ['Phụ kiện cho iPhone đã mua', 'Case + cường lực', 'Tai nghe cho laptop']
+                          }
+                        ].map(campaign => (
+                          <Card
+                            key={campaign.type}
+                            sx={{
+                              cursor: 'pointer',
+                              border:
+                                campaignType === campaign.type ? `2px solid ${campaign.color}` : '1px solid #e0e0e0',
+                              borderRadius: '12px',
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                borderColor: campaign.color,
+                                transform: 'translateY(-2px)',
+                                boxShadow: `0 4px 12px ${campaign.color}20`
+                              }
+                            }}
+                            onClick={() => setCampaignType(campaign.type as CampaignType)}
+                          >
+                            <CardContent sx={{ p: 3 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                <Box sx={{ color: campaign.color }}>{campaign.icon}</Box>
+                                <Typography variant='h6' sx={{ fontWeight: 600 }}>
+                                  {campaign.title}
+                                </Typography>
+                              </Box>
+                              <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
+                                {campaign.description}
+                              </Typography>
+                              <Box>
+                                <Typography variant='caption' sx={{ fontWeight: 600, color: campaign.color }}>
+                                  Ví dụ:
+                                </Typography>
+                                {campaign.examples.map((example, index) => (
+                                  <Typography
+                                    key={index}
+                                    variant='caption'
+                                    sx={{ display: 'block', color: 'text.secondary' }}
+                                  >
+                                    • {example}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </Box>
+
+                      <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button
+                          variant='contained'
+                          onClick={() => setCurrentStep(2)}
+                          disabled={!campaignType}
+                          sx={{ borderRadius: '8px', px: 4 }}
+                        >
+                          Tiếp theo
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Step 2: Content Configuration */}
+                {currentStep === 2 && (
+                  <Card sx={{ mb: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                    <CardContent sx={{ p: 4 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography
+                          variant='h6'
+                          sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
+                        >
+                          <MdCampaign className='text-blue-600' />
+                          Cấu hình nội dung chiến dịch
+                        </Typography>
+                        <Button variant='outlined' onClick={() => setCurrentStep(1)} sx={{ borderRadius: '8px' }}>
+                          Quay lại
+                        </Button>
+                      </Box>
+
+                      {/* Campaign Title & Description */}
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 600 }}>
+                          Thông tin chiến dịch
+                        </Typography>
+                        <TextField
+                          fullWidth
+                          label='Tiêu đề chiến dịch'
+                          value={campaignTitle}
+                          onChange={e => setCampaignTitle(e.target.value)}
+                          placeholder={
+                            campaignType === 'NEW_PRODUCT'
+                              ? 'VD: Ra mắt iPhone 15 Pro Max'
+                              : campaignType === 'VOUCHER_PROMOTION'
+                              ? 'VD: Sale cuối năm - Giảm đến 50%'
+                              : campaignType === 'RETENTION'
+                              ? 'VD: Chúng tôi nhớ bạn - Ưu đãi đặc biệt'
+                              : 'VD: Phụ kiện hoàn hảo cho thiết bị của bạn'
+                          }
+                          sx={{ mb: 2, borderRadius: '8px' }}
+                        />
+                        <TextField
+                          fullWidth
+                          multiline
+                          rows={3}
+                          label='Mô tả chiến dịch'
+                          value={campaignDescription}
+                          onChange={e => setCampaignDescription(e.target.value)}
+                          placeholder='Mô tả ngắn gọn về mục đích và nội dung của chiến dịch này...'
+                          sx={{ borderRadius: '8px' }}
+                        />
+                      </Box>
+
+                      {/* Product Selection for NEW_PRODUCT and CROSS_SELL */}
+                      {(campaignType === 'NEW_PRODUCT' || campaignType === 'CROSS_SELL') && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 600 }}>
+                            Chọn sản phẩm
+                          </Typography>
+                          <FormControl fullWidth>
+                            <InputLabel>Chọn sản phẩm để giới thiệu</InputLabel>
+                            <Select
+                              value={selectedProductId}
+                              label='Chọn sản phẩm để giới thiệu'
+                              onChange={e => setSelectedProductId(e.target.value)}
+                              disabled={isLoading}
+                              sx={{ borderRadius: '8px' }}
+                            >
+                              <MenuItem value=''>
+                                <em>-- Chọn sản phẩm --</em>
+                              </MenuItem>
+                              {recentProducts?.map(product =>
+                                product && product.id && product.name ? (
+                                  <MenuItem key={product.id} value={product.id}>
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        width: '100%',
+                                        alignItems: 'center'
+                                      }}
+                                    >
+                                      <Typography sx={{ fontWeight: 500 }}>{product.name}</Typography>
+                                      <Chip
+                                        label={new Date(product.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                                        size='small'
+                                        color='primary'
+                                        variant='outlined'
+                                      />
+                                    </Box>
+                                  </MenuItem>
+                                ) : null
+                              )}
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      )}
+
+                      {/* Voucher Configuration for VOUCHER_PROMOTION and RETENTION */}
+                      {(campaignType === 'VOUCHER_PROMOTION' || campaignType === 'RETENTION') && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 600 }}>
+                            Chọn Voucher
+                          </Typography>
+
+                          <FormControl fullWidth>
+                            <InputLabel>Chọn voucher có sẵn</InputLabel>
+                            <Select
+                              multiple
+                              value={selectedVoucherIds}
+                              label='Chọn voucher có sẵn'
+                              onChange={e =>
+                                setSelectedVoucherIds(
+                                  typeof e.target.value === 'string' ? [e.target.value] : e.target.value
+                                )
+                              }
+                              disabled={isLoading}
+                              sx={{ borderRadius: '8px' }}
+                              renderValue={selected => (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                  {selected.map(value => {
+                                    const voucher = availableVouchers.find(v => v.id === value);
+                                    return <Chip key={value} label={voucher?.code || value} size='small' />;
+                                  })}
+                                </Box>
+                              )}
+                            >
+                              {availableVouchers.map(voucher => (
+                                <MenuItem key={voucher.id} value={voucher.id}>
+                                  <Box
+                                    sx={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      width: '100%',
+                                      alignItems: 'center'
+                                    }}
+                                  >
+                                    <Typography sx={{ fontWeight: 500 }}>{voucher.code}</Typography>
+                                    <Chip
+                                      label={`${
+                                        voucher.discountType === 'PERCENTAGE'
+                                          ? voucher.discountValue + '%'
+                                          : voucher.discountValue.toLocaleString() + 'đ'
+                                      }`}
+                                      size='small'
+                                      color='secondary'
+                                      variant='outlined'
+                                    />
+                                  </Box>
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      )}
+
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                        <Button
+                          variant='contained'
+                          onClick={() => setCurrentStep(3)}
+                          disabled={
+                            ((campaignType === 'NEW_PRODUCT' || campaignType === 'CROSS_SELL') && !selectedProductId) ||
+                            ((campaignType === 'VOUCHER_PROMOTION' || campaignType === 'RETENTION') &&
+                              selectedVoucherIds.length === 0)
+                          }
+                          sx={{ borderRadius: '8px', px: 4 }}
+                        >
+                          Tiếp theo
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Step 3: Customer Selection */}
+                {currentStep === 3 && (
+                  <Card sx={{ mb: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                    <CardContent sx={{ p: 4 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography
+                          variant='h6'
+                          sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
+                        >
+                          <MdPeople className='text-blue-600' />
+                          Chọn khách hàng nhận email
+                        </Typography>
+                        <Button variant='outlined' onClick={() => setCurrentStep(2)} sx={{ borderRadius: '8px' }}>
+                          Quay lại
+                        </Button>
+                      </Box>
+
+                      {/* Customer Segmentation - Only show in auto mode */}
+                      {!manualMode && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 600 }}>
+                            Phân khúc khách hàng
+                          </Typography>
+                          <FormControl fullWidth sx={{ mb: 2 }}>
+                            <InputLabel>Chọn nhóm khách hàng</InputLabel>
+                            <Select
+                              multiple
+                              value={selectedSegments}
+                              label='Chọn nhóm khách hàng'
+                              onChange={e =>
+                                setSelectedSegments(
+                                  typeof e.target.value === 'string' ? [e.target.value] : e.target.value
+                                )
+                              }
+                              disabled={isLoading}
+                              sx={{ borderRadius: '8px' }}
+                              renderValue={selected => (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                  {selected.map(value => {
+                                    const segment = CUSTOMER_SEGMENTS.find(s => s.id === value);
+                                    return <Chip key={value} label={segment?.name || value} size='small' />;
+                                  })}
+                                </Box>
+                              )}
+                            >
+                              {CUSTOMER_SEGMENTS.map(segment => (
+                                <MenuItem key={segment.id} value={segment.id}>
+                                  <Box>
+                                    <Typography sx={{ fontWeight: 500 }}>{segment.name}</Typography>
+                                    <Typography variant='caption' color='text.secondary'>
+                                      {segment.description}
+                                    </Typography>
+                                  </Box>
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+
+                          <Alert severity='info' sx={{ borderRadius: '8px' }}>
+                            Đã chọn {selectedSegments.length} nhóm khách hàng.
+                            {selectedSegments.includes('all') && ' (Bao gồm tất cả khách hàng)'}
+                          </Alert>
+                        </Box>
+                      )}
+
+                      {/* Manual Customer Selection Toggle */}
+                      <Box sx={{ mb: 3 }}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={manualMode}
+                              onChange={e => setManualMode(e.target.checked)}
+                              color='primary'
+                            />
+                          }
+                          label='Chọn khách hàng cụ thể (thay vì dùng phân khúc tự động)'
+                          sx={{ mb: 2 }}
+                        />
+
+                        {manualMode && (
+                          <Button variant='outlined' onClick={() => setTabValue(1)} sx={{ borderRadius: '8px' }}>
+                            Chọn khách hàng từ danh sách
+                          </Button>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                )}
+              </Box>
+            )}
+
+            {/* Tab Panel 1: Customer List */}
+            {tabValue === 1 && (
+              <Box>
+                <Typography variant='h6' sx={{ mb: 3, fontWeight: 600 }}>
+                  Danh sách khách hàng ({allUsers.length})
+                </Typography>
+
                 <Paper
-                  sx={{
-                    mb: 3,
-                    borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
-                    maxHeight: '400px',
-                    overflow: 'hidden'
-                  }}
+                  sx={{ borderRadius: '12px', border: '1px solid #e5e7eb', maxHeight: '500px', overflow: 'hidden' }}
                 >
                   <Box sx={{ p: 2, borderBottom: '1px solid #e5e7eb', backgroundColor: '#f8fafc' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant='h6' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                        Danh sách khách hàng ({allUsers.length})
+                      <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
+                        Chọn khách hàng nhận email
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1 }}>
                         <Button
@@ -436,7 +928,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                     </Typography>
                   </Box>
 
-                  <List sx={{ maxHeight: '300px', overflow: 'auto', p: 0 }}>
+                  <List sx={{ maxHeight: '400px', overflow: 'auto', p: 0 }}>
                     {allUsers.map(user => (
                       <ListItem
                         key={user.id}
@@ -458,7 +950,7 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                         />
                         <ListItemText
                           primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                               <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>
                                 {user.name || 'Khách hàng'}
                               </Typography>
@@ -468,773 +960,346 @@ const SendNewProductEmail: React.FC<SendNewProductEmailProps> = ({ products, onC
                                 color={user.role === 'ADMIN' ? 'error' : user.role === 'STAFF' ? 'warning' : 'default'}
                                 variant='outlined'
                               />
+                              {/* Customer Segment Chip */}
+                              {user.role === 'USER' &&
+                                (() => {
+                                  const segment = customerSegments.get(user.id);
+                                  console.log('🔍 [DEBUG] Rendering segment for user', user.name, ':', segment);
+
+                                  if (segment) {
+                                    return (
+                                      <Chip
+                                        label={segment.name}
+                                        size='small'
+                                        sx={{
+                                          backgroundColor: segment.color,
+                                          color: 'white',
+                                          fontWeight: 600,
+                                          fontSize: '0.7rem'
+                                        }}
+                                      />
+                                    );
+                                  }
+
+                                  // Fallback chip for debugging
+                                  return (
+                                    <Chip
+                                      label='Đang tải...'
+                                      size='small'
+                                      sx={{
+                                        backgroundColor: '#9e9e9e',
+                                        color: 'white',
+                                        fontWeight: 600,
+                                        fontSize: '0.7rem'
+                                      }}
+                                    />
+                                  );
+                                })()}
                             </Box>
                           }
                           secondary={
-                            <Box sx={{ mt: 0.5 }}>
+                            <Box>
                               <Typography variant='body2' color='text.secondary'>
                                 {user.email || 'Email không có'}
                               </Typography>
-                              {user.lastOrderDate && (
-                                <Typography variant='caption' color='text.secondary'>
-                                  Mua gần nhất: {new Date(user.lastOrderDate).toLocaleDateString('vi-VN')}
+                              {/* Customer Segment Description */}
+                              {user.role === 'USER' && customerSegments.get(user.id) && (
+                                <Typography variant='caption' color='text.secondary' sx={{ fontStyle: 'italic' }}>
+                                  {customerSegments.get(user.id).description}
                                 </Typography>
-                              )}
-                              {user.categories && user.categories.length > 0 && (
-                                <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                  {user.categories.slice(0, 3).map((category: any, index: number) => (
-                                    <Chip
-                                      key={index}
-                                      label={category.name || category}
-                                      size='small'
-                                      variant='outlined'
-                                      sx={{
-                                        fontSize: '0.7rem',
-                                        height: '20px',
-                                        borderColor: '#3b82f6',
-                                        color: '#3b82f6'
-                                      }}
-                                    />
-                                  ))}
-                                  {user.categories.length > 3 && (
-                                    <Chip
-                                      label={`+${user.categories.length - 3}`}
-                                      size='small'
-                                      variant='outlined'
-                                      sx={{
-                                        fontSize: '0.7rem',
-                                        height: '20px',
-                                        borderColor: '#6b7280',
-                                        color: '#6b7280'
-                                      }}
-                                    />
-                                  )}
-                                </Box>
                               )}
                             </Box>
                           }
                         />
-                        <ListItemSecondaryAction>
-                          <Button
-                            size='small'
-                            variant='outlined'
-                            onClick={() => {
-                              setSelectedUserDetail(user);
-                              setDetailModalOpen(true);
-                              fetchCustomerDetail(user.id);
-                            }}
-                            sx={{
-                              textTransform: 'none',
-                              borderColor: '#3b82f6',
-                              color: '#3b82f6',
-                              '&:hover': {
-                                backgroundColor: '#eff6ff',
-                                borderColor: '#2563eb'
-                              }
-                            }}
-                          >
-                            Chi tiết
-                          </Button>
-                        </ListItemSecondaryAction>
+                        <Button
+                          size='small'
+                          variant='outlined'
+                          startIcon={<MdInfo />}
+                          onClick={() => {
+                            setSelectedCustomer(user);
+                            setCustomerDetailOpen(true);
+                          }}
+                          sx={{
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            minWidth: 'auto',
+                            px: 2
+                          }}
+                        >
+                          Chi tiết
+                        </Button>
                       </ListItem>
                     ))}
                   </List>
                 </Paper>
-              </Collapse>
-            </Box>
-          )}
+              </Box>
+            )}
 
-          {/* Tab Panel 1: Chi tiết khách hàng */}
-          {tabValue === 1 && (
-            <Box>
-              <Typography variant='h6' sx={{ mb: 3, fontWeight: 600 }}>
-                Danh sách tất cả khách hàng ({allUsers.length})
-              </Typography>
+            {/* Tab Panel 2: Email Preview */}
+            {tabValue === 2 && (
+              <Box>
+                <Typography variant='h6' sx={{ mb: 3, fontWeight: 600 }}>
+                  Xem trước nội dung email
+                </Typography>
 
-              <Grid container spacing={2}>
-                {allUsers.map(user => (
-                  <Grid item xs={12} md={6} lg={4} key={user.id}>
-                    <Paper
+                {/* Email Preview Card */}
+                <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                  <CardContent sx={{ p: 0 }}>
+                    {/* Email Header */}
+                    <Box
                       sx={{
-                        p: 2,
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: '#fafafa',
-                        '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        p: 3,
+                        textAlign: 'center'
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>
-                          {user.name || 'Khách hàng'}
-                        </Typography>
-                        <Chip
-                          label={user.role === 'ADMIN' ? 'Admin' : user.role === 'STAFF' ? 'Staff' : 'Khách hàng'}
-                          size='small'
-                          color={user.role === 'ADMIN' ? 'error' : user.role === 'STAFF' ? 'warning' : 'default'}
-                          variant='outlined'
-                        />
-                      </Box>
-                      <Typography variant='body2' color='text.secondary' sx={{ mb: 1 }}>
-                        {user.email || 'Email không có'}
+                      <Typography variant='h5' sx={{ fontWeight: 700, mb: 1 }}>
+                        ThanhHuy Store
                       </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant='caption' color='text.secondary'>
-                          Đơn hàng:
-                        </Typography>
-                        <Typography variant='caption' fontWeight={600}>
-                          {user.totalOrders || 0}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant='caption' color='text.secondary'>
-                          Tổng chi:
-                        </Typography>
-                        <Typography variant='caption' fontWeight={600} color='success.main'>
-                          {user.totalSpent
-                            ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                                user.totalSpent
-                              )
-                            : '0₫'}
-                        </Typography>
-                      </Box>
-                      {user.lastOrderDate && (
-                        <Typography variant='caption' color='text.secondary'>
-                          Mua gần nhất: {new Date(user.lastOrderDate).toLocaleDateString('vi-VN')}
-                        </Typography>
-                      )}
-                      {user.categories && user.categories.length > 0 && (
-                        <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {user.categories.slice(0, 2).map((category: any, index: number) => (
-                            <Chip
-                              key={index}
-                              label={category.name || category}
-                              size='small'
-                              variant='outlined'
+                      <Typography variant='subtitle1' sx={{ opacity: 0.9 }}>
+                        {campaignTitle || 'Tiêu đề chiến dịch'}
+                      </Typography>
+                    </Box>
+
+                    {/* Email Body */}
+                    <Box sx={{ p: 3 }}>
+                      <Typography variant='h6' sx={{ mb: 2, fontWeight: 600 }}>
+                        Xin chào [Tên khách hàng],
+                      </Typography>
+
+                      <Typography variant='body1' sx={{ mb: 3, lineHeight: 1.6 }}>
+                        {campaignDescription || 'Mô tả chiến dịch sẽ hiển thị ở đây...'}
+                      </Typography>
+
+                      {/* Campaign-specific content */}
+                      {campaignType === 'NEW_PRODUCT' && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant='h6' sx={{ mb: 2, fontWeight: 600 }}>
+                            🎉 Sản phẩm mới vừa ra mắt!
+                          </Typography>
+                          {selectedProductId && (
+                            <Box
                               sx={{
-                                fontSize: '0.6rem',
-                                height: '18px',
-                                borderColor: '#3b82f6',
-                                color: '#3b82f6'
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '8px',
+                                p: 2,
+                                backgroundColor: '#f8fafc'
                               }}
-                            />
-                          ))}
-                          {user.categories.length > 2 && (
-                            <Chip
-                              label={`+${user.categories.length - 2}`}
-                              size='small'
-                              variant='outlined'
-                              sx={{
-                                fontSize: '0.6rem',
-                                height: '18px',
-                                borderColor: '#6b7280',
-                                color: '#6b7280'
-                              }}
-                            />
+                            >
+                              <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
+                                {products.find(p => p.id === selectedProductId)?.name || 'Tên sản phẩm'}
+                              </Typography>
+                              <Typography variant='body2' color='text.secondary'>
+                                Khám phá ngay sản phẩm mới nhất của chúng tôi!
+                              </Typography>
+                            </Box>
                           )}
                         </Box>
                       )}
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
-          )}
 
-          {/* Tab Panel 2: Thống kê danh mục */}
-          {tabValue === 2 && (
-            <Box>
-              <Typography variant='h6' sx={{ fontWeight: 600, mb: 3 }}>
-                Thống kê khách hàng theo danh mục
-              </Typography>
-
-              {/* Summary Cards */}
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={4}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      textAlign: 'center',
-                      borderRadius: '12px',
-                      backgroundColor: '#f0f9ff',
-                      border: '1px solid #0ea5e9'
-                    }}
-                  >
-                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#0ea5e9' }}>
-                      {(() => {
-                        const allCategories = new Set();
-                        allUsers.forEach(user => {
-                          user.categories?.forEach((cat: any) => {
-                            allCategories.add(cat.name);
-                          });
-                        });
-                        return allCategories.size;
-                      })()}
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      Tổng danh mục
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      textAlign: 'center',
-                      borderRadius: '12px',
-                      backgroundColor: '#f0fdf4',
-                      border: '1px solid #22c55e'
-                    }}
-                  >
-                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#22c55e' }}>
-                      {(() => {
-                        const allProducts = new Set();
-                        allUsers.forEach(user => {
-                          user.products?.forEach((product: any) => {
-                            allProducts.add(product.id);
-                          });
-                        });
-                        return allProducts.size;
-                      })()}
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      Sản phẩm đã bán
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      textAlign: 'center',
-                      borderRadius: '12px',
-                      backgroundColor: '#fef3c7',
-                      border: '1px solid #f59e0b'
-                    }}
-                  >
-                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                      {allUsers.length}
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      Tổng khách hàng
-                    </Typography>
-                  </Paper>
-                </Grid>
-              </Grid>
-
-              {/* Category Statistics */}
-              <Typography variant='h6' sx={{ fontWeight: 600, mb: 2 }}>
-                Thống kê theo danh mục
-              </Typography>
-              {(() => {
-                // Calculate category statistics from allUsers
-                const categoryStats = new Map();
-                allUsers.forEach(user => {
-                  user.categories?.forEach((cat: any) => {
-                    if (!categoryStats.has(cat.name)) {
-                      categoryStats.set(cat.name, {
-                        name: cat.name,
-                        userCount: 0,
-                        totalSpent: 0,
-                        productCount: 0
-                      });
-                    }
-                    const stats = categoryStats.get(cat.name);
-                    stats.userCount += 1;
-                    stats.totalSpent += cat.totalSpent || 0;
-                    stats.productCount += cat.productCount || 0;
-                  });
-                });
-
-                const sortedCategories = Array.from(categoryStats.values()).sort((a, b) => b.userCount - a.userCount);
-
-                return (
-                  <Grid container spacing={2}>
-                    {sortedCategories.map((category, index) => (
-                      <Grid item xs={12} md={6} lg={4} key={index}>
-                        <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-                          <Typography variant='h6' sx={{ fontWeight: 600, mb: 2 }}>
-                            {category.name}
+                      {campaignType === 'VOUCHER_PROMOTION' && selectedVoucherIds.length > 0 && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant='h6' sx={{ mb: 2, fontWeight: 600 }}>
+                            🎁 Ưu đãi đặc biệt dành cho bạn!
                           </Typography>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant='body2' color='text.secondary'>
-                              Khách hàng:
-                            </Typography>
-                            <Typography variant='body2' fontWeight={600}>
-                              {category.userCount}
-                            </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {selectedVoucherIds.map(voucherId => {
+                              const voucher = availableVouchers.find(v => v.id === voucherId);
+                              return voucher ? (
+                                <Chip
+                                  key={voucherId}
+                                  label={`${voucher.code} - ${
+                                    voucher.discountType === 'PERCENTAGE'
+                                      ? voucher.discountValue + '%'
+                                      : voucher.discountValue.toLocaleString() + 'đ'
+                                  }`}
+                                  color='secondary'
+                                  sx={{ fontWeight: 600 }}
+                                />
+                              ) : null;
+                            })}
                           </Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant='body2' color='text.secondary'>
-                              Sản phẩm:
-                            </Typography>
-                            <Typography variant='body2' fontWeight={600}>
-                              {category.productCount}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant='body2' color='text.secondary'>
-                              Doanh thu:
-                            </Typography>
-                            <Typography variant='body2' fontWeight={600} color='success.main'>
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                                category.totalSpent
-                              )}
-                            </Typography>
-                          </Box>
-                        </Paper>
-                      </Grid>
-                    ))}
-                  </Grid>
-                );
-              })()}
-            </Box>
-          )}
+                        </Box>
+                      )}
 
-          {/* Tab Panel 3: Xem trước Email */}
-          {tabValue === 3 && (
-            <Box>
-              <Typography variant='h6' sx={{ mb: 3, fontWeight: 600 }}>
-                Xem trước nội dung Email
-              </Typography>
+                      {campaignType === 'RETENTION' && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant='h6' sx={{ mb: 2, fontWeight: 600 }}>
+                            💝 Chúng tôi nhớ bạn!
+                          </Typography>
+                          <Typography variant='body1' sx={{ mb: 2 }}>
+                            Đã lâu rồi bạn không ghé thăm cửa hàng. Hãy quay lại với những ưu đãi đặc biệt!
+                          </Typography>
+                          {selectedVoucherIds.length > 0 && (
+                            <Alert severity='success' sx={{ borderRadius: '8px' }}>
+                              <Typography variant='subtitle2'>
+                                Voucher comeback đặc biệt đã được chuẩn bị cho bạn!
+                              </Typography>
+                            </Alert>
+                          )}
+                        </Box>
+                      )}
 
-              {selectedProductId ? (
-                <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #e5e7eb', backgroundColor: '#f8fafc' }}>
-                  <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
-                    Đây là bản xem trước email sẽ được gửi đến khách hàng:
-                  </Typography>
+                      {campaignType === 'CROSS_SELL' && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant='h6' sx={{ mb: 2, fontWeight: 600 }}>
+                            🛍️ Sản phẩm bổ sung cho bạn
+                          </Typography>
+                          <Typography variant='body1' sx={{ mb: 2 }}>
+                            Dựa trên lịch sử mua hàng, chúng tôi nghĩ bạn sẽ thích những sản phẩm này:
+                          </Typography>
+                          {selectedProductId && (
+                            <Box
+                              sx={{
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '8px',
+                                p: 2,
+                                backgroundColor: '#f8fafc'
+                              }}
+                            >
+                              <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
+                                {products.find(p => p.id === selectedProductId)?.name || 'Sản phẩm gợi ý'}
+                              </Typography>
+                              <Typography variant='body2' color='text.secondary'>
+                                Hoàn thiện bộ sưu tập của bạn!
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      )}
 
-                  <Box
-                    sx={{
-                      backgroundColor: 'white',
-                      p: 3,
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb',
-                      fontFamily: 'Arial, sans-serif'
-                    }}
-                  >
-                    <Typography variant='h5' sx={{ color: '#3b82f6', fontWeight: 700, mb: 2 }}>
-                      🎉 Sản phẩm mới đã có mặt!
-                    </Typography>
-                    <Typography variant='body1' sx={{ mb: 2 }}>
-                      Xin chào [Tên khách hàng],
-                    </Typography>
-                    <Typography variant='body1' sx={{ mb: 2 }}>
-                      Chúng tôi vừa ra mắt một sản phẩm mới trong danh mục mà bạn quan tâm:
-                    </Typography>
-
-                    {(() => {
-                      const selectedProduct = recentProducts?.find(p => p && p.id === selectedProductId);
-                      return selectedProduct && selectedProduct.name ? (
-                        <Box
+                      {/* CTA Button */}
+                      <Box sx={{ textAlign: 'center', mb: 3 }}>
+                        <Button
+                          variant='contained'
+                          size='large'
                           sx={{
-                            border: '1px solid #e5e7eb',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                             borderRadius: '8px',
-                            p: 2,
-                            my: 2,
-                            backgroundColor: '#f8fafc'
+                            px: 4,
+                            py: 1.5,
+                            fontWeight: 600,
+                            textTransform: 'none'
                           }}
                         >
-                          <Typography variant='h6' sx={{ fontWeight: 600, mb: 1 }}>
-                            {selectedProduct.name || 'Sản phẩm mới'}
-                          </Typography>
-                          <Typography variant='body2' sx={{ mb: 2 }}>
-                            {selectedProduct.description || 'Mô tả sản phẩm...'}
-                          </Typography>
-                          <Typography variant='h6' sx={{ color: '#e74c3c', fontWeight: 700 }}>
-                            {selectedProduct.price?.toLocaleString('vi-VN') || '0'}₫
-                          </Typography>
-                        </Box>
-                      ) : (
-                        <Box
-                          sx={{
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            p: 2,
-                            my: 2,
-                            backgroundColor: '#f8fafc'
-                          }}
-                        >
-                          <Typography variant='h6' sx={{ fontWeight: 600, mb: 1 }}>
-                            Sản phẩm mới
-                          </Typography>
-                          <Typography variant='body2' sx={{ mb: 2 }}>
-                            Mô tả sản phẩm...
-                          </Typography>
-                          <Typography variant='h6' sx={{ color: '#e74c3c', fontWeight: 700 }}>
-                            0₫
-                          </Typography>
-                        </Box>
-                      );
-                    })()}
+                          {campaignType === 'NEW_PRODUCT'
+                            ? 'Khám phá ngay'
+                            : campaignType === 'VOUCHER_PROMOTION'
+                            ? 'Sử dụng voucher'
+                            : campaignType === 'RETENTION'
+                            ? 'Quay lại mua sắm'
+                            : 'Xem sản phẩm'}
+                        </Button>
+                      </Box>
 
-                    <Typography variant='body1' sx={{ mb: 2 }}>
-                      Đừng bỏ lỡ cơ hội sở hữu sản phẩm mới nhất từ ThanhHuy Store!
-                    </Typography>
-                  </Box>
-                </Paper>
-              ) : (
-                <Alert severity='info' sx={{ borderRadius: '12px' }}>
-                  Vui lòng chọn sản phẩm ở tab Gửi Email để xem trước nội dung email.
-                </Alert>
-              )}
-            </Box>
-          )}
-        </Box>
-      </DialogContent>
-
-      <DialogActions sx={{ p: 3, borderTop: '1px solid #e5e7eb' }}>
-        <Button onClick={onClose} color='inherit' sx={{ textTransform: 'none', fontWeight: 600 }}>
-          Đóng
-        </Button>
-        {tabValue === 0 && (
-          <Button
-            variant='contained'
-            size='large'
-            startIcon={isLoading ? null : <MdSend />}
-            onClick={handleSendEmails}
-            disabled={isLoading || !selectedProductId}
-            sx={{
-              py: 1.5,
-              px: 3,
-              borderRadius: '12px',
-              backgroundColor: '#3b82f6',
-              '&:hover': { backgroundColor: '#2563eb' },
-              '&:disabled': { backgroundColor: '#e5e7eb', color: '#9ca3af' },
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: '16px'
-            }}
-          >
-            {isLoading ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LinearProgress sx={{ width: 20, height: 2 }} />
-                Đang gửi email...
-              </Box>
-            ) : (
-              'Gửi Email Marketing'
-            )}
-          </Button>
-        )}
-      </DialogActions>
-
-      {/* Results Modal/Alert */}
-      {lastResult && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-            zIndex: 1300,
-            transform: showResult ? 'translateY(0)' : 'translateY(100%)',
-            opacity: showResult ? 1 : 0,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            maxWidth: '400px'
-          }}
-        >
-          <Card
-            sx={{
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-              border: '1px solid #bbf7d0',
-              borderRadius: '16px',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box
-                    sx={{
-                      backgroundColor: '#16a34a',
-                      borderRadius: '50%',
-                      p: 0.5,
-                      '@keyframes pulse': {
-                        '0%': { transform: 'scale(1)', opacity: 1 },
-                        '50%': { transform: 'scale(1.1)', opacity: 0.8 },
-                        '100%': { transform: 'scale(1)', opacity: 1 }
-                      },
-                      animation: 'pulse 2s infinite'
-                    }}
-                  >
-                    <MdCheckCircle color='white' size={16} />
-                  </Box>
-                  <Typography variant='h6' sx={{ color: '#16a34a', fontWeight: 600, fontSize: '1rem' }}>
-                    Gửi email thành công!
-                  </Typography>
-                </Box>
-                <IconButton
-                  size='small'
-                  onClick={() => setShowResult(false)}
-                  sx={{ color: '#16a34a', '&:hover': { backgroundColor: 'rgba(22, 163, 74, 0.1)' } }}
-                >
-                  <MdClose size={16} />
-                </IconButton>
-              </Box>
-
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, mt: 2 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
-                    <MdTrendingUp color='#3b82f6' size={16} />
-                    <Typography variant='body2' sx={{ color: '#6b7280', fontWeight: 500 }}>
-                      Sản phẩm
-                    </Typography>
-                  </Box>
-                  <Typography variant='body1' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    {lastResult.product?.name || 'Sản phẩm mới'}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ textAlign: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
-                    <MdPeople color='#10b981' size={16} />
-                    <Typography variant='body2' sx={{ color: '#6b7280', fontWeight: 500 }}>
-                      Đã gửi
-                    </Typography>
-                  </Box>
-                  <Typography variant='body1' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    {lastResult.sentCount}/{lastResult.totalUsers}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ textAlign: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
-                    <MdPercent color='#8b5cf6' size={16} />
-                    <Typography variant='body2' sx={{ color: '#6b7280', fontWeight: 500 }}>
-                      Tỷ lệ thành công
-                    </Typography>
-                  </Box>
-                  <Typography variant='body1' sx={{ fontWeight: 600, color: '#1f2937' }}>
-                    {((lastResult.sentCount / lastResult.totalUsers) * 100).toFixed(1)}%
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-      )}
-
-      {/* No Products Warning */}
-      {recentProducts?.length === 0 && tabValue === 0 && (
-        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '80%' }}>
-          <Alert icon={<MdWarning />} severity='warning' sx={{ borderRadius: '12px' }}>
-            <Typography variant='body2'>
-              Không có sản phẩm mới nào trong 30 ngày gần đây để gửi email marketing.
-            </Typography>
-          </Alert>
-        </Box>
-      )}
-
-      {/* Customer Detail Modal */}
-      <Dialog
-        open={detailModalOpen}
-        onClose={() => {
-          setDetailModalOpen(false);
-          setSelectedUserDetail(null);
-          setCustomerDetailData(null);
-        }}
-        maxWidth='md'
-        fullWidth
-        PaperProps={{
-          sx: { borderRadius: '16px', maxHeight: '90vh' }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ bgcolor: '#3b82f6', width: 48, height: 48 }}>
-              {selectedUserDetail?.name?.charAt(0) || selectedUserDetail?.email?.charAt(0) || 'U'}
-            </Avatar>
-            <Box>
-              <Typography variant='h6' sx={{ fontWeight: 600 }}>
-                Chi tiết khách hàng
-              </Typography>
-              <Typography variant='body2' color='text.secondary'>
-                {selectedUserDetail?.name} ({selectedUserDetail?.email})
-              </Typography>
-            </Box>
-          </Box>
-        </DialogTitle>
-
-        <DialogContent sx={{ pt: 2 }}>
-          {loadingDetail ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : customerDetailData ? (
-            <Box>
-              {/* Customer Summary */}
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#f0f9ff' }}>
-                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#3b82f6' }}>
-                      {customerDetailData.user?.totalOrders || 0}
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      Tổng đơn hàng
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#f0fdf4' }}>
-                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#22c55e' }}>
-                      {customerDetailData.products?.length || 0}
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      Sản phẩm đã mua
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#fef3c7' }}>
-                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                      {customerDetailData.categories?.length || 0}
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      Danh mục
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center', borderRadius: '12px', backgroundColor: '#fce7f3' }}>
-                    <Typography variant='h4' sx={{ fontWeight: 700, color: '#ec4899' }}>
-                      {customerDetailData.user?.totalSpent
-                        ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                            customerDetailData.user.totalSpent
-                          )
-                        : '0₫'}
-                    </Typography>
-                    <Typography variant='body2' color='text.secondary'>
-                      Tổng chi tiêu
-                    </Typography>
-                  </Paper>
-                </Grid>
-              </Grid>
-
-              {/* Categories */}
-              <Typography variant='h6' sx={{ fontWeight: 600, mb: 2 }}>
-                Danh mục đã mua
-              </Typography>
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                {customerDetailData.categories?.map((category: any, index: number) => (
-                  <Grid item xs={12} md={6} key={index}>
-                    <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-                      <Typography variant='subtitle1' sx={{ fontWeight: 600, mb: 1 }}>
-                        {category.name || 'Danh mục không xác định'}
+                      {/* Footer */}
+                      <Divider sx={{ my: 2 }} />
+                      <Typography
+                        variant='caption'
+                        color='text.secondary'
+                        sx={{ textAlign: 'center', display: 'block' }}
+                      >
+                        Cảm ơn bạn đã tin tưởng ThanhHuy Store
+                        <br />
+                        Nếu không muốn nhận email này, bạn có thể hủy đăng ký tại đây.
                       </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant='body2' color='text.secondary'>
-                          Số sản phẩm:
-                        </Typography>
-                        <Typography variant='body2' fontWeight={600}>
-                          {category.productCount || 0}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant='body2' color='text.secondary'>
-                          Tổng chi:
-                        </Typography>
-                        <Typography variant='body2' fontWeight={600} color='success.main'>
-                          {category.totalSpent
-                            ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                                category.totalSpent
-                              )
-                            : '0₫'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant='body2' color='text.secondary'>
-                          Mua gần nhất:
-                        </Typography>
-                        <Typography variant='body2' fontWeight={600}>
-                          {category.lastPurchased
-                            ? new Date(category.lastPurchased).toLocaleDateString('vi-VN')
-                            : 'Không xác định'}
-                        </Typography>
-                      </Box>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
+                    </Box>
+                  </CardContent>
+                </Card>
 
-              {/* Recent Products */}
-              <Typography variant='h6' sx={{ fontWeight: 600, mb: 2 }}>
-                Sản phẩm đã mua ({customerDetailData.products?.length || 0})
-              </Typography>
-              <Box sx={{ maxHeight: '300px', overflow: 'auto' }}>
-                <Grid container spacing={2}>
-                  {customerDetailData.products?.map((product: any) => (
-                    <Grid item xs={12} md={6} key={product.id}>
-                      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #e5e7eb', display: 'flex', gap: 2 }}>
-                        <Box
-                          component='img'
-                          src={product.thumbnail || '/noavatar.png'}
-                          alt={product.name || 'Sản phẩm'}
-                          onError={e => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/noavatar.png';
-                          }}
-                          sx={{
-                            width: 60,
-                            height: 60,
-                            borderRadius: '8px',
-                            objectFit: 'cover',
-                            backgroundColor: '#f3f4f6',
-                            border: '1px solid #e5e7eb'
-                          }}
-                        />
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant='subtitle2' sx={{ fontWeight: 600, mb: 0.5 }}>
-                            {product.name || 'Sản phẩm không xác định'}
-                          </Typography>
-                          <Chip
-                            label={product.category || 'Không có danh mục'}
-                            size='small'
-                            color='primary'
-                            variant='outlined'
-                            sx={{ mb: 0.5 }}
-                          />
-                          {/* <Typography variant='body2' color='text.secondary'>
-                            Mua lần đầu:{' '}
-                            {product.firstPurchased
-                              ? new Date(product.firstPurchased).toLocaleDateString('vi-VN')
-                              : 'Không xác định'}
-                          </Typography> */}
-                          <Typography variant='body2' color='success.main' sx={{ fontWeight: 600 }}>
-                            {product.price
-                              ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                                  product.price
-                                )
-                              : '0₫'}
-                          </Typography>
-                        </Box>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
+                {/* Preview Info */}
+                <Alert severity='info' sx={{ mt: 2, borderRadius: '8px' }}>
+                  <Typography variant='subtitle2' sx={{ mb: 1 }}>
+                    📧 Thông tin gửi email:
+                  </Typography>
+                  <Typography variant='body2'>
+                    • Loại chiến dịch:{' '}
+                    <strong>
+                      {campaignType === 'NEW_PRODUCT'
+                        ? 'Sản phẩm mới'
+                        : campaignType === 'VOUCHER_PROMOTION'
+                        ? 'Khuyến mãi voucher'
+                        : campaignType === 'RETENTION'
+                        ? 'Giữ chân khách hàng'
+                        : 'Gợi ý sản phẩm liên quan'}
+                    </strong>
+                    <br />• Phân khúc:{' '}
+                    <strong>{selectedSegments.length > 0 ? selectedSegments.join(', ') : 'Chưa chọn'}</strong>
+                    <br />• Chế độ: <strong>{manualMode ? 'Chọn thủ công' : 'Tự động theo phân khúc'}</strong>
+                  </Typography>
+                </Alert>
               </Box>
-            </Box>
-          ) : (
-            <Alert severity='error' sx={{ borderRadius: '12px' }}>
-              Không thể tải thông tin chi tiết khách hàng.
-            </Alert>
-          )}
+            )}
+
+            {/* Results Display */}
+            {lastResult && (
+              <Box sx={{ mt: 4 }}>
+                {lastResult.error ? (
+                  <Alert severity='error' sx={{ borderRadius: '8px' }}>
+                    <Typography variant='h6' sx={{ mb: 1, fontWeight: 600 }}>
+                      Lỗi gửi email
+                    </Typography>
+                    <Typography variant='body2'>{lastResult.error}</Typography>
+                  </Alert>
+                ) : (
+                  <Alert severity='success' sx={{ borderRadius: '8px' }}>
+                    <Typography variant='h6' sx={{ mb: 1, fontWeight: 600 }}>
+                      Gửi email thành công!
+                    </Typography>
+                    <Typography variant='body2'>
+                      Đã gửi thành công {lastResult.sentCount}/{lastResult.totalUsers} email
+                    </Typography>
+                    {lastResult.failedEmails && lastResult.failedEmails.length > 0 && (
+                      <Typography variant='body2' color='error' sx={{ mt: 1 }}>
+                        Gửi thất bại: {lastResult.failedEmails.length} email
+                      </Typography>
+                    )}
+                  </Alert>
+                )}
+              </Box>
+            )}
+          </Box>
         </DialogContent>
 
-        <DialogActions sx={{ p: 3, pt: 1 }}>
-          <Button
-            onClick={() => {
-              setDetailModalOpen(false);
-              setSelectedUserDetail(null);
-              setCustomerDetailData(null);
-            }}
-            variant='outlined'
-            sx={{ textTransform: 'none' }}
-          >
+        <DialogActions sx={{ p: 3, borderTop: '1px solid #e5e7eb' }}>
+          <Button onClick={onClose} color='inherit' sx={{ textTransform: 'none', fontWeight: 600 }}>
             Đóng
           </Button>
+          {tabValue === 0 && currentStep === 3 && (
+            <Button
+              variant='contained'
+              onClick={handleSendEmails}
+              disabled={isLoading || (manualMode && selectedUsers.length === 0)}
+              sx={{
+                borderRadius: '8px',
+                px: 4,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)'
+                }
+              }}
+            >
+              {isLoading ? 'Đang gửi...' : 'Gửi Email Marketing'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
-    </Dialog>
+
+      {/* Customer Detail Modal */}
+      <CustomerDetailModal
+        open={customerDetailOpen}
+        onClose={() => {
+          setCustomerDetailOpen(false);
+          setSelectedCustomer(null);
+        }}
+        customer={selectedCustomer}
+      />
+    </>
   );
 };
 
-export default SendNewProductEmail;
+export default SendNewProductEmailClean;
+
+// Also export as the original name for compatibility
+export { SendNewProductEmailClean as SendNewProductEmail };

@@ -33,6 +33,78 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
   const [editUserData, setEditUserData] = useState<any>(null);
   const [blockModalOpen, setBlockModalOpen] = useState(false);
   const [selectedUserForBlock, setSelectedUserForBlock] = useState<User | null>(null);
+  const [customerSegments, setCustomerSegments] = useState<Map<string, any>>(new Map());
+
+  // Fetch customer segments on component mount
+  useEffect(() => {
+    const fetchCustomerSegments = async () => {
+      try {
+        const segmentPromises = users.map(async (user: any) => {
+          if (user.role === 'USER') {
+            const response = await axios.get(`/api/analytics/customer-detail?userId=${user.id}`);
+            if (response.data.success) {
+              const { data } = response.data;
+              const segment = determineCustomerSegment(data.user);
+              return { userId: user.id, segment };
+            }
+          }
+          return { userId: user.id, segment: null };
+        });
+
+        const results = await Promise.all(segmentPromises);
+        const segmentMap = new Map();
+        results.forEach(result => {
+          segmentMap.set(result.userId, result.segment);
+        });
+        setCustomerSegments(segmentMap);
+      } catch (error) {
+        console.error('Error fetching customer segments:', error);
+      }
+    };
+
+    if (users.length > 0) {
+      fetchCustomerSegments();
+    }
+  }, [users]);
+
+  // Function to determine customer segment
+  const determineCustomerSegment = (customerData: any) => {
+    if (!customerData || customerData.role !== 'USER') return null;
+
+    const totalSpent = customerData.totalSpent || 0;
+    const orderCount = customerData.totalOrders || 0;
+    const lastOrderDate = customerData.lastOrderDate ? new Date(customerData.lastOrderDate) : null;
+    const daysSinceLastOrder = lastOrderDate
+      ? Math.floor((Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    if (totalSpent > 5000000 && orderCount >= 3 && (daysSinceLastOrder === null || daysSinceLastOrder <= 60)) {
+      return {
+        id: 'vip_customers',
+        name: 'VIP',
+        color: '#9c27b0',
+        description: 'Chi tiêu > 5M, đặt hàng thường xuyên'
+      };
+    } else if (orderCount <= 2 && (daysSinceLastOrder === null || daysSinceLastOrder <= 30)) {
+      return { id: 'new_customers', name: 'Mới', color: '#4caf50', description: 'Đăng ký gần đây, ít đơn hàng' };
+    } else if (daysSinceLastOrder !== null && daysSinceLastOrder >= 90 && orderCount >= 1) {
+      return {
+        id: 'at_risk_customers',
+        name: 'Có nguy cơ rời bỏ',
+        color: '#f44336',
+        description: 'Không mua hàng trong 90 ngày'
+      };
+    } else if (daysSinceLastOrder !== null && daysSinceLastOrder <= 60 && orderCount >= 2) {
+      return {
+        id: 'active_customers',
+        name: 'Tích cực',
+        color: '#2196f3',
+        description: 'Mua hàng thường xuyên trong 60 ngày'
+      };
+    }
+
+    return null;
+  };
 
   // Calculate statistics
   const totalUsers = users.length;
@@ -114,6 +186,33 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
       }
     },
     { field: 'email', headerName: 'Email', width: 210 },
+    {
+      field: 'segment',
+      headerName: 'Phân khúc',
+      width: 140,
+      renderCell: params => {
+        const segment = customerSegments.get(params.row.id);
+        if (!segment || params.row.role !== 'USER') {
+          return null;
+        }
+
+        return (
+          <Chip
+            label={segment.name}
+            size='small'
+            sx={{
+              backgroundColor: segment.color,
+              color: 'white',
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              '& .MuiChip-label': {
+                px: 1.5
+              }
+            }}
+          />
+        );
+      }
+    },
     {
       field: 'role',
       headerName: 'Vai trò',

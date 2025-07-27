@@ -805,6 +805,23 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
           </div>
           <div className='flex items-center gap-3'>
             <MuiButton
+              onClick={() => setShowEmailModal(true)}
+              startIcon={<FaRegEnvelope />}
+              variant='outlined'
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                borderColor: '#3b82f6',
+                color: '#3b82f6',
+                '&:hover': {
+                  borderColor: '#2563eb',
+                  backgroundColor: '#eff6ff'
+                }
+              }}
+            >
+              Email Marketing
+            </MuiButton>
+            <MuiButton
               onClick={toggleShowDeleted}
               startIcon={showDeleted ? <MdVisibility /> : <MdDelete />}
               variant={showDeleted ? 'contained' : 'outlined'}
@@ -847,23 +864,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
               ) : (
                 'Xem sản phẩm đã xóa'
               )}
-            </MuiButton>
-            <MuiButton
-              onClick={() => setShowEmailModal(true)}
-              startIcon={<FaRegEnvelope />}
-              variant='outlined'
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                borderColor: '#3b82f6',
-                color: '#3b82f6',
-                '&:hover': {
-                  borderColor: '#2563eb',
-                  backgroundColor: '#eff6ff'
-                }
-              }}
-            >
-              Email Marketing
             </MuiButton>
             <MuiButton
               onClick={() => setAddProductModalOpen(true)}
