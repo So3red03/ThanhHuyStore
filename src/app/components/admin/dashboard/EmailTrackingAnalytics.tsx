@@ -122,9 +122,16 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // Calculate days from timeFilter
-  const days = useMemo(() => {
-    switch (timeFilter) {
+  const getDaysFromFilter = (filter: string) => {
+    if (filter === 'custom' && startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    }
+
+    switch (filter) {
       case '1d':
         return 1;
       case '7d':
@@ -136,8 +143,14 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
       default:
         return 7;
     }
-  }, [timeFilter]);
+  };
 
+  // Calculate days based on filter and custom dates
+  const days = useMemo(() => {
+    return getDaysFromFilter(timeFilter);
+  }, [timeFilter, startDate, endDate]);
+
+  // Handle time filter change
   const handleTimeFilterChange = (value: string) => {
     setTimeFilter(value);
     if (value === 'custom') {
@@ -154,8 +167,10 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
       setIsLoading(true);
       let url;
       if (timeFilter === 'custom' && startDate && endDate) {
+        // For custom date range, use startDate and endDate parameters
         url = `/api/marketing/analytics?startDate=${startDate}&endDate=${endDate}`;
       } else {
+        // For predefined filters, use days parameter
         url = `/api/marketing/analytics?timeRange=${days}`;
       }
       const response = await axios.get(url);
@@ -186,34 +201,7 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
 
   useEffect(() => {
     fetchData();
-  }, [days, timeFilter, startDate, endDate]);
-
-  if (isLoading) {
-    return (
-      <Card sx={{ mb: 6, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <CardContent sx={{ p: 6 }}>
-          <div className='flex items-center gap-3 mb-6'>
-            <div className='p-3 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl'>
-              <MdEmail size={24} className='text-blue-600' />
-            </div>
-            <div>
-              <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937', mb: 1 }}>
-                Phân tích Email Marketing
-              </Typography>
-              <Typography variant='body2' color='textSecondary'>
-                Đang tải dữ liệu chi tiết...
-              </Typography>
-            </div>
-          </div>
-          <div className='space-y-3'>
-            <div className='h-4 bg-gradient-to-r from-blue-200 via-purple-200 to-blue-200 rounded-full animate-pulse'></div>
-            <div className='h-4 bg-gradient-to-r from-blue-200 via-purple-200 to-blue-200 rounded-full animate-pulse w-3/4'></div>
-            <div className='h-4 bg-gradient-to-r from-blue-200 via-purple-200 to-blue-200 rounded-full animate-pulse w-1/2'></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  }, [days, timeFilter, startDate, endDate]); // Include all filter dependencies
 
   if (!data || !data.overview) {
     return (
@@ -357,339 +345,354 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
 
           {/* Stats Cards */}
           <div className='p-4'>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card
-                  sx={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(102, 126, 234, 0.2)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 20px rgba(102, 126, 234, 0.3)'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                    <div className='flex justify-center mb-2'>
-                      <div className='p-2 bg-white/20 rounded-full'>
-                        <MdCampaign size={20} />
-                      </div>
-                    </div>
-                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
-                      {overview.totalCampaigns?.toLocaleString() || '0'}
-                    </Typography>
-                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                      Tổng chiến dịch
-                    </Typography>
-                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng quan</div>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card
-                  sx={{
-                    background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-                    color: 'white',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(17, 153, 142, 0.2)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 20px rgba(17, 153, 142, 0.3)'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                    <div className='flex justify-center mb-2'>
-                      <div className='p-2 bg-white/20 rounded-full'>
-                        <MdEmail size={20} />
-                      </div>
-                    </div>
-                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
-                      {overview.totalEmailsSent?.toLocaleString() || '0'}
-                    </Typography>
-                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                      Email đã gửi
-                    </Typography>
-                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng gửi</div>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card
-                  sx={{
-                    background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-                    color: 'white',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(255, 154, 158, 0.2)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 20px rgba(255, 154, 158, 0.3)'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                    <div className='flex justify-center mb-2'>
-                      <div className='p-2 bg-white/20 rounded-full'>
-                        <MdMouse size={20} />
-                      </div>
-                    </div>
-                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
-                      {overview.totalClicks?.toLocaleString() || '0'}
-                    </Typography>
-                    <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                      Lượt click
-                    </Typography>
-                    <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tương tác</div>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card
-                  sx={{
-                    background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-                    color: '#374151',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 4px 16px rgba(168, 237, 234, 0.2)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 20px rgba(168, 237, 234, 0.3)'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                    <div className='flex justify-center mb-2'>
-                      <div className='p-2 bg-white/60 rounded-full'>
-                        <MdPercent size={20} className='text-purple-600' />
-                      </div>
-                    </div>
-                    <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
-                      {overview.averageCTR || '0'}%
-                    </Typography>
-                    <Typography variant='body2' sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
-                      CTR trung bình
-                    </Typography>
-                    <div className='mt-1 text-xs bg-white/60 text-purple-700 rounded-full px-2 py-0.5'>Hiệu suất</div>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          </div>
-
-          {/* Analytics Sections */}
-          <div className='px-4 pb-4'>
-            <Grid container spacing={3}>
-              {/* Campaign Performance */}
-              <Grid item xs={12} lg={8}>
-                <Accordion defaultExpanded sx={{ borderRadius: '16px', mb: 3 }}>
-                  <AccordionSummary expandIcon={<MdExpandMore />}>
-                    <div className='flex items-center gap-2'>
-                      <MdBarChart className='text-blue-600' />
-                      <Typography variant='h6' sx={{ fontWeight: 600 }}>
-                        Hiệu suất chiến dịch
-                      </Typography>
-                    </div>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <TableContainer>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ fontWeight: 600 }}>Chiến dịch</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Loại</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Email gửi</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Clicks</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>CTR</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {data.campaignPerformance?.slice(0, 10).map(campaign => (
-                            <TableRow key={campaign.campaignId} hover>
-                              <TableCell>
-                                <div>
-                                  <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                                    {campaign.campaignTitle || 'Chiến dịch không tên'}
-                                  </Typography>
-                                  <Typography variant='caption' color='textSecondary'>
-                                    {moment(campaign.sentAt).format('DD/MM/YYYY HH:mm')}
-                                  </Typography>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={campaign.campaignType}
-                                  size='small'
-                                  variant='outlined'
-                                  sx={{
-                                    borderColor: '#667eea',
-                                    color: '#667eea',
-                                    fontSize: '0.7rem'
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                                  {campaign.recipientCount.toLocaleString()}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                                  {campaign.clickCount.toLocaleString()}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <div className='flex items-center gap-2'>
-                                  <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                                    {campaign.ctr}%
-                                  </Typography>
-                                  <LinearProgress
-                                    variant='determinate'
-                                    value={Math.min(campaign.ctr * 2, 100)}
-                                    sx={{
-                                      width: 40,
-                                      height: 4,
-                                      borderRadius: 2,
-                                      backgroundColor: '#e5e7eb',
-                                      '& .MuiLinearProgress-bar': {
-                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                                      }
-                                    }}
-                                  />
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={campaign.status === 'sent' ? 'Đã gửi' : campaign.status}
-                                  size='small'
-                                  color={campaign.status === 'sent' ? 'success' : 'default'}
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </AccordionDetails>
-                </Accordion>
-              </Grid>
-
-              {/* Top Products Performance */}
-              <Grid item xs={12} lg={4}>
-                <Accordion defaultExpanded sx={{ borderRadius: '16px', mb: 3 }}>
-                  <AccordionSummary expandIcon={<MdExpandMore />}>
-                    <div className='flex items-center gap-2'>
-                      <MdStar className='text-yellow-600' />
-                      <Typography variant='h6' sx={{ fontWeight: 600 }}>
-                        Top sản phẩm hiệu quả
-                      </Typography>
-                    </div>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <List dense>
-                      {productPerformance.slice(0, 8).map((product, index) => (
-                        <ListItem key={product.productId} sx={{ px: 0, py: 1 }}>
-                          <div className='flex items-center justify-between w-full'>
-                            <div className='flex items-center gap-3'>
-                              <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-                                  index === 0
-                                    ? 'bg-gradient-to-br from-yellow-400 to-yellow-600'
-                                    : index === 1
-                                    ? 'bg-gradient-to-br from-gray-400 to-gray-600'
-                                    : index === 2
-                                    ? 'bg-gradient-to-br from-orange-400 to-orange-600'
-                                    : 'bg-gradient-to-br from-blue-400 to-blue-600'
-                                }`}
-                              >
-                                {index + 1}
-                              </div>
-                              <div>
-                                <Typography variant='body2' sx={{ fontWeight: 500, lineHeight: 1.2 }}>
-                                  {product.productName}
-                                </Typography>
-                                <Typography variant='caption' color='textSecondary'>
-                                  {product.categoryName}
-                                </Typography>
-                              </div>
-                            </div>
-                            <div className='text-right'>
-                              <Typography variant='body2' sx={{ fontWeight: 600, color: '#667eea' }}>
-                                {product.ctr}%
-                              </Typography>
-                              <Typography variant='caption' color='textSecondary'>
-                                {product.totalClicks} clicks
-                              </Typography>
-                            </div>
-                          </div>
-                        </ListItem>
-                      ))}
-                    </List>
-                  </AccordionDetails>
-                </Accordion>
-              </Grid>
-            </Grid>
-
-            {/* Campaign Type Performance */}
-            <Accordion sx={{ borderRadius: '16px', mb: 3 }}>
-              <AccordionSummary expandIcon={<MdExpandMore />}>
-                <div className='flex items-center gap-2'>
-                  <MdInsights className='text-purple-600' />
-                  <Typography variant='h6' sx={{ fontWeight: 600 }}>
-                    Hiệu suất theo loại chiến dịch
+            {isLoading ? (
+              <div className='flex justify-center items-center py-12'>
+                <div className='text-center'>
+                  <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4'></div>
+                  <Typography variant='body2' color='textSecondary'>
+                    Đang tải dữ liệu phân tích...
                   </Typography>
                 </div>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={3}>
-                  {campaignTypeStats.map(stat => (
-                    <Grid item xs={12} sm={6} md={3} key={stat.type}>
-                      <Card
-                        sx={{
-                          borderRadius: '12px',
-                          border: '1px solid #e5e7eb',
-                          background:
-                            'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)'
-                        }}
-                      >
-                        <CardContent sx={{ p: 3, textAlign: 'center' }}>
-                          <Typography variant='h6' sx={{ fontWeight: 600, color: '#667eea', mb: 1 }}>
-                            {stat.type === 'NEW_PRODUCT'
-                              ? 'Sản phẩm mới'
-                              : stat.type === 'VOUCHER_PROMOTION'
-                              ? 'Voucher'
-                              : stat.type === 'CROSS_SELL'
-                              ? 'Gợi ý'
-                              : stat.type}
-                          </Typography>
-                          <Typography variant='h4' sx={{ fontWeight: 700, color: '#1f2937', mb: 1 }}>
-                            {stat.ctr}%
-                          </Typography>
-                          <Typography variant='body2' color='textSecondary'>
-                            CTR từ {stat.count} chiến dịch
-                          </Typography>
-                          <Typography variant='caption' color='textSecondary' sx={{ display: 'block', mt: 1 }}>
-                            {stat.clicks.toLocaleString()} clicks / {stat.emailsSent.toLocaleString()} emails
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
+              </div>
+            ) : (
+              <>
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(102, 126, 234, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(102, 126, 234, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdCampaign size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                          {overview.totalCampaigns?.toLocaleString() || '0'}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Tổng chiến dịch
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng quan</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(17, 153, 142, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(17, 153, 142, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdEmail size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
+                          {overview.totalEmailsSent?.toLocaleString() || '0'}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Email đã gửi
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng gửi</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(255, 154, 158, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(255, 154, 158, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdMouse size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
+                          {overview.totalClicks?.toLocaleString() || '0'}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Lượt click
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tương tác</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                        color: '#374151',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(168, 237, 234, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(168, 237, 234, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/60 rounded-full'>
+                            <MdPercent size={20} className='text-purple-600' />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                          {overview.averageCTR || '0'}%
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
+                          CTR trung bình
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/60 text-purple-700 rounded-full px-2 py-0.5'>
+                          Hiệu suất
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
                 </Grid>
-              </AccordionDetails>
-            </Accordion>
+
+                {/* Analytics Sections */}
+                <div className='px-4 pb-4'>
+                  <Grid container spacing={3}>
+                    {/* Campaign Performance */}
+                    <Grid item xs={12} lg={8}>
+                      <Accordion defaultExpanded sx={{ borderRadius: '16px', mb: 3 }}>
+                        <AccordionSummary expandIcon={<MdExpandMore />}>
+                          <div className='flex items-center gap-2'>
+                            <MdBarChart className='text-blue-600' />
+                            <Typography variant='h6' sx={{ fontWeight: 600 }}>
+                              Hiệu suất chiến dịch
+                            </Typography>
+                          </div>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <TableContainer>
+                            <Table>
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell sx={{ fontWeight: 600 }}>Chiến dịch</TableCell>
+                                  <TableCell sx={{ fontWeight: 600 }}>Loại</TableCell>
+                                  <TableCell sx={{ fontWeight: 600 }}>Email gửi</TableCell>
+                                  <TableCell sx={{ fontWeight: 600 }}>Clicks</TableCell>
+                                  <TableCell sx={{ fontWeight: 600 }}>CTR</TableCell>
+                                  <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {data.campaignPerformance?.slice(0, 10).map(campaign => (
+                                  <TableRow key={campaign.campaignId} hover>
+                                    <TableCell>
+                                      <div>
+                                        <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                                          {campaign.campaignTitle || 'Chiến dịch không tên'}
+                                        </Typography>
+                                        <Typography variant='caption' color='textSecondary'>
+                                          {moment(campaign.sentAt).format('DD/MM/YYYY HH:mm')}
+                                        </Typography>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Chip
+                                        label={campaign.campaignType}
+                                        size='small'
+                                        variant='outlined'
+                                        sx={{
+                                          borderColor: '#667eea',
+                                          color: '#667eea',
+                                          fontSize: '0.7rem'
+                                        }}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                                        {campaign.recipientCount.toLocaleString()}
+                                      </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                                        {campaign.clickCount.toLocaleString()}
+                                      </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className='flex items-center gap-2'>
+                                        <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                                          {campaign.ctr}%
+                                        </Typography>
+                                        <LinearProgress
+                                          variant='determinate'
+                                          value={Math.min(campaign.ctr * 2, 100)}
+                                          sx={{
+                                            width: 40,
+                                            height: 4,
+                                            borderRadius: 2,
+                                            backgroundColor: '#e5e7eb',
+                                            '& .MuiLinearProgress-bar': {
+                                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Chip
+                                        label={campaign.status === 'sent' ? 'Đã gửi' : campaign.status}
+                                        size='small'
+                                        color={campaign.status === 'sent' ? 'success' : 'default'}
+                                      />
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        </AccordionDetails>
+                      </Accordion>
+                    </Grid>
+
+                    {/* Top Products Performance */}
+                    <Grid item xs={12} lg={4}>
+                      <Accordion defaultExpanded sx={{ borderRadius: '16px', mb: 3 }}>
+                        <AccordionSummary expandIcon={<MdExpandMore />}>
+                          <div className='flex items-center gap-2'>
+                            <MdStar className='text-yellow-600' />
+                            <Typography variant='h6' sx={{ fontWeight: 600 }}>
+                              Top sản phẩm hiệu quả
+                            </Typography>
+                          </div>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <List dense>
+                            {productPerformance.slice(0, 8).map((product, index) => (
+                              <ListItem key={product.productId} sx={{ px: 0, py: 1 }}>
+                                <div className='flex items-center justify-between w-full'>
+                                  <div className='flex items-center gap-3'>
+                                    <div
+                                      className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                                        index === 0
+                                          ? 'bg-gradient-to-br from-yellow-400 to-yellow-600'
+                                          : index === 1
+                                          ? 'bg-gradient-to-br from-gray-400 to-gray-600'
+                                          : index === 2
+                                          ? 'bg-gradient-to-br from-orange-400 to-orange-600'
+                                          : 'bg-gradient-to-br from-blue-400 to-blue-600'
+                                      }`}
+                                    >
+                                      {index + 1}
+                                    </div>
+                                    <div>
+                                      <Typography variant='body2' sx={{ fontWeight: 500, lineHeight: 1.2 }}>
+                                        {product.productName}
+                                      </Typography>
+                                      <Typography variant='caption' color='textSecondary'>
+                                        {product.categoryName}
+                                      </Typography>
+                                    </div>
+                                  </div>
+                                  <div className='text-right'>
+                                    <Typography variant='body2' sx={{ fontWeight: 600, color: '#667eea' }}>
+                                      {product.ctr}%
+                                    </Typography>
+                                    <Typography variant='caption' color='textSecondary'>
+                                      {product.totalClicks} clicks
+                                    </Typography>
+                                  </div>
+                                </div>
+                              </ListItem>
+                            ))}
+                          </List>
+                        </AccordionDetails>
+                      </Accordion>
+                    </Grid>
+                  </Grid>
+
+                  {/* Campaign Type Performance */}
+                  <Accordion sx={{ borderRadius: '16px', mb: 3 }}>
+                    <AccordionSummary expandIcon={<MdExpandMore />}>
+                      <div className='flex items-center gap-2'>
+                        <MdInsights className='text-purple-600' />
+                        <Typography variant='h6' sx={{ fontWeight: 600 }}>
+                          Hiệu suất theo loại chiến dịch
+                        </Typography>
+                      </div>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Grid container spacing={3}>
+                        {campaignTypeStats.map(stat => (
+                          <Grid item xs={12} sm={6} md={3} key={stat.type}>
+                            <Card
+                              sx={{
+                                borderRadius: '12px',
+                                border: '1px solid #e5e7eb',
+                                background:
+                                  'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)'
+                              }}
+                            >
+                              <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                                <Typography variant='h6' sx={{ fontWeight: 600, color: '#667eea', mb: 1 }}>
+                                  {stat.type === 'NEW_PRODUCT'
+                                    ? 'Sản phẩm mới'
+                                    : stat.type === 'VOUCHER_PROMOTION'
+                                    ? 'Voucher'
+                                    : stat.type === 'CROSS_SELL'
+                                    ? 'Gợi ý'
+                                    : stat.type}
+                                </Typography>
+                                <Typography variant='h4' sx={{ fontWeight: 700, color: '#1f2937', mb: 1 }}>
+                                  {stat.ctr}%
+                                </Typography>
+                                <Typography variant='body2' color='textSecondary'>
+                                  CTR từ {stat.count} chiến dịch
+                                </Typography>
+                                <Typography variant='caption' color='textSecondary' sx={{ display: 'block', mt: 1 }}>
+                                  {stat.clicks.toLocaleString()} clicks / {stat.emailsSent.toLocaleString()} emails
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </AccordionDetails>
+                  </Accordion>
+                </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>

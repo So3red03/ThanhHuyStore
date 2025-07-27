@@ -278,33 +278,6 @@ const ReturnOrderAnalytics: React.FC<ReturnOrderAnalyticsProps> = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Card sx={{ mb: 6, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <CardContent sx={{ p: 6 }}>
-          <div className='flex items-center gap-3 mb-6'>
-            <div className='p-3 bg-gradient-to-br from-red-100 to-pink-100 rounded-xl'>
-              <MdInsights size={24} className='text-red-600' />
-            </div>
-            <div>
-              <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937', mb: 1 }}>
-                Phân tích đổi/trả hàng - Góc nhìn kinh doanh
-              </Typography>
-              <Typography variant='body2' color='textSecondary'>
-                Đang tải dữ liệu chi tiết...
-              </Typography>
-            </div>
-          </div>
-          <div className='space-y-3'>
-            <div className='h-4 bg-gradient-to-r from-red-200 via-pink-200 to-red-200 rounded-full animate-pulse'></div>
-            <div className='h-4 bg-gradient-to-r from-red-200 via-pink-200 to-red-200 rounded-full animate-pulse w-3/4'></div>
-            <div className='h-4 bg-gradient-to-r from-red-200 via-pink-200 to-red-200 rounded-full animate-pulse w-1/2'></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   if (error || !data) {
     return (
       <Box sx={{ p: 3 }}>
@@ -424,408 +397,425 @@ const ReturnOrderAnalytics: React.FC<ReturnOrderAnalyticsProps> = () => {
           </div>
 
           {/* Stats Cards - Moved from ManageReturnsClient */}
-          {stats && (
-            <div className='p-4'>
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card
-                    sx={{
-                      background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                      color: 'white',
-                      borderRadius: '12px',
-                      border: 'none',
-                      boxShadow: '0 4px 16px rgba(59, 130, 246, 0.2)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 6px 20px rgba(59, 130, 246, 0.3)'
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                      <div className='flex justify-center mb-2'>
-                        <div className='p-2 bg-white/20 rounded-full'>
-                          <MdAssignment size={20} />
-                        </div>
-                      </div>
-                      <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
-                        {stats.total?.toLocaleString() || '0'}
-                      </Typography>
-                      <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                        Tổng yêu cầu
-                      </Typography>
-                      <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng quan</div>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card
-                    sx={{
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      color: 'white',
-                      borderRadius: '12px',
-                      border: 'none',
-                      boxShadow: '0 4px 16px rgba(245, 158, 11, 0.2)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 6px 20px rgba(245, 158, 11, 0.3)'
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                      <div className='flex justify-center mb-2'>
-                        <div className='p-2 bg-white/20 rounded-full'>
-                          <MdTimeline size={20} />
-                        </div>
-                      </div>
-                      <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
-                        {stats.pending?.toLocaleString() || '0'}
-                      </Typography>
-                      <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                        Chờ duyệt
-                      </Typography>
-                      <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Cần xử lý</div>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card
-                    sx={{
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white',
-                      borderRadius: '12px',
-                      border: 'none',
-                      boxShadow: '0 4px 16px rgba(16, 185, 129, 0.2)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 6px 20px rgba(16, 185, 129, 0.3)'
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                      <div className='flex justify-center mb-2'>
-                        <div className='p-2 bg-white/20 rounded-full'>
-                          <MdTrendingUp size={20} />
-                        </div>
-                      </div>
-                      <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
-                        {stats.completed?.toLocaleString() || '0'}
-                      </Typography>
-                      <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                        Hoàn tất
-                      </Typography>
-                      <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Thành công</div>
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} sm={6} md={3}>
-                  <Card
-                    sx={{
-                      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                      color: 'white',
-                      borderRadius: '12px',
-                      border: 'none',
-                      boxShadow: '0 4px 16px rgba(139, 92, 246, 0.2)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 6px 20px rgba(139, 92, 246, 0.3)'
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
-                      <div className='flex justify-center mb-2'>
-                        <div className='p-2 bg-white/20 rounded-full'>
-                          <MdAttachMoney size={20} />
-                        </div>
-                      </div>
-                      <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
-                        {formatPrice(stats.totalRefundAmount || 0)}
-                      </Typography>
-                      <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                        Tổng hoàn tiền
-                      </Typography>
-                      <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tài chính</div>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-            </div>
-          )}
-
-          <Box sx={{ p: 3 }}>
-            {/* Business Insights - Ưu tiên cao nhất */}
-            {data.businessInsights && data.businessInsights.length > 0 && (
-              <Card sx={{ mb: 3, border: '2px solid #e3f2fd' }}>
-                <CardContent>
-                  <Typography variant='h6' gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <MdWarning className='text-orange-500' />
-                    Insights kinh doanh quan trọng
+          <div className='p-4'>
+            {isLoading ? (
+              <div className='flex justify-center items-center py-12'>
+                <div className='text-center'>
+                  <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4'></div>
+                  <Typography variant='body2' color='textSecondary'>
+                    Đang tải dữ liệu phân tích...
                   </Typography>
-                  <Grid container spacing={2}>
-                    {data.businessInsights.map((insight, index) => (
-                      <Grid item xs={12} md={6} key={index}>
-                        <Alert
-                          severity={insight.type}
-                          sx={{ height: '100%' }}
-                          action={
-                            insight.actionRequired && (
-                              <Chip
-                                label='Cần hành động'
-                                size='small'
-                                color={getBusinessImpactColor(insight.impact) as any}
-                              />
-                            )
-                          }
-                        >
-                          <Typography variant='subtitle2' fontWeight='bold'>
-                            {insight.title}
-                          </Typography>
-                          <Typography variant='body2'>{insight.description}</Typography>
-                        </Alert>
-                      </Grid>
-                    ))}
+                </div>
+              </div>
+            ) : stats ? (
+              <>
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(59, 130, 246, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(59, 130, 246, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdAssignment size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                          {stats.total?.toLocaleString() || '0'}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Tổng yêu cầu
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng quan</div>
+                      </CardContent>
+                    </Card>
                   </Grid>
-                </CardContent>
-              </Card>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(245, 158, 11, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(245, 158, 11, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdTimeline size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                          {stats.pending?.toLocaleString() || '0'}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Chờ duyệt
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Cần xử lý</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(16, 185, 129, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdTrendingUp size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                          {stats.completed?.toLocaleString() || '0'}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Hoàn tất
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Thành công</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(139, 92, 246, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(139, 92, 246, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdAttachMoney size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.3rem' }}>
+                          {formatPrice(stats.totalRefundAmount || 0)}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Tổng hoàn tiền
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tài chính</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+
+                <Box sx={{ p: 3 }}>
+                  {/* Business Insights - Ưu tiên cao nhất */}
+                  {data.businessInsights && data.businessInsights.length > 0 && (
+                    <Card sx={{ mb: 3, border: '2px solid #e3f2fd' }}>
+                      <CardContent>
+                        <Typography variant='h6' gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <MdWarning className='text-orange-500' />
+                          Insights kinh doanh quan trọng
+                        </Typography>
+                        <Grid container spacing={2}>
+                          {data.businessInsights.map((insight, index) => (
+                            <Grid item xs={12} md={6} key={index}>
+                              <Alert
+                                severity={insight.type}
+                                sx={{ height: '100%' }}
+                                action={
+                                  insight.actionRequired && (
+                                    <Chip
+                                      label='Cần hành động'
+                                      size='small'
+                                      color={getBusinessImpactColor(insight.impact) as any}
+                                    />
+                                  )
+                                }
+                              >
+                                <Typography variant='subtitle2' fontWeight='bold'>
+                                  {insight.title}
+                                </Typography>
+                                <Typography variant='body2'>{insight.description}</Typography>
+                              </Alert>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Phân tích theo lý do - Trọng tâm kinh doanh */}
+                  <Accordion defaultExpanded>
+                    <AccordionSummary expandIcon={<MdExpandMore />}>
+                      <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MdAssignment />
+                        Phân tích theo lý do đổi/trả
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <TableContainer component={Paper} sx={{ mb: 2 }}>
+                        <Table>
+                          <TableHead>
+                            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                              <TableCell>
+                                <strong>Lý do</strong>
+                              </TableCell>
+                              <TableCell align='center'>
+                                <strong>Số lượng</strong>
+                              </TableCell>
+                              <TableCell align='center'>
+                                <strong>Tỷ lệ</strong>
+                              </TableCell>
+                              <TableCell align='right'>
+                                <strong>Tổng hoàn tiền</strong>
+                              </TableCell>
+                              <TableCell align='center'>
+                                <strong>Xu hướng</strong>
+                              </TableCell>
+                              <TableCell align='center'>
+                                <strong>Tác động KD</strong>
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {data.reasonAnalysis.map((reason, index) => (
+                              <TableRow key={index} hover>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {getReasonIcon(reason.reason)}
+                                    {getReasonText(reason.reason)}
+                                  </Box>
+                                </TableCell>
+                                <TableCell align='center'>
+                                  <Chip label={reason.count} size='small' />
+                                </TableCell>
+                                <TableCell align='center'>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <LinearProgress
+                                      variant='determinate'
+                                      value={reason.percentage}
+                                      sx={{ width: 60, height: 8, borderRadius: 4 }}
+                                    />
+                                    <Typography variant='body2'>{reason.percentage.toFixed(1)}%</Typography>
+                                  </Box>
+                                </TableCell>
+                                <TableCell align='right'>
+                                  <Typography variant='body2' fontWeight='bold' color='error.main'>
+                                    {formatPrice(reason.totalRefunded)}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align='center'>
+                                  <Tooltip
+                                    title={`Xu hướng ${
+                                      reason.trend === 'up' ? 'tăng' : reason.trend === 'down' ? 'giảm' : 'ổn định'
+                                    }`}
+                                  >
+                                    {getTrendIcon(reason.trend)}
+                                  </Tooltip>
+                                </TableCell>
+                                <TableCell align='center'>
+                                  <Chip
+                                    label={
+                                      reason.businessImpact === 'high'
+                                        ? 'Cao'
+                                        : reason.businessImpact === 'medium'
+                                        ? 'Trung bình'
+                                        : 'Thấp'
+                                    }
+                                    size='small'
+                                    color={getBusinessImpactColor(reason.businessImpact) as any}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </AccordionDetails>
+                  </Accordion>
+
+                  {/* Phân tích sản phẩm có vấn đề */}
+                  <Accordion>
+                    <AccordionSummary expandIcon={<MdExpandMore />}>
+                      <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MdShoppingCart />
+                        Sản phẩm cần chú ý
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <TableContainer component={Paper}>
+                        <Table>
+                          <TableHead>
+                            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                              <TableCell>
+                                <strong>Sản phẩm</strong>
+                              </TableCell>
+                              <TableCell align='center'>
+                                <strong>Trả hàng</strong>
+                              </TableCell>
+                              <TableCell align='center'>
+                                <strong>Đổi hàng</strong>
+                              </TableCell>
+                              <TableCell align='center'>
+                                <strong>Tỷ lệ trả</strong>
+                              </TableCell>
+                              <TableCell align='right'>
+                                <strong>Tổng hoàn tiền</strong>
+                              </TableCell>
+                              <TableCell align='center'>
+                                <strong>Điểm chất lượng</strong>
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {data.productAnalysis.slice(0, 10).map((product, index) => (
+                              <TableRow key={index} hover>
+                                <TableCell>
+                                  <Box>
+                                    <Typography variant='body2' fontWeight='bold'>
+                                      {product.productName}
+                                    </Typography>
+                                    <Typography variant='caption' color='text.secondary'>
+                                      ID: {product.productId.substring(0, 8)}...
+                                    </Typography>
+                                  </Box>
+                                </TableCell>
+                                <TableCell align='center'>
+                                  <Chip label={product.returnCount} size='small' color='error' />
+                                </TableCell>
+                                <TableCell align='center'>
+                                  <Chip label={product.exchangeCount} size='small' color='warning' />
+                                </TableCell>
+                                <TableCell align='center'>
+                                  <Typography
+                                    variant='body2'
+                                    color={
+                                      product.returnRate > 10
+                                        ? 'error.main'
+                                        : product.returnRate > 5
+                                        ? 'warning.main'
+                                        : 'success.main'
+                                    }
+                                    fontWeight='bold'
+                                  >
+                                    {product.returnRate.toFixed(1)}%
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align='right'>
+                                  <Typography variant='body2' fontWeight='bold' color='error.main'>
+                                    {formatPrice(product.totalRefunded)}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align='center'>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <LinearProgress
+                                      variant='determinate'
+                                      value={product.qualityScore}
+                                      sx={{
+                                        width: 50,
+                                        height: 6,
+                                        borderRadius: 3,
+                                        '& .MuiLinearProgress-bar': {
+                                          backgroundColor:
+                                            product.qualityScore > 80
+                                              ? '#4caf50'
+                                              : product.qualityScore > 60
+                                              ? '#ff9800'
+                                              : '#f44336'
+                                        }
+                                      }}
+                                    />
+                                    <Typography variant='caption'>{product.qualityScore}/100</Typography>
+                                  </Box>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </AccordionDetails>
+                  </Accordion>
+
+                  {/* Khuyến nghị hành động */}
+                  <Card sx={{ mt: 3, background: 'linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)' }}>
+                    <CardContent>
+                      <Typography variant='h6' gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MdPsychology className='text-purple-600' />
+                        Khuyến nghị hành động
+                      </Typography>
+                      <List>
+                        <ListItem>
+                          <ListItemText
+                            primary='🎯 Tập trung cải thiện chất lượng sản phẩm'
+                            secondary="Ưu tiên các sản phẩm có tỷ lệ trả hàng > 10% và lý do 'Sản phẩm bị lỗi'"
+                          />
+                        </ListItem>
+                        <Divider />
+                        <ListItem>
+                          <ListItemText
+                            primary='📋 Cải thiện mô tả sản phẩm'
+                            secondary="Giảm thiểu lý do 'Giao sai sản phẩm' và 'Đổi ý không muốn mua'"
+                          />
+                        </ListItem>
+                        <Divider />
+                        <ListItem>
+                          <ListItemText
+                            primary='🚀 Tối ưu hóa quy trình đổi hàng'
+                            secondary='Khuyến khích đổi hàng thay vì trả hàng để giữ chân khách hàng'
+                          />
+                        </ListItem>
+                        <Divider />
+                        <ListItem>
+                          <ListItemText
+                            primary='💰 Theo dõi tác động tài chính'
+                            secondary='Thiết lập ngưỡng cảnh báo khi tỷ lệ trả hàng vượt quá 5% doanh thu'
+                          />
+                        </ListItem>
+                      </List>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </>
+            ) : (
+              <div className='flex justify-center items-center py-12'>
+                <Typography variant='body2' color='textSecondary'>
+                  Không có dữ liệu để hiển thị
+                </Typography>
+              </div>
             )}
-
-            {/* Phân tích theo lý do - Trọng tâm kinh doanh */}
-            <Accordion defaultExpanded>
-              <AccordionSummary expandIcon={<MdExpandMore />}>
-                <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <MdAssignment />
-                  Phân tích theo lý do đổi/trả
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <TableContainer component={Paper} sx={{ mb: 2 }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                        <TableCell>
-                          <strong>Lý do</strong>
-                        </TableCell>
-                        <TableCell align='center'>
-                          <strong>Số lượng</strong>
-                        </TableCell>
-                        <TableCell align='center'>
-                          <strong>Tỷ lệ</strong>
-                        </TableCell>
-                        <TableCell align='right'>
-                          <strong>Tổng hoàn tiền</strong>
-                        </TableCell>
-                        <TableCell align='center'>
-                          <strong>Xu hướng</strong>
-                        </TableCell>
-                        <TableCell align='center'>
-                          <strong>Tác động KD</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {data.reasonAnalysis.map((reason, index) => (
-                        <TableRow key={index} hover>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {getReasonIcon(reason.reason)}
-                              {getReasonText(reason.reason)}
-                            </Box>
-                          </TableCell>
-                          <TableCell align='center'>
-                            <Chip label={reason.count} size='small' />
-                          </TableCell>
-                          <TableCell align='center'>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <LinearProgress
-                                variant='determinate'
-                                value={reason.percentage}
-                                sx={{ width: 60, height: 8, borderRadius: 4 }}
-                              />
-                              <Typography variant='body2'>{reason.percentage.toFixed(1)}%</Typography>
-                            </Box>
-                          </TableCell>
-                          <TableCell align='right'>
-                            <Typography variant='body2' fontWeight='bold' color='error.main'>
-                              {formatPrice(reason.totalRefunded)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align='center'>
-                            <Tooltip
-                              title={`Xu hướng ${
-                                reason.trend === 'up' ? 'tăng' : reason.trend === 'down' ? 'giảm' : 'ổn định'
-                              }`}
-                            >
-                              {getTrendIcon(reason.trend)}
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell align='center'>
-                            <Chip
-                              label={
-                                reason.businessImpact === 'high'
-                                  ? 'Cao'
-                                  : reason.businessImpact === 'medium'
-                                  ? 'Trung bình'
-                                  : 'Thấp'
-                              }
-                              size='small'
-                              color={getBusinessImpactColor(reason.businessImpact) as any}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Phân tích sản phẩm có vấn đề */}
-            <Accordion>
-              <AccordionSummary expandIcon={<MdExpandMore />}>
-                <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <MdShoppingCart />
-                  Sản phẩm cần chú ý
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <TableContainer component={Paper}>
-                  <Table>
-                    <TableHead>
-                      <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                        <TableCell>
-                          <strong>Sản phẩm</strong>
-                        </TableCell>
-                        <TableCell align='center'>
-                          <strong>Trả hàng</strong>
-                        </TableCell>
-                        <TableCell align='center'>
-                          <strong>Đổi hàng</strong>
-                        </TableCell>
-                        <TableCell align='center'>
-                          <strong>Tỷ lệ trả</strong>
-                        </TableCell>
-                        <TableCell align='right'>
-                          <strong>Tổng hoàn tiền</strong>
-                        </TableCell>
-                        <TableCell align='center'>
-                          <strong>Điểm chất lượng</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {data.productAnalysis.slice(0, 10).map((product, index) => (
-                        <TableRow key={index} hover>
-                          <TableCell>
-                            <Box>
-                              <Typography variant='body2' fontWeight='bold'>
-                                {product.productName}
-                              </Typography>
-                              <Typography variant='caption' color='text.secondary'>
-                                ID: {product.productId.substring(0, 8)}...
-                              </Typography>
-                            </Box>
-                          </TableCell>
-                          <TableCell align='center'>
-                            <Chip label={product.returnCount} size='small' color='error' />
-                          </TableCell>
-                          <TableCell align='center'>
-                            <Chip label={product.exchangeCount} size='small' color='warning' />
-                          </TableCell>
-                          <TableCell align='center'>
-                            <Typography
-                              variant='body2'
-                              color={
-                                product.returnRate > 10
-                                  ? 'error.main'
-                                  : product.returnRate > 5
-                                  ? 'warning.main'
-                                  : 'success.main'
-                              }
-                              fontWeight='bold'
-                            >
-                              {product.returnRate.toFixed(1)}%
-                            </Typography>
-                          </TableCell>
-                          <TableCell align='right'>
-                            <Typography variant='body2' fontWeight='bold' color='error.main'>
-                              {formatPrice(product.totalRefunded)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align='center'>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <LinearProgress
-                                variant='determinate'
-                                value={product.qualityScore}
-                                sx={{
-                                  width: 50,
-                                  height: 6,
-                                  borderRadius: 3,
-                                  '& .MuiLinearProgress-bar': {
-                                    backgroundColor:
-                                      product.qualityScore > 80
-                                        ? '#4caf50'
-                                        : product.qualityScore > 60
-                                        ? '#ff9800'
-                                        : '#f44336'
-                                  }
-                                }}
-                              />
-                              <Typography variant='caption'>{product.qualityScore}/100</Typography>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Khuyến nghị hành động */}
-            <Card sx={{ mt: 3, background: 'linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)' }}>
-              <CardContent>
-                <Typography variant='h6' gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <MdPsychology className='text-purple-600' />
-                  Khuyến nghị hành động
-                </Typography>
-                <List>
-                  <ListItem>
-                    <ListItemText
-                      primary='🎯 Tập trung cải thiện chất lượng sản phẩm'
-                      secondary="Ưu tiên các sản phẩm có tỷ lệ trả hàng > 10% và lý do 'Sản phẩm bị lỗi'"
-                    />
-                  </ListItem>
-                  <Divider />
-                  <ListItem>
-                    <ListItemText
-                      primary='📋 Cải thiện mô tả sản phẩm'
-                      secondary="Giảm thiểu lý do 'Giao sai sản phẩm' và 'Đổi ý không muốn mua'"
-                    />
-                  </ListItem>
-                  <Divider />
-                  <ListItem>
-                    <ListItemText
-                      primary='🚀 Tối ưu hóa quy trình đổi hàng'
-                      secondary='Khuyến khích đổi hàng thay vì trả hàng để giữ chân khách hàng'
-                    />
-                  </ListItem>
-                  <Divider />
-                  <ListItem>
-                    <ListItemText
-                      primary='💰 Theo dõi tác động tài chính'
-                      secondary='Thiết lập ngưỡng cảnh báo khi tỷ lệ trả hàng vượt quá 5% doanh thu'
-                    />
-                  </ListItem>
-                </List>
-              </CardContent>
-            </Card>
-          </Box>
+          </div>
         </CardContent>
       </Card>
     </Box>

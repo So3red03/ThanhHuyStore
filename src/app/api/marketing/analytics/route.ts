@@ -14,14 +14,29 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('timeRange') || '30'; // days
     const campaignType = searchParams.get('campaignType') || 'all';
+    const customStartDate = searchParams.get('startDate');
+    const customEndDate = searchParams.get('endDate');
 
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(timeRange));
+    let startDate: Date;
+    let endDate: Date = new Date(); // Default to now
+
+    if (customStartDate && customEndDate) {
+      // Use custom date range
+      startDate = new Date(customStartDate);
+      endDate = new Date(customEndDate);
+      // Set end date to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      // Use timeRange (days back from now)
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - parseInt(timeRange));
+    }
 
     // Build filter conditions
     const whereConditions: any = {
       sentAt: {
-        gte: startDate
+        gte: startDate,
+        ...(customStartDate && customEndDate ? { lte: endDate } : {})
       }
     };
 
