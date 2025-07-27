@@ -66,17 +66,10 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
   }, []);
 
   useEffect(() => {
-    const getChatRoomId = async () => {
-      try {
-        const response = await axios.post('/api/conversation', { userId: '6672c8928fd20efba9fafee4' });
-        const { id: chatRoomId } = response.data;
-        localStorage.setItem('chatRoomId', chatRoomId);
-        loadMessages(chatRoomId); // Lấy tin nhắn sau khi có chatRoomId
-        setChatRoomId(chatRoomId);
-      } catch (error) {
-        console.error('Error getting or creating chat room:', error);
-      }
-    };
+    // Chỉ tạo chat room khi user đã đăng nhập
+    if (!currentUser) {
+      return;
+    }
 
     const savedChatRoomId = localStorage.getItem('chatRoomId');
     if (savedChatRoomId) {
@@ -104,7 +97,7 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
     return () => {
       window.removeEventListener('openChatBox', handleOpenChatBox as EventListener);
     };
-  }, [setValue]);
+  }, [setValue, currentUser, isAiChat]);
 
   // Hàm để tải tin nhắn
   const loadMessages = async (chatroomId: string) => {
@@ -112,8 +105,30 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
       const response = await axios.get(`/api/messages/${chatroomId}`);
       bottomRef?.current?.scrollIntoView();
       setMessages(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading messages:', error);
+      // Nếu chatroom không tồn tại, xóa khỏi localStorage và tạo mới
+      if (error.response?.status === 404 || error.response?.status === 500) {
+        localStorage.removeItem('chatRoomId');
+        setChatRoomId(undefined);
+        // Tạo lại chat room
+        if (currentUser) {
+          getChatRoomId();
+        }
+      }
+    }
+  };
+
+  const getChatRoomId = async () => {
+    try {
+      // Không cần truyền userId vì API sẽ tự động tìm admin cho user thường
+      const response = await axios.post('/api/conversation', {});
+      const { id: chatRoomId } = response.data;
+      localStorage.setItem('chatRoomId', chatRoomId);
+      loadMessages(chatRoomId); // Lấy tin nhắn sau khi có chatRoomId
+      setChatRoomId(chatRoomId);
+    } catch (error) {
+      console.error('Error getting or creating chat room:', error);
     }
   };
 
@@ -125,6 +140,10 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
         ...data,
         chatRoomId
       });
+      // Reload messages sau khi gửi thành công
+      if (chatRoomId) {
+        loadMessages(chatRoomId);
+      }
     } catch (error) {
       console.error('Error posting message:', error);
     } finally {
