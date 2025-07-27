@@ -811,11 +811,11 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
               sx={{
                 textTransform: 'none',
                 fontWeight: 600,
-                borderColor: '#3b82f6',
-                color: '#3b82f6',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderColor: '#764ba2',
+                color: 'white',
                 '&:hover': {
-                  borderColor: '#2563eb',
-                  backgroundColor: '#eff6ff'
+                  borderColor: '#5c3ec9'
                 }
               }}
             >

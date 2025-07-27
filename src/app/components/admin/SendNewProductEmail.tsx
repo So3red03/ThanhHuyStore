@@ -136,15 +136,6 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
         lastOrderDays: { min: 90 },
         orderCount: { min: 1 }
       }
-    },
-    {
-      id: 'active_customers',
-      name: 'Khách hàng tích cực',
-      description: 'Mua hàng thường xuyên trong 60 ngày',
-      criteria: {
-        lastOrderDays: { max: 60 },
-        orderCount: { min: 2 }
-      }
     }
   ];
 
@@ -183,6 +174,8 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
         const users = response.data.data || [];
         setAllUsers(users);
         console.log('📊 [DEBUG] Loaded customers:', users.length);
+        console.log('📊 [DEBUG] Sample user data:', users[0]);
+        console.log('📊 [DEBUG] Sample user categories:', users[0]?.categories);
 
         // Fetch customer segments
         await fetchCustomerSegments(users);
@@ -204,43 +197,41 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
 
   const fetchCustomerSegments = async (users: any[]) => {
     try {
-      console.log('🔍 [DEBUG] Fetching customer segments for', users.length, 'users');
+      console.log('🔍 [DEBUG] Calculating customer segments for', users.length, 'users');
 
-      const segmentPromises = users.map(async (user: any) => {
-        if (user.role === 'USER') {
-          try {
-            const response = await axios.get(`/api/analytics/customer-detail?userId=${user.id}`);
-            if (response.data.success) {
-              const { data } = response.data;
-              const segment = determineCustomerSegment(data.user);
-              console.log('✅ [DEBUG] Segment for user', user.name, ':', segment);
-              return { userId: user.id, segment };
-            }
-          } catch (error) {
-            console.error('❌ [DEBUG] Error fetching segment for user', user.id, ':', error);
-          }
-        }
-        return { userId: user.id, segment: null };
-      });
-
-      const results = await Promise.all(segmentPromises);
       const segmentMap = new Map();
-      results.forEach(result => {
-        if (result.segment) {
-          segmentMap.set(result.userId, result.segment);
+
+      users.forEach(user => {
+        if (user.role === 'USER') {
+          // Use data from /api/customers response (already has totalSpent, totalOrders, etc.)
+          const userData = {
+            totalSpent: user.totalSpent || 0,
+            totalOrders: user.totalOrders || 0,
+            lastOrderDate: user.lastOrderDate ? new Date(user.lastOrderDate) : null,
+            joinDate: user.joinDate ? new Date(user.joinDate) : new Date()
+          };
+
+          const segment = determineCustomerSegment(userData);
+          if (segment) {
+            segmentMap.set(user.id, segment);
+            console.log('✅ [DEBUG] Segment for user', user.name, ':', segment.name);
+          }
         }
       });
 
       console.log('📊 [DEBUG] Customer segments map:', segmentMap);
+      console.log('📊 [DEBUG] Map entries:', Array.from(segmentMap.entries()));
       setCustomerSegments(segmentMap);
+
+      console.log('🔄 [DEBUG] Segments calculated - total:', segmentMap.size);
     } catch (error) {
-      console.error('❌ [DEBUG] Error fetching customer segments:', error);
+      console.error('❌ [DEBUG] Error calculating customer segments:', error);
     }
   };
 
   // Function to determine customer segment
   const determineCustomerSegment = (customerData: any) => {
-    if (!customerData || customerData.role !== 'USER') return null;
+    if (!customerData) return null;
 
     const totalSpent = customerData.totalSpent || 0;
     const orderCount = customerData.totalOrders || 0;
@@ -248,6 +239,13 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
     const daysSinceLastOrder = lastOrderDate
       ? Math.floor((Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
       : null;
+
+    console.log('🔍 [DEBUG] Customer data for segment calculation:', {
+      totalSpent,
+      orderCount,
+      lastOrderDate,
+      daysSinceLastOrder
+    });
 
     if (totalSpent > 5000000 && orderCount >= 3 && (daysSinceLastOrder === null || daysSinceLastOrder <= 60)) {
       return {
@@ -264,13 +262,6 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
         name: 'Có nguy cơ rời bỏ',
         color: '#f44336',
         description: 'Không mua hàng trong 90 ngày'
-      };
-    } else if (daysSinceLastOrder !== null && daysSinceLastOrder <= 60 && orderCount >= 2) {
-      return {
-        id: 'active_customers',
-        name: 'Tích cực',
-        color: '#2196f3',
-        description: 'Mua hàng thường xuyên trong 60 ngày'
       };
     }
 
@@ -815,6 +806,28 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
                         </Button>
                       </Box>
 
+                      {/* Notice about customer segments */}
+                      <Alert severity='info' sx={{ borderRadius: '8px' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                          <Typography variant='body2'>
+                            <strong>Mẹo:</strong> Để xem phân khúc khách hàng chi tiết (VIP, Mới,...), hãy vào
+                          </Typography>
+                          <Button
+                            size='small'
+                            variant='outlined'
+                            onClick={() => {}}
+                            sx={{
+                              textTransform: 'none',
+                              fontSize: '0.75rem',
+                              py: 0.5,
+                              px: 1
+                            }}
+                          >
+                            Tab Danh sách khách hàng
+                          </Button>
+                        </Box>
+                      </Alert>
+
                       {/* Customer Segmentation - Only show in auto mode */}
                       {!manualMode && (
                         <Box sx={{ mb: 3 }}>
@@ -964,7 +977,6 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
                               {user.role === 'USER' &&
                                 (() => {
                                   const segment = customerSegments.get(user.id);
-                                  console.log('🔍 [DEBUG] Rendering segment for user', user.name, ':', segment);
 
                                   if (segment) {
                                     return (
@@ -975,25 +987,14 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
                                           backgroundColor: segment.color,
                                           color: 'white',
                                           fontWeight: 600,
-                                          fontSize: '0.7rem'
+                                          fontSize: '0.7rem',
+                                          ml: 0.5
                                         }}
                                       />
                                     );
                                   }
 
-                                  // Fallback chip for debugging
-                                  return (
-                                    <Chip
-                                      label='Đang tải...'
-                                      size='small'
-                                      sx={{
-                                        backgroundColor: '#9e9e9e',
-                                        color: 'white',
-                                        fontWeight: 600,
-                                        fontSize: '0.7rem'
-                                      }}
-                                    />
-                                  );
+                                  return null; // Don't show anything if no segment data
                                 })()}
                             </Box>
                           }
@@ -1007,6 +1008,44 @@ const SendNewProductEmailClean: React.FC<SendNewProductEmailProps> = ({ products
                                 <Typography variant='caption' color='text.secondary' sx={{ fontStyle: 'italic' }}>
                                   {customerSegments.get(user.id).description}
                                 </Typography>
+                              )}
+                              {/* Categories Chips */}
+                              {user.role === 'USER' && user.categories && user.categories.length > 0 && (
+                                <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                  {user.categories.slice(0, 3).map((category: any, index: number) => (
+                                    <Chip
+                                      key={index}
+                                      label={category.name || category}
+                                      size='small'
+                                      variant='outlined'
+                                      sx={{
+                                        borderColor: '#2196f3',
+                                        color: '#2196f3',
+                                        fontSize: '0.65rem',
+                                        height: '20px',
+                                        '& .MuiChip-label': {
+                                          px: 1
+                                        }
+                                      }}
+                                    />
+                                  ))}
+                                  {user.categories.length > 3 && (
+                                    <Chip
+                                      label={`+${user.categories.length - 3}`}
+                                      size='small'
+                                      variant='outlined'
+                                      sx={{
+                                        borderColor: '#9e9e9e',
+                                        color: '#9e9e9e',
+                                        fontSize: '0.65rem',
+                                        height: '20px',
+                                        '& .MuiChip-label': {
+                                          px: 1
+                                        }
+                                      }}
+                                    />
+                                  )}
+                                </Box>
                               )}
                             </Box>
                           }

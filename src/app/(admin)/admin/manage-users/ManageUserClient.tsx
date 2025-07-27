@@ -94,13 +94,6 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
         color: '#f44336',
         description: 'Không mua hàng trong 90 ngày'
       };
-    } else if (daysSinceLastOrder !== null && daysSinceLastOrder <= 60 && orderCount >= 2) {
-      return {
-        id: 'active_customers',
-        name: 'Tích cực',
-        color: '#2196f3',
-        description: 'Mua hàng thường xuyên trong 60 ngày'
-      };
     }
 
     return null;

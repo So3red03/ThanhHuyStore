@@ -282,8 +282,6 @@ async function getCustomersBySegments(
             return orderCount <= 2 && (daysSinceLastOrder === null || daysSinceLastOrder <= 30);
           case 'at_risk_customers':
             return daysSinceLastOrder !== null && daysSinceLastOrder >= 90 && orderCount >= 1;
-          case 'active_customers':
-            return daysSinceLastOrder !== null && daysSinceLastOrder <= 60 && orderCount >= 2;
           default:
             return false;
         }

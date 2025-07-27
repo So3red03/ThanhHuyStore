@@ -67,12 +67,6 @@ const CUSTOMER_SEGMENTS: CustomerSegment[] = [
     name: 'Có nguy cơ rời bỏ',
     color: '#f44336',
     description: 'Không mua hàng trong 90 ngày'
-  },
-  {
-    id: 'active_customers',
-    name: 'Khách tích cực',
-    color: '#2196f3',
-    description: 'Mua hàng thường xuyên trong 60 ngày'
   }
 ];
 
@@ -153,8 +147,6 @@ const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({ open, onClose
       return CUSTOMER_SEGMENTS.find(s => s.id === 'new_customers');
     } else if (daysSinceLastOrder !== null && daysSinceLastOrder >= 90 && orderCount >= 1) {
       return CUSTOMER_SEGMENTS.find(s => s.id === 'at_risk_customers');
-    } else if (daysSinceLastOrder !== null && daysSinceLastOrder <= 60 && orderCount >= 2) {
-      return CUSTOMER_SEGMENTS.find(s => s.id === 'active_customers');
     }
 
     return null;
