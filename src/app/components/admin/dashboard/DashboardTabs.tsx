@@ -41,6 +41,7 @@ import { useRouter } from 'next/navigation';
 import VoucherAnalytics from './VoucherAnalytics';
 import CustomerAnalytics from './CustomerAnalytics';
 import ReturnOrderAnalytics from './ReturnOrderAnalytics';
+import EmailTrackingAnalytics from './EmailTrackingAnalytics';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -90,7 +91,9 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
 }) => {
   const [value, setValue] = useState(0);
   const [analyticsAnchorEl, setAnalyticsAnchorEl] = useState<null | HTMLElement>(null);
-  const [analyticsSubTab, setAnalyticsSubTab] = useState<'main' | 'campaigns' | 'customers' | 'returns'>('main');
+  const [analyticsSubTab, setAnalyticsSubTab] = useState<
+    'main' | 'campaigns' | 'customers' | 'returns' | 'email-marketing'
+  >('main');
   const [timeFilter, setTimeFilter] = useState('7d');
   const theme = useTheme();
   const router = useRouter();
@@ -120,7 +123,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
     setAnalyticsAnchorEl(null);
   };
 
-  const handleAnalyticsSubTabSelect = (subTab: 'main' | 'campaigns' | 'customers' | 'returns') => {
+  const handleAnalyticsSubTabSelect = (subTab: 'main' | 'campaigns' | 'customers' | 'returns' | 'email-marketing') => {
     setAnalyticsSubTab(subTab);
     setAnalyticsAnchorEl(null);
     // Switch to analytics tab when selecting from dropdown
@@ -143,8 +146,10 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
           <VoucherAnalytics />
         ) : analyticsSubTab === 'customers' ? (
           <CustomerAnalytics users={users} orders={orders} />
-        ) : (
+        ) : analyticsSubTab === 'returns' ? (
           <ReturnOrderAnalytics />
+        ) : (
+          <EmailTrackingAnalytics />
         ),
       hasDropdown: true
     },
@@ -327,6 +332,20 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
               <ListItemText
                 primary='Đổi/Trả hàng'
                 secondary='Phân tích kinh doanh đổi/trả'
+                primaryTypographyProps={{ fontWeight: 500 }}
+              />
+            </MenuItem>
+            <MenuItem
+              onClick={() => handleAnalyticsSubTabSelect('email-marketing')}
+              selected={analyticsSubTab === 'email-marketing'}
+              sx={{ py: 1.5 }}
+            >
+              <ListItemIcon>
+                <MdEmail size={20} />
+              </ListItemIcon>
+              <ListItemText
+                primary='Email Marketing'
+                secondary='Phân tích hiệu quả chiến dịch email'
                 primaryTypographyProps={{ fontWeight: 500 }}
               />
             </MenuItem>

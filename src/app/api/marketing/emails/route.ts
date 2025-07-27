@@ -137,6 +137,34 @@ export async function POST(request: Request) {
       });
     }
 
+    // Create campaign first for tracking
+    let savedCampaign: any = null;
+    try {
+      const campaignData = {
+        campaignType,
+        campaignTitle: campaignTitle || `${campaignType} Campaign`,
+        campaignDescription,
+        productId: productId || null,
+        voucherIds: voucherIds || [],
+        targetSegments: selectedSegments,
+        recipientCount: 0, // Will update after sending
+        targetUserIds: manualMode ? selectedUserIds : [],
+        sentAt: new Date(),
+        clickCount: 0,
+        status: 'sending',
+        sentBy: currentUser.id
+      };
+
+      savedCampaign = await prisma.emailCampaign.create({
+        data: campaignData
+      });
+
+      console.log(`📊 [Campaign Analytics] Campaign created with ID: ${savedCampaign.id}`);
+    } catch (error) {
+      console.error('❌ [Campaign Analytics] Failed to create campaign:', error);
+      // Continue without tracking if campaign creation fails
+    }
+
     // Gửi email cho từng user
     let sentCount = 0;
     console.log('📧 [Send New Product Email API] Starting to send emails...');
@@ -144,9 +172,9 @@ export async function POST(request: Request) {
     const emailPromises = interestedUsers.map(async user => {
       try {
         if (campaignType === 'NEW_PRODUCT' || campaignType === 'CROSS_SELL') {
-          await sendNewProductEmail(user.email, user.name || 'Khách hàng', product);
+          await sendNewProductEmail(user.email, user.name || 'Khách hàng', product, savedCampaign?.id);
         } else if (campaignType === 'VOUCHER_PROMOTION') {
-          await sendVoucherEmail(user.email, user.name || 'Khách hàng', voucherIds);
+          await sendVoucherEmail(user.email, user.name || 'Khách hàng', voucherIds, savedCampaign?.id);
         }
         sentCount++;
         console.log(`✅ [Send New Product Email API] Email sent to ${user.email}`);
@@ -158,6 +186,22 @@ export async function POST(request: Request) {
     await Promise.all(emailPromises);
 
     console.log(`📧 [Send New Product Email API] Completed sending emails: ${sentCount}/${interestedUsers.length}`);
+
+    // Update campaign with final stats
+    if (savedCampaign) {
+      try {
+        await prisma.emailCampaign.update({
+          where: { id: savedCampaign.id },
+          data: {
+            recipientCount: sentCount,
+            status: sentCount > 0 ? 'sent' : 'failed'
+          }
+        });
+        console.log(`📊 [Campaign Analytics] Campaign updated with final stats: ${sentCount} emails sent`);
+      } catch (error) {
+        console.error('❌ [Campaign Analytics] Failed to update campaign stats:', error);
+      }
+    }
 
     return NextResponse.json({
       message: `New product emails sent successfully`,
@@ -310,7 +354,7 @@ async function getCustomersBySegments(
 }
 
 // Function để gửi email voucher
-const sendVoucherEmail = async (email: string, userName: string, voucherIds: string[]) => {
+const sendVoucherEmail = async (email: string, userName: string, voucherIds: string[], campaignId?: string) => {
   try {
     // Get voucher information
     const vouchers = await prisma.voucher.findMany({
@@ -433,7 +477,7 @@ const sendVoucherEmail = async (email: string, userName: string, voucherIds: str
 };
 
 // Function để gửi email sản phẩm mới
-const sendNewProductEmail = async (email: string, userName: string, product: any) => {
+const sendNewProductEmail = async (email: string, userName: string, product: any, campaignId?: string) => {
   try {
     // Cấu hình transporter
     const transporter = nodemailer.createTransport({
@@ -450,6 +494,14 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
     const productUrl = `${process.env.NEXT_PUBLIC_API_URL}/product/${
       product.name?.toLowerCase().replace(/\s+/g, '-') || 'product'
     }-${product.id}`;
+
+    // Create tracked URL if campaignId is provided
+    const finalProductUrl = campaignId
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/marketing/tracking/click/${campaignId}?redirect=${encodeURIComponent(
+          productUrl
+        )}`
+      : productUrl;
+
     const unsubscribeUrl = `${process.env.NEXT_PUBLIC_API_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
 
     const htmlContent = `
@@ -492,7 +544,7 @@ const sendNewProductEmail = async (email: string, userName: string, product: any
               <h2>${product.name || 'Sản phẩm mới'}</h2>
               <p>${product.description || 'Mô tả sản phẩm...'}</p>
               <div class="price">${product.price?.toLocaleString('vi-VN') || '0'}₫</div>
-              <a href="${productUrl}" class="btn">Xem chi tiết sản phẩm</a>
+              <a href="${finalProductUrl}" class="btn">Xem chi tiết sản phẩm</a>
             </div>
             
             <p>Đừng bỏ lỡ cơ hội sở hữu sản phẩm mới nhất từ ThanhHuy Store!</p>

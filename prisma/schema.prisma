@@ -693,19 +693,46 @@ model AuditLog {
   @@index([resourceType])
 }
 
-// Email Campaign tracking model
+// Enhanced Email Campaign tracking model
 model EmailCampaign {
   id String @id @default(auto()) @map("_id") @db.ObjectId
-  productId String @db.ObjectId
+
+  // Campaign info
+  campaignType String // NEW_PRODUCT, VOUCHER_PROMOTION, RETENTION, CROSS_SELL
+  campaignTitle String?
+  campaignDescription String?
+
+  // Content references
+  productId String? @db.ObjectId
+  voucherIds String[] @db.ObjectId @default([])
+
+  // Targeting info
+  targetSegments String[] @default([]) // all, vip_customers, new_customers, at_risk_customers
+  recipientCount Int @default(0) // Số lượng email đã gửi
+  targetUserIds String[] @db.ObjectId @default([]) // Manual selection
+
+  // Performance metrics
   sentAt DateTime @default(now())
-  clickCount Int @default(0) // Số lượng user click vào sản phẩm
-  status String // sent, failed, scheduled
+  clickCount Int @default(0) // Số lượng click
+  openCount Int @default(0) // Số lượng mở email (future)
+  conversionCount Int @default(0) // Số lượng mua hàng sau click (future)
+
+  // Campaign status
+  status String @default("sent") // sent, failed, scheduled, draft
+
+  // Analytics metadata
+  sentBy String? // Admin/Staff ID who sent
+  deviceStats Json? // {mobile: 10, desktop: 5} - click by device
+  timeStats Json? // {morning: 8, afternoon: 4, evening: 3} - click by time
 
   // Relations
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
+  @@index([campaignType])
   @@index([productId])
   @@index([sentAt])
+  @@index([status])
+  @@index([targetSegments])
 }
 
 // Return/Exchange Request Model - Tất cả optional để tránh mất dữ liệu
