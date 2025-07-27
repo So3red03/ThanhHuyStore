@@ -11,8 +11,17 @@ interface BodyProps {
   chatRoomId: string;
   className?: string;
   currentUser: SafeUser | null | undefined;
+  highlightedMessageId?: string | null;
+  searchQuery?: string;
 }
-const Body: React.FC<BodyProps> = ({ Messages, chatRoomId, className, currentUser }) => {
+const Body: React.FC<BodyProps> = ({
+  Messages,
+  chatRoomId,
+  className,
+  currentUser,
+  highlightedMessageId,
+  searchQuery
+}) => {
   const [messages, setMessages] = useState(Messages);
   const bottomRef = useRef<HTMLDivElement>(null); // Tham chiếu đến tin nhắn cuối (tự động cuộn)
   const [isScrolledUp, setIsScrolledUp] = useState(false); // Thêm state để kiểm tra cuộn
@@ -90,7 +99,21 @@ const Body: React.FC<BodyProps> = ({ Messages, chatRoomId, className, currentUse
       className={`relative flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] bg-[#F7F6FA] scrollbar-track-transparent ${className}`}
     >
       {messages.map((message, i) => (
-        <MessageBox isLast={i === messages.length - 1} key={message.id} data={message} currentUser={currentUser} />
+        <div
+          key={message.id}
+          id={`message-${message.id}`}
+          className={`transition-all duration-300 ${
+            highlightedMessageId === message.id ? 'bg-blue-50 border-l-4 border-blue-500 shadow-md' : ''
+          }`}
+        >
+          <MessageBox
+            isLast={i === messages.length - 1}
+            data={message}
+            currentUser={currentUser}
+            searchQuery={searchQuery}
+            isHighlighted={highlightedMessageId === message.id}
+          />
+        </div>
       ))}
       {/* Button chỉ hiện khi người dùng trượt lên */}
       {isScrolledUp && (

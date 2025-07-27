@@ -2,14 +2,16 @@
 
 import { User } from '@prisma/client';
 import ChatBox from './ChatBox';
+import UnreadBadge from './UnreadBadge';
+import Avatar from './Avatar';
 import { ChatRoomType } from '../../../../../types';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { pusherClient } from '@/app/libs/pusher';
 import Link from 'next/link';
-import Image from 'next/image';
 import moment from 'moment';
 import { MdSearch } from 'react-icons/md';
+import { calculateUnreadCount, formatLastMessageText, getLastMessage } from '@/app/utils/chatUtils';
 
 interface ChatListProps {
   conversations: ChatRoomType[];
@@ -18,7 +20,6 @@ interface ChatListProps {
 }
 const ChatList: React.FC<ChatListProps> = ({ conversations, userInSession, dashboard }) => {
   const [users, setUser] = useState(userInSession);
-  const [conversation, setConversation] = useState<any>();
   const [isSelectedChatBox, setIsSelectedChatBox] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -76,20 +77,10 @@ const ChatList: React.FC<ChatListProps> = ({ conversations, userInSession, dashb
     };
   }, [pusherKey, users]);
 
-  const { lastMessage, lastMessageText } = useMemo(() => {
-    // Lấy tất cả dữ liệu của mess
-    const messages = conversation?.messages || [];
-    // Lấy mess cuối
-    const lastMessage = messages[messages.length - 1];
-    let lastMessageText = 'Chưa có tin nhắn';
-    if (lastMessage) {
-      const isOwnMessage = lastMessage?.sender?.email === session?.data?.user?.email;
-
-      lastMessageText = isOwnMessage ? `Bạn: ${lastMessage.body || ''}` : lastMessage.body || '';
-    }
-
-    return { lastMessage, lastMessageText };
-  }, [conversation?.messages, session?.data?.user?.email]);
+  // Get current user for unread count calculation
+  const currentUser = useMemo(() => {
+    return userInSession.find(user => user.email === session?.data?.user?.email);
+  }, [userInSession, session?.data?.user?.email]);
 
   // Filter users dựa trên search query
   const filteredUsers = useMemo(() => {
@@ -115,40 +106,48 @@ const ChatList: React.FC<ChatListProps> = ({ conversations, userInSession, dashb
     <>
       {dashboard ? (
         renderConversations.map(({ user, conversation }) => {
+          // Calculate data for each conversation
+          const messages = conversation?.messages || [];
+          const lastMessage = getLastMessage(messages);
+          const lastMessageText = formatLastMessageText(lastMessage, session?.data?.user?.email);
+          const unreadCount = currentUser ? calculateUnreadCount(messages, currentUser.id) : 0;
+
           return (
             <Link
               key={user.id}
-              className='flex items-center gap-5 py-3 dark:hover:bg-meta-4 hover:bg-neutral-100 rounded-lg w-full px-6'
+              className={`flex items-center gap-5 py-3 dark:hover:bg-meta-4 hover:bg-neutral-100 rounded-lg w-full px-6 ${
+                unreadCount > 0 ? 'border-l-4 border-blue-500' : ''
+              }`}
               href={`/admin/chat/${conversation?.id}`}
             >
-              <div className='relative h-[52px] w-[52px] rounded-full'>
-                <Image
-                  src={user.image || '/no-avatar-2.jpg'}
-                  fill
-                  sizes='100%'
-                  className='rounded-full object-cover'
-                  alt={user.name || user.email}
-                />
-                <span
-                  className='absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-white'
-                  style={{ backgroundColor: 'rgb(16, 185, 129)' }}
-                />
+              <div className='relative'>
+                <div className='h-[52px] w-[52px]'>
+                  <Avatar user={user} />
+                </div>
+                {unreadCount > 0 && (
+                  <div className='absolute -top-1 -right-1'>
+                    <UnreadBadge count={unreadCount} size='sm' />
+                  </div>
+                )}
               </div>
               <div className='flex flex-1 items-center justify-between'>
-                <div>
-                  <h5 className='font-medium'>{user.name}</h5>
-                  <p>
-                    <span className='text-sm'>{lastMessageText}</span>
+                <div className='min-w-0 flex-1'>
+                  <h5 className={`font-medium truncate ${unreadCount > 0 ? 'text-gray-900' : 'text-gray-700'}`}>
+                    {user.name}
+                  </h5>
+                  <p className='flex items-center gap-2'>
+                    <span
+                      className={`text-sm truncate ${unreadCount > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'}`}
+                    >
+                      {lastMessageText}
+                    </span>
                     {lastMessage?.createdAt && (
-                      <span className='text-xs ml-3'>{moment(lastMessage.createdAt).fromNow()}</span>
+                      <span className={`text-xs flex-shrink-0 ${unreadCount > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+                        {moment(lastMessage.createdAt).fromNow()}
+                      </span>
                     )}
                   </p>
                 </div>
-                {/* {user.unreadCount > 0 && (
-								<div className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-500">
-									<span className="text-sm font-medium text-white">{user.unreadCount}</span>
-								</div>
-							)} */}
               </div>
             </Link>
           );

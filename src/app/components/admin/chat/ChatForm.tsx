@@ -3,6 +3,7 @@ import axios from 'axios';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { MdSend } from 'react-icons/md';
 import { useState } from 'react';
+import QuickResponsePanel from './QuickResponsePanel';
 
 interface ChatFormProps {
   chatRoomId: string;
@@ -10,11 +11,14 @@ interface ChatFormProps {
 
 const ChatForm: React.FC<ChatFormProps> = ({ chatRoomId }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { register, handleSubmit, setValue } = useForm<FieldValues>({
+  const [isQuickResponseOpen, setIsQuickResponseOpen] = useState(false);
+  const { register, handleSubmit, setValue, watch } = useForm<FieldValues>({
     defaultValues: {
       message: ''
     }
   });
+
+  const currentMessage = watch('message');
 
   const onSubmit: SubmitHandler<FieldValues> = async data => {
     // Kiểm tra nếu message rỗng thì không gửi
@@ -43,25 +47,68 @@ const ChatForm: React.FC<ChatFormProps> = ({ chatRoomId }) => {
       e.preventDefault();
       handleSubmit(onSubmit)();
     }
+    // Close quick response panel when typing
+    if (isQuickResponseOpen && e.key !== 'Tab') {
+      setIsQuickResponseOpen(false);
+    }
+  };
+
+  const handleQuickResponse = (message: string) => {
+    setValue('message', message);
+    setIsQuickResponseOpen(false);
   };
 
   return (
-    <div className='py-2 px-4 border-t border-gray-300 w-full bg-[#F7F6FA] '>
-      <div className='flex items-center gap-2 lg:gap-4'>
-        <input
-          {...register('message', { required: true })}
-          placeholder='Nhập nội dung...'
-          disabled={isLoading}
-          onKeyDown={handleKeyDown}
-          className='border border-slate-300 focus:border-slate-400 font-light text-black py-2 px-4 w-full rounded-full focus:outline-none'
-        />
-        <button
-          onClick={handleSubmit(onSubmit)}
-          disabled={isLoading}
-          className='rounded-full p-2 bg-[#16b1ff] cursor-pointer hover:bg-sky-600 transition disabled:opacity-50 disabled:cursor-not-allowed'
-        >
-          <MdSend size={18} className='text-white' />
-        </button>
+    <div className='relative'>
+      {/* Quick Response Panel */}
+      {isQuickResponseOpen && (
+        <div className='absolute bottom-full left-4 right-4 mb-2 z-10'>
+          <QuickResponsePanel
+            onSelectResponse={handleQuickResponse}
+            isOpen={isQuickResponseOpen}
+            onToggle={() => setIsQuickResponseOpen(!isQuickResponseOpen)}
+          />
+        </div>
+      )}
+
+      <div className='py-4 px-6 border-t border-gray-200 w-full bg-gradient-to-r from-gray-50 to-blue-50'>
+        {/* Quick Response Toggle */}
+        <div className='flex items-center justify-between mb-3'>
+          <QuickResponsePanel
+            onSelectResponse={handleQuickResponse}
+            isOpen={false}
+            onToggle={() => setIsQuickResponseOpen(!isQuickResponseOpen)}
+          />
+          <div className='text-xs text-gray-500 bg-white/60 px-2 py-1 rounded-full border border-gray-200'>
+            {currentMessage?.length || 0} ký tự
+          </div>
+        </div>
+
+        {/* Input Area */}
+        <div className='flex items-center gap-3'>
+          <div className='flex-1 relative'>
+            <input
+              {...register('message', { required: true })}
+              placeholder='Nhập nội dung...'
+              disabled={isLoading}
+              onKeyDown={handleKeyDown}
+              className='border-2 border-white/50 focus:border-blue-400 font-light text-black py-3 px-5 w-full rounded-2xl focus:outline-none transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm placeholder-gray-500'
+            />
+            {isLoading && (
+              <div className='absolute right-4 top-1/2 transform -translate-y-1/2'>
+                <div className='w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin'></div>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={handleSubmit(onSubmit)}
+            disabled={isLoading || !currentMessage?.trim()}
+            className='rounded-2xl p-3 bg-gradient-to-r from-blue-500 to-indigo-600 cursor-pointer hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl group'
+            title='Gửi tin nhắn (Enter)'
+          >
+            <MdSend size={20} className='text-white group-hover:scale-110 transition-transform' />
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -20,11 +20,11 @@ const Avatar: React.FC<AvatarProps> = ({ user, small }) => {
       >
         <Image alt='Avatar' src={avatarSrc} fill sizes='100%' className='object-cover' />
       </div>
-      <span
+      {/* <span
         className={`absolute block rounded-full bg-green-500 ring-2 ring-white top-0 right-0 ${
           small ? 'h-2 w-2' : 'h-2 w-2 md:h-3 md:w-3'
         }`}
-      ></span>
+      ></span> */}
     </div>
   );
 };
