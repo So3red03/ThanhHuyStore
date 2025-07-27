@@ -15,33 +15,6 @@ interface CustomerAnalyticsProps {
 }
 
 const CustomerAnalytics: React.FC<CustomerAnalyticsProps> = ({ users = [], orders = [], loading = false }) => {
-  // Loading state - show loading if explicitly loading or if no data available
-  if (loading || (users.length === 0 && orders.length === 0)) {
-    return (
-      <Card sx={{ mb: 6, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-        <CardContent sx={{ p: 6 }}>
-          <div className='flex items-center gap-3 mb-6'>
-            <div className='p-3 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl'>
-              <MdPeople size={24} className='text-blue-600' />
-            </div>
-            <div>
-              <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937', mb: 1 }}>
-                Phân tích khách hàng
-              </Typography>
-              <Typography variant='body2' color='textSecondary'>
-                Đang tải dữ liệu chi tiết...
-              </Typography>
-            </div>
-          </div>
-          <div className='space-y-3'>
-            <div className='h-4 bg-gradient-to-r from-blue-200 via-indigo-200 to-blue-200 rounded-full animate-pulse'></div>
-            <div className='h-4 bg-gradient-to-r from-blue-200 via-indigo-200 to-blue-200 rounded-full animate-pulse w-3/4'></div>
-            <div className='h-4 bg-gradient-to-r from-blue-200 via-indigo-200 to-blue-200 rounded-full animate-pulse w-1/2'></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
   // 🎯 LOGIC PHÂN LOẠI KHÁCH HÀNG:
   // - Khách hàng MỚI: Đăng ký trong vòng 30 ngày gần đây
   // - Khách hàng CŨ: Đăng ký từ 30 ngày trước trở về
@@ -117,6 +90,34 @@ const CustomerAnalytics: React.FC<CustomerAnalyticsProps> = ({ users = [], order
       totalExistingRevenue: existingCustomersWithStats.reduce((sum, customer) => sum + customer.totalSpent, 0)
     };
   }, [users, orders]);
+
+  // Loading state - show loading if explicitly loading or if no data available
+  if (loading || (users.length === 0 && orders.length === 0)) {
+    return (
+      <Card sx={{ mb: 6, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+        <CardContent sx={{ p: 6 }}>
+          <div className='flex items-center gap-3 mb-6'>
+            <div className='p-3 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl'>
+              <MdPeople size={24} className='text-blue-600' />
+            </div>
+            <div>
+              <Typography variant='h5' sx={{ fontWeight: 700, color: '#1f2937', mb: 1 }}>
+                Phân tích khách hàng
+              </Typography>
+              <Typography variant='body2' color='textSecondary'>
+                Đang tải dữ liệu chi tiết...
+              </Typography>
+            </div>
+          </div>
+          <div className='space-y-3'>
+            <div className='h-4 bg-gradient-to-r from-blue-200 via-indigo-200 to-blue-200 rounded-full animate-pulse'></div>
+            <div className='h-4 bg-gradient-to-r from-blue-200 via-indigo-200 to-blue-200 rounded-full animate-pulse w-3/4'></div>
+            <div className='h-4 bg-gradient-to-r from-blue-200 via-indigo-200 to-blue-200 rounded-full animate-pulse w-1/2'></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card sx={{ mb: 4, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>

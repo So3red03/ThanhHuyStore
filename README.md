@@ -4,7 +4,7 @@ CÁC GÓP Ý CỦA CÔ PHẢN BIỆN (cô An Thư):
 2. Điều chỉnh tính phí ship động dựa trên địa chỉ đặt hàng (đã xong)
 3. Điều chỉnh tính năng chat nội bộ (đã xong)
 4. Bổ sung chức năng đổi hàng / trả hàng và dựa vào lý do đổi hàng / trả hàng để có thể tính phí ship hoặc không (đã xong)
-5. Điều chỉnh tính năng gửi email marketing về sản phẩm mới hoặc voucher dựa trên phân khúc khách hàng (khách hàng vip, khách hàng mới)
+5. Điều chỉnh tính năng gửi email marketing về sản phẩm mới hoặc voucher dựa trên phân khúc khách hàng (khách hàng vip, khách hàng mới) - (đã xong)
 
 CÁCH CHẠY DỰ ÁN:
 
