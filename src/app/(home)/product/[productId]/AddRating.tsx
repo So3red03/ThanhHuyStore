@@ -57,10 +57,10 @@ const AddRating: React.FC<AddRatingProps> = ({ product, user }) => {
   }, [isOpen]);
 
   const toggleOpen = () => {
-    if (!canComment) {
-      toast.error('Bạn cần mua hàng để đánh giá');
-      return;
-    }
+    // if (!canComment) {
+    //   toast.error('Bạn cần mua hàng để đánh giá');
+    //   return;
+    // }
     setIsOpen(!isOpen);
   };
 
