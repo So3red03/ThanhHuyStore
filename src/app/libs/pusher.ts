@@ -11,8 +11,11 @@ export const pusherServer = new PusherServer({
 });
 export const pusherClient = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
   cluster: 'ap1',
-  enabledTransports: ['ws', 'wss'], // Limit transports
-  disabledTransports: ['xhr_polling', 'xhr_streaming'], // Disable polling
-  pongTimeout: 30000, // 30 seconds
-  unavailableTimeout: 30000 // 30 seconds
+  enabledTransports: ['ws', 'wss'], // Prioritize WebSocket for faster connection
+  disabledTransports: ['xhr_polling', 'xhr_streaming'], // Disable slower transports
+  pongTimeout: 5000, // Reduced to 5 seconds for faster detection
+  unavailableTimeout: 5000, // Reduced to 5 seconds for faster reconnection
+  activityTimeout: 10000, // 10 seconds activity timeout
+  forceTLS: true, // Force secure connection
+  enableStats: false // Disable stats for better performance
 });

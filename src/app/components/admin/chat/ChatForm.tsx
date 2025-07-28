@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { MdSend } from 'react-icons/md';
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import QuickResponsePanel from './QuickResponsePanel';
 
 interface ChatFormProps {
@@ -20,43 +20,52 @@ const ChatForm: React.FC<ChatFormProps> = ({ chatRoomId }) => {
 
   const currentMessage = watch('message');
 
-  const onSubmit: SubmitHandler<FieldValues> = async data => {
-    // Kiểm tra nếu message rỗng thì không gửi
-    if (!data.message || data.message.trim() === '') {
-      return;
-    }
+  const onSubmit: SubmitHandler<FieldValues> = useCallback(
+    async data => {
+      // Kiểm tra nếu message rỗng thì không gửi
+      if (!data.message || data.message.trim() === '') {
+        return;
+      }
 
-    // Xóa rỗng input sau khi gửi
-    setValue('message', '');
+      // Xóa rỗng input sau khi gửi
+      setValue('message', '');
 
-    try {
-      setIsLoading(true);
-      await axios.post('/api/messages', {
-        ...data,
-        chatRoomId
-      });
-    } catch (error) {
-      console.error('Error posting message:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      try {
+        setIsLoading(true);
+        await axios.post('/api/messages', {
+          ...data,
+          chatRoomId
+        });
+      } catch (error) {
+        console.error('Error posting message:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [chatRoomId, setValue]
+  );
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
-      e.preventDefault();
-      handleSubmit(onSubmit)();
-    }
-    // Close quick response panel when typing
-    if (isQuickResponseOpen && e.key !== 'Tab') {
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+        e.preventDefault();
+        handleSubmit(onSubmit)();
+      }
+      // Close quick response panel when typing
+      if (isQuickResponseOpen && e.key !== 'Tab') {
+        setIsQuickResponseOpen(false);
+      }
+    },
+    [isLoading, isQuickResponseOpen, handleSubmit, onSubmit]
+  );
+
+  const handleQuickResponse = useCallback(
+    (message: string) => {
+      setValue('message', message);
       setIsQuickResponseOpen(false);
-    }
-  };
-
-  const handleQuickResponse = (message: string) => {
-    setValue('message', message);
-    setIsQuickResponseOpen(false);
-  };
+    },
+    [setValue]
+  );
 
   return (
     <div className='relative'>

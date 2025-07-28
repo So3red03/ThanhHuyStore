@@ -31,19 +31,25 @@ const Body: React.FC<BodyProps> = ({
   // Pusher truyền sự kiện này đến tất cả các client đã đăng ký lắng nghe sự kiện messages:new.
   // Client nhận được sự kiện này và gọi hàm messageHandler để cập nhật giao diện người dùng (ví dụ: hiển thị tin nhắn mới).
   useEffect(() => {
-    // Đánh dấu là cuộc trò chuyện đã xem khi component được mount (khi mở chat box)
-    axios.post(`/api/conversation/${chatRoomId}/seen`);
-    // Đăng ký kênh Pusher cho phòng trò chuyện (chatRoomId) và lắng nghe các tin nhắn mới.
+    // Đăng ký kênh Pusher cho phòng trở chuyện (chatRoomId) và lắng nghe các tin nhắn mới.
     pusherClient.subscribe(chatRoomId);
+
+    // Đánh dấu là cuộc trò chuyện đã xem khi component được mount (chỉ khi có tin nhắn)
+    if (Messages.length > 0) {
+      axios.post(`/api/conversation/${chatRoomId}/seen`).catch(console.error);
+    }
+
     bottomRef?.current?.scrollIntoView();
 
     // Hàm xử lý khi có tin nhắn mới.
     const messageHandler = (newMessage: MessageType) => {
       // Cập nhật danh sách tin nhắn bằng cách thêm tin nhắn mới nếu nó chưa tồn tại trong danh sách
       setMessages(currentMsg => {
-        if (currentMsg.find(m => m.id === newMessage.id)) {
+        // Kiểm tra nhanh hơn bằng cách sử dụng some thay vì find
+        if (currentMsg.some(m => m.id === newMessage.id)) {
           return currentMsg;
         }
+        // Sử dụng spread operator để tối ưu performance
         return [...currentMsg, newMessage];
       });
     };
@@ -73,11 +79,15 @@ const Body: React.FC<BodyProps> = ({
     };
   }, [chatRoomId]);
 
-  // Cuộn xuống cuối cùng khi tin nhắn thay đổi
+  // Cuộn xuống cuối cùng khi tin nhắn thay đổi (chỉ khi không scroll lên)
   useEffect(() => {
-    //{behavior: ''}
-    bottomRef?.current?.scrollIntoView();
-  }, [messages]);
+    if (!isScrolledUp) {
+      // Sử dụng requestAnimationFrame để tối ưu performance
+      requestAnimationFrame(() => {
+        bottomRef?.current?.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+  }, [messages, isScrolledUp]);
 
   // Lắng nghe sự kiện scroll để kiểm tra xem có cần hiển thị button không
   useEffect(() => {
