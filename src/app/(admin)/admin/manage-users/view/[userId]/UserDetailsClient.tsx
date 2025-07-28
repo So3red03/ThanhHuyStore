@@ -2,6 +2,7 @@
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { CartProductType, DeliveryStatus, OrderStatus, Role } from '@prisma/client';
 import { formatPrice } from '../../../../../../../utils/formatPrice';
+import Link from 'next/link';
 import Status from '@/app/components/Status';
 import {
   MdAccessTimeFilled,
@@ -10,12 +11,15 @@ import {
   MdDone,
   MdRemoveRedEye,
   MdBlock,
-  MdLockOpen
+  MdLockOpen,
+  MdSearch,
+  MdStar,
+  MdStarBorder
 } from 'react-icons/md';
 import ActionBtn from '@/app/components/ActionBtn';
-import { FaDollarSign } from 'react-icons/fa';
+import { FaDollarSign, FaTicketAlt, FaGift } from 'react-icons/fa';
 import { FaBagShopping, FaCartShopping } from 'react-icons/fa6';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -34,6 +38,8 @@ import ActivityTimeline from '@/app/components/admin/ActivityTimeline';
 import { useUserActivities } from '@/app/hooks/useUserActivities';
 import OrderDetails from '@/app/components/OrderDetails';
 import { SafeUser } from '../../../../../../../types';
+import { slugConvert } from '../../../../../../../utils/Slug';
+import AddUserModal from '../../AddUserModal';
 
 const formatDate = (date: any) => {
   if (!date) return 'N/A';
@@ -65,6 +71,111 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [blockModalOpen, setBlockModalOpen] = useState(false);
+
+  // New state for search and tabs
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'orders' | 'vouchers' | 'reviews' | 'activities'>('orders');
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [customerSegment, setCustomerSegment] = useState<any>(null);
+  const [loadingSegment, setLoadingSegment] = useState(false);
+
+  // Function to determine customer segment
+  const determineCustomerSegment = (customerData: any) => {
+    if (!customerData || customerData.role !== 'USER') return null;
+
+    const totalSpent = customerData.totalSpent || 0;
+    const orderCount = customerData.totalOrders || 0;
+    const lastOrderDate = customerData.lastOrderDate ? new Date(customerData.lastOrderDate) : null;
+    const daysSinceLastOrder = lastOrderDate
+      ? Math.floor((Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    if (totalSpent > 5000000 && orderCount >= 3 && (daysSinceLastOrder === null || daysSinceLastOrder <= 60)) {
+      return {
+        id: 'vip_customers',
+        name: 'VIP',
+        color: '#9c27b0',
+        description: 'Chi tiêu > 5M, đặt hàng thường xuyên'
+      };
+    } else if (orderCount <= 2 && (daysSinceLastOrder === null || daysSinceLastOrder <= 30)) {
+      return {
+        id: 'new_customers',
+        name: 'Mới',
+        color: '#4caf50',
+        description: 'Đăng ký gần đây, ít đơn hàng'
+      };
+    } else if (daysSinceLastOrder !== null && daysSinceLastOrder >= 90 && orderCount >= 1) {
+      return {
+        id: 'at_risk_customers',
+        name: 'Có nguy cơ rời bỏ',
+        color: '#f44336',
+        description: 'Không mua hàng trong 90 ngày'
+      };
+    }
+
+    return null;
+  };
+
+  // Fetch customer segment for USER role
+  useEffect(() => {
+    const fetchCustomerSegment = async () => {
+      if (user && user.role === 'USER') {
+        setLoadingSegment(true);
+        try {
+          const response = await axios.get(`/api/analytics/customer-detail?userId=${user.id}`);
+          if (response.data.success) {
+            const segment = determineCustomerSegment(response.data.data.user);
+            setCustomerSegment(segment);
+          }
+        } catch (error) {
+          console.error('Error fetching customer segment:', error);
+        } finally {
+          setLoadingSegment(false);
+        }
+      }
+    };
+
+    fetchCustomerSegment();
+  }, [user]);
+
+  // Search functionality
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await axios.get('/api/admin/users');
+        setAllUsers(response.data);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const filtered = allUsers.filter(
+        u =>
+          u.name?.toLowerCase().includes(query.toLowerCase()) ||
+          u.email?.toLowerCase().includes(query.toLowerCase()) ||
+          u.id?.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(filtered);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   // Early return nếu không có user
   if (!user) {
@@ -384,10 +495,61 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
       <div className='w-full flex md:flex-row flex-col justify-center gap-6 mt-3 px-6 lg:px-0'>
         <div className='md:w-1/3 w-full'>
           <div className='flex flex-col items-center'>
+            {/* Search Bar */}
+            <div className='bg-white p-4 w-full border border-neutral-200 rounded mb-4'>
+              <div className='relative'>
+                <input
+                  type='text'
+                  placeholder='Tìm kiếm tài khoản...'
+                  className='w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                  onChange={e => handleSearch(e.target.value)}
+                />
+                <MdSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' size={20} />
+              </div>
+
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className='mt-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg'>
+                  {searchResults.slice(0, 5).map(searchUser => (
+                    <div
+                      key={searchUser.id}
+                      className='p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0'
+                      onClick={() => router.push(`/admin/manage-users/view/${searchUser.id}`)}
+                    >
+                      <div className='flex items-center gap-3'>
+                        <div className='w-8 h-8 rounded-full overflow-hidden bg-gray-200'>
+                          <img
+                            src={searchUser.image || '/no-avatar-2.jpg'}
+                            alt='Avatar'
+                            className='w-full h-full object-cover'
+                          />
+                        </div>
+                        <div className='flex-1'>
+                          <p className='font-medium text-sm'>{searchUser.name}</p>
+                          <p className='text-xs text-gray-500'>{searchUser.email}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isSearching && (
+                <div className='mt-3 text-center text-gray-500'>
+                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mx-auto'></div>
+                </div>
+              )}
+            </div>
+
             <div className='bg-white p-6 w-full border border-neutral-200 rounded'>
               <div className='text-center pt-12 pb-6'>
-                <div className='w-28 h-w-28 rounded-lg overflow-hidden mx-auto'>
-                  <img className='w-full h-full object-cover' src='/dog-meme.png' alt='User Avatar' loading='lazy' />
+                <div className='w-28 h-w-28 rounded-full overflow-hidden mx-auto'>
+                  <img
+                    className='w-full h-full object-cover'
+                    src={user.image || '/no-avatar-2.jpg'}
+                    alt='User Avatar'
+                    loading='lazy'
+                  />
                 </div>
                 <h5 className='text-xl font-medium mt-4 mb-3'>{user.name}</h5>
 
@@ -400,18 +562,27 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
                       USER
                     </span>
                   )}
-
-                  {/* Account Status Badge */}
-                  {user.isBlocked ? (
-                    <span className='bg-red-100 text-red-600 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1'>
-                      <MdBlock size={12} />
-                      Đã khóa
-                    </span>
-                  ) : (
-                    <span className='bg-green-100 text-green-600 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1'>
-                      <MdLockOpen size={12} />
-                      Hoạt động
-                    </span>
+                  {/* Customer Segment Badge - Only for USER role */}
+                  {user.role === 'USER' && (
+                    <div className='mt-2'>
+                      {loadingSegment ? (
+                        <div className='flex items-center gap-2'>
+                          <div className='animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500'></div>
+                          <span className='text-xs text-gray-500'>Đang tải phân khúc...</span>
+                        </div>
+                      ) : customerSegment ? (
+                        <span
+                          className='text-xs font-semibold px-3 py-1 rounded-full text-white'
+                          style={{ backgroundColor: customerSegment.color }}
+                        >
+                          {customerSegment.name}
+                        </span>
+                      ) : (
+                        <span className='bg-gray-200 text-gray-600 text-xs font-semibold px-3 py-1 rounded-full'>
+                          Khách hàng thường
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -452,19 +623,23 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
                   </div>
                   <div className='flex justify-between'>
                     <span className='font-medium'>Trạng thái</span>
-                    <span className='bg-green-200 text-green-500 font-semibold  text-xs px-2 py-1 rounded-full'>
-                      Hoạt động
-                    </span>
+                    {/* Account Status Badge */}
+                    {user.isBlocked ? (
+                      <span className='bg-red-100 text-red-600 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1'>
+                        <MdBlock size={12} />
+                        Đã khóa
+                      </span>
+                    ) : (
+                      <span className='bg-green-100 text-green-600 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1'>
+                        <MdLockOpen size={12} />
+                        Hoạt động
+                      </span>
+                    )}
                   </div>
 
                   <div className='flex justify-between'>
                     <span className='font-medium'>Liên hệ</span>
                     <span className='text-gray-700'>{user.phoneNumber || 'Chưa có'}</span>
-                  </div>
-
-                  <div className='flex justify-between'>
-                    <span className='font-medium'>Quốc tịch</span>
-                    <span className='text-gray-700'>Việt Nam</span>
                   </div>
 
                   <div className='flex justify-between'>
@@ -487,102 +662,152 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
           </div>
         </div>
         <div className='md:w-2/3 w-full'>
-          {loading ? (
-            <div className='bg-white p-6 rounded border border-neutral-200 text-center'>
-              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4'></div>
-              <p>Đang tải lịch sử hoạt động...</p>
+          <div className='bg-white border border-neutral-200 rounded'>
+            {/* Tab Navigation */}
+            <div className='border-b border-gray-200'>
+              <nav className='flex space-x-8 px-6 py-4'>
+                <button
+                  onClick={() => setActiveTab('orders')}
+                  className={`flex items-center gap-2 pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'orders'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <FaCartShopping size={16} />
+                  Hóa đơn
+                  <span className='bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full'>
+                    {user.orders?.length || 0}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('vouchers')}
+                  className={`flex items-center gap-2 pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'vouchers'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <FaTicketAlt size={16} />
+                  Voucher
+                  <span className='bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full'>
+                    {user.userVouchers?.filter((uv: any) => uv.usedAt).length || 0}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('reviews')}
+                  className={`flex items-center gap-2 pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'reviews'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <MdStar size={16} />
+                  Đánh giá
+                  <span className='bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full'>
+                    {user.reviews?.length || 0}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('activities')}
+                  className={`flex items-center gap-2 pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'activities'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <MdAccessTimeFilled size={16} />
+                  Hoạt động
+                  <span className='bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-1 rounded-full'>
+                    {activities?.length || 0}
+                  </span>
+                </button>
+              </nav>
             </div>
-          ) : (
-            <ActivityTimeline
-              activities={activities}
-              userName={user.name || 'Unknown User'}
-              showDateFilter={true}
-              showActivityCount={true}
-            />
-          )}
-          <div className='h-[600px] mt-5'>
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              className='py-5'
-              initialState={{
-                pagination: {
-                  paginationModel: { page: 0, pageSize: 10 }
-                }
-              }}
-              slots={{ toolbar: CustomToolbar }}
-              slotProps={{
-                toolbar: {
-                  showQuickFilter: true,
-                  quickFilterProps: { debounceMs: 500 }
-                }
-              }}
-              pageSizeOptions={[10, 20, 30]}
-              checkboxSelection
-              disableRowSelectionOnClick
-              disableColumnFilter
-              disableDensitySelector
-              disableColumnSelector
-              sx={{
-                '& .MuiDataGrid-toolbarContainer': {
-                  flexDirection: 'row-reverse',
-                  padding: '15px'
-                },
-                '& .css-yrdy0g-MuiDataGrid-columnHeaderRow': {
-                  backgroundColor: '#F6F7FB !important'
-                }
-              }}
-            />
+
+            {/* Tab Content */}
+            <div className='p-6'>
+              {activeTab === 'orders' && (
+                <div className='h-[700px]'>
+                  <DataGrid
+                    rows={rows}
+                    columns={columns}
+                    className='py-5'
+                    initialState={{
+                      pagination: {
+                        paginationModel: { page: 0, pageSize: 10 }
+                      }
+                    }}
+                    slots={{ toolbar: CustomToolbar }}
+                    slotProps={{
+                      toolbar: {
+                        showQuickFilter: true,
+                        quickFilterProps: { debounceMs: 500 }
+                      }
+                    }}
+                    pageSizeOptions={[10, 20, 30]}
+                    checkboxSelection
+                    disableRowSelectionOnClick
+                    disableColumnFilter
+                    disableDensitySelector
+                    disableColumnSelector
+                    sx={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 2,
+                      '& .MuiDataGrid-cell': {
+                        borderBottom: '1px solid #e5e7eb'
+                      },
+                      '& .MuiDataGrid-columnHeaders': {
+                        backgroundColor: '#f8fafc', // slate-50
+                        borderBottom: '1px solid #e2e8f0'
+                      },
+                      '& .MuiDataGrid-toolbarContainer': {
+                        flexDirection: 'row-reverse',
+                        padding: '15px'
+                      },
+                      '& .MuiDataGrid-columnHeaderRow': {
+                        backgroundColor: '#f6f7fb'
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
+              {activeTab === 'vouchers' && <VoucherTab userVouchers={user.userVouchers || []} />}
+
+              {activeTab === 'reviews' && <ReviewsTab reviews={user.reviews || []} />}
+
+              {activeTab === 'activities' && (
+                <div className='min-h-[400px]'>
+                  {loading ? (
+                    <div className='text-center py-12'>
+                      <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4'></div>
+                      <p className='text-gray-500'>Đang tải lịch sử hoạt động...</p>
+                    </div>
+                  ) : (
+                    <ActivityTimeline
+                      activities={activities}
+                      userName={user.name || 'Unknown User'}
+                      showDateFilter={true}
+                      showActivityCount={true}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
       {selectedUser && (
-        <AdminModal isOpen={isUpdatedModalOpen} handleClose={toggleUpdateModalOpen}>
-          <FormWarp custom='!pt-8'>
-            <Heading title='Cập nhật thông tin' center>
-              <></>
-            </Heading>
-            <Input
-              id='name'
-              label='Tên người dùng'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedUser?.name}
-              required
-            />
-            <Input
-              id='email'
-              label='Email người dùng'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              defaultValue={selectedUser?.email}
-              required
-            />
-            <Input
-              id='newPassword'
-              label='Mật khẩu mới'
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              required
-            />
-            <Input
-              id='role'
-              label='Role'
-              disabled={isLoading}
-              type='combobox'
-              register={register}
-              errors={errors}
-              defaultValue={selectedUser?.role}
-              options={roles}
-              required
-            />
-
-            <Button label='Lưu thông tin' onClick={handleSubmit(onSubmit)} isLoading={isLoading} />
-          </FormWarp>
-        </AdminModal>
+        <AddUserModal
+          open={isUpdatedModalOpen}
+          onClose={toggleUpdateModalOpen}
+          editData={selectedUser}
+          onUserAdded={() => {
+            toggleUpdateModalOpen();
+            router.refresh();
+          }}
+        />
       )}
       {isDelete && <ConfirmDialog isOpen={isDelete} handleClose={toggleDelete} onConfirm={handleConfirmDelete} />}
       {isOpen && selectedOrder && (
@@ -625,10 +850,133 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
     </>
   );
 };
+// Voucher Tab Component
+const VoucherTab: React.FC<{ userVouchers: any[] }> = ({ userVouchers }) => {
+  const usedVouchers = userVouchers.filter(uv => uv.usedAt);
+
+  if (usedVouchers.length === 0) {
+    return (
+      <div className='text-center py-12'>
+        <FaGift className='mx-auto text-gray-300 mb-4' size={48} />
+        <p className='text-gray-500'>Chưa sử dụng voucher nào</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className='space-y-4'>
+      {usedVouchers.map(userVoucher => (
+        <div key={userVoucher.id} className='border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow'>
+          <div className='flex items-center gap-4'>
+            {/* Voucher Image */}
+            <div className='w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0'>
+              {userVoucher.voucher.image ? (
+                <img
+                  src={userVoucher.voucher.image}
+                  alt={userVoucher.voucher.code}
+                  className='w-full h-full object-cover'
+                />
+              ) : (
+                <div className='w-full h-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center'>
+                  <FaTicketAlt className='text-white' size={24} />
+                </div>
+              )}
+            </div>
+
+            <div className='flex-1'>
+              <div className='flex items-center gap-2 mb-1'>
+                <h3 className='font-semibold text-lg'>{userVoucher.voucher.code}</h3>
+                <span className='bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full'>
+                  Đã sử dụng
+                </span>
+              </div>
+              <p className='text-gray-600 text-sm mb-2'>{userVoucher.voucher.description}</p>
+              <div className='flex items-center gap-4 text-sm text-gray-500 mb-2'>
+                <span>
+                  Giảm:{' '}
+                  {userVoucher.voucher.discountType === 'PERCENTAGE'
+                    ? `${userVoucher.voucher.discountValue}%`
+                    : `${formatPrice(userVoucher.voucher.discountValue)}`}
+                </span>
+                <span>•</span>
+                <span>Sử dụng: {formatDate(userVoucher.usedAt)}</span>
+              </div>
+
+              {/* Order Information */}
+              {userVoucher.orderId && (
+                <div className='bg-blue-50 border border-blue-200 rounded-md p-2 mt-2'>
+                  <p className='text-xs text-blue-700'>
+                    <span className='font-medium'>Áp dụng cho đơn hàng:</span> #{userVoucher.orderId.slice(-8)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Reviews Tab Component
+const ReviewsTab: React.FC<{ reviews: any[] }> = ({ reviews }) => {
+  if (reviews.length === 0) {
+    return (
+      <div className='text-center py-12'>
+        <MdStarBorder className='mx-auto text-gray-300 mb-4' size={48} />
+        <p className='text-gray-500'>Chưa có đánh giá nào</p>
+      </div>
+    );
+  }
+
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, index) => (
+      <span key={index}>
+        {index < rating ? (
+          <MdStar className='text-yellow-400' size={16} />
+        ) : (
+          <MdStarBorder className='text-gray-300' size={16} />
+        )}
+      </span>
+    ));
+  };
+
+  return (
+    <div className='space-y-4'>
+      {reviews.map(review => (
+        <div key={review.id} className='border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow'>
+          <div className='flex items-start gap-4'>
+            {review.product?.thumbnail && (
+              <div className='w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0'>
+                <img src={review.product.thumbnail} alt={review.product.name} className='w-full h-full object-cover' />
+              </div>
+            )}
+            <div className='flex-1'>
+              <div className='flex items-center gap-2 mb-2'>
+                <div className='flex items-center'>{renderStars(review.rating)}</div>
+                <span className='text-sm text-gray-500'>{formatDate(review.createdDate)}</span>
+              </div>
+
+              {review.product && (
+                <Link
+                  className='text-[#212B36] hover:text-blue-500'
+                  href={`/product/${slugConvert(review.product.name)}-${review.product.id}`}
+                >
+                  <h4 className='font-medium text-gray-900 mb-2'>{review.product.name}</h4>
+                </Link>
+              )}
+              <p className='text-gray-700 text-sm leading-relaxed'>{review.comment}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 function CustomToolbar(props: any) {
   return (
     <div className='flex flex-col justify-stretch items-center w-full'>
-      <h2 className='text-lg font-semibold w-full px-[15px] text-slate-700'>Đơn hàng đã đặt</h2>
       <div className='w-full'>
         <GridToolbar {...props} />
       </div>

@@ -15,9 +15,11 @@ import {
   Box,
   Typography,
   IconButton,
-  InputAdornment
+  InputAdornment,
+  Chip,
+  Divider
 } from '@mui/material';
-import { MdClose, MdVisibility, MdVisibilityOff, MdPerson } from 'react-icons/md';
+import { MdClose, MdVisibility, MdVisibilityOff, MdPerson, MdStar, MdTrendingUp, MdWarning } from 'react-icons/md';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -42,8 +44,71 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [customerSegment, setCustomerSegment] = useState<any>(null);
+  const [loadingSegment, setLoadingSegment] = useState(false);
 
   const isEditMode = !!editData;
+
+  // Function to determine customer segment
+  const determineCustomerSegment = (customerData: any) => {
+    if (!customerData || customerData.role !== 'USER') return null;
+
+    const totalSpent = customerData.totalSpent || 0;
+    const orderCount = customerData.totalOrders || 0;
+    const lastOrderDate = customerData.lastOrderDate ? new Date(customerData.lastOrderDate) : null;
+    const daysSinceLastOrder = lastOrderDate
+      ? Math.floor((Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    if (totalSpent > 5000000 && orderCount >= 3 && (daysSinceLastOrder === null || daysSinceLastOrder <= 60)) {
+      return {
+        id: 'vip_customers',
+        name: 'VIP',
+        color: '#9c27b0',
+        description: 'Chi tiêu > 5M, đặt hàng thường xuyên'
+      };
+    } else if (orderCount <= 2 && (daysSinceLastOrder === null || daysSinceLastOrder <= 30)) {
+      return {
+        id: 'new_customers',
+        name: 'Mới',
+        color: '#4caf50',
+        description: 'Đăng ký gần đây, ít đơn hàng'
+      };
+    } else if (daysSinceLastOrder !== null && daysSinceLastOrder >= 90 && orderCount >= 1) {
+      return {
+        id: 'at_risk_customers',
+        name: 'Có nguy cơ rời bỏ',
+        color: '#f44336',
+        description: 'Không mua hàng trong 90 ngày'
+      };
+    }
+
+    return null;
+  };
+
+  // Fetch customer segment when editing a user
+  useEffect(() => {
+    const fetchCustomerSegment = async () => {
+      if (editData && editData.role === 'USER' && open) {
+        setLoadingSegment(true);
+        try {
+          const response = await axios.get(`/api/analytics/customer-detail?userId=${editData.id}`);
+          if (response.data.success) {
+            const segment = determineCustomerSegment(response.data.data.user);
+            setCustomerSegment(segment);
+          }
+        } catch (error) {
+          console.error('Error fetching customer segment:', error);
+        } finally {
+          setLoadingSegment(false);
+        }
+      } else {
+        setCustomerSegment(null);
+      }
+    };
+
+    fetchCustomerSegment();
+  }, [editData, open]);
 
   // Populate form khi ở edit mode
   useEffect(() => {
@@ -131,7 +196,15 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded,
       PaperProps={{
         sx: {
           borderRadius: '16px',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+          '@keyframes spin': {
+            '0%': {
+              transform: 'rotate(0deg)'
+            },
+            '100%': {
+              transform: 'rotate(360deg)'
+            }
+          }
         }
       }}
     >
@@ -170,6 +243,63 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ open, onClose, onUserAdded,
       <form onSubmit={handleSubmit}>
         <DialogContent sx={{ pt: 3 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Customer Segment Display - Only for USER role in edit mode */}
+            {isEditMode && formData.role === 'USER' && (
+              <Box sx={{ p: 2, backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <Typography variant='subtitle2' sx={{ fontWeight: 600, mb: 1, color: '#475569' }}>
+                  Phân mục khách hàng
+                </Typography>
+                {loadingSegment ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box
+                      sx={{
+                        width: 16,
+                        height: 16,
+                        border: '2px solid #e2e8f0',
+                        borderTop: '2px solid #3b82f6',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }}
+                    />
+                    <Typography variant='body2' color='text.secondary'>
+                      Đang tải...
+                    </Typography>
+                  </Box>
+                ) : customerSegment ? (
+                  <Chip
+                    label={customerSegment.name}
+                    sx={{
+                      backgroundColor: customerSegment.color,
+                      color: 'white',
+                      fontWeight: 600,
+                      '& .MuiChip-label': { px: 2 }
+                    }}
+                    icon={
+                      customerSegment.id === 'vip_customers' ? (
+                        <MdStar style={{ color: 'white' }} />
+                      ) : customerSegment.id === 'new_customers' ? (
+                        <MdTrendingUp style={{ color: 'white' }} />
+                      ) : (
+                        <MdWarning style={{ color: 'white' }} />
+                      )
+                    }
+                  />
+                ) : (
+                  <Typography variant='body2' color='text.secondary'>
+                    Khách hàng thường
+                  </Typography>
+                )}
+                {customerSegment && (
+                  <Typography variant='caption' sx={{ display: 'block', mt: 1, color: '#64748b' }}>
+                    {customerSegment.description}
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {/* Divider */}
+            {isEditMode && formData.role === 'USER' && <Divider />}
+
             {/* Name Field */}
             <TextField
               fullWidth

@@ -111,6 +111,7 @@ const ManageStaffClient: React.FC<ManageStaffClientProps> = ({ staffUsers, curre
       return {
         id: user.id,
         name: user.name,
+        image: user.image,
         email: user.email,
         role: user.role,
         phoneNumber: user.phoneNumber,

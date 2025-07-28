@@ -151,6 +151,7 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
       return {
         id: user.id,
         name: user.name,
+        image: user.image,
         email: user.email,
         password: user.hashedPassword,
         createAt: formatDate(user.createAt),
@@ -171,7 +172,13 @@ const ManageUserClient: React.FC<ManageUserClientProps> = ({ users, currentUser 
         return (
           <div className='flex items-center justify-stretch gap-4 h-full'>
             <div className='relative h-[40px] w-[40px] rounded-full'>
-              <Image src='/no-avatar-2.jpg' fill sizes='100%' className='rounded-full' alt={params.row.name} />
+              <Image
+                src={params.row.image || '/no-avatar-2.jpg'}
+                fill
+                sizes='100%'
+                className='rounded-full'
+                alt={params.row.name}
+              />
             </div>
             <Link href={`/admin/manage-users/view/${params.row.id}`}>{params.row.name}</Link>
           </div>

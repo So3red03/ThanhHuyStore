@@ -79,12 +79,12 @@ export const MenuItems = [
         hasSubmenu: true,
         submenu: [
           {
-            title: 'Nhân viên',
-            path: '/admin/manage-staff'
-          },
-          {
             title: 'Khách hàng',
             path: '/admin/manage-users'
+          },
+          {
+            title: 'Nhân viên',
+            path: '/admin/manage-staff'
           }
         ]
       },

@@ -15,13 +15,32 @@ export async function getUserById(params: IParams) {
         id: userId
       },
       include: {
-        orders: true,
+        orders: {
+          include: {
+            voucher: true
+          }
+        },
         reviews: {
           include: {
-            user: true
+            user: true,
+            product: {
+              select: {
+                id: true,
+                name: true,
+                thumbnail: true
+              }
+            }
           },
           orderBy: {
             createdDate: 'desc'
+          }
+        },
+        userVouchers: {
+          include: {
+            voucher: true
+          },
+          orderBy: {
+            usedAt: 'desc'
           }
         }
       }
@@ -43,6 +62,24 @@ export async function getUserById(params: IParams) {
         createdAt: order.createdAt.toISOString(),
         updatedAt: order.updatedAt.toISOString(),
         cancelDate: order.cancelDate?.toISOString() || null
+      })),
+      reviews: user.reviews.map(review => ({
+        ...review,
+        createdDate: review.createdDate.toISOString(),
+        updatedAt: review.updatedAt?.toISOString() || null
+      })),
+      userVouchers: user.userVouchers.map(userVoucher => ({
+        ...userVoucher,
+        createdAt: userVoucher.createdAt.toISOString(),
+        usedAt: userVoucher.usedAt?.toISOString() || null,
+        reservedAt: userVoucher.reservedAt?.toISOString() || null,
+        voucher: {
+          ...userVoucher.voucher,
+          createdAt: userVoucher.voucher.createdAt.toISOString(),
+          updatedAt: userVoucher.voucher.updatedAt.toISOString(),
+          startDate: userVoucher.voucher.startDate.toISOString(),
+          endDate: userVoucher.voucher.endDate.toISOString()
+        }
       }))
     };
   } catch (error: any) {
