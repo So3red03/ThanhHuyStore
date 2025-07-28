@@ -121,41 +121,47 @@ const MessageSystem: React.FC<MessageSystemProps> = ({ currentUser, forceShow = 
     }
   };
 
-  // Handle forceShow - fetch existing conversations (Facebook style)
+  // Handle forceShow - fetch existing conversations (ChatList style)
   useEffect(() => {
     if (forceShow && currentUser && (currentUser.role === 'ADMIN' || currentUser.role === 'STAFF')) {
       const fetchConversations = async () => {
         try {
-          // Fetch conversations with latest messages
-          const response = await axios.get('/api/conversations');
+          // Fetch conversations with latest messages using new API
+          const response = await axios.get('/api/conversations?limit=5');
           const data = response.data;
 
           if (data.conversations && Array.isArray(data.conversations)) {
-            // Transform conversations to message format, sorted by latest message
-            const conversations = data.conversations
-              .filter((conv: any) => conv.messages && conv.messages.length > 0) // Only conversations with messages
-              .sort((a: any, b: any) => {
-                // Sort by latest message timestamp
-                const aLatest = new Date(a.messages[0]?.createdAt || 0);
-                const bLatest = new Date(b.messages[0]?.createdAt || 0);
-                return bLatest.getTime() - aLatest.getTime();
-              })
-              .slice(0, 5) // Top 5 conversations
-              .map((conv: any) => {
-                const latestMessage = conv.messages[0];
-                const otherUser = conv.users.find((u: any) => u.id !== currentUser.id);
+            // Transform conversations to MessageToast format - exactly like ChatList dashboard mode
+            const conversations = data.conversations.map((conv: any) => {
+              const latestMessage = conv.messages[0]; // API returns latest message first
+              const otherUser = conv.users.find((u: any) => u.id !== currentUser.id);
 
-                return {
-                  id: conv.id,
-                  senderName: otherUser?.name || 'Người dùng',
-                  content: latestMessage?.body || 'Tin nhắn mới',
-                  avatar: otherUser?.image || '/no-avatar-2.jpg',
-                  timestamp: new Date(latestMessage?.createdAt),
-                  hasImage: !!latestMessage?.image,
-                  chatroomId: conv.id,
-                  isRead: latestMessage?.seenIds?.includes(currentUser.id) || false
-                };
-              });
+              // Calculate unread count like ChatList
+              const unreadCount = conv.messages.filter(
+                (msg: any) => !msg.seenIds?.includes(currentUser.id) && msg.sender?.id !== currentUser.id
+              ).length;
+
+              // Format message text like ChatList
+              let messageText = 'Tin nhắn mới';
+              if (latestMessage) {
+                if (latestMessage.image) {
+                  messageText = '📷 Hình ảnh';
+                } else if (latestMessage.body) {
+                  messageText = latestMessage.body;
+                }
+              }
+
+              return {
+                id: conv.id,
+                senderName: otherUser?.name || 'Người dùng',
+                content: messageText,
+                avatar: otherUser?.image || '/no-avatar-2.jpg',
+                timestamp: new Date(latestMessage?.createdAt || conv.lastMessageAt),
+                hasImage: !!latestMessage?.image,
+                chatroomId: conv.id,
+                isRead: unreadCount === 0 // Read if no unread messages
+              };
+            });
 
             setCurrentMessages(conversations);
           }

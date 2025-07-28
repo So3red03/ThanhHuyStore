@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, IconButton, Paper } from '@mui/material';
-import { MdClose, MdNotifications, MdMessage, MdShoppingCart, MdWarning } from 'react-icons/md';
+import { Box, Paper, Typography, Avatar, IconButton } from '@mui/material';
+import { MdClose, MdShoppingCart, MdWarning, MdComment, MdCircle } from 'react-icons/md';
+import { useRouter } from 'next/navigation';
 
 interface NotificationToastProps {
   notifications: Array<{
@@ -23,14 +24,13 @@ interface NotificationToastProps {
 }
 
 /**
- * Professional notification toast component with modern UX/UI design
+ * Facebook-style notification panel
  * Features:
- * - Smooth slide-in animation from top-right
- * - Type-based icons and colors
- * - Click to navigate functionality
- * - Auto-dismiss with progress indicator
- * - Hover to pause auto-dismiss
- * - Professional gradient backgrounds
+ * - Shows list of notifications like Facebook
+ * - Each notification can be clicked
+ * - Auto-dismiss after duration
+ * - Hover to pause
+ * - Professional design with green theme
  */
 const NotificationToast: React.FC<NotificationToastProps> = ({
   notifications,
@@ -40,6 +40,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
   disableAutoDismiss = false,
   isLoading = false
 }) => {
+  const router = useRouter();
   const [progress, setProgress] = useState(100);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -87,13 +88,13 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         };
       case 'COMMENT_RECEIVED':
         return {
-          icon: <MdMessage size={20} />,
+          icon: <MdComment size={20} />,
           color: '#7c3aed',
           bgColor: 'rgba(124, 58, 237, 0.1)'
         };
       default:
         return {
-          icon: <MdNotifications size={20} />,
+          icon: <MdCircle size={20} />,
           color: '#10b981',
           bgColor: 'rgba(16, 185, 129, 0.1)'
         };
@@ -122,8 +123,8 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
     <Box
       sx={{
         position: 'fixed',
-        top: 80,
-        right: 20,
+        top: 70,
+        right: 180,
         zIndex: 9999,
         animation: 'slideInRight 0.3s ease-out'
       }}
@@ -140,7 +141,6 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
           border: '1px solid rgba(0,0,0,0.08)',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {
-            transform: 'scale(1.02) translateY(-4px)',
             boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
           }
         }}
@@ -151,7 +151,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         <Box
           sx={{
             height: 3,
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             position: 'relative',
             overflow: 'hidden'
           }}
@@ -171,7 +171,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         <Box
           sx={{
             p: 3,
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
             display: 'flex',
             alignItems: 'center',
@@ -179,7 +179,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
           }}
         >
           <Typography variant='h6' fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            🔔 Thông báo ({notifications.length})
+            Thông báo ({notifications.length})
           </Typography>
 
           <IconButton
@@ -199,130 +199,116 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
 
         {/* Notification List */}
         <Box sx={{ maxHeight: 400, overflow: 'auto', backgroundColor: '#f8fafc' }}>
-          {isLoading && notifications.length === 0 ? (
-            // Loading state - show skeleton
-            <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
-              <Typography variant='body2'>Đang tải thông báo...</Typography>
-            </Box>
-          ) : notifications.length === 0 ? (
-            // Empty state
-            <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-              <Typography variant='body2'>Chưa có thông báo nào</Typography>
-            </Box>
-          ) : (
-            // Show notifications
-            notifications.slice(0, 5).map((notification, index) => {
-              const style = getNotificationStyle(notification.type);
+          {notifications.slice(0, 10).map((notification, index) => {
+            const style = getNotificationStyle(notification.type);
 
-              return (
+            return (
+              <Box
+                key={notification.id}
+                onClick={() => {
+                  onNotificationClick(notification);
+                  onClose();
+                }}
+                sx={{
+                  p: 2.5,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 2,
+                  cursor: 'pointer',
+                  borderBottom: index < notifications.length - 1 ? '1px solid rgba(0,0,0,0.08)' : 'none',
+                  backgroundColor: notification.isRead ? 'white' : style.bgColor,
+                  '&:hover': {
+                    backgroundColor: '#f1f5f9',
+                    transform: 'translateX(4px)'
+                  },
+                  transition: 'all 0.2s ease',
+                  mx: 1,
+                  my: 0.5,
+                  borderRadius: 2,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}
+              >
+                {/* Icon */}
                 <Box
-                  key={notification.id}
-                  onClick={() => {
-                    onNotificationClick(notification);
-                    onClose();
-                  }}
                   sx={{
-                    p: 2.5,
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    backgroundColor: style.color,
                     display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 2,
-                    cursor: 'pointer',
-                    borderBottom: index < notifications.length - 1 ? '1px solid rgba(0,0,0,0.08)' : 'none',
-                    backgroundColor: notification.isRead ? 'white' : style.bgColor,
-                    '&:hover': {
-                      backgroundColor: '#f1f5f9',
-                      transform: 'translateX(4px)'
-                    },
-                    transition: 'all 0.2s ease',
-                    mx: 1,
-                    my: 0.5,
-                    borderRadius: 2,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                    position: 'relative'
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    flexShrink: 0
                   }}
                 >
-                  {/* Icon */}
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: '50%',
-                      backgroundColor: style.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      flexShrink: 0
-                    }}
-                  >
-                    {style.icon}
-                  </Box>
+                  {style.icon}
+                </Box>
 
-                  {/* Content */}
-                  <Box flex={1} minWidth={0}>
-                    <Box display='flex' justifyContent='space-between' alignItems='flex-start' mb={0.5}>
-                      <Typography
-                        variant='body1'
-                        fontWeight={notification.isRead ? 400 : 600}
-                        sx={{
-                          color: 'text.primary',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          maxWidth: '200px'
-                        }}
-                      >
-                        {notification.title}
-                      </Typography>
-
-                      <Typography
-                        variant='caption'
-                        sx={{
-                          color: 'text.secondary',
-                          fontSize: '0.75rem',
-                          flexShrink: 0,
-                          ml: 1
-                        }}
-                      >
-                        {formatTime(notification.timestamp)}
-                      </Typography>
-                    </Box>
-
+                {/* Content */}
+                <Box flex={1} minWidth={0}>
+                  <Box display='flex' justifyContent='space-between' alignItems='flex-start' mb={0.5}>
                     <Typography
-                      variant='body2'
+                      variant='body1'
+                      fontWeight={notification.isRead ? 400 : 600}
                       sx={{
-                        color: notification.isRead ? 'text.secondary' : 'text.primary',
-                        fontWeight: notification.isRead ? 400 : 500,
+                        color: 'text.primary',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        lineHeight: 1.4
+                        whiteSpace: 'nowrap',
+                        maxWidth: '200px'
                       }}
                     >
-                      {notification.message}
+                      {notification.title}
                     </Typography>
 
-                    {/* Unread indicator */}
-                    {!notification.isRead && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: 8,
-                          right: 8,
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          backgroundColor: '#10b981'
-                        }}
-                      />
-                    )}
+                    <Typography
+                      variant='caption'
+                      sx={{
+                        color: 'text.secondary',
+                        fontSize: '0.75rem',
+                        flexShrink: 0,
+                        ml: 1
+                      }}
+                    >
+                      {formatTime(notification.timestamp)}
+                    </Typography>
                   </Box>
+
+                  <Typography
+                    variant='body2'
+                    sx={{
+                      color: notification.isRead ? 'text.secondary' : 'text.primary',
+                      fontWeight: notification.isRead ? 400 : 500,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      lineHeight: 1.4
+                    }}
+                  >
+                    {notification.message}
+                  </Typography>
+
+                  {/* Unread indicator */}
+                  {!notification.isRead && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        backgroundColor: '#10b981'
+                      }}
+                    />
+                  )}
                 </Box>
-              );
-            })
-          )}
+              </Box>
+            );
+          })}
         </Box>
       </Paper>
     </Box>

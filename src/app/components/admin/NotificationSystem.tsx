@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { pusherClient } from '@/app/libs/pusher';
 import { SafeUser } from '../../../../types';
-import NotificationPanel from './NotificationPanel';
+import NotificationPanel from './NotificationToast';
 
 interface NotificationSystemProps {
   currentUser: SafeUser | null;
@@ -24,7 +24,7 @@ interface NotificationSystemProps {
 const NotificationSystem: React.FC<NotificationSystemProps> = ({ currentUser, forceShow = false, onClose }) => {
   const [notificationQueue, setNotificationQueue] = useState<any[]>([]);
   const [currentNotifications, setCurrentNotifications] = useState<any[]>([]);
-
+  const MAX_NOTIFICATIONS = 10;
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Setup real-time listeners
@@ -65,10 +65,10 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ currentUser, fo
   // Process notification queue - collect notifications instead of showing one by one
   useEffect(() => {
     if (notificationQueue.length > 0) {
-      // Add new notifications to current list (max 5)
+      // Add new notifications to current list (max 10)
       setCurrentNotifications(prev => {
         const combined = [...prev, ...notificationQueue];
-        return combined.slice(-5); // Keep only latest 5
+        return combined.slice(-MAX_NOTIFICATIONS); // Keep only latest 10
       });
 
       // Clear the queue
@@ -123,7 +123,7 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ currentUser, fo
           const response = await fetch('/api/notifications');
           const data = await response.json();
           if (data.notifications && Array.isArray(data.notifications)) {
-            setCurrentNotifications(data.notifications.slice(0, 5));
+            setCurrentNotifications(data.notifications.slice(0, MAX_NOTIFICATIONS));
           }
         } catch (error) {
           console.error('Error fetching notifications:', error);

@@ -90,14 +90,13 @@ const MessageToast: React.FC<MessageToastProps> = ({
   };
 
   return (
-    <Snackbar
-      open={true}
-      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      TransitionComponent={Slide}
+    <Box
       sx={{
-        mt: 8,
-        mr: 2,
-        zIndex: 9999
+        position: 'fixed',
+        top: 70,
+        right: 180,
+        zIndex: 9999,
+        animation: 'slideInRight 0.3s ease-out'
       }}
     >
       <Paper
@@ -112,7 +111,6 @@ const MessageToast: React.FC<MessageToastProps> = ({
           border: '1px solid rgba(0,0,0,0.08)',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {
-            transform: 'scale(1.02) translateY(-4px)',
             boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
           }
         }}
@@ -123,7 +121,7 @@ const MessageToast: React.FC<MessageToastProps> = ({
         <Box
           sx={{
             height: 3,
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            background: 'linear-gradient(135deg, #16b1ff 0%, #0ea5e9 100%)',
             position: 'relative',
             overflow: 'hidden'
           }}
@@ -143,7 +141,7 @@ const MessageToast: React.FC<MessageToastProps> = ({
         <Box
           sx={{
             p: 3,
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            background: 'linear-gradient(135deg, #16b1ff 0%, #0ea5e9 100%)',
             color: 'white',
             display: 'flex',
             alignItems: 'center',
@@ -151,7 +149,7 @@ const MessageToast: React.FC<MessageToastProps> = ({
           }}
         >
           <Typography variant='h6' fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            💬 Tin nhắn
+            Tin nhắn
           </Typography>
 
           <IconButton
@@ -197,8 +195,8 @@ const MessageToast: React.FC<MessageToastProps> = ({
                   gap: 2,
                   cursor: 'pointer',
                   borderBottom: index < messages.length - 1 ? '1px solid rgba(0,0,0,0.08)' : 'none',
-                  backgroundColor: msg.isRead ? 'white' : 'rgba(16, 185, 129, 0.05)',
-                  borderLeft: !msg.isRead ? '4px solid #10b981' : 'none',
+                  backgroundColor: msg.isRead ? 'white' : 'rgba(22, 177, 255, 0.05)',
+                  borderLeft: !msg.isRead ? '4px solid #16b1ff' : 'none',
                   '&:hover': {
                     backgroundColor: '#f1f5f9',
                     transform: 'translateX(4px)'
@@ -217,7 +215,7 @@ const MessageToast: React.FC<MessageToastProps> = ({
                     sx={{
                       width: 52,
                       height: 52,
-                      border: '2px solid #10b981'
+                      border: '2px solid #16b1ff'
                     }}
                   />
                   {/* Unread badge */}
@@ -230,7 +228,7 @@ const MessageToast: React.FC<MessageToastProps> = ({
                         width: 16,
                         height: 16,
                         borderRadius: '50%',
-                        backgroundColor: '#10b981',
+                        backgroundColor: '#16b1ff',
                         border: '2px solid white',
                         display: 'flex',
                         alignItems: 'center',
@@ -269,7 +267,7 @@ const MessageToast: React.FC<MessageToastProps> = ({
                     <Typography
                       variant='caption'
                       sx={{
-                        color: !msg.isRead ? '#10b981' : '#9ca3af',
+                        color: !msg.isRead ? '#16b1ff' : '#9ca3af',
                         fontSize: '0.75rem',
                         fontWeight: !msg.isRead ? 600 : 400,
                         flexShrink: 0,
@@ -304,7 +302,7 @@ const MessageToast: React.FC<MessageToastProps> = ({
                           width: 8,
                           height: 8,
                           borderRadius: '50%',
-                          backgroundColor: '#10b981',
+                          backgroundColor: '#16b1ff',
                           flexShrink: 0
                         }}
                       />
@@ -316,7 +314,7 @@ const MessageToast: React.FC<MessageToastProps> = ({
           )}
         </Box>
       </Paper>
-    </Snackbar>
+    </Box>
   );
 };
 
