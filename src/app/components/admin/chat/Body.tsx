@@ -96,7 +96,7 @@ const Body: React.FC<BodyProps> = ({
 
   return (
     <div
-      className={`relative flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] bg-[#F7F6FA] scrollbar-track-transparent ${className}`}
+      className={`relative flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[#c0c0c0] bg-gradient-to-r from-gray-50 to-blue-50 scrollbar-track-transparent ${className}`}
     >
       {messages.map((message, i) => (
         <div

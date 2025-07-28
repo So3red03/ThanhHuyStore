@@ -14,7 +14,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ conversation, onToggleSearch, onToggleCustomerInfo }) => {
   const otherUser = useOtherUser(conversation);
   return (
-    <div className='w-full flex border-b-[1px] bg-[#F7F6FA] border-gray-300 sm:px-4 py-3 pt-4 px-4 lg:px-6 justify-between items-center'>
+    <div className='w-full flex border-b-[1px] bg-gradient-to-r from-gray-50 to-blue-50 border-gray-300 sm:px-4 py-3 pt-4 px-4 lg:px-6 justify-between items-center'>
       <div className='flex gap-3 items-center'>
         <Link
           className='lg:hidden block text-sky-500 hover:text-sky-text-sky-600 transition cursor-pointer'
