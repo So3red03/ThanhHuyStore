@@ -91,22 +91,24 @@ const AdminSideBarNew: React.FC<AdminSideBarNewProps> = ({ currentUser }) => {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {/* Logo Icon */}
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              backgroundColor: '#3b82f6',
-              borderRadius: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '1.2rem'
-            }}
-          >
-            TH
-          </Box>
+          <Link href='/'>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                backgroundColor: '#3b82f6',
+                borderRadius: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '1.2rem'
+              }}
+            >
+              TH
+            </Box>
+          </Link>
 
           {/* Brand Text */}
           {!isCollapsed && (
