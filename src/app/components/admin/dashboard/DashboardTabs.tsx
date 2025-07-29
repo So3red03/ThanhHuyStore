@@ -42,6 +42,7 @@ import VoucherAnalytics from './VoucherAnalytics';
 import CustomerAnalytics from './CustomerAnalytics';
 import ReturnOrderAnalytics from './ReturnOrderAnalytics';
 import EmailTrackingAnalytics from './EmailTrackingAnalytics';
+import NotificationTab from './NotificationTab';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -91,44 +92,13 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
 }) => {
   const [value, setValue] = useState(0);
   const [analyticsAnchorEl, setAnalyticsAnchorEl] = useState<null | HTMLElement>(null);
+  const [reportsAnchorEl, setReportsAnchorEl] = useState<null | HTMLElement>(null);
   const [analyticsSubTab, setAnalyticsSubTab] = useState<
     'main' | 'campaigns' | 'customers' | 'returns' | 'email-marketing'
   >('main');
-  const [timeFilter, setTimeFilter] = useState('7d');
+  const [reportsSubTab, setReportsSubTab] = useState<'main' | 'notifications'>('main');
   const theme = useTheme();
   const router = useRouter();
-
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    // Don't change tab if clicking on Analytics tab (index 1) - let dropdown handle it
-    if (newValue === 1) {
-      return;
-    }
-
-    setValue(newValue);
-    // Reset analytics subtab when switching tabs
-    setAnalyticsSubTab('main');
-  };
-
-  const handleAnalyticsClick = (event: React.MouseEvent<HTMLElement>) => {
-    // Prevent default tab change behavior
-    event.preventDefault();
-    event.stopPropagation();
-
-    // Always show dropdown when clicking Analytics tab
-    setAnalyticsAnchorEl(event.currentTarget);
-    // Don't change tab automatically - let user choose from dropdown
-  };
-
-  const handleAnalyticsMenuClose = () => {
-    setAnalyticsAnchorEl(null);
-  };
-
-  const handleAnalyticsSubTabSelect = (subTab: 'main' | 'campaigns' | 'customers' | 'returns' | 'email-marketing') => {
-    setAnalyticsSubTab(subTab);
-    setAnalyticsAnchorEl(null);
-    // Switch to analytics tab when selecting from dropdown
-    setValue(1);
-  };
 
   const tabs = [
     {
@@ -156,7 +126,8 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
     {
       label: 'Báo cáo',
       icon: <MdAssessment size={20} />,
-      content: reportsContent
+      content: reportsSubTab === 'main' ? reportsContent : <NotificationTab />,
+      hasDropdown: true
     },
     {
       label: 'Nhật ký',
@@ -164,6 +135,59 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
       content: notificationsContent
     }
   ];
+
+  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
+    // Don't change tab if clicking on Analytics tab (index 1) or Reports tab (index 2) - let dropdown handle it
+    if (newValue === 1 || newValue === 2) {
+      return;
+    }
+
+    setValue(newValue);
+    // Reset subtabs when switching tabs
+    setAnalyticsSubTab('main');
+    setReportsSubTab('main');
+  };
+
+  const handleAnalyticsClick = (event: React.MouseEvent<HTMLElement>) => {
+    // Prevent default tab change behavior
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Always show dropdown when clicking Analytics tab
+    setAnalyticsAnchorEl(event.currentTarget);
+    // Don't change tab automatically - let user choose from dropdown
+  };
+
+  const handleAnalyticsMenuClose = () => {
+    setAnalyticsAnchorEl(null);
+  };
+
+  const handleAnalyticsSubTabSelect = (subTab: 'main' | 'campaigns' | 'customers' | 'returns' | 'email-marketing') => {
+    setAnalyticsSubTab(subTab);
+    setAnalyticsAnchorEl(null);
+    // Switch to analytics tab when selecting from dropdown
+    setValue(1);
+  };
+
+  const handleReportsClick = (event: React.MouseEvent<HTMLElement>) => {
+    // Prevent default tab change behavior
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Always show dropdown when clicking Reports tab
+    setReportsAnchorEl(event.currentTarget);
+  };
+
+  const handleReportsMenuClose = () => {
+    setReportsAnchorEl(null);
+  };
+
+  const handleReportsSubTabSelect = (subTab: 'main' | 'notifications') => {
+    setReportsSubTab(subTab);
+    setReportsAnchorEl(null);
+    // Switch to reports tab when selecting from dropdown
+    setValue(2);
+  };
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -185,7 +209,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
             backgroundColor: 'transparent',
             borderRadius: 3,
             overflow: 'hidden',
-            width: { xs: '100%', lg: '45%' } // Compact width
+            width: { xs: '100%', lg: '50%' } // Compact width
           }}
         >
           <Tabs
@@ -235,7 +259,13 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                   </Box>
                 }
                 {...a11yProps(index)}
-                onClick={tab.hasDropdown && index === 1 ? handleAnalyticsClick : undefined}
+                onClick={
+                  tab.hasDropdown && index === 1
+                    ? handleAnalyticsClick
+                    : tab.hasDropdown && index === 2
+                    ? handleReportsClick
+                    : undefined
+                }
                 sx={{
                   borderRadius: 2,
                   minHeight: 44,
@@ -350,10 +380,62 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
               />
             </MenuItem>
           </Menu>
+
+          {/* Reports Dropdown Menu */}
+          <Menu
+            anchorEl={reportsAnchorEl}
+            open={Boolean(reportsAnchorEl)}
+            onClose={handleReportsMenuClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'left'
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'left'
+            }}
+            sx={{
+              '& .MuiPaper-root': {
+                borderRadius: 2,
+                minWidth: 200,
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                border: '1px solid #e5e7eb'
+              }
+            }}
+          >
+            <MenuItem
+              onClick={() => handleReportsSubTabSelect('main')}
+              selected={reportsSubTab === 'main'}
+              sx={{ py: 1.5 }}
+            >
+              <ListItemIcon>
+                <MdAssessment size={20} />
+              </ListItemIcon>
+              <ListItemText
+                primary='Báo cáo chính'
+                secondary='Báo cáo tổng quan hệ thống'
+                primaryTypographyProps={{ fontWeight: 500 }}
+              />
+            </MenuItem>
+            <MenuItem
+              onClick={() => handleReportsSubTabSelect('notifications')}
+              selected={reportsSubTab === 'notifications'}
+              sx={{ py: 1.5 }}
+            >
+              <ListItemIcon>
+                <MdNotifications size={20} />
+              </ListItemIcon>
+              <ListItemText
+                primary='Thông báo'
+                secondary='Quản lý thông báo hệ thống'
+                primaryTypographyProps={{ fontWeight: 500 }}
+              />
+            </MenuItem>
+          </Menu>
         </Paper>
 
         {/* Marketing Action Card - Compact Version */}
-        <Box sx={{ width: { xs: '100%', lg: '50%' } }}>
+        <Box sx={{ width: { xs: '100%', lg: '45%' } }}>
           <Card
             sx={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',

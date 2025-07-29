@@ -48,3 +48,38 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// DELETE - Xóa notification
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = params;
+
+    // Check if user owns the notification or is admin
+    const notification = await prisma.notification.findUnique({
+      where: { id }
+    });
+
+    if (!notification) {
+      return NextResponse.json({ error: 'Notification not found' }, { status: 404 });
+    }
+
+    // Allow deletion if user owns the notification or is admin/staff
+    if (notification.userId !== currentUser.id && currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await prisma.notification.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
