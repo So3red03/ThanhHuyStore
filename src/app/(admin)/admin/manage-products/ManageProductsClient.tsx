@@ -808,15 +808,11 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
               onClick={() => setShowEmailModal(true)}
               startIcon={<FaRegEnvelope />}
               variant='outlined'
+              className='bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600'
               sx={{
                 textTransform: 'none',
                 fontWeight: 600,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderColor: '#764ba2',
-                color: 'white',
-                '&:hover': {
-                  borderColor: '#5c3ec9'
-                }
+                color: 'white'
               }}
             >
               Email Marketing

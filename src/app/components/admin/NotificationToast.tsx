@@ -2,13 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, Avatar, IconButton } from '@mui/material';
-import { MdClose, MdShoppingCart, MdWarning, MdComment, MdCircle } from 'react-icons/md';
+import { MdClose, MdShoppingCart, MdWarning, MdComment, MdCircle, MdAutoAwesome, MdLocalOffer } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 
 interface NotificationToastProps {
   notifications: Array<{
     id: string;
-    type: 'ORDER_PLACED' | 'LOW_STOCK' | 'SYSTEM_ALERT' | 'COMMENT_RECEIVED';
+    type:
+      | 'ORDER_PLACED'
+      | 'LOW_STOCK'
+      | 'SYSTEM_ALERT'
+      | 'COMMENT_RECEIVED'
+      | 'PROMOTION_SUGGESTION'
+      | 'VOUCHER_SUGGESTION';
     title: string;
     message: string;
     avatar?: string;
@@ -72,7 +78,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
   if (notifications.length === 0 && !isLoading) return null;
 
   // Get notification type styling
-  const getNotificationStyle = (type: string) => {
+  const getNotificationStyle = (type: string, data?: any) => {
     switch (type) {
       case 'ORDER_PLACED':
         return {
@@ -91,6 +97,32 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
           icon: <MdComment size={20} />,
           color: '#7c3aed',
           bgColor: 'rgba(124, 58, 237, 0.1)'
+        };
+      case 'PROMOTION_SUGGESTION':
+        return {
+          icon: <MdLocalOffer size={20} />,
+          color: '#dc2626',
+          bgColor: 'rgba(220, 38, 38, 0.1)'
+        };
+      case 'VOUCHER_SUGGESTION':
+        return {
+          icon: <MdLocalOffer size={20} />,
+          color: '#059669',
+          bgColor: 'rgba(5, 150, 105, 0.1)'
+        };
+      case 'SYSTEM_ALERT':
+        // Check if it's an AI recommendation
+        if (data?.aiRecommendation) {
+          return {
+            icon: <MdAutoAwesome size={20} />,
+            color: '#7c3aed',
+            bgColor: 'rgba(124, 58, 237, 0.1)'
+          };
+        }
+        return {
+          icon: <MdCircle size={20} />,
+          color: '#10b981',
+          bgColor: 'rgba(16, 185, 129, 0.1)'
         };
       default:
         return {
@@ -200,7 +232,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         {/* Notification List */}
         <Box sx={{ maxHeight: 400, overflow: 'auto', backgroundColor: '#f8fafc' }}>
           {notifications.slice(0, 10).map((notification, index) => {
-            const style = getNotificationStyle(notification.type);
+            const style = getNotificationStyle(notification.type, notification.data);
 
             return (
               <Box
@@ -290,6 +322,52 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
                   >
                     {notification.message}
                   </Typography>
+
+                  {/* AI Recommendation Badge */}
+                  {notification.data?.aiRecommendation && (
+                    <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {notification.data.urgency && (
+                        <Box
+                          sx={{
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: '12px',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            backgroundColor:
+                              notification.data.urgency === 'HIGH' || notification.data.urgency === 'CRITICAL'
+                                ? '#fee2e2'
+                                : notification.data.urgency === 'MEDIUM'
+                                ? '#fef3c7'
+                                : '#dcfce7',
+                            color:
+                              notification.data.urgency === 'HIGH' || notification.data.urgency === 'CRITICAL'
+                                ? '#dc2626'
+                                : notification.data.urgency === 'MEDIUM'
+                                ? '#d97706'
+                                : '#16a34a'
+                          }}
+                        >
+                          {notification.data.urgency}
+                        </Box>
+                      )}
+                      {notification.data.confidence && (
+                        <Box
+                          sx={{
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: '12px',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            backgroundColor: '#e0e7ff',
+                            color: '#3730a3'
+                          }}
+                        >
+                          {notification.data.confidence}% tin cậy
+                        </Box>
+                      )}
+                    </Box>
+                  )}
 
                   {/* Unread indicator */}
                   {!notification.isRead && (

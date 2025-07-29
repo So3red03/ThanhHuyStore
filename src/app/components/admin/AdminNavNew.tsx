@@ -24,10 +24,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useSidebar } from '@/app/providers/SidebarProvider';
 import { signOut } from 'next-auth/react';
 import { SafeUser } from '../../../../types';
-import axios from 'axios';
-import { pusherClient } from '@/app/libs/pusher';
-import NotificationSystem from './NotificationSystem';
-import MessageSystem from './MessageSystem';
+import NotificationsSystem from '../../hooks/NotificationsSystem';
+import MessagesSystem from '@/app/hooks/MessagesSystem';
 
 // Path titles mapping
 const pathTitle: { [key: string]: string } = {
@@ -282,12 +280,12 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
       </Menu>
 
       {/* Professional Notification & Message Systems - Instant UI */}
-      <NotificationSystem
+      <MessagesSystem
         currentUser={currentUser || null}
         forceShow={showNotifications}
         onClose={() => setShowNotifications(false)}
       />
-      <MessageSystem
+      <NotificationsSystem
         currentUser={currentUser || null}
         forceShow={showMessages}
         onClose={() => setShowMessages(false)}

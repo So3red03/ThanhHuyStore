@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/ai-analysis?secret=YOUR_CRON_SECRET_HERE",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}

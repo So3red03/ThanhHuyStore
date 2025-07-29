@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeUser } from '../../../../types';
+import { SafeUser } from '../../../types';
 import { pusherClient } from '@/app/libs/pusher';
-import MessageToast from './MessageToast';
+import MessageToast from '../components/admin/MessageToast';
 import axios from 'axios';
 
-interface MessageSystemProps {
+interface useNotiMessagesProps {
   currentUser: SafeUser | null;
   forceShow?: boolean;
   onClose?: () => void;
@@ -23,7 +23,7 @@ interface Message {
   isRead: boolean;
 }
 
-const MessageSystem: React.FC<MessageSystemProps> = ({ currentUser, forceShow = false, onClose }) => {
+const useNotiMessages: React.FC<useNotiMessagesProps> = ({ currentUser, forceShow = false, onClose }) => {
   const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const [messageQueue, setMessageQueue] = useState<Message[]>([]);
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -217,4 +217,4 @@ const MessageSystem: React.FC<MessageSystemProps> = ({ currentUser, forceShow = 
   );
 };
 
-export default MessageSystem;
+export default useNotiMessages;

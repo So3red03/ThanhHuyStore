@@ -2,13 +2,24 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { pusherClient } from '@/app/libs/pusher';
-import { SafeUser } from '../../../../types';
-import NotificationPanel from './NotificationToast';
+import { SafeUser } from '../../../types';
+import NotificationPanel from '../components/admin/NotificationToast';
 
-interface NotificationSystemProps {
+interface useNotificationsProps {
   currentUser: SafeUser | null;
   forceShow?: boolean;
   onClose?: () => void;
+}
+
+interface AINotificationData {
+  aiRecommendation?: boolean;
+  reasoning?: string;
+  urgency?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  confidence?: number;
+  suggestedAction?: any;
+  expectedImpact?: string;
+  productId?: string;
+  productName?: string;
 }
 
 /**
@@ -19,11 +30,13 @@ interface NotificationSystemProps {
  * - Smart notification queuing
  * - Auto-dismiss with hover pause
  * - Professional toast animations
+ * - AI-powered product recommendations
  * - Sound notifications (optional)
  */
-const NotificationSystem: React.FC<NotificationSystemProps> = ({ currentUser, forceShow = false, onClose }) => {
+const useNotifications: React.FC<useNotificationsProps> = ({ currentUser, forceShow = false, onClose }) => {
   const [notificationQueue, setNotificationQueue] = useState<any[]>([]);
   const [currentNotifications, setCurrentNotifications] = useState<any[]>([]);
+  const [isRunningAI, setIsRunningAI] = useState(false);
   const MAX_NOTIFICATIONS = 10;
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -110,6 +123,28 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ currentUser, fo
       case 'COMMENT_RECEIVED':
         window.location.href = '/admin/manage-articles';
         break;
+      case 'PROMOTION_SUGGESTION':
+      case 'VOUCHER_SUGGESTION':
+        // AI suggestions - navigate to product management with specific product
+        if (notification.data?.productId) {
+          window.location.href = `/admin/manage-products?highlight=${notification.data.productId}`;
+        } else {
+          window.location.href = '/admin/manage-products';
+        }
+        break;
+      case 'SYSTEM_ALERT':
+        // Check if it's an AI recommendation
+        if (notification.data?.aiRecommendation) {
+          if (notification.data.productId) {
+            window.location.href = `/admin/manage-products?highlight=${notification.data.productId}`;
+          } else {
+            window.location.href = '/admin/manage-products';
+          }
+        } else {
+          // Regular system alert - go to dashboard
+          window.location.href = '/admin';
+        }
+        break;
       default:
         break;
     }
@@ -135,6 +170,81 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ currentUser, fo
     }
   }, [forceShow, currentUser, notificationQueue.length]);
 
+  // Function to run AI analysis manually
+  const runAIAnalysis = async () => {
+    if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
+      return;
+    }
+
+    setIsRunningAI(true);
+    try {
+      const response = await fetch('/api/ai/analyze-products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Show success notification
+        const successNotification = {
+          id: `ai-success-${Date.now()}`,
+          type: 'SYSTEM_ALERT',
+          title: '🤖 AI Analysis Hoàn thành',
+          message: `Đã phân tích ${result.data.productsAnalyzed} sản phẩm, tạo ${result.data.recommendationsGenerated} đề xuất`,
+          timestamp: new Date(),
+          data: {
+            aiAnalysis: true,
+            ...result.data
+          }
+        };
+
+        setNotificationQueue(prev => [...prev, successNotification]);
+      } else {
+        throw new Error(result.error || 'AI analysis failed');
+      }
+    } catch (error) {
+      console.error('AI Analysis error:', error);
+
+      // Show error notification
+      const errorNotification = {
+        id: `ai-error-${Date.now()}`,
+        type: 'SYSTEM_ALERT',
+        title: '❌ AI Analysis Lỗi',
+        message: 'Không thể chạy phân tích AI. Vui lòng thử lại sau.',
+        timestamp: new Date(),
+        data: { aiAnalysis: true, error: true }
+      };
+
+      setNotificationQueue(prev => [...prev, errorNotification]);
+    } finally {
+      setIsRunningAI(false);
+    }
+  };
+
+  // Auto-run AI analysis every 6 hours for admin users
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+
+    const runPeriodicAI = () => {
+      const now = new Date();
+      const hour = now.getHours();
+
+      // Run at 6:00, 12:00, 18:00, 00:00
+      if ([0, 6, 12, 18].includes(hour) && now.getMinutes() < 5) {
+        console.log('🤖 Running scheduled AI analysis...');
+        runAIAnalysis();
+      }
+    };
+
+    // Check every 5 minutes
+    const interval = setInterval(runPeriodicAI, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
   // Don't render if user not authorized
   if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
     return null;
@@ -145,6 +255,34 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ currentUser, fo
 
   return (
     <>
+      {/* AI Analysis Button - Only for Admin */}
+      {currentUser?.role === 'ADMIN' && (
+        <div className='fixed bottom-4 right-4 z-50'>
+          <button
+            onClick={runAIAnalysis}
+            disabled={isRunningAI}
+            className={`
+              px-4 py-2 rounded-lg shadow-lg font-medium text-sm transition-all duration-200
+              ${
+                isRunningAI
+                  ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 hover:shadow-xl'
+              }
+            `}
+            title='Chạy phân tích AI để tạo đề xuất thông minh'
+          >
+            {isRunningAI ? (
+              <>
+                <span className='animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2'></span>
+                Đang phân tích...
+              </>
+            ) : (
+              <>🤖 AI Analysis</>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Notification Panel - Instant UI */}
       {shouldShowNotifications && (
         <NotificationPanel
@@ -162,4 +300,4 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({ currentUser, fo
   );
 };
 
-export default NotificationSystem;
+export default useNotifications;
