@@ -24,7 +24,11 @@ import {
   Stack,
   Button,
   useTheme,
-  alpha
+  alpha,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar
 } from '@mui/material';
 import {
   MdSearch,
@@ -39,7 +43,8 @@ import {
   MdMarkAsUnread,
   MdMarkEmailRead,
   MdDelete,
-  MdRefresh
+  MdRefresh,
+  MdBarChart
 } from 'react-icons/md';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -75,11 +80,13 @@ const NotificationTab: React.FC = () => {
   const theme = useTheme();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterRead, setFilterRead] = useState<string>('all');
+  const [timeFilter, setTimeFilter] = useState('7d');
   const itemsPerPage = 10;
 
   // Notification type configurations
@@ -130,7 +137,7 @@ const NotificationTab: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
-  }, [page, searchTerm, filterType, filterRead]);
+  }, [page, searchTerm, filterType, filterRead, timeFilter]);
 
   const fetchNotifications = async () => {
     try {
@@ -140,7 +147,8 @@ const NotificationTab: React.FC = () => {
         limit: itemsPerPage.toString(),
         ...(searchTerm && { search: searchTerm }),
         ...(filterType !== 'all' && { type: filterType }),
-        ...(filterRead !== 'all' && { isRead: filterRead })
+        ...(filterRead !== 'all' && { isRead: filterRead }),
+        ...(timeFilter !== 'all' && { timeFilter })
       });
 
       const response = await fetch(`/api/notifications/admin?${params}`);
@@ -152,6 +160,17 @@ const NotificationTab: React.FC = () => {
       console.error('Error fetching notifications:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchNotifications();
+    } catch (error) {
+      console.error('Error refreshing notifications:', error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -205,314 +224,485 @@ const NotificationTab: React.FC = () => {
   const stats = getNotificationStats();
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Header with gradient background */}
-      <Paper
-        elevation={0}
-        sx={{
-          background: 'linear-gradient(135deg, #9C27B0 0%, #2196F3 100%)',
-          color: 'white',
-          p: 3,
-          borderRadius: 3,
-          mb: 3
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <MdNotifications size={32} />
-            <Box>
-              <Typography variant='h5' fontWeight='bold'>
-                Danh sách thông báo
-              </Typography>
-              <Typography variant='body2' sx={{ opacity: 0.9 }}>
-                Quản lý tất cả thông báo hệ thống
-              </Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant='contained'
-              startIcon={<MdRefresh />}
-              onClick={fetchNotifications}
-              sx={{
-                bgcolor: alpha('#fff', 0.2),
-                '&:hover': { bgcolor: alpha('#fff', 0.3) }
-              }}
-            >
-              Làm mới
-            </Button>
-            <Button
-              variant='contained'
-              startIcon={<MdMarkEmailRead />}
-              onClick={handleMarkAllAsRead}
-              sx={{
-                bgcolor: alpha('#fff', 0.2),
-                '&:hover': { bgcolor: alpha('#fff', 0.3) }
-              }}
-            >
-              Đánh dấu tất cả đã đọc
-            </Button>
-          </Box>
-        </Box>
-      </Paper>
+    <Box>
+      {/* Main Content Card */}
+      <Card sx={{ mb: 4, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+        <CardContent sx={{ p: 0 }}>
+          {/* Compact Header Section */}
+          <div className='bg-gradient-to-r from-purple-600 via-purple-700 to-pink-600 p-4 text-white'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-3'>
+                <div className='p-2 bg-white/20 backdrop-blur-sm rounded-lg'>
+                  <MdNotifications size={20} className='text-white' />
+                </div>
+                <div>
+                  <Typography variant='h5' sx={{ fontWeight: 700, color: 'white', mb: 0.5 }}>
+                    Quản lý Thông báo
+                  </Typography>
+                  <Typography variant='body2' sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                    Theo dõi và quản lý tất cả thông báo hệ thống
+                  </Typography>
+                </div>
+              </div>
+              <div className='text-right'>
+                <div className='text-2xl font-bold'>{stats.total}</div>
+                <div className='text-xs opacity-90'>Tổng thông báo</div>
+              </div>
+            </div>
+          </div>
 
-      {/* Stats Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)', color: 'white' }}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant='h4' fontWeight='bold'>
-                {stats.total}
-              </Typography>
-              <Typography variant='body2'>Tổng thông báo</Typography>
+          {/* Compact Summary Cards */}
+          <div className='p-4'>
+            {loading ? (
+              <div className='flex justify-center items-center py-12'>
+                <div className='text-center'>
+                  <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4'></div>
+                  <Typography variant='body2' color='textSecondary'>
+                    Đang tải dữ liệu thông báo...
+                  </Typography>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(102, 126, 234, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(102, 126, 234, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdNotifications size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                          {stats.total}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Tổng thông báo
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng hệ thống</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(240, 147, 251, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(240, 147, 251, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdMarkAsUnread size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                          {stats.unread}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Chưa đọc
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Cần xử lý</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(79, 172, 254, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(79, 172, 254, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdMarkEmailRead size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                          {stats.total - stats.unread}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
+                          Đã đọc
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Đã xử lý</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card
+                      sx={{
+                        background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                        color: '#1f2937',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 16px rgba(168, 237, 234, 0.2)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(168, 237, 234, 0.3)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ textAlign: 'center', p: 2.5 }}>
+                        <div className='flex justify-center mb-2'>
+                          <div className='p-2 bg-white/20 rounded-full'>
+                            <MdBarChart size={20} />
+                          </div>
+                        </div>
+                        <Typography variant='h4' sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '1.5rem' }}>
+                          {Object.keys(stats.byType).length}
+                        </Typography>
+                        <Typography variant='body2' sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
+                          Loại thông báo
+                        </Typography>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Phân loại</div>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Layout ngang: Filters bên trái, Notifications bên phải */}
+      <Grid container spacing={3}>
+        {/* Sidebar Filters */}
+        <Grid item xs={12} md={3}>
+          <Card
+            sx={{
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              height: 'fit-content',
+              position: 'sticky',
+              top: 20
+            }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <div className='flex items-center gap-2 mb-4'>
+                <MdFilterList size={20} className='text-blue-600' />
+                <Typography variant='h6' sx={{ fontWeight: 600, color: '#1f2937' }}>
+                  Bộ lọc
+                </Typography>
+              </div>
+
+              <Stack spacing={3}>
+                {/* Search */}
+                <TextField
+                  fullWidth
+                  placeholder='Tìm kiếm thông báo...'
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position='start'>
+                        <MdSearch />
+                      </InputAdornment>
+                    )
+                  }}
+                  size='small'
+                />
+
+                {/* Time Filter */}
+                <FormControl fullWidth size='small'>
+                  <InputLabel>Thời gian</InputLabel>
+                  <Select value={timeFilter} label='Thời gian' onChange={e => setTimeFilter(e.target.value)}>
+                    <MenuItem value='1d'>24 giờ</MenuItem>
+                    <MenuItem value='7d'>7 ngày</MenuItem>
+                    <MenuItem value='30d'>30 ngày</MenuItem>
+                    <MenuItem value='all'>Tất cả</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {/* Type Filter */}
+                <FormControl fullWidth size='small'>
+                  <InputLabel>Loại thông báo</InputLabel>
+                  <Select value={filterType} onChange={e => setFilterType(e.target.value)} label='Loại thông báo'>
+                    <MenuItem value='all'>Tất cả</MenuItem>
+                    {Object.entries(notificationConfig)
+                      .filter(([type]) => type !== 'MESSAGE_RECEIVED') // Bỏ option tin nhắn
+                      .map(([type, config]) => (
+                        <MenuItem key={type} value={type}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {config.icon}
+                            {config.label}
+                          </Box>
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+
+                {/* Read Status Filter */}
+                <FormControl fullWidth size='small'>
+                  <InputLabel>Trạng thái</InputLabel>
+                  <Select value={filterRead} onChange={e => setFilterRead(e.target.value)} label='Trạng thái'>
+                    <MenuItem value='all'>Tất cả</MenuItem>
+                    <MenuItem value='false'>Chưa đọc</MenuItem>
+                    <MenuItem value='true'>Đã đọc</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {/* Quick Actions */}
+                <Divider />
+                <Stack spacing={2}>
+                  <Button
+                    variant='outlined'
+                    startIcon={<MdMarkEmailRead />}
+                    onClick={handleMarkAllAsRead}
+                    size='small'
+                    fullWidth
+                    sx={{
+                      borderColor: '#3b82f6',
+                      color: '#3b82f6',
+                      '&:hover': {
+                        borderColor: '#2563eb',
+                        backgroundColor: '#eff6ff'
+                      }
+                    }}
+                  >
+                    Đánh dấu tất cả đã đọc
+                  </Button>
+
+                  <Button
+                    variant='contained'
+                    startIcon={
+                      isRefreshing ? (
+                        <div className='animate-spin'>
+                          <MdRefresh />
+                        </div>
+                      ) : (
+                        <MdRefresh />
+                      )
+                    }
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    size='small'
+                    fullWidth
+                    sx={{
+                      backgroundColor: '#3b82f6',
+                      '&:hover': { backgroundColor: '#2563eb' },
+                      '&:disabled': {
+                        backgroundColor: '#9ca3af',
+                        color: '#ffffff'
+                      },
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      fontWeight: 600
+                    }}
+                  >
+                    {isRefreshing ? 'Đang tải...' : 'Làm mới'}
+                  </Button>
+                </Stack>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #FF5722 0%, #D84315 100%)', color: 'white' }}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant='h4' fontWeight='bold'>
-                {stats.unread}
-              </Typography>
-              <Typography variant='body2'>Chưa đọc</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)', color: 'white' }}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant='h4' fontWeight='bold'>
-                {stats.total - stats.unread}
-              </Typography>
-              <Typography variant='body2'>Đã đọc</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ background: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)', color: 'white' }}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant='h4' fontWeight='bold'>
-                {Object.keys(stats.byType).length}
-              </Typography>
-              <Typography variant='body2'>Loại thông báo</Typography>
+
+        {/* Main Content */}
+        <Grid item xs={12} md={9}>
+          <Card sx={{ borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+            <CardContent sx={{ p: 0 }}>
+              {loading ? (
+                <Box sx={{ p: 4, textAlign: 'center' }}>
+                  <Typography>Đang tải...</Typography>
+                </Box>
+              ) : notifications.length === 0 ? (
+                <Box sx={{ p: 4, textAlign: 'center' }}>
+                  <MdNotifications size={48} color={theme.palette.grey[400]} />
+                  <Typography variant='h6' sx={{ mt: 2, color: 'text.secondary' }}>
+                    Không có thông báo nào
+                  </Typography>
+                </Box>
+              ) : (
+                <>
+                  {/* Notifications List */}
+                  <List sx={{ p: 0 }}>
+                    {notifications.map((notification, index) => {
+                      const config = notificationConfig[notification.type];
+                      return (
+                        <React.Fragment key={notification.id}>
+                          <ListItem
+                            sx={{
+                              p: 2,
+                              bgcolor: notification.isRead ? 'transparent' : alpha(config.color, 0.05),
+                              borderLeft: `4px solid ${notification.isRead ? 'transparent' : config.color}`,
+                              '&:hover': {
+                                bgcolor: alpha(config.color, 0.08)
+                              }
+                            }}
+                          >
+                            <ListItemAvatar>
+                              <Avatar
+                                sx={{
+                                  width: 48,
+                                  height: 48,
+                                  background: config.bgGradient,
+                                  color: 'white'
+                                }}
+                              >
+                                {config.icon}
+                              </Avatar>
+                            </ListItemAvatar>
+
+                            <ListItemText
+                              primary={
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    justifyContent: 'space-between',
+                                    mb: 1
+                                  }}
+                                >
+                                  <Box sx={{ flex: 1 }}>
+                                    <Typography
+                                      variant='subtitle1'
+                                      fontWeight={notification.isRead ? 'normal' : 'bold'}
+                                      sx={{ mb: 0.5 }}
+                                    >
+                                      {notification.title}
+                                    </Typography>
+                                    <Typography
+                                      variant='body2'
+                                      color='text.secondary'
+                                      sx={{
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden'
+                                      }}
+                                    >
+                                      {notification.message}
+                                    </Typography>
+                                  </Box>
+
+                                  {/* Action Buttons */}
+                                  <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
+                                    {!notification.isRead && (
+                                      <Tooltip title='Đánh dấu đã đọc'>
+                                        <IconButton
+                                          size='small'
+                                          onClick={() => handleMarkAsRead(notification.id)}
+                                          sx={{ color: config.color }}
+                                        >
+                                          <MdMarkEmailRead size={16} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
+                                    <Tooltip title='Xóa thông báo'>
+                                      <IconButton
+                                        size='small'
+                                        onClick={() => handleDeleteNotification(notification.id)}
+                                        sx={{ color: 'error.main' }}
+                                      >
+                                        <MdDelete size={16} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Box>
+                                </Box>
+                              }
+                              secondary={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mt: 1 }}>
+                                  <Chip
+                                    label={config.label}
+                                    size='small'
+                                    sx={{
+                                      bgcolor: alpha(config.color, 0.1),
+                                      color: config.color,
+                                      fontWeight: 'medium'
+                                    }}
+                                  />
+
+                                  {notification.user && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Avatar src={notification.user.image} sx={{ width: 20, height: 20 }}>
+                                        {notification.user.name?.charAt(0)}
+                                      </Avatar>
+                                      <Typography variant='caption' color='text.secondary'>
+                                        {notification.user.name}
+                                      </Typography>
+                                    </Box>
+                                  )}
+
+                                  <Typography variant='caption' color='text.secondary'>
+                                    {formatDistanceToNow(new Date(notification.createdAt), {
+                                      addSuffix: true,
+                                      locale: vi
+                                    })}
+                                  </Typography>
+
+                                  {!notification.isRead && (
+                                    <Badge
+                                      color='primary'
+                                      variant='dot'
+                                      sx={{
+                                        '& .MuiBadge-dot': {
+                                          bgcolor: config.color
+                                        }
+                                      }}
+                                    />
+                                  )}
+                                </Box>
+                              }
+                            />
+                          </ListItem>
+                          {index < notifications.length - 1 && <Divider />}
+                        </React.Fragment>
+                      );
+                    })}
+                  </List>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <Box sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
+                      <Pagination
+                        count={totalPages}
+                        page={page}
+                        onChange={(_, newPage) => setPage(newPage)}
+                        color='primary'
+                        size='large'
+                        showFirstButton
+                        showLastButton
+                      />
+                    </Box>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
-
-      {/* Filters */}
-      <Paper elevation={1} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-        <Grid container spacing={2} alignItems='center'>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              placeholder='Tìm kiếm thông báo...'
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position='start'>
-                    <MdSearch />
-                  </InputAdornment>
-                )
-              }}
-              size='small'
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth size='small'>
-              <InputLabel>Loại thông báo</InputLabel>
-              <Select value={filterType} onChange={e => setFilterType(e.target.value)} label='Loại thông báo'>
-                <MenuItem value='all'>Tất cả</MenuItem>
-                {Object.entries(notificationConfig).map(([type, config]) => (
-                  <MenuItem key={type} value={type}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {config.icon}
-                      {config.label}
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth size='small'>
-              <InputLabel>Trạng thái</InputLabel>
-              <Select value={filterRead} onChange={e => setFilterRead(e.target.value)} label='Trạng thái'>
-                <MenuItem value='all'>Tất cả</MenuItem>
-                <MenuItem value='false'>Chưa đọc</MenuItem>
-                <MenuItem value='true'>Đã đọc</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* Notifications List */}
-      <Paper elevation={1} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-        {loading ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography>Đang tải...</Typography>
-          </Box>
-        ) : notifications.length === 0 ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}>
-            <MdNotifications size={48} color={theme.palette.grey[400]} />
-            <Typography variant='h6' sx={{ mt: 2, color: 'text.secondary' }}>
-              Không có thông báo nào
-            </Typography>
-          </Box>
-        ) : (
-          <Box>
-            {notifications.map((notification, index) => {
-              const config = notificationConfig[notification.type];
-              return (
-                <Box key={notification.id}>
-                  <Box
-                    sx={{
-                      p: 2,
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 2,
-                      bgcolor: notification.isRead ? 'transparent' : alpha(config.color, 0.05),
-                      borderLeft: `4px solid ${notification.isRead ? 'transparent' : config.color}`,
-                      '&:hover': {
-                        bgcolor: alpha(config.color, 0.08)
-                      }
-                    }}
-                  >
-                    {/* Notification Icon */}
-                    <Box
-                      sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '50%',
-                        background: config.bgGradient,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        flexShrink: 0
-                      }}
-                    >
-                      {config.icon}
-                    </Box>
-
-                    {/* Notification Content */}
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography
-                            variant='subtitle1'
-                            fontWeight={notification.isRead ? 'normal' : 'bold'}
-                            sx={{ mb: 0.5 }}
-                          >
-                            {notification.title}
-                          </Typography>
-                          <Typography
-                            variant='body2'
-                            color='text.secondary'
-                            sx={{
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden'
-                            }}
-                          >
-                            {notification.message}
-                          </Typography>
-                        </Box>
-
-                        {/* Action Buttons */}
-                        <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
-                          {!notification.isRead && (
-                            <Tooltip title='Đánh dấu đã đọc'>
-                              <IconButton
-                                size='small'
-                                onClick={() => handleMarkAsRead(notification.id)}
-                                sx={{ color: config.color }}
-                              >
-                                <MdMarkEmailRead size={16} />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                          <Tooltip title='Xóa thông báo'>
-                            <IconButton
-                              size='small'
-                              onClick={() => handleDeleteNotification(notification.id)}
-                              sx={{ color: 'error.main' }}
-                            >
-                              <MdDelete size={16} />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </Box>
-
-                      {/* Metadata */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                        <Chip
-                          label={config.label}
-                          size='small'
-                          sx={{
-                            bgcolor: alpha(config.color, 0.1),
-                            color: config.color,
-                            fontWeight: 'medium'
-                          }}
-                        />
-
-                        {notification.user && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Avatar src={notification.user.image} sx={{ width: 20, height: 20 }}>
-                              {notification.user.name?.charAt(0)}
-                            </Avatar>
-                            <Typography variant='caption' color='text.secondary'>
-                              {notification.user.name}
-                            </Typography>
-                          </Box>
-                        )}
-
-                        <Typography variant='caption' color='text.secondary'>
-                          {formatDistanceToNow(new Date(notification.createdAt), {
-                            addSuffix: true,
-                            locale: vi
-                          })}
-                        </Typography>
-
-                        {!notification.isRead && (
-                          <Badge
-                            color='primary'
-                            variant='dot'
-                            sx={{
-                              '& .MuiBadge-dot': {
-                                bgcolor: config.color
-                              }
-                            }}
-                          />
-                        )}
-                      </Box>
-                    </Box>
-                  </Box>
-                  {index < notifications.length - 1 && <Divider />}
-                </Box>
-              );
-            })}
-          </Box>
-        )}
-      </Paper>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_, newPage) => setPage(newPage)}
-            color='primary'
-            size='large'
-            showFirstButton
-            showLastButton
-          />
-        </Box>
-      )}
     </Box>
   );
 };

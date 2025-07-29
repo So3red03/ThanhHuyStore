@@ -96,11 +96,25 @@ export class NotificationService {
   // Đánh dấu notification đã đọc
   static async markAsRead(notificationId: string, userId: string) {
     try {
+      // Kiểm tra xem user có quyền đánh dấu notification này không
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
+      if (!currentUser) {
+        throw new Error('User not found');
+      }
+
+      // Nếu là admin/staff, có thể đánh dấu bất kỳ notification nào
+      // Nếu là user thường, chỉ có thể đánh dấu notification của mình
+      const whereCondition: any = { id: notificationId };
+
+      if (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF') {
+        whereCondition.userId = userId;
+      }
+
       const notification = await prisma.notification.update({
-        where: {
-          id: notificationId,
-          userId: userId
-        },
+        where: whereCondition,
         data: {
           isRead: true
         }
@@ -116,11 +130,25 @@ export class NotificationService {
   // Đánh dấu tất cả notifications đã đọc
   static async markAllAsRead(userId: string) {
     try {
+      // Kiểm tra xem user có quyền đánh dấu tất cả notifications không
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
+      if (!currentUser) {
+        throw new Error('User not found');
+      }
+
+      // Nếu là admin/staff, có thể đánh dấu tất cả notifications
+      // Nếu là user thường, chỉ có thể đánh dấu notifications của mình
+      const whereCondition: any = { isRead: false };
+
+      if (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF') {
+        whereCondition.userId = userId;
+      }
+
       const result = await prisma.notification.updateMany({
-        where: {
-          userId: userId,
-          isRead: false
-        },
+        where: whereCondition,
         data: {
           isRead: true
         }

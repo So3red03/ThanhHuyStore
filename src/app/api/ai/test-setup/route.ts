@@ -6,7 +6,7 @@ import { EventType, OrderStatus } from '@prisma/client';
 /**
  * API để setup test data cho AI system
  * POST /api/ai/test-setup
- * 
+ *
  * Tạo sample data để test AI recommendations:
  * - Products cũ (>30 ngày)
  * - AnalyticsEvent với PRODUCT_VIEW
@@ -18,10 +18,7 @@ export async function POST(request: Request) {
     // Kiểm tra quyền admin
     const currentUser = await getCurrentUser();
     if (!currentUser || currentUser.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Only admin can setup test data' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Only admin can setup test data' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -37,10 +34,13 @@ export async function POST(request: Request) {
       });
 
       if (products.length === 0) {
-        return NextResponse.json({
-          error: 'No products found. Please create some products first.',
-          suggestion: 'Go to admin/manage-products and create a few products'
-        }, { status: 400 });
+        return NextResponse.json(
+          {
+            error: 'No products found. Please create some products first.',
+            suggestion: 'Go to admin/manage-products and create a few products'
+          },
+          { status: 400 }
+        );
       }
 
       // 2. Update một số products để có createdAt cũ (>30 ngày)
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         data: {
           createdAt: oldDate,
           inStock: 100, // High stock để test marketing suggestions
-          priority: 0   // Low priority để test priority boost
+          priority: 0 // Low priority để test priority boost
         }
       });
 
@@ -67,14 +67,15 @@ export async function POST(request: Request) {
         for (let i = 0; i < 30; i++) {
           const daysAgo = Math.floor(Math.random() * 30);
           const timestamp = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-          
+
           // Random số lượng views (1-10 per day)
           const viewsPerDay = Math.floor(Math.random() * 10) + 1;
-          
+
           for (let j = 0; j < viewsPerDay; j++) {
             analyticsEvents.push({
               userId: Math.random() > 0.5 ? currentUser.id : null,
-              sessionId: Math.random() > 0.5 ? `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}` : null,
+              sessionId:
+                Math.random() > 0.5 ? `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}` : null,
               eventType: EventType.PRODUCT_VIEW,
               entityType: 'product',
               entityId: product.id,
@@ -94,8 +95,7 @@ export async function POST(request: Request) {
 
       // Batch insert analytics events
       await prisma.analyticsEvent.createMany({
-        data: analyticsEvents,
-        skipDuplicates: true
+        data: analyticsEvents
       });
 
       // 4. Tạo một số orders với ít sales để simulate "sản phẩm ế"
@@ -103,25 +103,27 @@ export async function POST(request: Request) {
       for (let i = 0; i < 3; i++) {
         const product = products[i];
         const quantity = Math.floor(Math.random() * 3) + 1; // 1-3 quantity (ít)
-        
+
         testOrders.push({
           userId: currentUser.id,
           amount: product.price! * quantity,
           currency: 'vnd',
           status: OrderStatus.confirmed,
           paymentIntentId: `test_pi_${Date.now()}_${i}`,
-          products: [{
-            id: product.id,
-            name: product.name,
-            description: product.description,
-            category: product.category.name,
-            brand: product.brand,
-            selectedImg: '/noavatar.png',
-            thumbnail: '/noavatar.png',
-            quantity: quantity,
-            price: product.price!,
-            inStock: product.inStock!
-          }],
+          products: [
+            {
+              id: product.id,
+              name: product.name,
+              description: product.description,
+              category: product.category.name,
+              brand: product.brand,
+              selectedImg: '/noavatar.png',
+              thumbnail: '/noavatar.png',
+              quantity: quantity,
+              price: product.price!,
+              inStock: product.inStock!
+            }
+          ],
           createdAt: new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000) // Random trong 30 ngày
         });
       }
@@ -137,7 +139,7 @@ export async function POST(request: Request) {
       for (let i = 0; i < products.length; i++) {
         const product = products[i];
         const rating = i < 2 ? 5 : Math.floor(Math.random() * 3) + 3; // First 2 products get 5 stars
-        
+
         reviews.push({
           userId: currentUser.id,
           productId: product.id,
@@ -148,8 +150,7 @@ export async function POST(request: Request) {
       }
 
       await prisma.review.createMany({
-        data: reviews,
-        skipDuplicates: true
+        data: reviews
       });
 
       console.log('✅ AI test data setup completed');
@@ -170,7 +171,6 @@ export async function POST(request: Request) {
           ]
         }
       });
-
     } else if (action === 'cleanup') {
       // Cleanup test data
       console.log('🧹 Cleaning up AI test data...');
@@ -209,19 +209,14 @@ export async function POST(request: Request) {
           reviewsDeleted: deletedReviews.count
         }
       });
-
     } else {
-      return NextResponse.json(
-        { error: 'Invalid action. Use "setup" or "cleanup"' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid action. Use "setup" or "cleanup"' }, { status: 400 });
     }
-
   } catch (error) {
     console.error('❌ AI test setup error:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'AI test setup failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -233,7 +228,7 @@ export async function POST(request: Request) {
 /**
  * GET endpoint để check current test data status
  */
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser || currentUser.role !== 'ADMIN') {
@@ -274,7 +269,6 @@ export async function GET(request: Request) {
         readyForAI: stats.oldProducts > 0 && stats.productViewEvents > 0 && stats.confirmedOrders > 0
       }
     });
-
   } catch (error) {
     console.error('❌ AI test status check error:', error);
     return NextResponse.json({ error: 'Failed to check test status' }, { status: 500 });

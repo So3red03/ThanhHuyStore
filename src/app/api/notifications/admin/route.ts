@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || '';
     const type = searchParams.get('type') || '';
     const isRead = searchParams.get('isRead') || '';
+    const timeFilter = searchParams.get('timeFilter') || '';
 
     const skip = (page - 1) * limit;
 
@@ -38,6 +39,30 @@ export async function GET(request: Request) {
     // Filter by read status
     if (isRead && isRead !== 'all') {
       where.isRead = isRead === 'true';
+    }
+
+    // Filter by time
+    if (timeFilter && timeFilter !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+
+      switch (timeFilter) {
+        case '1d':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(0); // All time
+      }
+
+      where.createdAt = {
+        gte: startDate
+      };
     }
 
     // Get notifications with pagination
@@ -160,11 +185,11 @@ export async function DELETE(request: Request) {
     const isRead = searchParams.get('isRead');
 
     const where: any = {};
-    
+
     if (type && type !== 'all') {
       where.type = type;
     }
-    
+
     if (isRead && isRead !== 'all') {
       where.isRead = isRead === 'true';
     }
@@ -173,9 +198,9 @@ export async function DELETE(request: Request) {
       where
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      deletedCount: result.count 
+    return NextResponse.json({
+      success: true,
+      deletedCount: result.count
     });
   } catch (error) {
     console.error('Error deleting notifications:', error);
