@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { Box } from '@mui/material';
+import NotificationManager from './NotificationManager';
 
 // Dynamic imports to prevent hydration mismatch
 const AdminSideBarNew = dynamic(() => import('./AdminSideBarNew'), {
@@ -51,6 +52,9 @@ const DynamicAdminLayout: React.FC<DynamicAdminLayoutProps> = ({ children, curre
           {children}
         </Box>
       </Box>
+
+      {/* Professional Notification Manager */}
+      <NotificationManager userId={currentUser?.id} userRole={currentUser?.role} />
     </Box>
   );
 };

@@ -68,6 +68,21 @@ export async function GET(request: NextRequest) {
           emailMarketingSchedule: 'daily',
           emailMarketingTime: '09:00',
 
+          // AI Assistant Settings - Default values
+          aiAssistantEnabled: true,
+          aiMonitoringInterval: 120, // 2 minutes
+          aiInfoMaxReminders: 1,
+          aiInfoInterval: 240, // 4 hours
+          aiWarningMaxReminders: 2,
+          aiWarningInterval: 120, // 2 hours
+          aiUrgentMaxReminders: 2,
+          aiUrgentInterval: 60, // 1 hour
+          aiCriticalMaxReminders: 3,
+          aiCriticalInterval: 30, // 30 minutes
+          aiBackoffMultiplier: 2.0,
+          aiDismissThreshold: 2,
+          aiDebugMode: false,
+
           // Shipping settings - Default values (Standard only)
           shopAddress: '123 Đường ABC, Phường Bến Nghé, Quận 1, TP.HCM',
           shopProvince: 'TP. Hồ Chí Minh',
@@ -168,6 +183,20 @@ export async function PUT(request: NextRequest) {
       autoEmailMarketing,
       emailMarketingSchedule,
       emailMarketingTime,
+      // AI Assistant settings
+      aiAssistantEnabled,
+      aiMonitoringInterval,
+      aiInfoMaxReminders,
+      aiInfoInterval,
+      aiWarningMaxReminders,
+      aiWarningInterval,
+      aiUrgentMaxReminders,
+      aiUrgentInterval,
+      aiCriticalMaxReminders,
+      aiCriticalInterval,
+      aiBackoffMultiplier,
+      aiDismissThreshold,
+      aiDebugMode,
       // Shipping settings
       shopAddress,
       shopProvince,
@@ -217,6 +246,20 @@ export async function PUT(request: NextRequest) {
           autoEmailMarketing,
           emailMarketingSchedule,
           emailMarketingTime,
+          // AI Assistant settings
+          aiAssistantEnabled,
+          aiMonitoringInterval,
+          aiInfoMaxReminders,
+          aiInfoInterval,
+          aiWarningMaxReminders,
+          aiWarningInterval,
+          aiUrgentMaxReminders,
+          aiUrgentInterval,
+          aiCriticalMaxReminders,
+          aiCriticalInterval,
+          aiBackoffMultiplier,
+          aiDismissThreshold,
+          aiDebugMode,
           // Shipping settings
           shopAddress,
           shopProvince,

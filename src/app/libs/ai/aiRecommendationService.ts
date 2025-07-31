@@ -34,15 +34,14 @@ interface AIRecommendation {
   expectedImpact: string;
 }
 
-export class ProductAnalyticsService {
-  
+export class AIRecommendationService {
   /**
    * Phân tích hiệu suất sản phẩm dựa trên AnalyticsEvent và Order data
    */
   static async analyzeProductPerformance(days: number = 30): Promise<ProductPerformanceData[]> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
-    
+
     const startDate7d = new Date();
     startDate7d.setDate(startDate7d.getDate() - 7);
 
@@ -112,7 +111,7 @@ export class ProductAnalyticsService {
         const productId = product.id;
         const quantity = product.quantity || 1;
         const price = product.price || 0;
-        
+
         if (!salesMap30d.has(productId)) {
           salesMap30d.set(productId, { count: 0, revenue: 0 });
         }
@@ -140,7 +139,7 @@ export class ProductAnalyticsService {
       const sales7d = salesMap7d.get(product.id) || 0;
       const views30d = analyticsMap.get(product.id) || 0;
       const views7d = analytics7dMap.get(product.id) || 0;
-      
+
       // Tính rating trung bình
       const ratings = product.reviews.map(r => r.rating);
       const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
@@ -175,18 +174,20 @@ export class ProductAnalyticsService {
     for (const product of performanceData) {
       const daysInStock = Math.floor((now.getTime() - product.createdAt.getTime()) / (1000 * 60 * 60 * 24));
       const conversionRate = product.viewCount30d > 0 ? (product.salesCount30d / product.viewCount30d) * 100 : 0;
-      
+
       // 1. Sản phẩm hiệu suất thấp - cần khuyến mãi
       if (daysInStock > 30 && product.salesCount30d < 5 && conversionRate < 2) {
         const suggestedDiscount = this.calculateOptimalDiscount(product, conversionRate);
-        
+
         recommendations.push({
           productId: product.id,
           productName: product.name,
           type: 'PROMOTION_SUGGESTION',
           title: '🎯 Đề xuất Khuyến mãi',
           message: `${product.name} đã ${daysInStock} ngày chỉ bán ${product.salesCount30d} sản phẩm. Đề xuất giảm ${suggestedDiscount}% để tăng doanh số`,
-          reasoning: `Hiệu suất thấp: ${daysInStock} ngày, ${product.salesCount30d} bán, tỷ lệ chuyển đổi ${conversionRate.toFixed(1)}%`,
+          reasoning: `Hiệu suất thấp: ${daysInStock} ngày, ${
+            product.salesCount30d
+          } bán, tỷ lệ chuyển đổi ${conversionRate.toFixed(1)}%`,
           urgency: daysInStock > 60 ? 'HIGH' : 'MEDIUM',
           confidence: 85,
           suggestedAction: {
@@ -206,7 +207,9 @@ export class ProductAnalyticsService {
           productName: product.name,
           type: 'PRIORITY_BOOST',
           title: '📈 Đề xuất Tăng Priority',
-          message: `${product.name} có ${product.viewCount7d} lượt xem tuần này (+${Math.round((product.viewCount7d / (product.viewCount30d / 4) - 1) * 100)}%). Đề xuất tăng priority lên ${Math.min(product.priority + 3, 10)}`,
+          message: `${product.name} có ${product.viewCount7d} lượt xem tuần này (+${Math.round(
+            (product.viewCount7d / (product.viewCount30d / 4) - 1) * 100
+          )}%). Đề xuất tăng priority lên ${Math.min(product.priority + 3, 10)}`,
           reasoning: `Trending: ${product.viewCount7d} views/7d, tăng trưởng mạnh`,
           urgency: 'MEDIUM',
           confidence: 75,
@@ -227,7 +230,9 @@ export class ProductAnalyticsService {
           type: 'MARKETING_PUSH',
           title: '📧 Cơ hội Email Marketing',
           message: `${product.name} có ${product.viewCount30d} lượt xem nhưng chỉ ${product.salesCount30d} bán. Tồn kho ${product.inStock}. Đề xuất chạy email campaign`,
-          reasoning: `High interest (${product.viewCount30d} views), low conversion (${conversionRate.toFixed(1)}%), high stock (${product.inStock})`,
+          reasoning: `High interest (${product.viewCount30d} views), low conversion (${conversionRate.toFixed(
+            1
+          )}%), high stock (${product.inStock})`,
           urgency: 'MEDIUM',
           confidence: 70,
           suggestedAction: {
@@ -263,7 +268,7 @@ export class ProductAnalyticsService {
 
     // Sắp xếp theo urgency và confidence
     return recommendations.sort((a, b) => {
-      const urgencyOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
+      const urgencyOrder = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
       const urgencyDiff = urgencyOrder[b.urgency] - urgencyOrder[a.urgency];
       if (urgencyDiff !== 0) return urgencyDiff;
       return b.confidence - a.confidence;
@@ -276,17 +281,17 @@ export class ProductAnalyticsService {
   private static calculateOptimalDiscount(product: ProductPerformanceData, conversionRate: number): number {
     // Logic đơn giản: càng ế càng giảm nhiều
     const daysInStock = Math.floor((new Date().getTime() - product.createdAt.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (daysInStock > 90) return 25; // 3 tháng -> 25%
-    if (daysInStock > 60) return 20; // 2 tháng -> 20%  
+    if (daysInStock > 60) return 20; // 2 tháng -> 20%
     if (daysInStock > 45) return 15; // 1.5 tháng -> 15%
     if (daysInStock > 30) return 10; // 1 tháng -> 10%
-    
+
     return 5; // Mặc định 5%
   }
 
   /**
-   * Gửi AI notifications cho admin
+   * Gửi AI notifications cho admin (với anti-spam logic)
    */
   static async sendAINotifications(recommendations: AIRecommendation[]): Promise<void> {
     // Lấy danh sách admin
@@ -297,62 +302,114 @@ export class ProductAnalyticsService {
     // Chỉ gửi top 5 recommendations quan trọng nhất
     const topRecommendations = recommendations.slice(0, 5);
 
+    // Anti-spam: Kiểm tra notifications đã gửi trong 24h qua
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
     for (const admin of admins) {
       for (const rec of topRecommendations) {
-        await NotificationService.createNotification({
-          userId: admin.id,
-          productId: rec.productId,
-          type: rec.type === 'PROMOTION_SUGGESTION' ? 'PROMOTION_SUGGESTION' : 'SYSTEM_ALERT',
-          title: rec.title,
-          message: rec.message,
-          data: {
-            aiRecommendation: true,
-            reasoning: rec.reasoning,
-            urgency: rec.urgency,
-            confidence: rec.confidence,
-            suggestedAction: rec.suggestedAction,
-            expectedImpact: rec.expectedImpact,
+        // Kiểm tra xem đã có notification tương tự trong 24h qua chưa
+        const existingNotification = await prisma.notification.findFirst({
+          where: {
+            userId: admin.id,
             productId: rec.productId,
-            productName: rec.productName
+            type: rec.type === 'PROMOTION_SUGGESTION' ? 'PROMOTION_SUGGESTION' : 'SYSTEM_ALERT',
+            title: rec.title,
+            createdAt: { gte: last24Hours }
           }
         });
+
+        // Chỉ tạo notification mới nếu chưa có notification tương tự
+        if (!existingNotification) {
+          await NotificationService.createNotification({
+            userId: admin.id,
+            productId: rec.productId,
+            type: rec.type === 'PROMOTION_SUGGESTION' ? 'PROMOTION_SUGGESTION' : 'SYSTEM_ALERT',
+            title: rec.title,
+            message: rec.message,
+            data: {
+              aiRecommendation: true,
+              reasoning: rec.reasoning,
+              urgency: rec.urgency,
+              confidence: rec.confidence,
+              suggestedAction: rec.suggestedAction,
+              expectedImpact: rec.expectedImpact,
+              productId: rec.productId,
+              productName: rec.productName,
+              analysisTimestamp: new Date().toISOString()
+            }
+          });
+        } else {
+          console.log(`⏭️ Skipped duplicate AI notification for ${admin.id} - ${rec.productName} (${rec.title})`);
+        }
       }
     }
   }
 
   /**
-   * Chạy phân tích AI đầy đủ và gửi notifications
+   * Chạy AI recommendations đầy đủ và gửi notifications
    */
-  static async runAIAnalysis(): Promise<{ 
-    analyzed: number; 
-    recommendations: number; 
-    notifications: number; 
+  static async runAIRecommendations(): Promise<{
+    analyzed: number;
+    recommendations: number;
+    notifications: number;
+    skipped: number;
   }> {
     try {
-      console.log('🤖 Starting AI Product Analysis...');
-      
+      console.log('🤖 Starting AI Product Recommendations...');
+
       // 1. Phân tích hiệu suất sản phẩm
       const performanceData = await this.analyzeProductPerformance(30);
       console.log(`📊 Analyzed ${performanceData.length} products`);
-      
+
       // 2. Tạo AI recommendations
       const recommendations = await this.generateAIRecommendations(performanceData);
       console.log(`💡 Generated ${recommendations.length} recommendations`);
-      
-      // 3. Gửi notifications cho admin
+
+      // 3. Gửi notifications cho admin (với anti-spam)
+      let notificationsSent = 0;
+      let notificationsSkipped = 0;
+
       if (recommendations.length > 0) {
+        // Đếm số notification thực tế được gửi
+        const admins = await prisma.user.findMany({
+          where: { role: { in: ['ADMIN', 'STAFF'] } }
+        });
+
+        const topRecommendations = recommendations.slice(0, 5);
+        const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        for (const admin of admins) {
+          for (const rec of topRecommendations) {
+            const existingNotification = await prisma.notification.findFirst({
+              where: {
+                userId: admin.id,
+                productId: rec.productId,
+                type: rec.type === 'PROMOTION_SUGGESTION' ? 'PROMOTION_SUGGESTION' : 'SYSTEM_ALERT',
+                title: rec.title,
+                createdAt: { gte: last24Hours }
+              }
+            });
+
+            if (!existingNotification) {
+              notificationsSent++;
+            } else {
+              notificationsSkipped++;
+            }
+          }
+        }
+
         await this.sendAINotifications(recommendations);
-        console.log(`📨 Sent ${Math.min(recommendations.length, 5)} notifications to admins`);
+        console.log(`📨 Sent ${notificationsSent} new notifications, skipped ${notificationsSkipped} duplicates`);
       }
-      
+
       return {
         analyzed: performanceData.length,
         recommendations: recommendations.length,
-        notifications: Math.min(recommendations.length, 5)
+        notifications: notificationsSent,
+        skipped: notificationsSkipped
       };
-      
     } catch (error) {
-      console.error('❌ AI Analysis failed:', error);
+      console.error('❌ AI Recommendations failed:', error);
       throw error;
     }
   }

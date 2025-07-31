@@ -36,6 +36,20 @@ interface SettingsData {
   shippingPerKm?: number;
   maxShippingDistance?: number;
   returnShippingPolicy?: any;
+  // AI Assistant settings
+  aiAssistantEnabled: boolean;
+  aiMonitoringInterval: number;
+  aiInfoMaxReminders: number;
+  aiInfoInterval: number;
+  aiWarningMaxReminders: number;
+  aiWarningInterval: number;
+  aiUrgentMaxReminders: number;
+  aiUrgentInterval: number;
+  aiCriticalMaxReminders: number;
+  aiCriticalInterval: number;
+  aiBackoffMultiplier: number;
+  aiDismissThreshold: number;
+  aiDebugMode: boolean;
 }
 
 // Server Component - fetch fresh data every time
@@ -82,6 +96,21 @@ const AdminSettings = async () => {
         emailMarketingSchedule: 'daily',
         emailMarketingTime: '09:00',
 
+        // AI Assistant Settings - Default values
+        aiAssistantEnabled: true,
+        aiMonitoringInterval: 120, // 2 minutes
+        aiInfoMaxReminders: 1,
+        aiInfoInterval: 240, // 4 hours
+        aiWarningMaxReminders: 2,
+        aiWarningInterval: 120, // 2 hours
+        aiUrgentMaxReminders: 2,
+        aiUrgentInterval: 60, // 1 hour
+        aiCriticalMaxReminders: 3,
+        aiCriticalInterval: 30, // 30 minutes
+        aiBackoffMultiplier: 2.0,
+        aiDismissThreshold: 2,
+        aiDebugMode: false,
+
         // Audit fields
         createdBy: currentUser.email,
         updatedBy: currentUser.email
@@ -107,6 +136,20 @@ const AdminSettings = async () => {
     autoEmailMarketing: settings.autoEmailMarketing,
     emailMarketingSchedule: settings.emailMarketingSchedule,
     emailMarketingTime: settings.emailMarketingTime,
+    // AI Assistant settings
+    aiAssistantEnabled: settings.aiAssistantEnabled,
+    aiMonitoringInterval: settings.aiMonitoringInterval,
+    aiInfoMaxReminders: settings.aiInfoMaxReminders,
+    aiInfoInterval: settings.aiInfoInterval,
+    aiWarningMaxReminders: settings.aiWarningMaxReminders,
+    aiWarningInterval: settings.aiWarningInterval,
+    aiUrgentMaxReminders: settings.aiUrgentMaxReminders,
+    aiUrgentInterval: settings.aiUrgentInterval,
+    aiCriticalMaxReminders: settings.aiCriticalMaxReminders,
+    aiCriticalInterval: settings.aiCriticalInterval,
+    aiBackoffMultiplier: settings.aiBackoffMultiplier,
+    aiDismissThreshold: settings.aiDismissThreshold,
+    aiDebugMode: settings.aiDebugMode,
     // Shipping settings
     shopAddress: settings.shopAddress || undefined,
     shopProvince: settings.shopProvince || undefined,

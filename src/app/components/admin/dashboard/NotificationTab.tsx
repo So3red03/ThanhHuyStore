@@ -30,6 +30,7 @@ import {
   ListItemText,
   ListItemAvatar
 } from '@mui/material';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 import {
   MdSearch,
   MdFilterList,
@@ -44,7 +45,10 @@ import {
   MdMarkEmailRead,
   MdDelete,
   MdRefresh,
-  MdBarChart
+  MdBarChart,
+  MdCheck,
+  MdClose,
+  MdVisibilityOff
 } from 'react-icons/md';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -58,7 +62,8 @@ interface Notification {
     | 'COMMENT_RECEIVED'
     | 'SYSTEM_ALERT'
     | 'PROMOTION_SUGGESTION'
-    | 'VOUCHER_SUGGESTION';
+    | 'VOUCHER_SUGGESTION'
+    | 'AI_ASSISTANT';
   title: string;
   message: string;
   isRead: boolean;
@@ -74,6 +79,11 @@ interface Notification {
     thumbnail?: string;
   };
   data?: any;
+  metadata?: {
+    memoryId?: string;
+    alertId?: string;
+    status?: string;
+  };
 }
 
 const NotificationTab: React.FC = () => {
@@ -87,6 +97,8 @@ const NotificationTab: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterRead, setFilterRead] = useState<string>('all');
   const [timeFilter, setTimeFilter] = useState('7d');
+  const [showClearAllDialog, setShowClearAllDialog] = useState(false);
+  const [isClearingAll, setIsClearingAll] = useState(false);
   const itemsPerPage = 10;
 
   // Notification type configurations
@@ -132,6 +144,12 @@ const NotificationTab: React.FC = () => {
       color: '#673AB7',
       bgGradient: 'linear-gradient(135deg, #673AB7 0%, #512DA8 100%)',
       label: 'Voucher'
+    },
+    AI_ASSISTANT: {
+      icon: <MdBarChart size={20} />,
+      color: '#3b82f6',
+      bgGradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+      label: 'AI Assistant'
     }
   };
 
@@ -207,6 +225,106 @@ const NotificationTab: React.FC = () => {
     }
   };
 
+  const handleClearAllNotifications = async () => {
+    setIsClearingAll(true);
+
+    try {
+      const response = await fetch('/api/notifications/clear-all', {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Cleared ${data.deletedCount} notifications`);
+        fetchNotifications();
+        setShowClearAllDialog(false);
+      } else {
+        console.error('Error clearing all notifications');
+        alert('Lỗi khi xóa thông báo. Vui lòng thử lại.');
+      }
+    } catch (error) {
+      console.error('Error clearing all notifications:', error);
+      alert('Lỗi khi xóa thông báo. Vui lòng thử lại.');
+    } finally {
+      setIsClearingAll(false);
+    }
+  };
+
+  // Handle AI Memory status updates
+  const handleResolveAlert = async (notificationId: string, memoryId?: string) => {
+    if (!memoryId) return;
+
+    try {
+      const response = await fetch(`/api/ai-assistant/memory/${memoryId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'RESOLVED',
+          note: 'Đã xử lý từ notification panel'
+        })
+      });
+
+      if (response.ok) {
+        fetchNotifications();
+        console.log('✅ Alert marked as resolved');
+      }
+    } catch (error) {
+      console.error('Error resolving alert:', error);
+    }
+  };
+
+  const handleDismissAlert = async (notificationId: string, memoryId?: string) => {
+    if (!memoryId) return;
+
+    try {
+      const response = await fetch(`/api/ai-assistant/memory/${memoryId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'DISMISSED',
+          note: 'Đã tắt nhắc nhở từ notification panel'
+        })
+      });
+
+      if (response.ok) {
+        fetchNotifications();
+        console.log('✅ Alert dismissed');
+      }
+    } catch (error) {
+      console.error('Error dismissing alert:', error);
+    }
+  };
+
+  // Database cleanup function
+  const handleDatabaseCleanup = async () => {
+    if (
+      !confirm(
+        'Dọn dẹp database sẽ xóa:\n- AIMemory cũ hơn 10 ngày\n- Notifications cũ hơn 30 ngày\n- Duplicate records\n\nBạn có chắc chắn?'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/ai-assistant/cleanup', {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(
+          `✅ Cleanup hoàn thành!\n- Xóa ${data.deletedMemories} AIMemory cũ\n- Xóa ${data.deletedNotifications} notifications cũ\n- Xóa ${data.duplicatesRemoved} duplicates`
+        );
+        fetchNotifications();
+      } else {
+        alert('❌ Lỗi khi cleanup database');
+      }
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      alert('❌ Lỗi khi cleanup database');
+    }
+  };
+
   const getNotificationStats = () => {
     const stats = {
       total: notifications.length,
@@ -229,7 +347,7 @@ const NotificationTab: React.FC = () => {
       <Card sx={{ mb: 4, borderRadius: '16px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
         <CardContent sx={{ p: 0 }}>
           {/* Compact Header Section */}
-          <div className='bg-gradient-to-r from-purple-600 via-purple-700 to-pink-600 p-4 text-white'>
+          <div className='bg-gradient-to-r from-purple-500 via-pink-400 to-blue-500  p-4 text-white'>
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-3'>
                 <div className='p-2 bg-white/20 backdrop-blur-sm rounded-lg'>
@@ -495,6 +613,42 @@ const NotificationTab: React.FC = () => {
                   </Button>
 
                   <Button
+                    variant='outlined'
+                    startIcon={<MdDelete />}
+                    onClick={() => setShowClearAllDialog(true)}
+                    size='small'
+                    fullWidth
+                    sx={{
+                      borderColor: '#ef4444',
+                      color: '#ef4444',
+                      '&:hover': {
+                        borderColor: '#dc2626',
+                        backgroundColor: '#fef2f2'
+                      }
+                    }}
+                  >
+                    Xóa tất cả thông báo
+                  </Button>
+
+                  <Button
+                    variant='outlined'
+                    startIcon={<MdRefresh />}
+                    onClick={handleDatabaseCleanup}
+                    size='small'
+                    fullWidth
+                    sx={{
+                      borderColor: '#8b5cf6',
+                      color: '#8b5cf6',
+                      '&:hover': {
+                        borderColor: '#7c3aed',
+                        backgroundColor: '#f3f4f6'
+                      }
+                    }}
+                  >
+                    Dọn dẹp database
+                  </Button>
+
+                  <Button
                     variant='contained'
                     startIcon={
                       isRefreshing ? (
@@ -609,6 +763,34 @@ const NotificationTab: React.FC = () => {
 
                                   {/* Action Buttons */}
                                   <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
+                                    {/* AI Assistant specific actions */}
+                                    {notification.type === 'AI_ASSISTANT' && (
+                                      <>
+                                        <Tooltip title='Đã xử lý'>
+                                          <IconButton
+                                            size='small'
+                                            onClick={() =>
+                                              handleResolveAlert(notification.id, notification.metadata?.memoryId)
+                                            }
+                                            sx={{ color: '#10b981' }}
+                                          >
+                                            <MdCheck size={16} />
+                                          </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title='Tắt nhắc nhở'>
+                                          <IconButton
+                                            size='small'
+                                            onClick={() =>
+                                              handleDismissAlert(notification.id, notification.metadata?.memoryId)
+                                            }
+                                            sx={{ color: '#f59e0b' }}
+                                          >
+                                            <MdVisibilityOff size={16} />
+                                          </IconButton>
+                                        </Tooltip>
+                                      </>
+                                    )}
+
                                     {!notification.isRead && (
                                       <Tooltip title='Đánh dấu đã đọc'>
                                         <IconButton
@@ -703,6 +885,24 @@ const NotificationTab: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Clear All Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showClearAllDialog}
+        handleClose={() => setShowClearAllDialog(false)}
+        onConfirm={handleClearAllNotifications}
+        isLoading={isClearingAll}
+        loadingText='Đang xóa...'
+      >
+        <div className='text-center'>
+          <Typography variant='body1' sx={{ mb: 2 }}>
+            Bạn có chắc chắn muốn <strong>xóa tất cả thông báo</strong>?
+          </Typography>
+          <Typography variant='body2' color='text.secondary'>
+            Hành động này không thể hoàn tác. Tất cả thông báo sẽ bị xóa vĩnh viễn.
+          </Typography>
+        </div>
+      </ConfirmDialog>
     </Box>
   );
 };

@@ -14,7 +14,6 @@ import axios from 'axios';
 import { SafeUser } from '../../../../../types';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useSettings } from '@/app/hooks/useSettings';
-import SettingsTest from '@/app/components/SettingsTest';
 
 interface CheckoutClientProps {
   currentUser: SafeUser | null | undefined;
