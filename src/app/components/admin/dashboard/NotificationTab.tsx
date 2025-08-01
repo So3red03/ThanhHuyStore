@@ -52,6 +52,7 @@ import {
 } from 'react-icons/md';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import AIActionButtons from '../AIActionButtons';
 
 interface Notification {
   id: string;
@@ -740,13 +741,31 @@ const NotificationTab: React.FC = () => {
                                   }}
                                 >
                                   <Box sx={{ flex: 1 }}>
-                                    <Typography
-                                      variant='subtitle1'
-                                      fontWeight={notification.isRead ? 'normal' : 'bold'}
-                                      sx={{ mb: 0.5 }}
-                                    >
-                                      {notification.title}
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                      <Typography
+                                        variant='subtitle1'
+                                        fontWeight={notification.isRead ? 'normal' : 'bold'}
+                                        sx={{ flex: 1 }}
+                                      >
+                                        {notification.title}
+                                      </Typography>
+
+                                      {/* AI Recommendation Badge */}
+                                      {notification.type === 'AI_ASSISTANT' && notification.data?.aiAssistant && (
+                                        <Chip
+                                          label='AI'
+                                          size='small'
+                                          sx={{
+                                            height: 20,
+                                            fontSize: '0.7rem',
+                                            fontWeight: 'bold',
+                                            bgcolor: alpha('#3b82f6', 0.1),
+                                            color: '#3b82f6',
+                                            '& .MuiChip-label': { px: 1 }
+                                          }}
+                                        />
+                                      )}
+                                    </Box>
                                     <Typography
                                       variant='body2'
                                       color='text.secondary'
@@ -759,6 +778,30 @@ const NotificationTab: React.FC = () => {
                                     >
                                       {notification.message}
                                     </Typography>
+
+                                    {/* AI Action Buttons - Only for AI recommendations */}
+                                    {notification.type === 'AI_ASSISTANT' &&
+                                      notification.data?.aiAssistant &&
+                                      notification.data?.eventType && (
+                                        <Box sx={{ mt: 2 }}>
+                                          <AIActionButtons
+                                            productId={notification.data.productId}
+                                            productName={notification.data.productName}
+                                            suggestionType={notification.data.eventType as any}
+                                            suggestedAction={
+                                              notification.data.eventType === 'INVENTORY_CRITICAL'
+                                                ? 'RESTOCK'
+                                                : 'VIEW_PRODUCT'
+                                            }
+                                            confidence={85} // Default confidence for AI assistant
+                                            onActionTaken={(action, value) => {
+                                              console.log(`AI Action taken from NotificationTab: ${action}`, value);
+                                              // Mark notification as read after action
+                                              handleMarkAsRead(notification.id);
+                                            }}
+                                          />
+                                        </Box>
+                                      )}
                                   </Box>
 
                                   {/* Action Buttons */}

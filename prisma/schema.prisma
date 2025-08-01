@@ -574,7 +574,8 @@ model AdminSettings {
 
   // AI Assistant Settings
   aiAssistantEnabled    Boolean  @default(true)
-  aiMonitoringInterval  Int      @default(120) // seconds (2 minutes)
+  aiMonitoringInterval  Int      @default(120) // seconds (2 minutes) - Real-time monitoring
+  aiRecommendationInterval Int   @default(2)  // minutes (30 minutes) - AI recommendations
 
   // AI Reminder Settings by Priority Level
   aiInfoMaxReminders    Int      @default(1)   // INFO level max reminders

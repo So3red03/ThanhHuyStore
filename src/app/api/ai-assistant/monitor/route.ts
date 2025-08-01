@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import { eventMonitor } from '@/app/libs/ai-assistant/eventMonitor';
 import { AIMemoryService } from '@/app/libs/ai-assistant/memoryService';
+import prisma from '@/app/libs/prismadb';
 
 // GET - Get AI Assistant status and active memories
 export async function GET() {
@@ -12,13 +13,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Check AI Assistant settings
+    const settings = await prisma.adminSettings.findFirst();
+    const isAIEnabled = settings?.aiAssistantEnabled ?? true;
+
     // Get active memories
     const activeMemories = await AIMemoryService.getActiveMemories();
 
     return NextResponse.json({
       success: true,
       data: {
-        isActive: true, // TODO: Track actual monitoring status
+        isActive: isAIEnabled,
         activeMemories: activeMemories.length,
         memories: activeMemories.map(memory => ({
           alertId: memory.alertId,

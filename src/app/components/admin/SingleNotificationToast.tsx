@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, IconButton, Button, Slide, Fade, useTheme, alpha } from '@mui/material';
-import { MdClose, MdNotifications, MdVisibility, MdBarChart } from 'react-icons/md';
+import { MdClose, MdNotifications, MdVisibility, MdBarChart, MdSmartToy } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
+import AIActionButtons from './AIActionButtons';
 
 interface SingleNotificationToastProps {
   notification: {
@@ -12,6 +13,7 @@ interface SingleNotificationToastProps {
     message: string;
     type: string;
     createdAt: string;
+    data?: any; // For AI recommendations and other metadata
   };
   onClose: () => void;
   onView: () => void;
@@ -149,10 +151,17 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
                 </Box>
                 <Box>
                   <Typography variant='subtitle1' fontWeight='bold' sx={{ color: 'text.primary', lineHeight: 1.2 }}>
-                    Thông báo mới
+                    {notification.data?.aiRecommendation ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MdSmartToy size={18} color={theme.palette.primary.main} />
+                        AI Recommendation
+                      </Box>
+                    ) : (
+                      'Thông báo mới'
+                    )}
                   </Typography>
                   <Typography variant='caption' sx={{ color: 'text.secondary' }}>
-                    Vừa xảy ra
+                    {notification.data?.aiRecommendation ? 'AI phân tích' : 'Vừa xảy ra'}
                   </Typography>
                 </Box>
               </Box>
@@ -192,7 +201,57 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
               </Typography>
             </Box>
 
-            {/* Action Buttons */}
+            {/* AI Action Buttons - Only for AI recommendations */}
+            {notification.data?.aiRecommendation && notification.data?.suggestedAction && (
+              <Box sx={{ mb: 2 }}>
+                {/* AI Badge */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <MdSmartToy size={16} color={theme.palette.primary.main} />
+                  <Typography
+                    variant='caption'
+                    sx={{
+                      color: 'primary.main',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5
+                    }}
+                  >
+                    AI Recommendation
+                  </Typography>
+                  {notification.data.confidence && (
+                    <Box
+                      sx={{
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: '12px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                        color: 'primary.main'
+                      }}
+                    >
+                      {notification.data.confidence}% tin cậy
+                    </Box>
+                  )}
+                </Box>
+
+                {/* AI Action Buttons */}
+                <AIActionButtons
+                  productId={notification.data.productId}
+                  productName={notification.data.productName}
+                  suggestionType={notification.type as any}
+                  suggestedAction={notification.data.suggestedAction}
+                  confidence={notification.data.confidence || 50}
+                  onActionTaken={(action, value) => {
+                    console.log(`AI Action taken from toast: ${action}`, value);
+                    // Close toast after action
+                    handleClose();
+                  }}
+                />
+              </Box>
+            )}
+
+            {/* Standard Action Buttons */}
             <Box
               sx={{
                 display: 'flex',

@@ -13,6 +13,7 @@ interface Notification {
   createdAt: string;
   userId: string;
   isRead: boolean;
+  data?: any; // For AI recommendations and other metadata
 }
 
 interface NotificationManagerProps {

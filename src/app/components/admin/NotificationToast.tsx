@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, Avatar, IconButton } from '@mui/material';
 import { MdClose, MdShoppingCart, MdWarning, MdComment, MdCircle, MdAutoAwesome, MdLocalOffer } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
+import AIActionButtons from './AIActionButtons';
 
 interface NotificationToastProps {
   notifications: Array<{
@@ -367,6 +368,21 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
                         </Box>
                       )}
                     </Box>
+                  )}
+
+                  {/* AI Action Buttons */}
+                  {notification.data?.aiRecommendation && notification.data?.suggestedAction && (
+                    <AIActionButtons
+                      productId={notification.data.productId}
+                      productName={notification.data.productName}
+                      suggestionType={notification.type as any}
+                      suggestedAction={notification.data.suggestedAction}
+                      confidence={notification.data.confidence || 50}
+                      onActionTaken={(action, value) => {
+                        console.log(`AI Action taken: ${action}`, value);
+                        // Track action in analytics if needed
+                      }}
+                    />
                   )}
 
                   {/* Unread indicator */}

@@ -55,6 +55,7 @@ interface SettingsData {
   // AI Assistant settings
   aiAssistantEnabled: boolean;
   aiMonitoringInterval: number;
+  aiRecommendationInterval: number;
   aiInfoMaxReminders: number;
   aiInfoInterval: number;
   aiWarningMaxReminders: number;
@@ -1021,22 +1022,6 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
             {activeSection === 'ai-assistant' && (
               <div>
                 <h2 className='text-2xl font-semibold mb-2'>🤖 AI Assistant Settings</h2>
-
-                {/* Current Logic Info */}
-                <div className='bg-green-50 border border-green-200 rounded-lg p-4 mb-6'>
-                  <div className='flex items-start gap-3'>
-                    <div className='text-green-600 text-2xl'>✅</div>
-                    <div>
-                      <h4 className='font-semibold text-green-800 mb-2'>Logic hiện tại: Simplified & Efficient</h4>
-                      <p className='text-green-700 text-sm'>
-                        <strong>AI Assistant chỉ nhắc 1 lần duy nhất</strong> cho mỗi business event.
-                        <br />
-                        Không spam, không lặp lại - chỉ thông báo khi thực sự cần thiết.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className='space-y-6'>
                   {/* AI Assistant Enable/Disable */}
                   <div className='bg-gray-50 p-6 rounded-lg'>
@@ -1053,15 +1038,18 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                     />
                   </div>
 
-                  {/* Monitoring Interval - Simplified */}
+                  {/* AI Settings - Combined */}
                   <div className='bg-gray-50 p-6 rounded-lg'>
                     <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
                       <MdAccessTime className='w-5 h-5 text-green-600' />
-                      Tần suất giám sát
+                      Cấu hình AI Assistant
                     </h3>
-                    <div className='space-y-4'>
+                    <div className='space-y-6'>
+                      {/* Real-time Monitoring */}
                       <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-2'>Kiểm tra mỗi (giây)</label>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>
+                          🔍 Real-time Monitoring - Kiểm tra mỗi (giây)
+                        </label>
                         <input
                           type='number'
                           min='60'
@@ -1076,7 +1064,32 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                           className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                         />
                         <p className='text-xs text-gray-500 mt-1'>
-                          Khuyến nghị: 120 giây (2 phút). Quá thấp có thể gây lag.
+                          <strong>Tác dụng:</strong> Kiểm tra sự kiện business (hết hàng, đơn pending). Khuyến nghị: 120
+                          giây.
+                        </p>
+                      </div>
+
+                      {/* AI Recommendations */}
+                      <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>
+                          🤖 AI Recommendations - Phân tích mỗi (phút)
+                        </label>
+                        <input
+                          type='number'
+                          min='5'
+                          max='120'
+                          value={settings.aiRecommendationInterval || 30}
+                          onChange={e =>
+                            setSettings(prev => ({
+                              ...prev,
+                              aiRecommendationInterval: parseInt(e.target.value) || 30
+                            }))
+                          }
+                          className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                        />
+                        <p className='text-xs text-gray-500 mt-1'>
+                          <strong>Tác dụng:</strong> Phân tích sâu và đưa ra đề xuất thông minh với action buttons.
+                          Khuyến nghị: 30 phút.
                         </p>
                       </div>
                     </div>

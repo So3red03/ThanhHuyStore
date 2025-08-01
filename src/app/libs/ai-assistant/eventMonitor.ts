@@ -5,6 +5,7 @@ import { processBusinessEvent, detectBusinessContext } from './eventTriggers';
 import { BusinessEvent, BusinessEventType } from './types';
 import { NotificationService } from '../notifications/notificationService';
 import { VietnameseHolidayService } from './vietnameseHolidays';
+import { AIRecommendationService } from '../ai/aiRecommendationService';
 
 export class EventMonitor {
   private static instance: EventMonitor;
@@ -32,13 +33,23 @@ export class EventMonitor {
 
   // Start real-time monitoring with fixed interval (simplified)
   async startMonitoring() {
-    if (this.isMonitoring) return;
+    if (this.isMonitoring) {
+      console.log('🤖 AI Assistant: Already monitoring - skipping duplicate start');
+      return;
+    }
 
     // Check if AI Assistant is enabled
     const enabled = await this.isAIAssistantEnabled();
     if (!enabled) {
       console.log('🤖 AI Assistant: Disabled - skipping monitoring');
       return;
+    }
+
+    // Stop any existing interval first (safety check)
+    if (this.monitoringInterval) {
+      console.log('🤖 AI Assistant: Clearing existing interval before starting new one');
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
     }
 
     this.isMonitoring = true;
@@ -85,16 +96,16 @@ export class EventMonitor {
         this.lastLogTime = now;
       }
 
-      // ENHANCED MODE: Essential + Business Intelligence events
+      // ENHANCED MODE: Essential + Business Intelligence events + AI Recommendations
       await Promise.all([
         this.checkInventoryEvents(),
         this.checkSalesEvents(),
         // 🎯 NEW BUSINESS INTELLIGENCE EVENTS:
         this.checkSeasonalMarketingOpportunities(),
-        this.checkConversionRateOptimization(),
         this.checkPendingOrdersAlert(),
-        this.checkReturnRateAnalysis(),
         this.checkBirthdayCampaignOpportunities(),
+        // 🤖 AI RECOMMENDATION SERVICE INTEGRATION:
+        this.runAIRecommendations(),
         // 🚫 DISABLED NOISY EVENTS:
         // this.checkPaymentEvents(),
         // this.checkReviewEvents(),
@@ -507,192 +518,6 @@ export class EventMonitor {
 
   // ADVANCED E-COMMERCE MONITORING METHODS
 
-  // Check cart abandonment events
-  private async checkCartAbandonmentEvents() {
-    try {
-      const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-
-      // Simulate cart abandonment data (in real app, track via analytics)
-      // For demo purposes, we'll use a simple calculation
-      const recentOrders = await prisma.order.count({
-        where: {
-          createdAt: { gte: oneHourAgo }
-        }
-      });
-
-      // Simulate cart views (would be tracked via analytics in real app)
-      const estimatedCartViews = recentOrders * 3; // Assume 3x cart views vs orders
-      const abandonmentRate = recentOrders > 0 ? ((estimatedCartViews - recentOrders) / estimatedCartViews) * 100 : 0;
-
-      if (abandonmentRate >= 70) {
-        // 70% threshold
-        const eventData = {
-          abandonmentRate: Math.round(abandonmentRate),
-          timeWindow: 1,
-          potentialRevenue: recentOrders * 2000000, // Estimate lost revenue
-          cartViews: estimatedCartViews,
-          completedOrders: recentOrders
-        };
-
-        const trigger = processBusinessEvent(eventData);
-        if (trigger) {
-          await this.processBusinessEventTrigger(trigger, eventData);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking cart abandonment events:', error);
-    }
-  }
-
-  // Check high-value customer events
-  private async checkHighValueCustomerEvents() {
-    try {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-      // Find high-value customers who haven't purchased recently
-      const highValueCustomers = await prisma.user.findMany({
-        include: {
-          orders: {
-            orderBy: { createdAt: 'desc' },
-            take: 1
-          }
-        }
-      });
-
-      for (const customer of highValueCustomers) {
-        // Calculate customer lifetime value
-        const customerOrders = await prisma.order.findMany({
-          where: { userId: customer.id }
-        });
-
-        const totalValue = customerOrders.reduce((sum, order) => sum + order.amount, 0);
-
-        if (totalValue >= 10000000) {
-          // 10M VND threshold
-          const lastOrder = customer.orders[0];
-          const daysSinceLastPurchase = lastOrder
-            ? Math.floor((Date.now() - lastOrder.createdAt.getTime()) / (1000 * 60 * 60 * 24))
-            : 999;
-
-          if (daysSinceLastPurchase >= 30) {
-            const eventData = {
-              customerId: customer.id,
-              customerName: customer.name || customer.email,
-              customerValue: totalValue,
-              daysSinceLastPurchase,
-              lastOrderDate: lastOrder?.createdAt,
-              orderCount: customerOrders.length
-            };
-
-            const trigger = processBusinessEvent(eventData);
-            if (trigger) {
-              await this.processBusinessEventTrigger(trigger, eventData);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking high-value customer events:', error);
-    }
-  }
-
-  // Check average order value events
-  private async checkAverageOrderValueEvents() {
-    try {
-      const now = new Date();
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-      // Calculate current week AOV
-      const currentWeekOrders = await prisma.order.findMany({
-        where: {
-          createdAt: { gte: sevenDaysAgo },
-          status: { in: ['pending', 'confirmed', 'completed'] }
-        }
-      });
-
-      // Calculate previous week AOV
-      const previousWeekOrders = await prisma.order.findMany({
-        where: {
-          createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo },
-          status: { in: ['pending', 'confirmed', 'completed'] }
-        }
-      });
-
-      if (currentWeekOrders.length > 0 && previousWeekOrders.length > 0) {
-        const currentAOV = currentWeekOrders.reduce((sum, order) => sum + order.amount, 0) / currentWeekOrders.length;
-        const previousAOV =
-          previousWeekOrders.reduce((sum, order) => sum + order.amount, 0) / previousWeekOrders.length;
-
-        const aovDropPercentage = ((previousAOV - currentAOV) / previousAOV) * 100;
-
-        if (aovDropPercentage >= 25) {
-          // 25% drop threshold
-          const eventData = {
-            currentAOV: Math.round(currentAOV),
-            previousAOV: Math.round(previousAOV),
-            aovDropPercentage: Math.round(aovDropPercentage),
-            currentWeekOrders: currentWeekOrders.length,
-            previousWeekOrders: previousWeekOrders.length,
-            revenueImpact: Math.round((previousAOV - currentAOV) * currentWeekOrders.length)
-          };
-
-          const trigger = processBusinessEvent(eventData);
-          if (trigger) {
-            await this.processBusinessEventTrigger(trigger, eventData);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking AOV events:', error);
-    }
-  }
-
-  // Check competitor price events (simulated for demo)
-  private async checkCompetitorPriceEvents() {
-    try {
-      // In real app, this would integrate with price monitoring APIs
-      // For demo, we'll simulate competitor price checks
-      const keyProducts = await prisma.product.findMany({
-        where: {
-          isDeleted: false,
-          name: {
-            contains: 'iPhone' // Monitor iPhone products
-          }
-        },
-        take: 5
-      });
-
-      for (const product of keyProducts) {
-        // Simulate competitor price (in real app, fetch from price monitoring service)
-        const ourPrice = product.price || 0;
-        const simulatedCompetitorPrice = ourPrice * 0.85; // 15% cheaper
-        const priceAdvantagePercentage = ((ourPrice - simulatedCompetitorPrice) / ourPrice) * 100;
-
-        if (priceAdvantagePercentage >= 10) {
-          // 10% advantage threshold
-          const eventData = {
-            productId: product.id,
-            productName: product.name,
-            ourPrice,
-            competitorPrice: simulatedCompetitorPrice,
-            competitorName: 'Shopee/Tiki', // Simulated
-            priceAdvantagePercentage: Math.round(priceAdvantagePercentage),
-            potentialLostSales: Math.round(ourPrice * 0.1) // Estimate
-          };
-
-          const trigger = processBusinessEvent(eventData);
-          if (trigger) {
-            await this.processBusinessEventTrigger(trigger, eventData);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error checking competitor price events:', error);
-    }
-  }
-
   // 🎯 NEW BUSINESS INTELLIGENCE EVENT CHECKERS
 
   // Check for seasonal marketing opportunities
@@ -724,57 +549,6 @@ export class EventMonitor {
       }
     } catch (error) {
       console.error('Error checking seasonal marketing opportunities:', error);
-    }
-  }
-
-  // Check conversion rate optimization opportunities
-  private async checkConversionRateOptimization() {
-    try {
-      // Get analytics data for last 7 days
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      // Count unique visitors (simplified - in production use proper analytics)
-      const visitors = await prisma.analyticsEvent.count({
-        where: {
-          eventType: 'PRODUCT_VIEW',
-          timestamp: { gte: sevenDaysAgo }
-        }
-      });
-
-      // Count orders in same period
-      const orders = await prisma.order.count({
-        where: {
-          createdAt: { gte: sevenDaysAgo },
-          status: { not: 'canceled' }
-        }
-      });
-
-      if (visitors > 100) {
-        const conversionRate = (orders / visitors) * 100;
-
-        if (conversionRate < 2.0) {
-          const eventData = {
-            conversionRate: parseFloat(conversionRate.toFixed(2)),
-            visitors,
-            orders,
-            period: '7 days'
-          };
-
-          // Create a custom trigger for conversion optimization
-          const trigger = {
-            name: 'conversion_optimization',
-            eventType: 'CONVERSION_OPTIMIZATION' as const,
-            priority: 'WARNING' as const,
-            businessImpact: 'HIGH' as const,
-            message: () => `Tỷ lệ chuyển đổi thấp: ${eventData.conversionRate}%`,
-            suggestedActions: ['Tối ưu hóa trang sản phẩm', 'Cải thiện UX', 'A/B test checkout']
-          };
-          await this.processBusinessEventTrigger(trigger, eventData);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking conversion rate:', error);
     }
   }
 
@@ -824,77 +598,6 @@ export class EventMonitor {
     }
   }
 
-  // Check for high return rates
-  private async checkReturnRateAnalysis() {
-    try {
-      // TODO: Implement return rate analysis when orderItem table is available
-      console.log('⏭️ Return rate analysis skipped - orderItem table not available');
-      return;
-
-      /*
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      // Get products with orders in last 30 days
-      const productStats = await prisma.orderItem.groupBy({
-        by: ['productId'],
-        where: {
-          order: {
-            createdAt: { gte: thirtyDaysAgo }
-          }
-        },
-        _count: { productId: true }
-      });
-
-      for (const stat of productStats) {
-        if (stat._count.productId >= 10) {
-          // Only check products with 10+ orders
-          // Count returns for this product
-          const returns = await prisma.orderItem.count({
-            where: {
-              productId: stat.productId,
-              order: {
-                createdAt: { gte: thirtyDaysAgo },
-                status: 'RETURNED'
-              }
-            }
-          });
-
-          const returnRate = (returns / stat._count.productId) * 100;
-
-          if (returnRate >= 15) {
-            const product = await prisma.product.findUnique({
-              where: { id: stat.productId },
-              select: { name: true }
-            });
-
-            const eventData = {
-              productId: stat.productId,
-              productName: product?.name || 'Unknown Product',
-              returnRate: parseFloat(returnRate.toFixed(1)),
-              returnCount: returns,
-              totalOrders: stat._count.productId
-            };
-
-            // Create a custom trigger for return analysis
-            const trigger = {
-              name: 'return_analysis',
-              eventType: 'RETURN_ANALYSIS' as const,
-              priority: 'WARNING' as const,
-              businessImpact: 'MEDIUM' as const,
-              message: () => `Tỷ lệ trả hàng cao: ${eventData.returnRate}% cho ${eventData.productName}`,
-              suggestedActions: ['Kiểm tra chất lượng sản phẩm', 'Review mô tả sản phẩm', 'Cải thiện packaging']
-            };
-            await this.processBusinessEventTrigger(trigger, eventData);
-          }
-        }
-      }
-      */
-    } catch (error) {
-      console.error('Error checking return rates:', error);
-    }
-  }
-
   // Check for birthday campaign opportunities
   private async checkBirthdayCampaignOpportunities() {
     try {
@@ -936,6 +639,99 @@ export class EventMonitor {
       }
     } catch (error) {
       console.error('Error checking birthday opportunities:', error);
+    }
+  }
+
+  // 🤖 AI RECOMMENDATION SERVICE INTEGRATION
+  private async runAIRecommendations() {
+    try {
+      // Get AI recommendation interval from settings (dynamic)
+      const settings = await prisma.adminSettings.findFirst();
+      const recommendationIntervalMinutes = settings?.aiRecommendationInterval || 2;
+      const runInterval = recommendationIntervalMinutes * 60 * 1000; // Convert to milliseconds
+
+      // DEBUG: Log current settings
+      console.log(
+        `🔍 DEBUG: AI Recommendation Interval = ${recommendationIntervalMinutes} minutes (from DB: ${settings?.aiRecommendationInterval})`
+      );
+      console.log(`🔍 DEBUG: Run interval = ${runInterval}ms`);
+      console.log(`🔍 DEBUG: Settings object keys:`, settings ? Object.keys(settings) : 'null');
+
+      // Check if we should run AI recommendations
+      const now = Date.now();
+      const lastRunKey = 'ai_recommendations_last_run';
+
+      // Get last run time from memory or use 0
+      const lastRunTime = await this.getLastRunTime(lastRunKey);
+      const timeSinceLastRun = now - lastRunTime;
+
+      if (timeSinceLastRun < runInterval) {
+        // Skip this run - too soon
+        console.log(
+          `🤖 AI Recommendations: Skipping - last run ${Math.floor(
+            timeSinceLastRun / 1000 / 60
+          )} minutes ago (need ${recommendationIntervalMinutes} minutes)`
+        );
+        return;
+      }
+
+      console.log('🤖 AI Assistant: Running AI Recommendations...');
+
+      // Run AI recommendations
+      const result = await AIRecommendationService.runAIRecommendations();
+
+      console.log(
+        `🤖 AI Recommendations: Analyzed ${result.analyzed} products, generated ${result.recommendations} recommendations, sent ${result.notifications} notifications`
+      );
+
+      // Update last run time
+      await this.setLastRunTime(lastRunKey, now);
+    } catch (error) {
+      console.error('🤖 AI Recommendations failed:', error);
+    }
+  }
+
+  // Helper methods for tracking last run times
+  private async getLastRunTime(key: string): Promise<number> {
+    try {
+      // Store in AIMemory for persistence
+      const memory = await prisma.aIMemory.findFirst({
+        where: { alertId: `system_${key}` }
+      });
+
+      if (memory?.contextData) {
+        const data = JSON.parse(memory.contextData);
+        return data.lastRunTime || 0;
+      }
+
+      return 0;
+    } catch (error) {
+      console.error(`Error getting last run time for ${key}:`, error);
+      return 0;
+    }
+  }
+
+  private async setLastRunTime(key: string, timestamp: number): Promise<void> {
+    try {
+      const alertId = `system_${key}`;
+
+      // Upsert AIMemory record
+      await prisma.aIMemory.upsert({
+        where: { alertId },
+        create: {
+          alertId,
+          eventType: 'SYSTEM_TRACKING',
+          contextData: JSON.stringify({ lastRunTime: timestamp }),
+          status: 'ACTIVE',
+          escalationLevel: 'INFO'
+        },
+        update: {
+          contextData: JSON.stringify({ lastRunTime: timestamp }),
+          updatedAt: new Date()
+        }
+      });
+    } catch (error) {
+      console.error(`Error setting last run time for ${key}:`, error);
     }
   }
 }

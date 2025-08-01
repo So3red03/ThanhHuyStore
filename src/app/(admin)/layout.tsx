@@ -11,6 +11,8 @@ import { adminTheme } from '../theme/adminTheme';
 import DynamicAdminLayout from '../components/admin/DynamicAdminLayout';
 // Removed complex permission imports - using simple role check
 import { redirect } from 'next/navigation';
+// Auto-start AI Assistant monitoring
+import '../libs/ai-assistant/autoStart';
 export const metadata = {
   title: 'ThanhHuy Store - Dashboard',
   description: 'Apple Shop Admin Dashboard',

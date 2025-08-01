@@ -39,6 +39,7 @@ interface SettingsData {
   // AI Assistant settings
   aiAssistantEnabled: boolean;
   aiMonitoringInterval: number;
+  aiRecommendationInterval: number;
   aiInfoMaxReminders: number;
   aiInfoInterval: number;
   aiWarningMaxReminders: number;
@@ -139,6 +140,7 @@ const AdminSettings = async () => {
     // AI Assistant settings
     aiAssistantEnabled: settings.aiAssistantEnabled,
     aiMonitoringInterval: settings.aiMonitoringInterval,
+    aiRecommendationInterval: settings.aiRecommendationInterval || 30,
     aiInfoMaxReminders: settings.aiInfoMaxReminders,
     aiInfoInterval: settings.aiInfoInterval,
     aiWarningMaxReminders: settings.aiWarningMaxReminders,
