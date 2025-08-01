@@ -192,16 +192,16 @@ export class AIMemoryService {
         // Return default values if no settings found
         return {
           aiInfoMaxReminders: 1,
-          aiInfoInterval: 240,
-          aiWarningMaxReminders: 2,
-          aiWarningInterval: 120,
-          aiUrgentMaxReminders: 2,
+          aiInfoInterval: 60, // 1 hour - không quan trọng vì chỉ nhắc 1 lần
+          aiWarningMaxReminders: 1, // Chỉ nhắc 1 lần
+          aiWarningInterval: 60,
+          aiUrgentMaxReminders: 1, // Chỉ nhắc 1 lần
           aiUrgentInterval: 60,
-          aiCriticalMaxReminders: 3,
-          aiCriticalInterval: 30,
-          aiBackoffMultiplier: 2.0,
-          aiDismissThreshold: 2,
-          aiDebugMode: false
+          aiCriticalMaxReminders: 1, // Chỉ nhắc 1 lần
+          aiCriticalInterval: 60,
+          aiBackoffMultiplier: 1.0, // Không cần backoff
+          aiDismissThreshold: 1, // Dismiss sau 1 lần
+          aiDebugMode: true
         };
       }
       return {
@@ -222,86 +222,38 @@ export class AIMemoryService {
       // Return defaults on error
       return {
         aiInfoMaxReminders: 1,
-        aiInfoInterval: 240,
-        aiWarningMaxReminders: 2,
-        aiWarningInterval: 120,
-        aiUrgentMaxReminders: 2,
+        aiInfoInterval: 60,
+        aiWarningMaxReminders: 1, // Chỉ nhắc 1 lần
+        aiWarningInterval: 60,
+        aiUrgentMaxReminders: 1, // Chỉ nhắc 1 lần
         aiUrgentInterval: 60,
-        aiCriticalMaxReminders: 3,
-        aiCriticalInterval: 30,
-        aiBackoffMultiplier: 2.0,
-        aiDismissThreshold: 2,
-        aiDebugMode: false
+        aiCriticalMaxReminders: 1, // Chỉ nhắc 1 lần
+        aiCriticalInterval: 60,
+        aiBackoffMultiplier: 1.0,
+        aiDismissThreshold: 1,
+        aiDebugMode: true
       };
     }
   }
 
-  // Anti-spam logic - Check if should send notification (FIXED LOGIC)
+  // Simplified logic - Chỉ nhắc 1 lần duy nhất cho mỗi event
   static async shouldSendNotification(memory: AIMemory): Promise<boolean> {
-    const now = new Date();
-    const timeSinceLastReminder = now.getTime() - memory.lastReminded.getTime();
-
-    // Get dynamic settings from database
     const aiSettings = await this.getAISettings();
 
-    // Smart throttling based on escalation level and reminder count - DYNAMIC
-    const throttleRules = {
-      INFO: {
-        minInterval: aiSettings.aiInfoInterval * 60 * 1000, // Convert minutes to ms
-        maxReminders: aiSettings.aiInfoMaxReminders,
-        backoffMultiplier: aiSettings.aiBackoffMultiplier
-      },
-      WARNING: {
-        minInterval: aiSettings.aiWarningInterval * 60 * 1000,
-        maxReminders: aiSettings.aiWarningMaxReminders,
-        backoffMultiplier: aiSettings.aiBackoffMultiplier
-      },
-      URGENT: {
-        minInterval: aiSettings.aiUrgentInterval * 60 * 1000,
-        maxReminders: aiSettings.aiUrgentMaxReminders,
-        backoffMultiplier: aiSettings.aiBackoffMultiplier
-      },
-      CRITICAL: {
-        minInterval: aiSettings.aiCriticalInterval * 60 * 1000,
-        maxReminders: aiSettings.aiCriticalMaxReminders,
-        backoffMultiplier: aiSettings.aiBackoffMultiplier
-      }
-    };
-
-    const rule = throttleRules[memory.escalationLevel as keyof typeof throttleRules];
-    if (!rule) return false;
-
-    // CRITICAL FIX: Check max reminders BEFORE sending, not after
-    // reminderCount starts at 0, so if we've already sent maxReminders, stop
-    if (memory.reminderCount >= rule.maxReminders) {
+    // Nếu đã nhắc rồi thì không nhắc nữa
+    if (memory.reminderCount > 0) {
       if (aiSettings.aiDebugMode) {
-        console.log(
-          `🚫 Max reminders reached for ${memory.alertId} (${memory.reminderCount}/${rule.maxReminders}) - STOPPING`
-        );
+        console.log(`🚫 Already reminded for ${memory.alertId} (count: ${memory.reminderCount}) - SKIP`);
       }
       return false;
     }
 
-    // Calculate dynamic interval with exponential backoff
-    // Use reminderCount because it represents how many we've already sent
-    const dynamicInterval = rule.minInterval * Math.pow(rule.backoffMultiplier, memory.reminderCount);
-
-    // Check if enough time has passed
-    const shouldSend = timeSinceLastReminder >= dynamicInterval;
-
-    // Debug logging
+    // Chỉ nhắc lần đầu tiên
     if (aiSettings.aiDebugMode) {
-      if (!shouldSend) {
-        const remainingTime = Math.ceil((dynamicInterval - timeSinceLastReminder) / (1000 * 60));
-        console.log(
-          `⏳ Throttled ${memory.alertId}: ${remainingTime} minutes remaining (sent: ${memory.reminderCount}/${rule.maxReminders})`
-        );
-      } else {
-        console.log(`✅ Ready to send reminder ${memory.reminderCount + 1}/${rule.maxReminders} for ${memory.alertId}`);
-      }
+      console.log(`✅ First reminder for ${memory.alertId} - SEND`);
     }
 
-    return shouldSend;
+    return true;
   }
 
   // Check if admin has been responsive to avoid spam (now uses dynamic settings)
@@ -381,7 +333,6 @@ export class AIMemoryService {
     emoji: string;
     tone: string;
   } {
-    const reminderCount = memory.reminderCount;
     const productName = memory.productName || 'sản phẩm';
 
     const responses = {
@@ -393,19 +344,19 @@ export class AIMemoryService {
       },
       WARNING: {
         title: `⚠️ Cần chú ý: ${productName}`,
-        message: this.getConcernedMessage(memory, reminderCount),
+        message: this.getConcernedMessage(memory),
         emoji: '⚠️',
         tone: 'CONCERNED'
       },
       URGENT: {
         title: `🚨 KHẨN CẤP: ${productName}`,
-        message: this.getUrgentMessage(memory, reminderCount),
+        message: this.getUrgentMessage(memory),
         emoji: '🚨',
         tone: 'URGENT'
       },
       CRITICAL: {
         title: `💀 CRITICAL: ${productName}`,
-        message: this.getCriticalMessage(memory, reminderCount),
+        message: this.getCriticalMessage(memory),
         emoji: '💀',
         tone: 'CRITICAL'
       }
@@ -420,68 +371,117 @@ export class AIMemoryService {
 
     switch (memory.eventType) {
       case 'INVENTORY_LOW':
-        const currentStock = contextData?.currentStock || 'không rõ';
+        const currentStock = contextData?.currentStock || contextData?.quantity || 'không rõ';
         const threshold = contextData?.threshold || 5;
-        return `📦 ${memory.productName} còn ${currentStock} cái (ngưỡng: ${threshold}). Cần nhập hàng sớm ạ.`;
+        return `📦 SẮP HẾT HÀNG: ${
+          memory.productName || 'Sản phẩm'
+        } còn ${currentStock}/${threshold} cái. Cần nhập hàng ngay!`;
+      case 'INVENTORY_CRITICAL':
+        const criticalStock = contextData?.currentStock || contextData?.quantity || 'không rõ';
+        return `🚨 SẮP HẾT HÀNG: ${
+          memory.productName || 'Sản phẩm'
+        } chỉ còn ${criticalStock} cái! Nguy cơ hết hàng cao!`;
+      case 'INVENTORY_OUT':
+        return `💀 HẾT HÀNG: ${memory.productName || 'Sản phẩm'} đã hết! Đang từ chối đơn hàng!`;
       case 'SALES_DROP':
         const dropPercent = contextData?.dropPercentage || 'không rõ';
-        return `📉 Doanh số ${memory.productName} giảm ${dropPercent}% so với tuần trước. Cần review giá/marketing ạ.`;
+        return `📉 DOANH SỐ GIẢM: ${
+          memory.productName || 'Sản phẩm'
+        } giảm ${dropPercent}% so với tuần trước. Cần review giá/marketing!`;
+      case 'ORDER_MANAGEMENT':
+        const pendingDays = contextData?.pendingDays || 'không rõ';
+        const customerName = contextData?.customerName || 'Khách hàng';
+        return `⏰ ĐƠN HÀNG PENDING: ${customerName} - ${pendingDays} ngày chưa xử lý!`;
       default:
-        return `ℹ️ Thông tin về ${memory.productName} cần anh xem ạ.`;
+        return `ℹ️ Cảnh báo: ${memory.productName || 'Hệ thống'} cần xem xét.`;
     }
   }
 
-  private static getConcernedMessage(memory: AIMemory, reminderCount: number): string {
-    const contextData = typeof memory.contextData === 'string' ? JSON.parse(memory.contextData) : memory.contextData;
-    const timePhrase = reminderCount > 1 ? `(lần ${reminderCount})` : '';
-
-    switch (memory.eventType) {
-      case 'INVENTORY_LOW':
-        const currentStock = contextData?.currentStock || 0;
-        const threshold = contextData?.threshold || 5;
-        return `⚠️ ${memory.productName} chỉ còn ${currentStock}/${threshold} cái ${timePhrase}. CẦN NHẬP HÀNG GẤP!`;
-      case 'SALES_DROP':
-        const dropPercent = contextData?.dropPercentage || 'không rõ';
-        return `⚠️ Doanh số ${memory.productName} giảm ${dropPercent}% ${timePhrase}. Cần action ngay!`;
-      default:
-        return `⚠️ ${memory.productName} cần xử lý ${timePhrase}`;
-    }
-  }
-
-  private static getUrgentMessage(memory: AIMemory, reminderCount: number): string {
+  private static getConcernedMessage(memory: AIMemory): string {
     const contextData = typeof memory.contextData === 'string' ? JSON.parse(memory.contextData) : memory.contextData;
 
     switch (memory.eventType) {
       case 'INVENTORY_LOW':
-        const currentStock = contextData?.currentStock || 0;
+        const currentStock = contextData?.currentStock || contextData?.quantity || 0;
         const threshold = contextData?.threshold || 5;
-        return `🚨 KHẨN CẤP! ${memory.productName} chỉ còn ${currentStock} cái! (lần ${reminderCount}) NGUY CƠ HẾT HÀNG!`;
+        return `⚠️ SẮP HẾT HÀNG: ${
+          memory.productName || 'Sản phẩm'
+        } còn ${currentStock}/${threshold} cái. CẦN NHẬP HÀNG GẤP!`;
+      case 'INVENTORY_CRITICAL':
+        const criticalStock = contextData?.currentStock || contextData?.quantity || 0;
+        return `⚠️ NGUY CƠ HẾT HÀNG: ${memory.productName || 'Sản phẩm'} chỉ còn ${criticalStock} cái!`;
+      case 'INVENTORY_OUT':
+        return `⚠️ HẾT HÀNG: ${memory.productName || 'Sản phẩm'} đã hết! Đang từ chối đơn hàng!`;
       case 'SALES_DROP':
         const dropPercent = contextData?.dropPercentage || 'không rõ';
-        return `🚨 KHẨN CẤP! Doanh số ${memory.productName} giảm ${dropPercent}%! (lần ${reminderCount}) CẦN ACTION NGAY!`;
+        return `⚠️ DOANH SỐ GIẢM: ${memory.productName || 'Sản phẩm'} giảm ${dropPercent}%. Cần action ngay!`;
+      case 'ORDER_MANAGEMENT':
+        const pendingDays = contextData?.pendingDays || 'không rõ';
+        const customerName = contextData?.customerName || 'Khách hàng';
+        return `⚠️ ĐƠN HÀNG PENDING: ${customerName} - ${pendingDays} ngày. Cần xử lý!`;
       default:
-        return `🚨 KHẨN CẤP! ${memory.productName} cần xử lý ngay! (lần ${reminderCount})`;
+        return `⚠️ Cảnh báo: ${memory.productName || 'Hệ thống'} cần xử lý`;
     }
   }
 
-  private static getCriticalMessage(memory: AIMemory, reminderCount: number): string {
+  private static getUrgentMessage(memory: AIMemory): string {
     const contextData = typeof memory.contextData === 'string' ? JSON.parse(memory.contextData) : memory.contextData;
 
     switch (memory.eventType) {
       case 'INVENTORY_LOW':
-        const currentStock = contextData?.currentStock || 0;
-        return `💀 HẾT HÀNG! ${memory.productName} = ${currentStock} cái! (lần ${reminderCount}) ĐANG TỪ CHỐI ĐƠN HÀNG!`;
+        const currentStock = contextData?.currentStock || contextData?.quantity || 0;
+        const threshold = contextData?.threshold || 5;
+        return `🚨 KHẨN CẤP HẾT HÀNG: ${
+          memory.productName || 'Sản phẩm'
+        } chỉ còn ${currentStock}/${threshold} cái! NGUY CƠ HẾT HÀNG!`;
+      case 'INVENTORY_CRITICAL':
+        const criticalStock = contextData?.currentStock || contextData?.quantity || 0;
+        return `🚨 KHẨN CẤP HẾT HÀNG: ${memory.productName || 'Sản phẩm'} chỉ còn ${criticalStock} cái! SẮP HẾT!`;
+      case 'INVENTORY_OUT':
+        return `🚨 KHẨN CẤP HẾT HÀNG: ${memory.productName || 'Sản phẩm'} đã hết! ĐANG TỪ CHỐI ĐƠN HÀNG!`;
       case 'SALES_DROP':
         const dropPercent = contextData?.dropPercentage || 'không rõ';
-        return `💀 CRITICAL! Doanh số ${memory.productName} sụp đổ ${dropPercent}%! (lần ${reminderCount}) THIỆT HẠI NẶNG!`;
+        return `🚨 KHẨN CẤP DOANH SỐ: ${memory.productName || 'Sản phẩm'} giảm ${dropPercent}%! CẦN ACTION NGAY!`;
+      case 'ORDER_MANAGEMENT':
+        const pendingDays = contextData?.pendingDays || 'không rõ';
+        const customerName = contextData?.customerName || 'Khách hàng';
+        return `🚨 KHẨN CẤP ĐƠN HÀNG: ${customerName} - ${pendingDays} ngày chưa xử lý!`;
       default:
-        return `💀 CRITICAL! ${memory.productName} - KHẨN CẤP CỰC KỲ! (lần ${reminderCount})`;
+        return `🚨 KHẨN CẤP: ${memory.productName || 'Hệ thống'} cần xử lý ngay!`;
+    }
+  }
+
+  private static getCriticalMessage(memory: AIMemory): string {
+    const contextData = typeof memory.contextData === 'string' ? JSON.parse(memory.contextData) : memory.contextData;
+
+    switch (memory.eventType) {
+      case 'INVENTORY_LOW':
+        const currentStock = contextData?.currentStock || contextData?.quantity || 0;
+        const threshold = contextData?.threshold || 5;
+        return `💀 CRITICAL HẾT HÀNG: ${
+          memory.productName || 'Sản phẩm'
+        } = ${currentStock}/${threshold} cái! ĐANG TỪ CHỐI ĐƠN HÀNG!`;
+      case 'INVENTORY_CRITICAL':
+        const criticalStock = contextData?.currentStock || contextData?.quantity || 0;
+        return `💀 CRITICAL HẾT HÀNG: ${memory.productName || 'Sản phẩm'} = ${criticalStock} cái! NGUY CƠ CỰC CAO!`;
+      case 'INVENTORY_OUT':
+        return `💀 CRITICAL HẾT HÀNG: ${memory.productName || 'Sản phẩm'} = 0 cái! ĐANG TỪ CHỐI TẤT CẢ ĐƠN HÀNG!`;
+      case 'SALES_DROP':
+        const dropPercent = contextData?.dropPercentage || 'không rõ';
+        return `💀 CRITICAL DOANH SỐ: ${memory.productName || 'Sản phẩm'} sụp đổ ${dropPercent}%! THIỆT HẠI NẶNG!`;
+      case 'ORDER_MANAGEMENT':
+        const pendingDays = contextData?.pendingDays || 'không rõ';
+        const customerName = contextData?.customerName || 'Khách hàng';
+        return `💀 CRITICAL ĐƠN HÀNG: ${customerName} - ${pendingDays} ngày! MẤT KHÁCH HÀNG!`;
+      default:
+        return `💀 CRITICAL: ${memory.productName || 'Hệ thống'} - KHẨN CẤP CỰC KỲ!`;
     }
   }
 
   // Utility methods
   private static generateAlertId(eventType: string, productId?: string): string {
-    return `${eventType}_${productId || 'SYSTEM'}_${Date.now()}`;
+    // Use consistent ID without timestamp to prevent duplicates
+    return `${eventType}_${productId || 'SYSTEM'}`;
   }
 
   private static parseMemoryFromDB(dbMemory: any): AIMemory {

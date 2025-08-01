@@ -19,34 +19,44 @@ export class EventMonitor {
     return EventMonitor.instance;
   }
 
-  // Get dynamic monitoring interval from settings
-  private async getMonitoringInterval(): Promise<number> {
+  // Check if AI Assistant is enabled
+  private async isAIAssistantEnabled(): Promise<boolean> {
     try {
       const settings = await prisma.adminSettings.findFirst();
-      if (settings && settings.aiAssistantEnabled) {
-        return settings.aiMonitoringInterval * 1000; // Convert seconds to ms
-      }
-      return 2 * 60 * 1000; // Default 2 minutes
+      return settings?.aiAssistantEnabled ?? true; // Default enabled
     } catch (error) {
-      console.error('Error getting monitoring interval:', error);
-      return 2 * 60 * 1000; // Default on error
+      console.error('Error checking AI Assistant status:', error);
+      return true; // Default enabled on error
     }
   }
 
-  // Start real-time monitoring with dynamic interval
+  // Start real-time monitoring with fixed interval (simplified)
   async startMonitoring() {
     if (this.isMonitoring) return;
 
-    this.isMonitoring = true;
-    console.log('🤖 AI Assistant: Starting FOCUSED monitoring (inventory + sales only)...');
+    // Check if AI Assistant is enabled
+    const enabled = await this.isAIAssistantEnabled();
+    if (!enabled) {
+      console.log('🤖 AI Assistant: Disabled - skipping monitoring');
+      return;
+    }
 
-    // Get dynamic monitoring interval from settings
-    const interval = await this.getMonitoringInterval();
+    this.isMonitoring = true;
+    console.log('🤖 AI Assistant: Starting SIMPLIFIED monitoring (1 reminder per event)...');
+
+    // Fixed interval - 2 minutes (simplified logic doesn't need dynamic interval)
+    const interval = 2 * 60 * 1000; // 2 minutes
     console.log(`🤖 AI Assistant: Monitoring every ${interval / 1000} seconds`);
 
-    // Monitor with dynamic interval
+    // Monitor with fixed interval
     this.monitoringInterval = setInterval(async () => {
-      await this.checkBusinessEvents();
+      const stillEnabled = await this.isAIAssistantEnabled();
+      if (stillEnabled) {
+        await this.checkBusinessEvents();
+      } else {
+        console.log('🤖 AI Assistant: Disabled during runtime - stopping monitoring');
+        this.stopMonitoring();
+      }
     }, interval);
 
     // Initial check

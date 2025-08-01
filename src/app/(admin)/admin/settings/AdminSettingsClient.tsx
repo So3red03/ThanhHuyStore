@@ -1021,7 +1021,21 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
             {activeSection === 'ai-assistant' && (
               <div>
                 <h2 className='text-2xl font-semibold mb-2'>🤖 AI Assistant Settings</h2>
-                <p className='text-gray-600 mb-6'>Cấu hình hệ thống AI Assistant để tối ưu thông báo và giảm spam.</p>
+
+                {/* Current Logic Info */}
+                <div className='bg-green-50 border border-green-200 rounded-lg p-4 mb-6'>
+                  <div className='flex items-start gap-3'>
+                    <div className='text-green-600 text-2xl'>✅</div>
+                    <div>
+                      <h4 className='font-semibold text-green-800 mb-2'>Logic hiện tại: Simplified & Efficient</h4>
+                      <p className='text-green-700 text-sm'>
+                        <strong>AI Assistant chỉ nhắc 1 lần duy nhất</strong> cho mỗi business event.
+                        <br />
+                        Không spam, không lặp lại - chỉ thông báo khi thực sự cần thiết.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
                 <div className='space-y-6'>
                   {/* AI Assistant Enable/Disable */}
@@ -1039,7 +1053,7 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                     />
                   </div>
 
-                  {/* Monitoring Interval */}
+                  {/* Monitoring Interval - Simplified */}
                   <div className='bg-gray-50 p-6 rounded-lg'>
                     <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
                       <MdAccessTime className='w-5 h-5 text-green-600' />
@@ -1050,7 +1064,7 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                         <label className='block text-sm font-medium text-gray-700 mb-2'>Kiểm tra mỗi (giây)</label>
                         <input
                           type='number'
-                          min='30'
+                          min='60'
                           max='600'
                           value={settings.aiMonitoringInterval}
                           onChange={e =>
@@ -1068,353 +1082,111 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                     </div>
                   </div>
 
-                  {/* Reminder Settings by Priority */}
-                  <div className='bg-gray-50 p-6 rounded-lg'>
-                    <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
-                      <MdNotifications className='w-5 h-5 text-orange-600' />
-                      Cài đặt nhắc nhở theo mức độ
-                    </h3>
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                      {/* INFO Level */}
-                      <div className='border border-blue-200 rounded-lg p-4 bg-blue-50'>
-                        <h4 className='font-medium text-blue-800 mb-3'>💡 INFO Level</h4>
-                        <div className='space-y-3'>
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 mb-1'>Số lần nhắc tối đa</label>
-                            <input
-                              type='number'
-                              min='1'
-                              max='5'
-                              value={settings.aiInfoMaxReminders}
-                              onChange={e =>
-                                setSettings(prev => ({
-                                  ...prev,
-                                  aiInfoMaxReminders: parseInt(e.target.value) || 1
-                                }))
-                              }
-                              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
-                            />
-                          </div>
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 mb-1'>Khoảng cách (phút)</label>
-                            <input
-                              type='number'
-                              min='60'
-                              max='1440'
-                              value={settings.aiInfoInterval}
-                              onChange={e =>
-                                setSettings(prev => ({
-                                  ...prev,
-                                  aiInfoInterval: parseInt(e.target.value) || 240
-                                }))
-                              }
-                              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* WARNING Level */}
-                      <div className='border border-yellow-200 rounded-lg p-4 bg-yellow-50'>
-                        <h4 className='font-medium text-yellow-800 mb-3'>⚠️ WARNING Level</h4>
-                        <div className='space-y-3'>
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 mb-1'>Số lần nhắc tối đa</label>
-                            <input
-                              type='number'
-                              min='1'
-                              max='5'
-                              value={settings.aiWarningMaxReminders}
-                              onChange={e =>
-                                setSettings(prev => ({
-                                  ...prev,
-                                  aiWarningMaxReminders: parseInt(e.target.value) || 2
-                                }))
-                              }
-                              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500'
-                            />
-                          </div>
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 mb-1'>Khoảng cách (phút)</label>
-                            <input
-                              type='number'
-                              min='30'
-                              max='720'
-                              value={settings.aiWarningInterval}
-                              onChange={e =>
-                                setSettings(prev => ({
-                                  ...prev,
-                                  aiWarningInterval: parseInt(e.target.value) || 120
-                                }))
-                              }
-                              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500'
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* URGENT Level */}
-                      <div className='border border-orange-200 rounded-lg p-4 bg-orange-50'>
-                        <h4 className='font-medium text-orange-800 mb-3'>🚨 URGENT Level</h4>
-                        <div className='space-y-3'>
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 mb-1'>Số lần nhắc tối đa</label>
-                            <input
-                              type='number'
-                              min='1'
-                              max='5'
-                              value={settings.aiUrgentMaxReminders}
-                              onChange={e =>
-                                setSettings(prev => ({
-                                  ...prev,
-                                  aiUrgentMaxReminders: parseInt(e.target.value) || 2
-                                }))
-                              }
-                              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500'
-                            />
-                          </div>
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 mb-1'>Khoảng cách (phút)</label>
-                            <input
-                              type='number'
-                              min='15'
-                              max='360'
-                              value={settings.aiUrgentInterval}
-                              onChange={e =>
-                                setSettings(prev => ({
-                                  ...prev,
-                                  aiUrgentInterval: parseInt(e.target.value) || 60
-                                }))
-                              }
-                              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500'
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* CRITICAL Level */}
-                      <div className='border border-red-200 rounded-lg p-4 bg-red-50'>
-                        <h4 className='font-medium text-red-800 mb-3'>💀 CRITICAL Level</h4>
-                        <div className='space-y-3'>
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 mb-1'>Số lần nhắc tối đa</label>
-                            <input
-                              type='number'
-                              min='1'
-                              max='10'
-                              value={settings.aiCriticalMaxReminders}
-                              onChange={e =>
-                                setSettings(prev => ({
-                                  ...prev,
-                                  aiCriticalMaxReminders: parseInt(e.target.value) || 3
-                                }))
-                              }
-                              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500'
-                            />
-                          </div>
-                          <div>
-                            <label className='block text-sm font-medium text-gray-700 mb-1'>Khoảng cách (phút)</label>
-                            <input
-                              type='number'
-                              min='5'
-                              max='180'
-                              value={settings.aiCriticalInterval}
-                              onChange={e =>
-                                setSettings(prev => ({
-                                  ...prev,
-                                  aiCriticalInterval: parseInt(e.target.value) || 30
-                                }))
-                              }
-                              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500'
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Advanced Settings */}
+                  {/* Debug Mode */}
                   <div className='bg-gray-50 p-6 rounded-lg'>
                     <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
                       <MdSecurity className='w-5 h-5 text-purple-600' />
-                      Cài đặt nâng cao
+                      Debug Mode
                     </h3>
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                      <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-2'>Hệ số tăng thời gian chờ</label>
-                        <input
-                          type='number'
-                          min='1'
-                          max='5'
-                          step='0.1'
-                          value={settings.aiBackoffMultiplier}
-                          onChange={e =>
-                            setSettings(prev => ({
-                              ...prev,
-                              aiBackoffMultiplier: parseFloat(e.target.value) || 2.0
-                            }))
-                          }
-                          className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500'
-                        />
-                        <p className='text-xs text-gray-500 mt-1'>Mỗi lần nhắc, thời gian chờ sẽ nhân với hệ số này</p>
-                      </div>
-                      <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-2'>Ngưỡng dismiss để dừng</label>
-                        <input
-                          type='number'
-                          min='1'
-                          max='5'
-                          value={settings.aiDismissThreshold}
-                          onChange={e =>
-                            setSettings(prev => ({
-                              ...prev,
-                              aiDismissThreshold: parseInt(e.target.value) || 2
-                            }))
-                          }
-                          className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500'
-                        />
-                        <p className='text-xs text-gray-500 mt-1'>Sau X lần dismiss, hệ thống sẽ dừng nhắc nhở</p>
-                      </div>
-                    </div>
-                    <div className='mt-4'>
-                      <ToggleSwitch
-                        id='aiDebugMode'
-                        checked={settings.aiDebugMode}
-                        onChange={() => setSettings(prev => ({ ...prev, aiDebugMode: !prev.aiDebugMode }))}
-                        title='Debug Mode'
-                        description='Bật để xem logs chi tiết trong console (chỉ dùng khi debug)'
-                      />
-                    </div>
+                    <ToggleSwitch
+                      id='aiDebugMode'
+                      checked={settings.aiDebugMode}
+                      onChange={() => setSettings(prev => ({ ...prev, aiDebugMode: !prev.aiDebugMode }))}
+                      title='Debug Mode'
+                      description='Bật để xem logs chi tiết trong console (chỉ dùng khi debug)'
+                    />
                   </div>
 
-                  {/* Enhanced Preview Section with Event Type Explanations */}
-                  <div className='bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-200'>
+                  {/* AI Assistant Features & Status */}
+                  <div className='bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200'>
                     <h3 className='text-lg font-medium mb-6 flex items-center gap-2'>
                       <MdCheckCircle className='w-5 h-5 text-green-600' />
-                      Tóm tắt cài đặt & Loại thông báo
+                      Tính năng & Trạng thái
                     </h3>
 
-                    {/* System Status */}
-                    <div className='mb-6 p-4 bg-white rounded-lg border border-gray-200'>
-                      <h4 className='font-medium text-gray-800 mb-3'>🔧 Trạng thái hệ thống</h4>
-                      <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
-                        <div className='flex justify-between'>
-                          <span className='text-gray-600'>Trạng thái:</span>
-                          <span
-                            className={
-                              settings.aiAssistantEnabled ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
-                            }
-                          >
-                            {settings.aiAssistantEnabled ? '✅ Hoạt động' : '❌ Tắt'}
-                          </span>
+                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'>
+                      <div className='text-center'>
+                        <div className='text-2xl font-bold text-purple-600'>
+                          {settings.aiAssistantEnabled ? '🟢' : '🔴'}
                         </div>
-                        <div className='flex justify-between'>
-                          <span className='text-gray-600'>Giám sát mỗi:</span>
-                          <span className='font-medium text-blue-600'>{settings.aiMonitoringInterval}s</span>
+                        <div className='text-sm font-medium text-gray-700'>Trạng thái</div>
+                        <div className='text-xs text-gray-500'>
+                          {settings.aiAssistantEnabled ? 'Đang hoạt động' : 'Tạm dừng'}
                         </div>
-                        <div className='flex justify-between'>
-                          <span className='text-gray-600'>Debug mode:</span>
-                          <span className={settings.aiDebugMode ? 'text-yellow-600 font-medium' : 'text-gray-500'}>
-                            {settings.aiDebugMode ? '🐛 ON' : 'OFF'}
-                          </span>
+                      </div>
+
+                      <div className='text-center'>
+                        <div className='text-2xl font-bold text-blue-600'>
+                          {Math.floor(settings.aiMonitoringInterval / 60)}m
+                        </div>
+                        <div className='text-sm font-medium text-gray-700'>Chu kỳ giám sát</div>
+                        <div className='text-xs text-gray-500'>{settings.aiMonitoringInterval} giây</div>
+                      </div>
+
+                      <div className='text-center'>
+                        <div className='text-2xl font-bold text-green-600'>1x</div>
+                        <div className='text-sm font-medium text-gray-700'>Nhắc nhở</div>
+                        <div className='text-xs text-gray-500'>Chỉ 1 lần/sự kiện</div>
+                      </div>
+                    </div>
+
+                    <div className='p-4 bg-white rounded-lg border border-purple-200 mb-4'>
+                      <div className='text-sm text-gray-700'>
+                        <strong>🤖 AI Assistant Features:</strong>
+                        <div className='mt-2 grid grid-cols-1 md:grid-cols-2 gap-2'>
+                          <ul className='space-y-1 text-xs text-gray-600'>
+                            <li>• 📦 Real-time inventory monitoring</li>
+                            <li>• 📈 Sales performance alerts</li>
+                            <li>• 👥 Customer behavior analysis</li>
+                            <li>• 💰 Payment failure detection</li>
+                          </ul>
+                          <ul className='space-y-1 text-xs text-gray-600'>
+                            <li>• 🏷️ Competitor price tracking</li>
+                            <li>• ⭐ Review sentiment monitoring</li>
+                            <li>• 🛒 Cart abandonment alerts</li>
+                            <li>• 🎯 Business intelligence insights</li>
+                          </ul>
                         </div>
                       </div>
                     </div>
 
-                    {/* Alert Levels with Event Type Explanations */}
-                    <div className='space-y-4'>
-                      <h4 className='font-medium text-gray-800 mb-3'>📊 Cấu hình thông báo theo mức độ</h4>
-
-                      {/* INFO Level */}
-                      <div className='p-4 bg-blue-50 rounded-lg border border-blue-200'>
-                        <div className='flex items-center justify-between mb-2'>
-                          <div className='flex items-center gap-2'>
-                            <span className='text-blue-600 font-medium'>💡 INFO Level</span>
-                            <span className='text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full'>
-                              {settings.aiInfoMaxReminders} lần / {settings.aiInfoInterval}p
-                            </span>
-                          </div>
-                        </div>
-                        <p className='text-sm text-blue-700 mb-2'>
-                          <strong>Thông báo về:</strong> Thông tin tổng quan, xu hướng tích cực, cập nhật không khẩn cấp
-                        </p>
-                        <div className='text-xs text-blue-600 space-y-1'>
-                          <div>• 📈 Sales spike - Doanh số tăng đột biến</div>
-                          <div>• 🎯 Khách hàng VIP mới - Có đơn hàng giá trị cao</div>
-                          <div>• 📊 Báo cáo định kỳ - Tổng kết hiệu suất</div>
-                        </div>
+                    {/* Event Types */}
+                    <div className='p-4 bg-white rounded-lg border border-blue-200'>
+                      <div className='text-sm text-gray-700 mb-2'>
+                        <strong>📋 Supported Business Events:</strong>
                       </div>
-
-                      {/* WARNING Level */}
-                      <div className='p-4 bg-yellow-50 rounded-lg border border-yellow-200'>
-                        <div className='flex items-center justify-between mb-2'>
-                          <div className='flex items-center gap-2'>
-                            <span className='text-yellow-600 font-medium'>⚠️ WARNING Level</span>
-                            <span className='text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full'>
-                              {settings.aiWarningMaxReminders} lần / {settings.aiWarningInterval}p
-                            </span>
-                          </div>
+                      <div className='grid grid-cols-2 md:grid-cols-4 gap-2 text-xs'>
+                        <div className='flex items-center gap-1'>
+                          <div className='w-2 h-2 bg-red-500 rounded-full'></div>
+                          <span>INVENTORY_LOW</span>
                         </div>
-                        <p className='text-sm text-yellow-700 mb-2'>
-                          <strong>Thông báo về:</strong> Vấn đề cần chú ý, xu hướng tiêu cực, cần hành động sớm
-                        </p>
-                        <div className='text-xs text-yellow-600 space-y-1'>
-                          <div>• 📦 Tồn kho thấp - Sản phẩm còn 3-5 cái, cần nhập hàng</div>
-                          <div>• � Doanh số giảm - So với tuần trước, cần review giá</div>
+                        <div className='flex items-center gap-1'>
+                          <div className='w-2 h-2 bg-orange-500 rounded-full'></div>
+                          <span>SALES_DROP</span>
                         </div>
-                      </div>
-
-                      {/* URGENT Level */}
-                      <div className='p-4 bg-orange-50 rounded-lg border border-orange-200'>
-                        <div className='flex items-center justify-between mb-2'>
-                          <div className='flex items-center gap-2'>
-                            <span className='text-orange-600 font-medium'>🚨 URGENT Level</span>
-                            <span className='text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full'>
-                              {settings.aiUrgentMaxReminders} lần / {settings.aiUrgentInterval}p
-                            </span>
-                          </div>
+                        <div className='flex items-center gap-1'>
+                          <div className='w-2 h-2 bg-green-500 rounded-full'></div>
+                          <span>SALES_SPIKE</span>
                         </div>
-                        <p className='text-sm text-orange-700 mb-2'>
-                          <strong>Thông báo về:</strong> Vấn đề nghiêm trọng, cần xử lý trong vài giờ
-                        </p>
-                        <div className='text-xs text-orange-600 space-y-1'>
-                          <div>• 📦 Tồn kho rất thấp - Chỉ còn 1-2 cái, NGUY CƠ HẾT HÀNG</div>
-                          <div>• 💳 Lỗi thanh toán - Nhiều đơn bị failed, check payment gateway</div>
+                        <div className='flex items-center gap-1'>
+                          <div className='w-2 h-2 bg-purple-500 rounded-full'></div>
+                          <span>PAYMENT_FAILURE</span>
                         </div>
-                      </div>
-
-                      {/* CRITICAL Level */}
-                      <div className='p-4 bg-red-50 rounded-lg border border-red-200'>
-                        <div className='flex items-center justify-between mb-2'>
-                          <div className='flex items-center gap-2'>
-                            <span className='text-red-600 font-medium'>💀 CRITICAL Level</span>
-                            <span className='text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full'>
-                              {settings.aiCriticalMaxReminders} lần / {settings.aiCriticalInterval}p
-                            </span>
-                          </div>
+                        <div className='flex items-center gap-1'>
+                          <div className='w-2 h-2 bg-yellow-500 rounded-full'></div>
+                          <span>NEGATIVE_REVIEWS</span>
                         </div>
-                        <p className='text-sm text-red-700 mb-2'>
-                          <strong>Thông báo về:</strong> Khẩn cấp! Cần xử lý ngay lập tức để tránh thiệt hại
-                        </p>
-                        <div className='text-xs text-red-600 space-y-1'>
-                          <div>• 🚫 HẾT HÀNG - Tồn kho = 0, đang từ chối đơn hàng!</div>
-                          <div>• ⚠️ Lỗi hệ thống - Website/thanh toán gặp sự cố</div>
+                        <div className='flex items-center gap-1'>
+                          <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
+                          <span>HIGH_VALUE_CUSTOMER</span>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Tips */}
-                    <div className='mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200'>
-                      <h4 className='font-medium text-gray-800 mb-2 flex items-center gap-2'>💡 Gợi ý cấu hình</h4>
-                      <div className='text-sm text-gray-600 space-y-1'>
-                        <div>
-                          • <strong>Cửa hàng nhỏ:</strong> INFO(1/8h), WARNING(1/4h), URGENT(2/2h), CRITICAL(3/1h)
+                        <div className='flex items-center gap-1'>
+                          <div className='w-2 h-2 bg-pink-500 rounded-full'></div>
+                          <span>CART_ABANDONMENT</span>
                         </div>
-                        <div>
-                          • <strong>Cửa hàng lớn:</strong> INFO(2/4h), WARNING(3/2h), URGENT(3/1h), CRITICAL(5/30p)
-                        </div>
-                        <div>
-                          • <strong>Testing:</strong> Tất cả levels 1 lần / 5 phút, Debug Mode ON
+                        <div className='flex items-center gap-1'>
+                          <div className='w-2 h-2 bg-indigo-500 rounded-full'></div>
+                          <span>COMPETITOR_PRICE</span>
                         </div>
                       </div>
                     </div>
