@@ -259,7 +259,7 @@ const ChatBoxClient: React.FC<ChatBoxClientProps> = ({ currentUser }) => {
         <div className={`flex-1 overflow-y-auto ${isAiChat ? '!h-[92.2%]' : '!h-[70%]'}`}>
           {isAiChat ? (
             <div className='w-full h-full'>
-              <ChatBaseBot />
+              <ChatBaseBot useAPI={true} botType='customer' />
             </div>
           ) : currentUser ? (
             messages && chatRoomId ? (
