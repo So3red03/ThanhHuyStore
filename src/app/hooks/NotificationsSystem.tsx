@@ -71,9 +71,9 @@ const useNotifications: React.FC<useNotificationsProps> = ({ currentUser, forceS
     // Subscribe to real-time notifications
     const adminChannel = pusherClient.subscribe('admin-notifications');
 
-    // Handle AI Assistant notifications with anti-spam
+    // Handle all admin notifications (both regular and AI)
     adminChannel.bind('notification', (data: any) => {
-      if (data.type === 'new_notification' && data.notification.type !== 'MESSAGE_RECEIVED') {
+      if (data.type === 'new_notification') {
         const notification: AIAssistantNotification = {
           id: data.notification.id,
           type: data.notification.type,
@@ -241,7 +241,7 @@ const useNotifications: React.FC<useNotificationsProps> = ({ currentUser, forceS
             type: notification.type as any,
             title: notification.title,
             message: notification.message,
-            timestamp: notification.timestamp,
+            createdAt: notification.timestamp.toISOString(),
             avatar: undefined,
             data: notification.data,
             isRead: false,

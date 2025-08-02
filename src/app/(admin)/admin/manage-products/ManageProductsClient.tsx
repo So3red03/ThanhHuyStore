@@ -783,6 +783,26 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     }
   }, [searchParams]);
 
+  // Check for view=productId query parameter to auto-open product form
+  useEffect(() => {
+    if (searchParams && currentProducts.length > 0) {
+      const viewProductId = searchParams.get('view');
+      if (viewProductId) {
+        // Find the product by ID
+        const productToView = currentProducts.find(product => product.id === viewProductId);
+        if (productToView) {
+          // Auto-open the product modal
+          handleOpenModal(productToView);
+
+          // Clean up URL without triggering navigation
+          const url = new URL(window.location.href);
+          url.searchParams.delete('view');
+          window.history.replaceState({}, '', url.toString());
+        }
+      }
+    }
+  }, [searchParams, currentProducts]);
+
   if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
     return <NullData title='Từ chối đăng nhập' />;
   }

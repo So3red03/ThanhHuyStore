@@ -30,134 +30,40 @@ export default function AIActionButtons({
 }: AIActionButtonsProps) {
   const router = useRouter();
 
-  // Generate action buttons based on suggestion type
+  // Generate action buttons based on suggestion type - SIMPLIFIED
   const getActionButtons = (): ActionButton[] => {
-    switch (suggestionType) {
-      case 'PROMOTION_SUGGESTION':
-        return [
-          {
-            label: `Giảm ${suggestedAction.discountPercentage}%`,
-            action: 'apply_discount',
-            value: suggestedAction.discountPercentage,
-            variant: 'warning'
-          },
-          {
-            label: 'Xem sản phẩm',
-            action: 'view_product',
-            value: productId,
-            variant: 'secondary'
-          }
-        ];
-
-      case 'PRIORITY_BOOST':
-        return [
-          {
-            label: `Tăng priority → ${suggestedAction.newPriority}`,
-            action: 'boost_priority',
-            value: suggestedAction.newPriority,
-            variant: 'success'
-          },
-          {
-            label: 'Quản lý sản phẩm',
-            action: 'manage_product',
-            value: productId,
-            variant: 'secondary'
-          }
-        ];
-
-      case 'STOCK_ALERT':
-        return [
-          {
-            label: 'Nhập hàng',
-            action: 'restock',
-            value: suggestedAction.suggestedQuantity || 20,
-            variant: 'primary'
-          },
-          {
-            label: 'Xem inventory',
-            action: 'view_inventory',
-            value: productId,
-            variant: 'secondary'
-          }
-        ];
-
-      case 'MARKETING_PUSH':
-        return [
-          {
-            label: 'Tạo campaign',
-            action: 'create_campaign',
-            value: suggestedAction,
-            variant: 'success'
-          },
-          {
-            label: 'Email marketing',
-            action: 'email_marketing',
-            value: productId,
-            variant: 'primary'
-          }
-        ];
-
-      default:
-        return [
-          {
-            label: 'Xem chi tiết',
-            action: 'view_details',
-            value: productId,
-            variant: 'secondary'
-          }
-        ];
-    }
+    // Đơn giản hóa: chỉ có 2 actions chính
+    return [
+      {
+        label: 'Xem chi tiết',
+        action: 'view_details',
+        value: productId,
+        variant: 'primary'
+      },
+      {
+        label: 'Email marketing',
+        action: 'email_marketing',
+        value: productId,
+        variant: 'secondary'
+      }
+    ];
   };
 
-  // Handle action button clicks
+  // Handle action button clicks - SIMPLIFIED
   const handleAction = async (button: ActionButton) => {
     try {
       switch (button.action) {
-        case 'apply_discount':
-          // Redirect to product edit page with discount suggestion
-          router.push(`/admin/manage-products?edit=${productId}&suggested_discount=${button.value}`);
-          toast.success(`Chuyển đến trang chỉnh sửa với đề xuất giảm ${button.value}%`);
-          break;
-
-        case 'boost_priority':
-          // Redirect to product edit page with priority suggestion
-          router.push(`/admin/manage-products?edit=${productId}&suggested_priority=${button.value}`);
-          toast.success(`Chuyển đến trang chỉnh sửa với đề xuất priority ${button.value}`);
-          break;
-
-        case 'restock':
-          // Redirect to inventory management
-          router.push(`/admin/manage-products?restock=${productId}&suggested_quantity=${button.value}`);
-          toast.success(`Chuyển đến trang nhập hàng với đề xuất ${button.value} cái`);
-          break;
-
-        case 'create_campaign':
-          // Redirect to email marketing with pre-filled data
-          router.push(`/admin/manage-products?email_campaign=${productId}`);
-          toast.success('Chuyển đến trang tạo email campaign');
-          break;
-
         case 'email_marketing':
           // Redirect to email marketing
-          router.push(`/admin/manage-products?tab=email&product=${productId}`);
-          toast.success('Chuyển đến email marketing');
-          break;
-
-        case 'view_product':
-        case 'manage_product':
-          // Redirect to product management
-          router.push(`/admin/manage-products?edit=${productId}`);
-          break;
-
-        case 'view_inventory':
-          // Redirect to inventory view
-          router.push(`/admin/manage-products?filter=low_stock`);
+          router.push(`/admin/manage-products?openEmailModal=true`);
+          toast.success('Mở email marketing');
           break;
 
         case 'view_details':
         default:
           // Redirect to product details
           router.push(`/admin/manage-products?view=${productId}`);
+          toast.success('Xem chi tiết sản phẩm');
           break;
       }
 

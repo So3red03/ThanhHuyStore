@@ -1,27 +1,47 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, Avatar, IconButton } from '@mui/material';
-import { MdClose, MdShoppingCart, MdWarning, MdComment, MdCircle, MdAutoAwesome, MdLocalOffer } from 'react-icons/md';
-import { useRouter } from 'next/navigation';
+import { Box, Paper, Typography, Avatar, IconButton, alpha } from '@mui/material';
+import {
+  MdClose,
+  MdShoppingCart,
+  MdWarning,
+  MdComment,
+  MdCircle,
+  MdAutoAwesome,
+  MdLocalOffer,
+  MdNotifications,
+  MdSmartToy,
+  MdMarkAsUnread,
+  MdDelete,
+  MdMessage
+} from 'react-icons/md';
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
+
+import { truncateText } from '../../../../utils/truncateText';
 import AIActionButtons from './AIActionButtons';
 
 interface NotificationToastProps {
   notifications: Array<{
     id: string;
     type:
-      | 'ORDER_PLACED'
-      | 'LOW_STOCK'
-      | 'SYSTEM_ALERT'
-      | 'COMMENT_RECEIVED'
-      | 'PROMOTION_SUGGESTION'
-      | 'VOUCHER_SUGGESTION';
+      | 'ORDER_PLACED' // ✅ Event Notification
+      | 'MESSAGE_RECEIVED' // ✅ Event Notification
+      | 'COMMENT_RECEIVED' // ✅ Event Notification
+      | 'SYSTEM_ALERT' // ✅ Event Notification
+      | 'AI_ASSISTANT'; // 🤖 AI Recommendation
     title: string;
     message: string;
     avatar?: string;
-    timestamp: Date;
+    createdAt: string;
     data?: any;
     isRead?: boolean;
+    user?: {
+      id: string;
+      name: string;
+      image?: string;
+    };
   }>;
   onClose: () => void;
   onNotificationClick: (notification: any) => void;
@@ -47,9 +67,17 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
   disableAutoDismiss = false,
   isLoading = false
 }) => {
-  const router = useRouter();
   const [progress, setProgress] = useState(100);
   const [isPaused, setIsPaused] = useState(false);
+
+  // Notification configuration - consistent with NotificationTab
+  const notificationConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
+    ORDER_PLACED: { icon: <MdShoppingCart />, color: '#2196F3', label: 'Đơn hàng' },
+    MESSAGE_RECEIVED: { icon: <MdMessage />, color: '#4CAF50', label: 'Tin nhắn' },
+    COMMENT_RECEIVED: { icon: <MdComment />, color: '#9C27B0', label: 'Bình luận' },
+    SYSTEM_ALERT: { icon: <MdWarning />, color: '#607D8B', label: 'Hệ thống' },
+    AI_ASSISTANT: { icon: <MdSmartToy />, color: '#3b82f6', label: 'AI Assistant' }
+  };
 
   // Progress bar animation
   useEffect(() => {
@@ -78,78 +106,14 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
   // Show UI even when loading or no notifications (for instant UI)
   if (notifications.length === 0 && !isLoading) return null;
 
-  // Get notification type styling
-  const getNotificationStyle = (type: string, data?: any) => {
-    switch (type) {
-      case 'ORDER_PLACED':
-        return {
-          icon: <MdShoppingCart size={20} />,
-          color: '#2563eb',
-          bgColor: 'rgba(37, 99, 235, 0.1)'
-        };
-      case 'LOW_STOCK':
-        return {
-          icon: <MdWarning size={20} />,
-          color: '#ea580c',
-          bgColor: 'rgba(234, 88, 12, 0.1)'
-        };
-      case 'COMMENT_RECEIVED':
-        return {
-          icon: <MdComment size={20} />,
-          color: '#7c3aed',
-          bgColor: 'rgba(124, 58, 237, 0.1)'
-        };
-      case 'PROMOTION_SUGGESTION':
-        return {
-          icon: <MdLocalOffer size={20} />,
-          color: '#dc2626',
-          bgColor: 'rgba(220, 38, 38, 0.1)'
-        };
-      case 'VOUCHER_SUGGESTION':
-        return {
-          icon: <MdLocalOffer size={20} />,
-          color: '#059669',
-          bgColor: 'rgba(5, 150, 105, 0.1)'
-        };
-      case 'SYSTEM_ALERT':
-        // Check if it's an AI recommendation
-        if (data?.aiRecommendation) {
-          return {
-            icon: <MdAutoAwesome size={20} />,
-            color: '#7c3aed',
-            bgColor: 'rgba(124, 58, 237, 0.1)'
-          };
-        }
-        return {
-          icon: <MdCircle size={20} />,
-          color: '#10b981',
-          bgColor: 'rgba(16, 185, 129, 0.1)'
-        };
-      default:
-        return {
-          icon: <MdCircle size={20} />,
-          color: '#10b981',
-          bgColor: 'rgba(16, 185, 129, 0.1)'
-        };
-    }
-  };
-
-  // Format time like Facebook
-  const formatTime = (timestamp: Date) => {
-    if (!timestamp || !(timestamp instanceof Date)) {
-      return 'Vừa xong';
-    }
-
-    const now = new Date();
-    const diff = now.getTime() - timestamp.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'Vừa xong';
-    if (minutes < 60) return `${minutes} phút`;
-    if (hours < 24) return `${hours} giờ`;
-    return `${days} ngày`;
+  // Get notification style based on type - consistent with NotificationTab
+  const getNotificationStyle = (type: string) => {
+    const config = notificationConfig[type] || notificationConfig.SYSTEM_ALERT;
+    return {
+      icon: config.icon,
+      color: config.color,
+      bgColor: alpha(config.color, 0.1)
+    };
   };
 
   return (
@@ -211,9 +175,28 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
             justifyContent: 'space-between'
           }}
         >
-          <Typography variant='h6' fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            Thông báo ({notifications.length})
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                p: 1.5,
+                bgcolor: 'rgba(255,255,255,0.2)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <MdNotifications size={20} />
+            </Box>
+            <Box>
+              <Typography variant='h6' fontWeight={600}>
+                Thông báo mới
+              </Typography>
+              <Typography variant='caption' sx={{ opacity: 0.9 }}>
+                {notifications.length} thông báo
+              </Typography>
+            </Box>
+          </Box>
 
           <IconButton
             size='small'
@@ -233,7 +216,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         {/* Notification List */}
         <Box sx={{ maxHeight: 400, overflow: 'auto', backgroundColor: '#f8fafc' }}>
           {notifications.slice(0, 10).map((notification, index) => {
-            const style = getNotificationStyle(notification.type, notification.data);
+            const style = getNotificationStyle(notification.type);
 
             return (
               <Box
@@ -304,7 +287,11 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
                         ml: 1
                       }}
                     >
-                      {formatTime(notification.timestamp)}
+                      {/* {formatDistanceToNow(new Date(notification?.createdAt), {
+                        addSuffix: true,
+                        locale: vi
+                      })} */}
+                      {notification.createdAt}
                     </Typography>
                   </Box>
 
@@ -324,8 +311,73 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
                     {notification.message}
                   </Typography>
 
+                  {/* User/Context Info - For event notifications */}
+                  {(notification.data?.userName ||
+                    notification.data?.customerName ||
+                    notification.data?.productName ||
+                    notification.data?.articleTitle ||
+                    notification.data?.commentContent ||
+                    notification.data?.orderAmount) && (
+                    <Box sx={{ mt: 1, p: 1, bgcolor: alpha(style.color, 0.05), borderRadius: 1 }}>
+                      {(notification.data?.userName || notification.data?.customerName) && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                          <Avatar
+                            src={notification.data?.userImage || notification.data?.customerImage || ''}
+                            sx={{ width: 16, height: 16, fontSize: '0.6rem' }}
+                          >
+                            {(notification.data?.userName || notification.data?.customerName || 'U').charAt(0)}
+                          </Avatar>
+                          <Typography
+                            variant='caption'
+                            sx={{ color: 'text.primary', fontSize: '0.7rem', fontWeight: 600 }}
+                          >
+                            {notification.data?.userName || notification.data?.customerName}
+                          </Typography>
+                        </Box>
+                      )}
+                      {notification.data?.productName && (
+                        <Typography
+                          variant='caption'
+                          sx={{ color: 'text.primary', fontSize: '0.7rem', fontWeight: 600, display: 'block', mb: 0.5 }}
+                        >
+                          📦 {truncateText(notification.data.productName, 30)}
+                        </Typography>
+                      )}
+                      {notification.data?.articleTitle && (
+                        <Typography
+                          variant='caption'
+                          sx={{ color: 'text.primary', fontSize: '0.7rem', fontWeight: 600, display: 'block', mb: 0.5 }}
+                        >
+                          📰 {truncateText(notification.data.articleTitle, 30)}
+                        </Typography>
+                      )}
+                      {notification.data?.commentContent && (
+                        <Typography
+                          variant='caption'
+                          sx={{
+                            color: 'text.secondary',
+                            fontSize: '0.7rem',
+                            fontStyle: 'italic',
+                            display: 'block',
+                            mb: 0.5
+                          }}
+                        >
+                          💬 "{truncateText(notification.data.commentContent, 50)}"
+                        </Typography>
+                      )}
+                      {notification.data?.orderAmount && (
+                        <Typography
+                          variant='caption'
+                          sx={{ color: 'success.main', fontSize: '0.7rem', fontWeight: 600, display: 'block' }}
+                        >
+                          💰 {notification.data.orderAmount.toLocaleString('vi-VN')}₫
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+
                   {/* AI Recommendation Badge */}
-                  {notification.data?.aiRecommendation && (
+                  {notification.data?.aiAssistant && (
                     <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                       {notification.data.urgency && (
                         <Box
@@ -370,13 +422,14 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
                     </Box>
                   )}
 
-                  {/* AI Action Buttons */}
-                  {notification.data?.aiRecommendation && notification.data?.suggestedAction && (
+                  {notification.data?.aiAssistant && (
                     <AIActionButtons
                       productId={notification.data.productId}
                       productName={notification.data.productName}
                       suggestionType={notification.type as any}
-                      suggestedAction={notification.data.suggestedAction}
+                      suggestedAction={
+                        notification.data.eventType === 'INVENTORY_CRITICAL' ? 'RESTOCK' : 'VIEW_PRODUCT'
+                      }
                       confidence={notification.data.confidence || 50}
                       onActionTaken={(action, value) => {
                         console.log(`AI Action taken: ${action}`, value);

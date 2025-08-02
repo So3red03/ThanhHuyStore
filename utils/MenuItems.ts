@@ -7,7 +7,9 @@ import {
   MdSupervisedUserCircle,
   MdLocalOffer,
   MdOutlineSettings,
-  MdLogout
+  MdLogout,
+  MdAnalytics,
+  MdOutlineAnalytics
 } from 'react-icons/md';
 import { BiSolidCategory } from 'react-icons/bi';
 
@@ -16,8 +18,8 @@ export const MenuItems = [
     title: 'Chung',
     items: [
       {
-        title: 'Trang Chủ',
-        icon: MdOutlineHome,
+        title: 'Thống kê',
+        icon: MdOutlineAnalytics,
         path: '/admin'
       },
       {

@@ -48,23 +48,23 @@ import {
   MdBarChart,
   MdCheck,
   MdClose,
-  MdVisibilityOff
+  MdVisibilityOff,
+  MdEvent,
+  MdSmartToy
 } from 'react-icons/md';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { truncateText } from '../../../../../utils/truncateText';
 import AIActionButtons from '../AIActionButtons';
 
 interface Notification {
   id: string;
   type:
-    | 'ORDER_PLACED'
-    | 'MESSAGE_RECEIVED'
-    | 'LOW_STOCK'
-    | 'COMMENT_RECEIVED'
-    | 'SYSTEM_ALERT'
-    | 'PROMOTION_SUGGESTION'
-    | 'VOUCHER_SUGGESTION'
-    | 'AI_ASSISTANT';
+    | 'ORDER_PLACED' // ✅ Event Notification
+    | 'MESSAGE_RECEIVED' // ✅ Event Notification
+    | 'COMMENT_RECEIVED' // ✅ Event Notification
+    | 'SYSTEM_ALERT' // ✅ Event Notification
+    | 'AI_ASSISTANT'; // 🤖 AI Recommendation (ONLY)
   title: string;
   message: string;
   isRead: boolean;
@@ -97,6 +97,7 @@ const NotificationTab: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterRead, setFilterRead] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'events' | 'ai'>('all'); // New: View mode filter
   const [timeFilter, setTimeFilter] = useState('7d');
   const [showClearAllDialog, setShowClearAllDialog] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
@@ -147,7 +148,7 @@ const NotificationTab: React.FC = () => {
       label: 'Voucher'
     },
     AI_ASSISTANT: {
-      icon: <MdBarChart size={20} />,
+      icon: <MdSmartToy size={20} />,
       color: '#3b82f6',
       bgGradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
       label: 'AI Assistant'
@@ -564,6 +565,35 @@ const NotificationTab: React.FC = () => {
                   </Select>
                 </FormControl>
 
+                {/* View Mode Filter - NEW: Separate Events vs AI Recommendations */}
+                <FormControl fullWidth size='small'>
+                  <InputLabel>Chế độ xem</InputLabel>
+                  <Select
+                    value={viewMode}
+                    onChange={e => setViewMode(e.target.value as 'all' | 'events' | 'ai')}
+                    label='Chế độ xem'
+                  >
+                    <MenuItem value='all'>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MdNotifications />
+                        Tất cả
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value='events'>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MdEvent />
+                        Thông báo sự kiện
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value='ai'>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MdSmartToy />
+                        AI Recommendations
+                      </Box>
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+
                 {/* Type Filter */}
                 <FormControl fullWidth size='small'>
                   <InputLabel>Loại thông báo</InputLabel>
@@ -703,209 +733,320 @@ const NotificationTab: React.FC = () => {
                 <>
                   {/* Notifications List */}
                   <List sx={{ p: 0 }}>
-                    {notifications.map((notification, index) => {
-                      const config = notificationConfig[notification.type];
-                      return (
-                        <React.Fragment key={notification.id}>
-                          <ListItem
-                            sx={{
-                              p: 2,
-                              bgcolor: notification.isRead ? 'transparent' : alpha(config.color, 0.05),
-                              borderLeft: `4px solid ${notification.isRead ? 'transparent' : config.color}`,
-                              '&:hover': {
-                                bgcolor: alpha(config.color, 0.08)
-                              }
-                            }}
-                          >
-                            <ListItemAvatar>
-                              <Avatar
-                                sx={{
-                                  width: 48,
-                                  height: 48,
-                                  background: config.bgGradient,
-                                  color: 'white'
-                                }}
-                              >
-                                {config.icon}
-                              </Avatar>
-                            </ListItemAvatar>
+                    {notifications
+                      .filter(notification => {
+                        // Search filter
+                        const matchesSearch =
+                          searchTerm === '' ||
+                          notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          notification.message.toLowerCase().includes(searchTerm.toLowerCase());
 
-                            <ListItemText
-                              primary={
-                                <Box
+                        // Type filter
+                        const matchesType = filterType === 'all' || notification.type === filterType;
+
+                        // Read status filter
+                        const matchesRead =
+                          filterRead === 'all' ||
+                          (filterRead === 'read' && notification.isRead) ||
+                          (filterRead === 'unread' && !notification.isRead);
+
+                        // View mode filter - NEW: Separate Events vs AI Recommendations
+                        const matchesViewMode = (() => {
+                          if (viewMode === 'all') return true;
+                          if (viewMode === 'events') {
+                            // Event notifications: actual events that happened
+                            return ['ORDER_PLACED', 'MESSAGE_RECEIVED', 'COMMENT_RECEIVED', 'SYSTEM_ALERT'].includes(
+                              notification.type
+                            );
+                          }
+                          if (viewMode === 'ai') {
+                            // AI recommendations: proactive suggestions
+                            return notification.type === 'AI_ASSISTANT';
+                          }
+                          return true;
+                        })();
+
+                        // Time filter
+                        const notificationDate = new Date(notification.createdAt);
+                        const now = new Date();
+                        let matchesTime = true;
+
+                        switch (timeFilter) {
+                          case '1d':
+                            matchesTime = now.getTime() - notificationDate.getTime() <= 24 * 60 * 60 * 1000;
+                            break;
+                          case '3d':
+                            matchesTime = now.getTime() - notificationDate.getTime() <= 3 * 24 * 60 * 60 * 1000;
+                            break;
+                          case '7d':
+                            matchesTime = now.getTime() - notificationDate.getTime() <= 7 * 24 * 60 * 60 * 1000;
+                            break;
+                          case '30d':
+                            matchesTime = now.getTime() - notificationDate.getTime() <= 30 * 24 * 60 * 60 * 1000;
+                            break;
+                          case 'all':
+                          default:
+                            matchesTime = true;
+                        }
+
+                        return matchesSearch && matchesType && matchesRead && matchesViewMode && matchesTime;
+                      })
+                      .map((notification, index) => {
+                        const config = notificationConfig[notification.type];
+                        return (
+                          <React.Fragment key={notification.id}>
+                            <ListItem
+                              sx={{
+                                p: 2,
+                                bgcolor: notification.isRead ? 'transparent' : alpha(config.color, 0.05),
+                                borderLeft: `4px solid ${notification.isRead ? 'transparent' : config.color}`,
+                                '&:hover': {
+                                  bgcolor: alpha(config.color, 0.08)
+                                }
+                              }}
+                            >
+                              <ListItemAvatar>
+                                <Avatar
                                   sx={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    justifyContent: 'space-between',
-                                    mb: 1
+                                    width: 48,
+                                    height: 48,
+                                    background: config.bgGradient,
+                                    color: 'white'
                                   }}
                                 >
-                                  <Box sx={{ flex: 1 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                      <Typography
-                                        variant='subtitle1'
-                                        fontWeight={notification.isRead ? 'normal' : 'bold'}
-                                        sx={{ flex: 1 }}
-                                      >
-                                        {notification.title}
-                                      </Typography>
+                                  {config.icon}
+                                </Avatar>
+                              </ListItemAvatar>
 
-                                      {/* AI Recommendation Badge */}
-                                      {notification.type === 'AI_ASSISTANT' && notification.data?.aiAssistant && (
-                                        <Chip
-                                          label='AI'
-                                          size='small'
-                                          sx={{
-                                            height: 20,
-                                            fontSize: '0.7rem',
-                                            fontWeight: 'bold',
-                                            bgcolor: alpha('#3b82f6', 0.1),
-                                            color: '#3b82f6',
-                                            '& .MuiChip-label': { px: 1 }
-                                          }}
-                                        />
-                                      )}
-                                    </Box>
-                                    <Typography
-                                      variant='body2'
-                                      color='text.secondary'
-                                      sx={{
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical',
-                                        overflow: 'hidden'
-                                      }}
-                                    >
-                                      {notification.message}
-                                    </Typography>
+                              <ListItemText
+                                primary={
+                                  <Box
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      justifyContent: 'space-between',
+                                      mb: 1
+                                    }}
+                                  >
+                                    <Box sx={{ flex: 1 }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                        <Typography
+                                          variant='subtitle1'
+                                          fontWeight={notification.isRead ? 'normal' : 'bold'}
+                                          sx={{ flex: 1 }}
+                                        >
+                                          {notification.title}
+                                        </Typography>
 
-                                    {/* AI Action Buttons - Only for AI recommendations */}
-                                    {notification.type === 'AI_ASSISTANT' &&
-                                      notification.data?.aiAssistant &&
-                                      notification.data?.eventType && (
-                                        <Box sx={{ mt: 2 }}>
-                                          <AIActionButtons
-                                            productId={notification.data.productId}
-                                            productName={notification.data.productName}
-                                            suggestionType={notification.data.eventType as any}
-                                            suggestedAction={
-                                              notification.data.eventType === 'INVENTORY_CRITICAL'
-                                                ? 'RESTOCK'
-                                                : 'VIEW_PRODUCT'
-                                            }
-                                            confidence={85} // Default confidence for AI assistant
-                                            onActionTaken={(action, value) => {
-                                              console.log(`AI Action taken from NotificationTab: ${action}`, value);
-                                              // Mark notification as read after action
-                                              handleMarkAsRead(notification.id);
+                                        {/* AI Recommendation Badge */}
+                                        {notification.type === 'AI_ASSISTANT' && notification.data?.aiAssistant && (
+                                          <Chip
+                                            label='AI'
+                                            size='small'
+                                            sx={{
+                                              height: 20,
+                                              fontSize: '0.7rem',
+                                              fontWeight: 'bold',
+                                              bgcolor: alpha('#3b82f6', 0.1),
+                                              color: '#3b82f6',
+                                              '& .MuiChip-label': { px: 1 }
                                             }}
                                           />
+                                        )}
+                                      </Box>
+                                      <Typography
+                                        variant='body2'
+                                        color='text.secondary'
+                                        sx={{
+                                          display: '-webkit-box',
+                                          WebkitLineClamp: 2,
+                                          WebkitBoxOrient: 'vertical',
+                                          overflow: 'hidden'
+                                        }}
+                                      >
+                                        {notification.message}
+                                      </Typography>
+
+                                      {/* Product/Context Details - For relevant notifications */}
+                                      {(notification.data?.productName ||
+                                        notification.data?.articleTitle ||
+                                        notification.data?.commentContent ||
+                                        notification.data?.orderAmount ||
+                                        notification.data?.userName ||
+                                        notification.data?.customerName) && (
+                                        <Box
+                                          sx={{ mt: 1, p: 1.5, bgcolor: alpha(config.color, 0.05), borderRadius: 1 }}
+                                        >
+                                          {(notification.data?.userName || notification.data?.customerName) && (
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                              <Avatar
+                                                src={
+                                                  notification.data?.userImage || notification.data?.customerImage || ''
+                                                }
+                                                sx={{ width: 20, height: 20, fontSize: '0.7rem' }}
+                                              >
+                                                {(
+                                                  notification.data?.userName ||
+                                                  notification.data?.customerName ||
+                                                  'U'
+                                                ).charAt(0)}
+                                              </Avatar>
+                                              <Typography
+                                                variant='body2'
+                                                sx={{ fontWeight: 600, color: 'text.primary' }}
+                                              >
+                                                {notification.data?.userName || notification.data?.customerName}
+                                              </Typography>
+                                            </Box>
+                                          )}
+                                          {notification.data?.productName && (
+                                            <Typography
+                                              variant='body2'
+                                              sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}
+                                            >
+                                              📦 {notification.data.productName}
+                                            </Typography>
+                                          )}
+                                          {notification.data?.articleTitle && (
+                                            <Typography
+                                              variant='body2'
+                                              sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}
+                                            >
+                                              📰 {truncateText(notification.data.articleTitle, 50)}
+                                            </Typography>
+                                          )}
+                                          {notification.data?.commentContent && (
+                                            <Typography
+                                              variant='body2'
+                                              sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 0.5 }}
+                                            >
+                                              💬 "{truncateText(notification.data.commentContent, 100)}"
+                                            </Typography>
+                                          )}
+                                          {notification.data?.orderAmount && (
+                                            <Typography variant='body2' sx={{ color: 'success.main', fontWeight: 600 }}>
+                                              💰 {notification.data.orderAmount.toLocaleString('vi-VN')}₫
+                                            </Typography>
+                                          )}
                                         </Box>
                                       )}
-                                  </Box>
 
-                                  {/* Action Buttons */}
-                                  <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
-                                    {/* AI Assistant specific actions */}
-                                    {notification.type === 'AI_ASSISTANT' && (
-                                      <>
-                                        <Tooltip title='Đã xử lý'>
+                                      {/* AI Action Buttons - Only for AI recommendations */}
+                                      {notification.type === 'AI_ASSISTANT' &&
+                                        notification.data?.aiAssistant &&
+                                        notification.data?.eventType && (
+                                          <Box sx={{ mt: 2 }}>
+                                            <AIActionButtons
+                                              productId={notification.data.productId}
+                                              productName={notification.data.productName}
+                                              suggestionType={notification.data.eventType as any}
+                                              suggestedAction={
+                                                notification.data.eventType === 'INVENTORY_CRITICAL'
+                                                  ? 'RESTOCK'
+                                                  : 'VIEW_PRODUCT'
+                                              }
+                                              confidence={85} // Default confidence for AI assistant
+                                              onActionTaken={(action, value) => {
+                                                console.log(`AI Action taken from NotificationTab: ${action}`, value);
+                                                // Mark notification as read after action
+                                                handleMarkAsRead(notification.id);
+                                              }}
+                                            />
+                                          </Box>
+                                        )}
+                                    </Box>
+
+                                    {/* Action Buttons */}
+                                    <Box sx={{ display: 'flex', gap: 0.5, ml: 2 }}>
+                                      {/* AI Assistant specific actions */}
+                                      {notification.type === 'AI_ASSISTANT' && (
+                                        <>
+                                          <Tooltip title='Đã xử lý'>
+                                            <IconButton
+                                              size='small'
+                                              onClick={() =>
+                                                handleResolveAlert(notification.id, notification.metadata?.memoryId)
+                                              }
+                                              sx={{ color: '#10b981' }}
+                                            >
+                                              <MdCheck size={16} />
+                                            </IconButton>
+                                          </Tooltip>
+                                          <Tooltip title='Tắt nhắc nhở'>
+                                            <IconButton
+                                              size='small'
+                                              onClick={() =>
+                                                handleDismissAlert(notification.id, notification.metadata?.memoryId)
+                                              }
+                                              sx={{ color: '#f59e0b' }}
+                                            >
+                                              <MdVisibilityOff size={16} />
+                                            </IconButton>
+                                          </Tooltip>
+                                        </>
+                                      )}
+
+                                      {!notification.isRead && (
+                                        <Tooltip title='Đánh dấu đã đọc'>
                                           <IconButton
                                             size='small'
-                                            onClick={() =>
-                                              handleResolveAlert(notification.id, notification.metadata?.memoryId)
-                                            }
-                                            sx={{ color: '#10b981' }}
+                                            onClick={() => handleMarkAsRead(notification.id)}
+                                            sx={{ color: config.color }}
                                           >
-                                            <MdCheck size={16} />
+                                            <MdMarkEmailRead size={16} />
                                           </IconButton>
                                         </Tooltip>
-                                        <Tooltip title='Tắt nhắc nhở'>
-                                          <IconButton
-                                            size='small'
-                                            onClick={() =>
-                                              handleDismissAlert(notification.id, notification.metadata?.memoryId)
-                                            }
-                                            sx={{ color: '#f59e0b' }}
-                                          >
-                                            <MdVisibilityOff size={16} />
-                                          </IconButton>
-                                        </Tooltip>
-                                      </>
-                                    )}
-
-                                    {!notification.isRead && (
-                                      <Tooltip title='Đánh dấu đã đọc'>
+                                      )}
+                                      <Tooltip title='Xóa thông báo'>
                                         <IconButton
                                           size='small'
-                                          onClick={() => handleMarkAsRead(notification.id)}
-                                          sx={{ color: config.color }}
+                                          onClick={() => handleDeleteNotification(notification.id)}
+                                          sx={{ color: 'error.main' }}
                                         >
-                                          <MdMarkEmailRead size={16} />
+                                          <MdDelete size={16} />
                                         </IconButton>
                                       </Tooltip>
-                                    )}
-                                    <Tooltip title='Xóa thông báo'>
-                                      <IconButton
-                                        size='small'
-                                        onClick={() => handleDeleteNotification(notification.id)}
-                                        sx={{ color: 'error.main' }}
-                                      >
-                                        <MdDelete size={16} />
-                                      </IconButton>
-                                    </Tooltip>
-                                  </Box>
-                                </Box>
-                              }
-                              secondary={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mt: 1 }}>
-                                  <Chip
-                                    label={config.label}
-                                    size='small'
-                                    sx={{
-                                      bgcolor: alpha(config.color, 0.1),
-                                      color: config.color,
-                                      fontWeight: 'medium'
-                                    }}
-                                  />
-
-                                  {notification.user && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Avatar src={notification.user.image} sx={{ width: 20, height: 20 }}>
-                                        {notification.user.name?.charAt(0)}
-                                      </Avatar>
-                                      <Typography variant='caption' color='text.secondary'>
-                                        {notification.user.name}
-                                      </Typography>
                                     </Box>
-                                  )}
-
-                                  <Typography variant='caption' color='text.secondary'>
-                                    {formatDistanceToNow(new Date(notification.createdAt), {
-                                      addSuffix: true,
-                                      locale: vi
-                                    })}
-                                  </Typography>
-
-                                  {!notification.isRead && (
-                                    <Badge
-                                      color='primary'
-                                      variant='dot'
+                                  </Box>
+                                }
+                                secondary={
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mt: 1 }}>
+                                    <Chip
+                                      label={config.label}
+                                      size='small'
                                       sx={{
-                                        '& .MuiBadge-dot': {
-                                          bgcolor: config.color
-                                        }
+                                        bgcolor: alpha(config.color, 0.1),
+                                        color: config.color,
+                                        fontWeight: 'medium'
                                       }}
                                     />
-                                  )}
-                                </Box>
-                              }
-                            />
-                          </ListItem>
-                          {index < notifications.length - 1 && <Divider />}
-                        </React.Fragment>
-                      );
-                    })}
+
+                                    <Typography variant='caption' color='text.secondary'>
+                                      {formatDistanceToNow(new Date(notification.createdAt), {
+                                        addSuffix: true,
+                                        locale: vi
+                                      })}
+                                    </Typography>
+
+                                    {!notification.isRead && (
+                                      <Badge
+                                        color='primary'
+                                        variant='dot'
+                                        sx={{
+                                          '& .MuiBadge-dot': {
+                                            bgcolor: config.color
+                                          }
+                                        }}
+                                      />
+                                    )}
+                                  </Box>
+                                }
+                              />
+                            </ListItem>
+                            {index < notifications.length - 1 && <Divider />}
+                          </React.Fragment>
+                        );
+                      })}
                   </List>
 
                   {/* Pagination */}

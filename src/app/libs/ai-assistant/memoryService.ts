@@ -337,25 +337,25 @@ export class AIMemoryService {
 
     const responses = {
       INFO: {
-        title: `💡 Thông tin về ${productName}`,
+        title: `💡 ${productName}`,
         message: this.getPoliteMessage(memory),
         emoji: '💡',
         tone: 'POLITE'
       },
       WARNING: {
-        title: `⚠️ Cần chú ý: ${productName}`,
+        title: `⚠️ ${productName}`,
         message: this.getConcernedMessage(memory),
         emoji: '⚠️',
         tone: 'CONCERNED'
       },
       URGENT: {
-        title: `🚨 KHẨN CẤP: ${productName}`,
+        title: `🚨 ${productName}`,
         message: this.getUrgentMessage(memory),
         emoji: '🚨',
         tone: 'URGENT'
       },
       CRITICAL: {
-        title: `💀 CRITICAL: ${productName}`,
+        title: `💀 ${productName}`,
         message: this.getCriticalMessage(memory),
         emoji: '💀',
         tone: 'CRITICAL'
@@ -373,27 +373,21 @@ export class AIMemoryService {
       case 'INVENTORY_LOW':
         const currentStock = contextData?.currentStock || contextData?.quantity || 'không rõ';
         const threshold = contextData?.threshold || 5;
-        return `📦 SẮP HẾT HÀNG: ${
-          memory.productName || 'Sản phẩm'
-        } còn ${currentStock}/${threshold} cái. Cần nhập hàng ngay!`;
+        return `SẮP HẾT HÀNG: còn ${currentStock}/${threshold} cái. Cần nhập hàng ngay!`;
       case 'INVENTORY_CRITICAL':
         const criticalStock = contextData?.currentStock || contextData?.quantity || 'không rõ';
-        return `🚨 SẮP HẾT HÀNG: ${
-          memory.productName || 'Sản phẩm'
-        } chỉ còn ${criticalStock} cái! Nguy cơ hết hàng cao!`;
+        return `SẮP HẾT HÀNG: chỉ còn ${criticalStock} cái! Nguy cơ hết hàng cao!`;
       case 'INVENTORY_OUT':
-        return `💀 HẾT HÀNG: ${memory.productName || 'Sản phẩm'} đã hết! Đang từ chối đơn hàng!`;
+        return `HẾT HÀNG: đã hết! Đang từ chối đơn hàng!`;
       case 'SALES_DROP':
         const dropPercent = contextData?.dropPercentage || 'không rõ';
-        return `📉 DOANH SỐ GIẢM: ${
-          memory.productName || 'Sản phẩm'
-        } giảm ${dropPercent}% so với tuần trước. Cần review giá/marketing!`;
+        return `DOANH SỐ GIẢM: giảm ${dropPercent}% so với tuần trước. Cần review giá/marketing!`;
       case 'ORDER_MANAGEMENT':
         const pendingDays = contextData?.pendingDays || 'không rõ';
         const customerName = contextData?.customerName || 'Khách hàng';
-        return `⏰ ĐƠN HÀNG PENDING: ${customerName} - ${pendingDays} ngày chưa xử lý!`;
+        return `ĐƠN HÀNG PENDING: ${customerName} - ${pendingDays} ngày chưa xử lý!`;
       default:
-        return `ℹ️ Cảnh báo: ${memory.productName || 'Hệ thống'} cần xem xét.`;
+        return `Cảnh báo: cần xem xét.`;
     }
   }
 
@@ -404,23 +398,21 @@ export class AIMemoryService {
       case 'INVENTORY_LOW':
         const currentStock = contextData?.currentStock || contextData?.quantity || 0;
         const threshold = contextData?.threshold || 5;
-        return `⚠️ SẮP HẾT HÀNG: ${
-          memory.productName || 'Sản phẩm'
-        } còn ${currentStock}/${threshold} cái. CẦN NHẬP HÀNG GẤP!`;
+        return `SẮP HẾT HÀNG: còn ${currentStock}/${threshold} cái. CẦN NHẬP HÀNG GẤP!`;
       case 'INVENTORY_CRITICAL':
         const criticalStock = contextData?.currentStock || contextData?.quantity || 0;
-        return `⚠️ NGUY CƠ HẾT HÀNG: ${memory.productName || 'Sản phẩm'} chỉ còn ${criticalStock} cái!`;
+        return `NGUY CƠ HẾT HÀNG: chỉ còn ${criticalStock} cái!`;
       case 'INVENTORY_OUT':
-        return `⚠️ HẾT HÀNG: ${memory.productName || 'Sản phẩm'} đã hết! Đang từ chối đơn hàng!`;
+        return `HẾT HÀNG: đã hết! Đang từ chối đơn hàng!`;
       case 'SALES_DROP':
         const dropPercent = contextData?.dropPercentage || 'không rõ';
-        return `⚠️ DOANH SỐ GIẢM: ${memory.productName || 'Sản phẩm'} giảm ${dropPercent}%. Cần action ngay!`;
+        return `DOANH SỐ GIẢM: giảm ${dropPercent}%. Cần action ngay!`;
       case 'ORDER_MANAGEMENT':
         const pendingDays = contextData?.pendingDays || 'không rõ';
         const customerName = contextData?.customerName || 'Khách hàng';
-        return `⚠️ ĐƠN HÀNG PENDING: ${customerName} - ${pendingDays} ngày. Cần xử lý!`;
+        return `ĐƠN HÀNG PENDING: ${customerName} - ${pendingDays} ngày. Cần xử lý!`;
       default:
-        return `⚠️ Cảnh báo: ${memory.productName || 'Hệ thống'} cần xử lý`;
+        return `Cảnh báo: cần xử lý`;
     }
   }
 
@@ -431,23 +423,21 @@ export class AIMemoryService {
       case 'INVENTORY_LOW':
         const currentStock = contextData?.currentStock || contextData?.quantity || 0;
         const threshold = contextData?.threshold || 5;
-        return `🚨 KHẨN CẤP HẾT HÀNG: ${
-          memory.productName || 'Sản phẩm'
-        } chỉ còn ${currentStock}/${threshold} cái! NGUY CƠ HẾT HÀNG!`;
+        return `HẾT HÀNG: chỉ còn ${currentStock}/${threshold} cái! NGUY CƠ HẾT HÀNG!`;
       case 'INVENTORY_CRITICAL':
         const criticalStock = contextData?.currentStock || contextData?.quantity || 0;
-        return `🚨 KHẨN CẤP HẾT HÀNG: ${memory.productName || 'Sản phẩm'} chỉ còn ${criticalStock} cái! SẮP HẾT!`;
+        return `HẾT HÀNG: chỉ còn ${criticalStock} cái! SẮP HẾT!`;
       case 'INVENTORY_OUT':
-        return `🚨 KHẨN CẤP HẾT HÀNG: ${memory.productName || 'Sản phẩm'} đã hết! ĐANG TỪ CHỐI ĐƠN HÀNG!`;
+        return `HẾT HÀNG: đã hết! ĐANG TỪ CHỐI ĐƠN HÀNG!`;
       case 'SALES_DROP':
         const dropPercent = contextData?.dropPercentage || 'không rõ';
-        return `🚨 KHẨN CẤP DOANH SỐ: ${memory.productName || 'Sản phẩm'} giảm ${dropPercent}%! CẦN ACTION NGAY!`;
+        return `DOANH SỐ: giảm ${dropPercent}%! CẦN ACTION NGAY!`;
       case 'ORDER_MANAGEMENT':
         const pendingDays = contextData?.pendingDays || 'không rõ';
         const customerName = contextData?.customerName || 'Khách hàng';
-        return `🚨 KHẨN CẤP ĐƠN HÀNG: ${customerName} - ${pendingDays} ngày chưa xử lý!`;
+        return `ĐƠN HÀNG: ${customerName} - ${pendingDays} ngày chưa xử lý!`;
       default:
-        return `🚨 KHẨN CẤP: ${memory.productName || 'Hệ thống'} cần xử lý ngay!`;
+        return `Cần xử lý ngay!`;
     }
   }
 
@@ -458,23 +448,21 @@ export class AIMemoryService {
       case 'INVENTORY_LOW':
         const currentStock = contextData?.currentStock || contextData?.quantity || 0;
         const threshold = contextData?.threshold || 5;
-        return `💀 CRITICAL HẾT HÀNG: ${
-          memory.productName || 'Sản phẩm'
-        } = ${currentStock}/${threshold} cái! ĐANG TỪ CHỐI ĐƠN HÀNG!`;
+        return `CRITICAL HẾT HÀNG: ${currentStock}/${threshold} cái! ĐANG TỪ CHỐI ĐƠN HÀNG!`;
       case 'INVENTORY_CRITICAL':
         const criticalStock = contextData?.currentStock || contextData?.quantity || 0;
-        return `💀 CRITICAL HẾT HÀNG: ${memory.productName || 'Sản phẩm'} = ${criticalStock} cái! NGUY CƠ CỰC CAO!`;
+        return `CRITICAL HẾT HÀNG: ${criticalStock} cái! NGUY CƠ CỰC CAO!`;
       case 'INVENTORY_OUT':
-        return `💀 CRITICAL HẾT HÀNG: ${memory.productName || 'Sản phẩm'} = 0 cái! ĐANG TỪ CHỐI TẤT CẢ ĐƠN HÀNG!`;
+        return `CRITICAL HẾT HÀNG: 0 cái! ĐANG TỪ CHỐI TẤT CẢ ĐƠN HÀNG!`;
       case 'SALES_DROP':
         const dropPercent = contextData?.dropPercentage || 'không rõ';
-        return `💀 CRITICAL DOANH SỐ: ${memory.productName || 'Sản phẩm'} sụp đổ ${dropPercent}%! THIỆT HẠI NẶNG!`;
+        return `CRITICAL DOANH SỐ: sụp đổ ${dropPercent}%! THIỆT HẠI NẶNG!`;
       case 'ORDER_MANAGEMENT':
         const pendingDays = contextData?.pendingDays || 'không rõ';
         const customerName = contextData?.customerName || 'Khách hàng';
-        return `💀 CRITICAL ĐƠN HÀNG: ${customerName} - ${pendingDays} ngày! MẤT KHÁCH HÀNG!`;
+        return `CRITICAL ĐƠN HÀNG: ${customerName} - ${pendingDays} ngày! MẤT KHÁCH HÀNG!`;
       default:
-        return `💀 CRITICAL: ${memory.productName || 'Hệ thống'} - KHẨN CẤP CỰC KỲ!`;
+        return `CRITICAL: KHẨN CẤP CỰC KỲ!`;
     }
   }
 

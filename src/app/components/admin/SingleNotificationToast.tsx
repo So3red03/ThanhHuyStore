@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, IconButton, Button, Slide, Fade, useTheme, alpha } from '@mui/material';
-import { MdClose, MdNotifications, MdVisibility, MdBarChart, MdSmartToy } from 'react-icons/md';
+import { Box, Paper, Typography, IconButton, Button, Slide, Fade, useTheme, alpha, Avatar } from '@mui/material';
+import { MdClose, MdNotifications, MdVisibility, MdSmartToy } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import { truncateText } from '../../../../utils/truncateText';
 import AIActionButtons from './AIActionButtons';
 
 interface SingleNotificationToastProps {
@@ -14,6 +17,11 @@ interface SingleNotificationToastProps {
     type: string;
     createdAt: string;
     data?: any; // For AI recommendations and other metadata
+    user?: {
+      id: string;
+      name: string;
+      image?: string;
+    };
   };
   onClose: () => void;
   onView: () => void;
@@ -25,17 +33,31 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
+  // Notification configuration - TẤT CẢ các loại từ Prisma Schema
+  const notificationConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
+    ORDER_PLACED: { icon: <MdNotifications />, color: theme.palette.success.main, label: 'Đơn hàng mới' },
+    MESSAGE_RECEIVED: { icon: <MdNotifications />, color: theme.palette.info.main, label: 'Tin nhắn' },
+    COMMENT_RECEIVED: { icon: <MdNotifications />, color: theme.palette.warning.main, label: 'Bình luận' },
+    LOW_STOCK: { icon: <MdNotifications />, color: theme.palette.warning.main, label: 'Hết hàng' },
+    SYSTEM_ALERT: { icon: <MdNotifications />, color: theme.palette.error.main, label: 'Cảnh báo' },
+    PROMOTION_SUGGESTION: { icon: <MdNotifications />, color: theme.palette.secondary.main, label: 'Khuyến mãi' },
+    VOUCHER_SUGGESTION: { icon: <MdNotifications />, color: theme.palette.secondary.main, label: 'Voucher' },
+    AI_ASSISTANT: { icon: <MdSmartToy />, color: theme.palette.primary.main, label: 'AI Assistant' }
+  };
+
+  const config = notificationConfig[notification.type] || notificationConfig.SYSTEM_ALERT;
+
   // Auto-show animation
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
-  // Auto-dismiss after 8 seconds (UX best practice)
+  // Auto-dismiss after 120 seconds (UX best practice)
   useEffect(() => {
     const timer = setTimeout(() => {
       handleClose();
-    }, 8000);
+    }, 120000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -58,7 +80,7 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
       case 'AI_ASSISTANT':
       case 'SYSTEM_ALERT':
       case 'PROMOTION_SUGGESTION':
-        return <MdBarChart size={24} />;
+        return <MdSmartToy size={24} />;
       default:
         return <MdNotifications size={24} />;
     }
@@ -151,17 +173,17 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
                 </Box>
                 <Box>
                   <Typography variant='subtitle1' fontWeight='bold' sx={{ color: 'text.primary', lineHeight: 1.2 }}>
-                    {notification.data?.aiRecommendation ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <MdSmartToy size={18} color={theme.palette.primary.main} />
-                        AI Recommendation
-                      </Box>
+                    {notification.type === 'AI_ASSISTANT' && notification.data?.aiAssistant ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>Khuyến nghị</Box>
                     ) : (
                       'Thông báo mới'
                     )}
                   </Typography>
                   <Typography variant='caption' sx={{ color: 'text.secondary' }}>
-                    {notification.data?.aiRecommendation ? 'AI phân tích' : 'Vừa xảy ra'}
+                    {formatDistanceToNow(new Date(notification.createdAt), {
+                      addSuffix: true,
+                      locale: vi
+                    })}
                   </Typography>
                 </Box>
               </Box>
@@ -182,7 +204,7 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
             </Box>
 
             {/* Notification Content */}
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: 2 }}>
               <Typography variant='body1' fontWeight='medium' sx={{ mb: 1, color: 'text.primary' }}>
                 {notification.title}
               </Typography>
@@ -192,56 +214,77 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
                   color: 'text.secondary',
                   lineHeight: 1.5,
                   display: '-webkit-box',
-                  WebkitLineClamp: 3,
+                  WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  mb: 1
                 }}
               >
                 {notification.message}
               </Typography>
             </Box>
 
-            {/* AI Action Buttons - Only for AI recommendations */}
-            {notification.data?.aiRecommendation && notification.data?.suggestedAction && (
-              <Box sx={{ mb: 2 }}>
-                {/* AI Badge */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                  <MdSmartToy size={16} color={theme.palette.primary.main} />
-                  <Typography
-                    variant='caption'
-                    sx={{
-                      color: 'primary.main',
-                      fontWeight: 'bold',
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.5
-                    }}
-                  >
-                    AI Recommendation
-                  </Typography>
-                  {notification.data.confidence && (
-                    <Box
-                      sx={{
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: '12px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                        color: 'primary.main'
-                      }}
+            {/* Context Details - For relevant notifications */}
+            {(notification.data?.userName ||
+              notification.data?.customerName ||
+              notification.data?.productName ||
+              notification.data?.articleTitle ||
+              notification.data?.commentContent ||
+              notification.data?.orderAmount) && (
+              <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(config.color, 0.05), borderRadius: 1 }}>
+                {/* User Info */}
+                {(notification.data?.userName || notification.data?.customerName) && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Avatar
+                      src={notification.data?.userImage || notification.data?.customerImage || ''}
+                      sx={{ width: 20, height: 20, fontSize: '0.7rem' }}
                     >
-                      {notification.data.confidence}% tin cậy
-                    </Box>
-                  )}
-                </Box>
+                      {(notification.data?.userName || notification.data?.customerName || 'U').charAt(0)}
+                    </Avatar>
+                    <Typography variant='body2' sx={{ fontWeight: 600, color: 'text.primary' }}>
+                      {notification.data?.userName || notification.data?.customerName}
+                    </Typography>
+                  </Box>
+                )}
 
+                {/* Product/Article Info */}
+                {notification.data?.productName && (
+                  <Typography variant='body2' sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>
+                    📦 {notification.data.productName}
+                  </Typography>
+                )}
+                {notification.data?.articleTitle && (
+                  <Typography variant='body2' sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>
+                    📰 {truncateText(notification.data.articleTitle, 50)}
+                  </Typography>
+                )}
+
+                {/* Comment Content */}
+                {notification.data?.commentContent && (
+                  <Typography variant='body2' sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 0.5 }}>
+                    💬 "{truncateText(notification.data.commentContent, 80)}"
+                  </Typography>
+                )}
+
+                {/* Order Amount */}
+                {notification.data?.orderAmount && (
+                  <Typography variant='body2' sx={{ color: 'success.main', fontWeight: 600 }}>
+                    💰 {notification.data.orderAmount.toLocaleString('vi-VN')}₫
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {/* AI Action Buttons - Only for AI_ASSISTANT type notifications */}
+            {notification.type === 'AI_ASSISTANT' && notification.data?.aiAssistant && (
+              <Box sx={{ mb: 2 }}>
                 {/* AI Action Buttons */}
                 <AIActionButtons
                   productId={notification.data.productId}
                   productName={notification.data.productName}
-                  suggestionType={notification.type as any}
-                  suggestedAction={notification.data.suggestedAction}
-                  confidence={notification.data.confidence || 50}
+                  suggestionType={notification.data.eventType as any}
+                  suggestedAction={notification.data.eventType === 'INVENTORY_CRITICAL' ? 'RESTOCK' : 'VIEW_PRODUCT'}
+                  confidence={85} // Default confidence for AI assistant
                   onActionTaken={(action, value) => {
                     console.log(`AI Action taken from toast: ${action}`, value);
                     // Close toast after action
@@ -294,7 +337,7 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
                   }
                 }}
               >
-                Xem chi tiết
+                Xem tất cả
               </Button>
             </Box>
           </Box>
@@ -316,7 +359,7 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
                 height: '100%',
                 width: '100%',
                 background: getNotificationColor(),
-                animation: 'progress 8s linear forwards',
+                animation: 'progress 120s linear forwards',
                 '@keyframes progress': {
                   '0%': { transform: 'translateX(-100%)' },
                   '100%': { transform: 'translateX(0%)' }

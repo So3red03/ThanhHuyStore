@@ -22,9 +22,19 @@ interface ProductPerformanceData {
 }
 
 interface AIRecommendation {
-  productId: string;
-  productName: string;
-  type: 'PROMOTION_SUGGESTION' | 'PRIORITY_BOOST' | 'STOCK_ALERT' | 'MARKETING_PUSH';
+  productId?: string; // Optional for non-product recommendations
+  productName?: string;
+  orderId?: string; // For order-related recommendations
+  customerId?: string; // For customer-related recommendations
+  type:
+    | 'PROMOTION_SUGGESTION'
+    | 'PRIORITY_BOOST'
+    | 'STOCK_ALERT'
+    | 'MARKETING_PUSH'
+    | 'PENDING_ORDER_ALERT' // New: Đơn hàng pending quá lâu
+    | 'CUSTOMER_RETENTION' // New: Khách hàng chưa mua lại
+    | 'INVENTORY_CRITICAL' // New: Tồn kho thấp nguy hiểm
+    | 'PERFORMANCE_ANOMALY'; // New: Hiệu suất bất thường
   title: string;
   message: string;
   reasoning: string;
@@ -165,6 +175,170 @@ export class AIRecommendationService {
   }
 
   /**
+   * Phân tích đơn hàng pending quá lâu
+   */
+  static async analyzePendingOrders(): Promise<AIRecommendation[]> {
+    const recommendations: AIRecommendation[] = [];
+
+    // Tìm đơn hàng pending > 3 ngày
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const pendingOrders = await prisma.order.findMany({
+      where: {
+        status: 'pending',
+        createdAt: { lt: threeDaysAgo }
+      },
+      include: {
+        user: { select: { name: true, email: true } }
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 10 // Top 10 oldest pending orders
+    });
+
+    for (const order of pendingOrders) {
+      const daysPending = Math.floor((Date.now() - order.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+      recommendations.push({
+        orderId: order.id,
+        customerId: order.userId,
+        type: 'PENDING_ORDER_ALERT',
+        title: '⚠️ Đơn hàng pending quá lâu',
+        message: `Đơn hàng #${order.id.slice(-6)} của ${
+          order.user?.name
+        } đã pending ${daysPending} ngày. Cần xử lý ngay!`,
+        reasoning: `Order pending ${daysPending} days, customer may cancel`,
+        urgency: daysPending > 7 ? 'CRITICAL' : daysPending > 5 ? 'HIGH' : 'MEDIUM',
+        confidence: 95,
+        suggestedAction: {
+          action: 'PROCESS_ORDER',
+          orderId: order.id,
+          customerName: order.user?.name,
+          daysPending: daysPending
+        },
+        expectedImpact: 'Prevent order cancellation, improve customer satisfaction'
+      });
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Phân tích khách hàng cần retention
+   */
+  static async analyzeCustomerRetention(): Promise<AIRecommendation[]> {
+    const recommendations: AIRecommendation[] = [];
+
+    // Tìm khách VIP chưa mua > 30 ngày
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const inactiveVIPs = await prisma.user.findMany({
+      where: {
+        role: 'USER',
+        orders: {
+          some: {
+            amount: { gte: 10000000 } // VIP: đã mua > 10M
+          }
+        }
+      },
+      include: {
+        orders: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    for (const customer of inactiveVIPs) {
+      const lastOrder = customer.orders[0];
+      if (!lastOrder || lastOrder.createdAt < thirtyDaysAgo) {
+        const daysSinceLastOrder = lastOrder
+          ? Math.floor((Date.now() - lastOrder.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+          : 999;
+
+        recommendations.push({
+          customerId: customer.id,
+          type: 'CUSTOMER_RETENTION',
+          title: '💎 Khách VIP cần retention',
+          message: `${customer.name} (VIP) chưa mua ${daysSinceLastOrder} ngày. Gửi voucher đặc biệt?`,
+          reasoning: `VIP customer inactive for ${daysSinceLastOrder} days`,
+          urgency: daysSinceLastOrder > 60 ? 'HIGH' : 'MEDIUM',
+          confidence: 80,
+          suggestedAction: {
+            action: 'SEND_VIP_VOUCHER',
+            customerId: customer.id,
+            customerName: customer.name,
+            suggestedDiscount: 15,
+            daysSinceLastOrder: daysSinceLastOrder
+          },
+          expectedImpact: 'Re-engage VIP customer, potential 5-10M revenue'
+        });
+      }
+    }
+
+    return recommendations.slice(0, 5); // Top 5 VIP customers
+  }
+
+  /**
+   * Phân tích inventory critical
+   */
+  static async analyzeInventoryCritical(): Promise<AIRecommendation[]> {
+    const recommendations: AIRecommendation[] = [];
+
+    // Tìm sản phẩm tồn kho < 5 và có sales velocity cao
+    const products = await prisma.product.findMany({
+      where: {
+        inStock: { lt: 5, gt: 0 } // 1-4 sản phẩm còn lại
+      },
+      include: {
+        category: { select: { name: true } }
+      }
+    });
+
+    for (const product of products) {
+      // Tính sales velocity (đơn giản) - sử dụng Order model với products array
+      const salesLast7Days = await prisma.order.count({
+        where: {
+          products: {
+            some: {
+              id: product.id // CartProductType uses 'id' field, not 'productId'
+            }
+          },
+          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+        }
+      });
+
+      if (salesLast7Days > 0) {
+        // Có bán trong 7 ngày qua
+        const dailyVelocity = salesLast7Days / 7;
+        const daysUntilOutOfStock = Math.ceil(product.inStock! / dailyVelocity);
+
+        recommendations.push({
+          productId: product.id,
+          productName: product.name,
+          type: 'INVENTORY_CRITICAL',
+          title: '📦 Tồn kho nguy hiểm',
+          message: `${product.name} chỉ còn ${product.inStock} chiếc, dự kiến hết hàng trong ${daysUntilOutOfStock} ngày`,
+          reasoning: `Low stock (${product.inStock}), high velocity (${salesLast7Days} sold/7d)`,
+          urgency: daysUntilOutOfStock <= 2 ? 'CRITICAL' : 'HIGH',
+          confidence: 90,
+          suggestedAction: {
+            action: 'RESTOCK_URGENT',
+            productId: product.id,
+            currentStock: product.inStock,
+            suggestedRestock: Math.max(20, salesLast7Days * 4), // 4 weeks supply
+            daysUntilOutOfStock: daysUntilOutOfStock
+          },
+          expectedImpact: 'Prevent stockout, maintain sales momentum'
+        });
+      }
+    }
+
+    return recommendations;
+  }
+
+  /**
    * Tạo AI recommendations dựa trên performance data
    */
   static async generateAIRecommendations(performanceData: ProductPerformanceData[]): Promise<AIRecommendation[]> {
@@ -279,21 +453,27 @@ export class AIRecommendationService {
    * Tính toán mức giảm giá tối ưu
    */
   private static calculateOptimalDiscount(product: ProductPerformanceData, conversionRate: number): number {
-    // Logic đơn giản: càng ế càng giảm nhiều
+    // Logic đơn giản: càng ế càng giảm nhiều, conversion rate thấp thì giảm nhiều hơn
     const daysInStock = Math.floor((new Date().getTime() - product.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    const conversionFactor = Math.max(0.1, conversionRate / 100); // Normalize conversion rate
 
-    if (daysInStock > 90) return 25; // 3 tháng -> 25%
-    if (daysInStock > 60) return 20; // 2 tháng -> 20%
-    if (daysInStock > 45) return 15; // 1.5 tháng -> 15%
-    if (daysInStock > 30) return 10; // 1 tháng -> 10%
+    // Base discount dựa trên thời gian tồn kho
+    let baseDiscount = 5;
+    if (daysInStock > 90) baseDiscount = 25; // 3 tháng -> 25%
+    else if (daysInStock > 60) baseDiscount = 20; // 2 tháng -> 20%
+    else if (daysInStock > 45) baseDiscount = 15; // 1.5 tháng -> 15%
+    else if (daysInStock > 30) baseDiscount = 10; // 1 tháng -> 10%
 
-    return 5; // Mặc định 5%
+    // Adjust dựa trên conversion rate (conversion thấp = giảm giá nhiều hơn)
+    const adjustedDiscount = Math.round(baseDiscount / conversionFactor);
+    return Math.min(adjustedDiscount, 30); // Cap tối đa 30%
   }
 
   /**
-   * Gửi AI notifications cho admin (với anti-spam logic)
+   * Gửi AI Recommendations cho admin (TÁCH BIỆT khỏi Notification System)
+   * AI Recommendations = Proactive suggestions, không phải reactive notifications
    */
-  static async sendAINotifications(recommendations: AIRecommendation[]): Promise<void> {
+  static async sendAIRecommendations(recommendations: AIRecommendation[]): Promise<void> {
     // Lấy danh sách admin
     const admins = await prisma.user.findMany({
       where: { role: { in: ['ADMIN', 'STAFF'] } }
@@ -302,32 +482,35 @@ export class AIRecommendationService {
     // Chỉ gửi top 5 recommendations quan trọng nhất
     const topRecommendations = recommendations.slice(0, 5);
 
-    // Anti-spam: Kiểm tra notifications đã gửi trong 24h qua
+    // Anti-spam: Kiểm tra recommendations đã gửi trong 24h qua
     const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     for (const admin of admins) {
       for (const rec of topRecommendations) {
-        // Kiểm tra xem đã có notification tương tự trong 24h qua chưa
-        const existingNotification = await prisma.notification.findFirst({
+        // Kiểm tra xem đã có recommendation tương tự trong 24h qua chưa
+        const existingRecommendation = await prisma.notification.findFirst({
           where: {
             userId: admin.id,
             productId: rec.productId,
-            type: rec.type === 'PROMOTION_SUGGESTION' ? 'PROMOTION_SUGGESTION' : 'SYSTEM_ALERT',
+            type: 'AI_ASSISTANT', // Sử dụng type riêng cho AI Recommendations
             title: rec.title,
             createdAt: { gte: last24Hours }
           }
         });
 
-        // Chỉ tạo notification mới nếu chưa có notification tương tự
-        if (!existingNotification) {
+        // Chỉ tạo AI recommendation mới nếu chưa có
+        if (!existingRecommendation) {
           await NotificationService.createNotification({
             userId: admin.id,
             productId: rec.productId,
-            type: rec.type === 'PROMOTION_SUGGESTION' ? 'PROMOTION_SUGGESTION' : 'SYSTEM_ALERT',
+            type: 'AI_ASSISTANT', // AI Recommendation type
             title: rec.title,
             message: rec.message,
             data: {
+              // AI Recommendation metadata
               aiRecommendation: true,
+              aiAssistant: true, // Flag để phân biệt với notification thường
+              eventType: rec.type, // PROMOTION_SUGGESTION, PRIORITY_BOOST, etc.
               reasoning: rec.reasoning,
               urgency: rec.urgency,
               confidence: rec.confidence,
@@ -335,18 +518,22 @@ export class AIRecommendationService {
               expectedImpact: rec.expectedImpact,
               productId: rec.productId,
               productName: rec.productName,
-              analysisTimestamp: new Date().toISOString()
+              analysisTimestamp: new Date().toISOString(),
+              // Action tracking
+              actionTaken: false,
+              actionTimestamp: null,
+              actionType: null
             }
           });
         } else {
-          console.log(`⏭️ Skipped duplicate AI notification for ${admin.id} - ${rec.productName} (${rec.title})`);
+          console.log(`⏭️ Skipped duplicate AI recommendation for ${admin.id} - ${rec.productName} (${rec.title})`);
         }
       }
     }
   }
 
   /**
-   * Chạy AI recommendations đầy đủ và gửi notifications
+   * Chạy AI recommendations đầy đủ và gửi recommendations
    */
   static async runAIRecommendations(): Promise<{
     analyzed: number;
@@ -355,58 +542,91 @@ export class AIRecommendationService {
     skipped: number;
   }> {
     try {
-      console.log('🤖 Starting AI Product Recommendations...');
+      console.log('🤖 Starting Comprehensive AI Analysis...');
 
       // 1. Phân tích hiệu suất sản phẩm
       const performanceData = await this.analyzeProductPerformance(30);
       console.log(`📊 Analyzed ${performanceData.length} products`);
 
-      // 2. Tạo AI recommendations
-      const recommendations = await this.generateAIRecommendations(performanceData);
-      console.log(`💡 Generated ${recommendations.length} recommendations`);
+      // 2. Tạo product-based recommendations
+      const productRecommendations = await this.generateAIRecommendations(performanceData);
+      console.log(`💡 Generated ${productRecommendations.length} product recommendations`);
 
-      // 3. Gửi notifications cho admin (với anti-spam)
-      let notificationsSent = 0;
-      let notificationsSkipped = 0;
+      // 3. Phân tích đơn hàng pending
+      const pendingOrderRecommendations = await this.analyzePendingOrders();
+      console.log(`⏰ Found ${pendingOrderRecommendations.length} pending order alerts`);
 
-      if (recommendations.length > 0) {
-        // Đếm số notification thực tế được gửi
+      // 4. Phân tích customer retention
+      const customerRetentionRecommendations = await this.analyzeCustomerRetention();
+      console.log(`💎 Found ${customerRetentionRecommendations.length} VIP retention opportunities`);
+
+      // 5. Phân tích inventory critical
+      const inventoryRecommendations = await this.analyzeInventoryCritical();
+      console.log(`📦 Found ${inventoryRecommendations.length} critical inventory alerts`);
+
+      // 6. Combine all recommendations
+      const allRecommendations = [
+        ...productRecommendations,
+        ...pendingOrderRecommendations,
+        ...customerRetentionRecommendations,
+        ...inventoryRecommendations
+      ];
+
+      // Sort by urgency and confidence
+      allRecommendations.sort((a, b) => {
+        const urgencyWeight = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+        const aScore = urgencyWeight[a.urgency] * a.confidence;
+        const bScore = urgencyWeight[b.urgency] * b.confidence;
+        return bScore - aScore;
+      });
+
+      console.log(`🎯 Total recommendations: ${allRecommendations.length}`);
+
+      // 7. Gửi AI recommendations cho admin (với anti-spam)
+      let recommendationsSent = 0;
+      let recommendationsSkipped = 0;
+
+      if (allRecommendations.length > 0) {
+        // Đếm số recommendations thực tế được gửi
         const admins = await prisma.user.findMany({
           where: { role: { in: ['ADMIN', 'STAFF'] } }
         });
 
-        const topRecommendations = recommendations.slice(0, 5);
+        const topRecommendations = allRecommendations.slice(0, 8); // Increased to 8 for more coverage
         const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
         for (const admin of admins) {
           for (const rec of topRecommendations) {
-            const existingNotification = await prisma.notification.findFirst({
+            const existingRecommendation = await prisma.notification.findFirst({
               where: {
                 userId: admin.id,
-                productId: rec.productId,
-                type: rec.type === 'PROMOTION_SUGGESTION' ? 'PROMOTION_SUGGESTION' : 'SYSTEM_ALERT',
+                productId: rec.productId || undefined,
+                orderId: rec.orderId || undefined,
+                type: 'AI_ASSISTANT',
                 title: rec.title,
                 createdAt: { gte: last24Hours }
               }
             });
 
-            if (!existingNotification) {
-              notificationsSent++;
+            if (!existingRecommendation) {
+              recommendationsSent++;
             } else {
-              notificationsSkipped++;
+              recommendationsSkipped++;
             }
           }
         }
 
-        await this.sendAINotifications(recommendations);
-        console.log(`📨 Sent ${notificationsSent} new notifications, skipped ${notificationsSkipped} duplicates`);
+        await this.sendAIRecommendations(allRecommendations);
+        console.log(
+          `🤖 Sent ${recommendationsSent} new AI recommendations, skipped ${recommendationsSkipped} duplicates`
+        );
       }
 
       return {
         analyzed: performanceData.length,
-        recommendations: recommendations.length,
-        notifications: notificationsSent,
-        skipped: notificationsSkipped
+        recommendations: allRecommendations.length,
+        notifications: recommendationsSent,
+        skipped: recommendationsSkipped
       };
     } catch (error) {
       console.error('❌ AI Recommendations failed:', error);

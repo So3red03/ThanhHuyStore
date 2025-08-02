@@ -44,8 +44,8 @@ export class NotificationService {
           type: 'new_notification'
         });
 
-        // Gửi cho admin channel nếu cần
-        if (data.type === 'ORDER_PLACED' || data.type === 'COMMENT_RECEIVED') {
+        // Gửi cho admin channel cho tất cả thông báo (trừ AI_ASSISTANT vì đã có riêng)
+        if (data.type !== 'AI_ASSISTANT') {
           await pusherServer.trigger('admin-notifications', 'notification', {
             notification,
             type: 'new_notification'
@@ -209,38 +209,148 @@ export class NotificationService {
     }
   }
 
-  // Tạo notification cho đơn hàng mới
-  static async createOrderNotification(orderId: string, userId: string) {
+  // ========================================
+  // NOTIFICATION SYSTEM - Thông báo sự kiện thực tế
+  // ========================================
+
+  // Tạo notification cho đơn hàng mới với context đầy đủ
+  static async createOrderNotification(orderId: string, userId: string, orderData?: any) {
+    // Get order and customer info
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        user: { select: { name: true, email: true, image: true } }
+      }
+    });
+
+    const customerName = order?.user?.name || 'Khách hàng';
+    const orderAmount = order?.amount || 0;
+    const productCount = order?.products?.length || 0;
+
     return this.createNotification({
       userId: userId,
       orderId: orderId,
       type: 'ORDER_PLACED',
-      title: 'Đơn hàng mới',
-      message: 'Đơn hàng của bạn đã được tạo thành công'
+      title: '🛒 Đơn hàng mới',
+      message: `${customerName} vừa đặt đơn hàng #${orderId.slice(-6)} - ${orderAmount.toLocaleString(
+        'vi-VN'
+      )}₫ (${productCount} sản phẩm)`,
+      data: {
+        eventType: 'ORDER_CREATED',
+        timestamp: new Date().toISOString(),
+        customerName: customerName,
+        customerEmail: order?.user?.email,
+        customerImage: order?.user?.image,
+        orderAmount: orderAmount,
+        productCount: productCount,
+        orderStatus: order?.status,
+        ...orderData
+      }
     });
   }
 
-  // Tạo notification cho comment mới
-  static async createCommentNotification(productId: string, userId: string, fromUserId: string) {
+  // Tạo notification cho comment mới với đầy đủ context
+  static async createCommentNotification(productId: string, userId: string, fromUserId: string, commentData?: any) {
+    // Get product and user info for rich notification
+    const [product, fromUser] = await Promise.all([
+      prisma.product.findUnique({
+        where: { id: productId },
+        select: { name: true, thumbnail: true }
+      }),
+      prisma.user.findUnique({
+        where: { id: fromUserId },
+        select: { name: true, image: true }
+      })
+    ]);
+
+    const productName = product?.name || 'Sản phẩm';
+    const userName = fromUser?.name || 'Khách hàng';
+    const commentText = commentData?.content || commentData?.text || '';
+
     return this.createNotification({
       userId: userId,
       productId: productId,
       fromUserId: fromUserId,
       type: 'COMMENT_RECEIVED',
-      title: 'Bình luận mới',
-      message: 'Có người đã bình luận về sản phẩm của bạn'
+      title: '💬 Bình luận mới',
+      message: `${userName} vừa bình luận về ${productName}${
+        commentText ? `: "${commentText.slice(0, 50)}${commentText.length > 50 ? '...' : ''}"` : ''
+      }`,
+      data: {
+        eventType: 'COMMENT_CREATED',
+        timestamp: new Date().toISOString(),
+        productName: productName,
+        userName: userName,
+        userImage: fromUser?.image,
+        productThumbnail: product?.thumbnail,
+        commentContent: commentText,
+        ...commentData
+      }
     });
   }
 
   // Tạo notification cho tin nhắn mới
-  static async createMessageNotification(messageId: string, userId: string, fromUserId: string) {
+  static async createMessageNotification(messageId: string, userId: string, fromUserId: string, messageData?: any) {
     return this.createNotification({
       userId: userId,
       messageId: messageId,
       fromUserId: fromUserId,
       type: 'MESSAGE_RECEIVED',
-      title: 'Tin nhắn mới',
-      message: 'Bạn có tin nhắn mới'
+      title: '📨 Tin nhắn mới',
+      message: 'Bạn có tin nhắn mới từ khách hàng',
+      data: {
+        eventType: 'MESSAGE_RECEIVED',
+        timestamp: new Date().toISOString(),
+        ...messageData
+      }
+    });
+  }
+
+  // Tạo notification cho thanh toán thành công
+  static async createPaymentNotification(orderId: string, userId: string, paymentData?: any) {
+    return this.createNotification({
+      userId: userId,
+      orderId: orderId,
+      type: 'ORDER_PLACED', // Reuse existing type
+      title: '💳 Thanh toán thành công',
+      message: `Đơn hàng #${orderId.slice(-6)} đã được thanh toán`,
+      data: {
+        eventType: 'PAYMENT_SUCCESS',
+        timestamp: new Date().toISOString(),
+        ...paymentData
+      }
+    });
+  }
+
+  // Tạo notification cho review mới
+  static async createReviewNotification(productId: string, userId: string, fromUserId: string, reviewData?: any) {
+    return this.createNotification({
+      userId: userId,
+      productId: productId,
+      fromUserId: fromUserId,
+      type: 'COMMENT_RECEIVED', // Reuse existing type
+      title: '⭐ Đánh giá mới',
+      message: 'Có khách hàng vừa đánh giá sản phẩm',
+      data: {
+        eventType: 'REVIEW_CREATED',
+        timestamp: new Date().toISOString(),
+        ...reviewData
+      }
+    });
+  }
+
+  // Tạo notification cho system alerts
+  static async createSystemNotification(userId: string, title: string, message: string, alertData?: any) {
+    return this.createNotification({
+      userId: userId,
+      type: 'SYSTEM_ALERT',
+      title: `⚠️ ${title}`,
+      message: message,
+      data: {
+        eventType: 'SYSTEM_ALERT',
+        timestamp: new Date().toISOString(),
+        ...alertData
+      }
     });
   }
 

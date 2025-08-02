@@ -174,8 +174,8 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
                 if (showNotifications) {
                   setShowNotifications(false);
                 } else {
-                  setShowMessages(false); // Close messages if open
                   setShowNotifications(true);
+                  setShowMessages(false); // Close messages if open
                 }
               }}
               sx={{
@@ -187,7 +187,7 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
               }}
             >
               <Badge badgeContent={0} color='error'>
-                <MdNotifications size={20} />
+                <MdOutlineChat size={20} />
               </Badge>
             </IconButton>
 
@@ -198,8 +198,8 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
                 if (showMessages) {
                   setShowMessages(false);
                 } else {
-                  setShowNotifications(false); // Close notifications if open
                   setShowMessages(true);
+                  setShowNotifications(false); // Close notifications if open
                 }
               }}
               sx={{
@@ -211,7 +211,7 @@ const AdminNavNew: React.FC<AdminNavNewProps> = ({ currentUser }) => {
               }}
             >
               <Badge badgeContent={0} color='error' max={99}>
-                <MdOutlineChat size={20} />
+                <MdNotifications size={20} />
               </Badge>
             </IconButton>
 
