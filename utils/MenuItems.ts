@@ -9,7 +9,8 @@ import {
   MdOutlineSettings,
   MdLogout,
   MdAnalytics,
-  MdOutlineAnalytics
+  MdOutlineAnalytics,
+  MdOutlineEmail
 } from 'react-icons/md';
 import { BiSolidCategory } from 'react-icons/bi';
 
@@ -59,6 +60,11 @@ export const MenuItems = [
             path: '/admin/manage-returns'
           }
         ]
+      },
+      {
+        title: 'Email Marketing',
+        icon: MdOutlineEmail,
+        path: '/admin/email-marketing'
       },
       {
         title: 'Khuyến Mãi',

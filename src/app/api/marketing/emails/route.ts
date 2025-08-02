@@ -423,7 +423,7 @@ const sendVoucherEmail = async (email: string, userName: string, voucherIds: str
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
           .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-          .voucher-card { background: white; border-radius: 10px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 5px solid #ff6b6b; }
+          .voucher-card { background: white; border-radius: 10px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
           .voucher-header { text-align: center; margin-bottom: 15px; }
           .voucher-code { background: #ff6b6b; color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; font-size: 18px; display: inline-block; margin: 10px 0; }
           .voucher-value { font-size: 24px; font-weight: bold; color: #e74c3c; margin: 10px 0; text-align: center; }

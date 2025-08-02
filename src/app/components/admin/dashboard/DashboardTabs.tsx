@@ -462,7 +462,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
               }
             }}
             onClick={() => {
-              router.push('/admin/manage-products?openEmailModal=true');
+              router.push('/admin/email-marketing');
             }}
           >
             <CardContent

@@ -55,7 +55,7 @@ export default function AIActionButtons({
       switch (button.action) {
         case 'email_marketing':
           // Redirect to email marketing
-          router.push(`/admin/manage-products?openEmailModal=true`);
+          router.push(`/admin/email-marketing`);
           toast.success('Mở email marketing');
           break;
 

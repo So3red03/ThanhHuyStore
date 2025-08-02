@@ -28,7 +28,7 @@ import 'moment/locale/vi';
 import NullData from '@/app/components/NullData';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useEffect, useState } from 'react';
-import SendMarketingEmail from '@/app/components/admin/SendMarketingEmail';
+// Removed SendMarketingEmail import - now using separate page
 import Image from 'next/image';
 import {
   Rating,
@@ -85,7 +85,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [currentProducts, setCurrentProducts] = useState(products);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
+  // Removed showEmailModal state - now using router navigation
 
   // Enhanced search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -769,19 +769,15 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     }
   }, [currentUser, router]);
 
-  // Check for openEmailModal query parameter
+  // Check for openEmailModal query parameter - redirect to email marketing page
   useEffect(() => {
     if (searchParams) {
       const openEmailModal = searchParams.get('openEmailModal');
       if (openEmailModal === 'true') {
-        setShowEmailModal(true);
-        // Clean up URL without triggering navigation
-        const url = new URL(window.location.href);
-        url.searchParams.delete('openEmailModal');
-        window.history.replaceState({}, '', url.toString());
+        router.push('/admin/email-marketing');
       }
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   // Check for view=productId query parameter to auto-open product form
   useEffect(() => {
@@ -825,7 +821,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
           </div>
           <div className='flex items-center gap-3'>
             <MuiButton
-              onClick={() => setShowEmailModal(true)}
+              onClick={() => router.push('/admin/email-marketing')}
               startIcon={<FaRegEnvelope />}
               variant='outlined'
               className='bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600'
@@ -1207,10 +1203,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         subCategories={subCategories}
       />
 
-      {/* Email Marketing Modal */}
-      {showEmailModal && (
-        <SendMarketingEmail products={currentProducts} onClose={() => setShowEmailModal(false)} open={showEmailModal} />
-      )}
+      {/* Email Marketing is now a separate page at /admin/email-marketing */}
     </div>
   );
 };
