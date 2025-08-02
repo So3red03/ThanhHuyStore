@@ -17,20 +17,29 @@ export const sendNewProductEmailAutomatically = async (productId: string): Promi
       return false;
     }
 
-    if (settings.emailMarketingSchedule !== 'newProduct') {
-      console.log(`📧 [Auto Email] Email schedule is "${settings.emailMarketingSchedule}", not "newProduct"`);
+    // Chỉ gửi email tự động khi setting là "newProduct" hoặc "daily"
+    if (settings.emailMarketingSchedule !== 'newProduct' && settings.emailMarketingSchedule !== 'daily') {
+      console.log(
+        `📧 [Auto Email] Email schedule is "${settings.emailMarketingSchedule}", auto email disabled for new products`
+      );
       return false;
     }
 
+    console.log(`📧 [Auto Email] Email schedule is "${settings.emailMarketingSchedule}", proceeding with auto email`);
+
     console.log('✅ [Auto Email] Auto email marketing is enabled for new products');
 
-    // 2. Gửi email tự động (sử dụng API endpoint giống như SendNewProductEmail.tsx)
+    // 2. Gửi email tự động (sử dụng API endpoint mới)
     console.log('📧 [Auto Email] Sending email request to API...');
-    const emailResponse = await axios.post('/api/send-new-product-emails', {
+    const emailResponse = await axios.post('/api/marketing/emails', {
+      campaignType: 'NEW_PRODUCT',
+      campaignTitle: 'Sản phẩm mới vừa ra mắt!',
+      campaignDescription: 'Khám phá sản phẩm mới nhất từ ThanhHuy Store',
       productId: productId,
-      timeframe: 'all', // Gửi cho tất cả khách hàng đã mua cùng category
+      selectedSegments: ['all'], // Gửi cho tất cả khách hàng
       manualMode: false, // Không phải manual mode
-      selectedUserIds: undefined
+      selectedUserIds: [],
+      debugMode: true
     });
 
     console.log('📧 [Auto Email] API Response:', emailResponse.data);

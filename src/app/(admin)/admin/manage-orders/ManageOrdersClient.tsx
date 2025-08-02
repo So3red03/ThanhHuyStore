@@ -13,7 +13,8 @@ import {
   MdRefresh,
   MdRemoveRedEye,
   MdAdd,
-  MdClose
+  MdClose,
+  MdDownload
 } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -24,7 +25,7 @@ import { SafeUser } from '../../../../../types';
 import OrderDetails from '@/app/components/OrderDetails';
 import NullData from '@/app/components/NullData';
 import { MdViewKanban } from 'react-icons/md';
-import { Button } from '@mui/material';
+import { Button, CircularProgress } from '@mui/material';
 import Link from 'next/link';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import AddOrderModal from './AddOrderModal';
@@ -34,6 +35,7 @@ import {
   canTransitionDeliveryStatus
 } from '@/app/utils/orderStatusValidation';
 import { formatPrice } from '../../../../../utils/formatPrice';
+import { ExcelExportService } from '@/app/utils/excelExport';
 
 interface ManageOrdersClientProps {
   orders: Order[];
@@ -57,6 +59,7 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
   const [tabValue, setTabValue] = useState(0);
   const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<any>(null);
 
@@ -104,6 +107,24 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
     const filtered = filterOrdersByTab(tabValue);
     setFilteredOrders(filtered);
   }, [orders, tabValue]);
+
+  // Handle Excel Export
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+
+      // Use filtered orders for export
+      const ordersToExport = filteredOrders;
+
+      const fileName = ExcelExportService.exportOrdersReport(ordersToExport);
+      toast.success(`Xuất Excel thành công: ${fileName}`);
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast.error('Lỗi khi xuất file Excel');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   let rows: any = [];
   if (filteredOrders) {
@@ -438,6 +459,28 @@ const ManageOrdersClient: React.FC<ManageOrdersClientProps> = ({
                 Xem Kanban
               </Button>
             </Link>
+            {/* Export Excel Button */}
+            <Button
+              variant='outlined'
+              startIcon={isExporting ? <CircularProgress size={16} color='inherit' /> : <MdDownload />}
+              onClick={handleExportExcel}
+              disabled={isExporting}
+              size='medium'
+              sx={{
+                textTransform: 'none',
+                borderColor: '#10b981',
+                color: '#10b981',
+                '&:hover': {
+                  borderColor: '#059669',
+                  backgroundColor: '#ecfdf5',
+                  color: '#059669'
+                },
+                fontWeight: 600,
+                borderRadius: '8px'
+              }}
+            >
+              {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
+            </Button>
             {/* Add Order Button */}
             <Button
               variant='contained'

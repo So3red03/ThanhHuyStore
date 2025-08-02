@@ -10,7 +10,10 @@ import {
   MdLogout,
   MdAnalytics,
   MdOutlineAnalytics,
-  MdOutlineEmail
+  MdOutlineEmail,
+  MdOutlineLocalOffer,
+  MdOutlineSupervisedUserCircle,
+  MdOutlineArticle
 } from 'react-icons/md';
 import { BiSolidCategory } from 'react-icons/bi';
 
@@ -68,7 +71,7 @@ export const MenuItems = [
       },
       {
         title: 'Khuyến Mãi',
-        icon: MdLocalOffer,
+        icon: MdOutlineLocalOffer,
         hasSubmenu: true,
         submenu: [
           {
@@ -83,7 +86,7 @@ export const MenuItems = [
       },
       {
         title: 'Tài Khoản',
-        icon: MdSupervisedUserCircle,
+        icon: MdOutlineSupervisedUserCircle,
         hasSubmenu: true,
         submenu: [
           {
@@ -98,7 +101,7 @@ export const MenuItems = [
       },
       {
         title: 'Bài Viết',
-        icon: BiSolidCategory,
+        icon: MdOutlineArticle,
         hasSubmenu: true,
         submenu: [
           {

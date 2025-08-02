@@ -146,6 +146,166 @@ export class ExcelExportService {
     return fileName;
   }
 
+  /**
+   * Xuất danh sách sản phẩm đầy đủ (cho ManageProductsClient)
+   */
+  static exportProductsReport(products: any[]) {
+    const workbook = XLSX.utils.book_new();
+
+    const headers = [
+      'ID',
+      'Tên sản phẩm',
+      'Loại sản phẩm',
+      'Danh mục',
+      'Giá',
+      'Tồn kho',
+      'Thương hiệu',
+      'Mô tả',
+      'Trạng thái',
+      'Ngày tạo',
+      'Ngày cập nhật',
+      'Ưu tiên',
+      'Số lượng biến thể',
+      'Số đánh giá',
+      'Điểm trung bình'
+    ];
+
+    const data = products.map(product => [
+      product.id,
+      product.name || 'N/A',
+      product.productType === 'SIMPLE' ? 'Sản phẩm đơn giản' : 'Sản phẩm biến thể',
+      product.category?.name || 'Không xác định',
+      product.price ? formatPrice(product.price) : 'N/A',
+      product.inStock || 0,
+      product.brand || 'N/A',
+      product.description ? product.description.substring(0, 100) + '...' : 'N/A',
+      product.isDeleted ? 'Đã xóa' : 'Hoạt động',
+      new Date(product.createdAt).toLocaleDateString('vi-VN'),
+      new Date(product.updatedAt).toLocaleDateString('vi-VN'),
+      product.priority || 0,
+      product.variants?.length || 0,
+      product.reviews?.length || 0,
+      product.reviews?.length > 0
+        ? (product.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / product.reviews.length).toFixed(1)
+        : 'N/A'
+    ]);
+
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ['DANH SÁCH SẢN PHẨM - THANHHUYSSTORE'],
+      [`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`],
+      [`Tổng số sản phẩm: ${products.length}`],
+      [],
+      headers,
+      ...data
+    ]);
+
+    // Auto-fit columns
+    const colWidths = headers.map((_, i) => ({
+      wch: Math.max(headers[i].length, ...data.map(row => String(row[i] || '').length))
+    }));
+    sheet['!cols'] = colWidths;
+
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Danh sách sản phẩm');
+
+    const fileName = `DanhSach_SanPham_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+
+    return fileName;
+  }
+
+  /**
+   * Xuất danh sách đơn hàng đầy đủ (cho ManageOrdersClient)
+   */
+  static exportOrdersReport(orders: any[]) {
+    const workbook = XLSX.utils.book_new();
+
+    const headers = [
+      'ID',
+      'Mã đơn hàng',
+      'Khách hàng',
+      'Email',
+      'Số điện thoại',
+      'Tổng tiền',
+      'Phương thức thanh toán',
+      'Trạng thái',
+      'Ngày tạo',
+      'Ngày cập nhật',
+      'Địa chỉ giao hàng',
+      'Ghi chú',
+      'Mã giảm giá',
+      'Số lượng sản phẩm',
+      'Chi tiết sản phẩm'
+    ];
+
+    const data = orders.map(order => [
+      order.id,
+      order.id.substring(0, 8).toUpperCase(),
+      order.user?.name || 'N/A',
+      order.user?.email || 'N/A',
+      order.phoneNumber || 'N/A',
+      formatPrice(order.amount),
+      this.getPaymentMethodLabel(order.paymentMethod),
+      this.getOrderStatusLabel(order.status),
+      new Date(order.createdAt).toLocaleDateString('vi-VN'),
+      new Date(order.updatedAt).toLocaleDateString('vi-VN'),
+      this.formatAddress(order.address),
+      order.notes || 'N/A',
+      order.voucherCode || 'N/A',
+      order.products?.length || 0,
+      order.products?.map((p: any) => `${p.name} (x${p.quantity})`).join('; ') || 'N/A'
+    ]);
+
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ['DANH SÁCH ĐỚN HÀNG - THANHHUYSSTORE'],
+      [`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`],
+      [`Tổng số đơn hàng: ${orders.length}`],
+      [`Tổng doanh thu: ${formatPrice(orders.reduce((sum, o) => sum + (o.status === 'completed' ? o.amount : 0), 0))}`],
+      [],
+      headers,
+      ...data
+    ]);
+
+    // Auto-fit columns
+    const colWidths = headers.map((_, i) => ({
+      wch: Math.max(headers[i].length, ...data.map(row => String(row[i] || '').length))
+    }));
+    sheet['!cols'] = colWidths;
+
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Danh sách đơn hàng');
+
+    // Sheet 2: Thống kê theo trạng thái
+    const statusStats = [['THỐNG KÊ THEO TRẠNG THÁI'], [], ['Trạng thái', 'Số lượng', 'Tỷ lệ (%)', 'Doanh thu']];
+
+    const statusGroups = orders.reduce((acc: any, order) => {
+      const status = order.status;
+      if (!acc[status]) {
+        acc[status] = { count: 0, revenue: 0 };
+      }
+      acc[status].count++;
+      if (status === 'completed') {
+        acc[status].revenue += order.amount;
+      }
+      return acc;
+    }, {});
+
+    Object.entries(statusGroups).forEach(([status, data]: [string, any]) => {
+      statusStats.push([
+        this.getOrderStatusLabel(status),
+        data.count,
+        ((data.count / orders.length) * 100).toFixed(1) + '%',
+        formatPrice(data.revenue)
+      ]);
+    });
+
+    const statusSheet = XLSX.utils.aoa_to_sheet(statusStats);
+    XLSX.utils.book_append_sheet(workbook, statusSheet, 'Thống kê trạng thái');
+
+    const fileName = `DanhSach_DonHang_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+
+    return fileName;
+  }
+
   // Helper methods
   private static getTimeFilterLabel(filter: string): string {
     switch (filter) {

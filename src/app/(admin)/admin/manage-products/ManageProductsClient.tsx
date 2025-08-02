@@ -14,7 +14,8 @@ import {
   MdSearch,
   MdFilterList,
   MdRestore,
-  MdVisibility
+  MdVisibility,
+  MdDownload
 } from 'react-icons/md';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { deleteObject, getStorage, ref } from 'firebase/storage';
@@ -48,6 +49,7 @@ import * as SlIcons from 'react-icons/sl';
 import * as AiIcons from 'react-icons/ai';
 import * as TbIcons from 'react-icons/tb';
 import * as MdIcons from 'react-icons/md';
+import { ExcelExportService } from '@/app/utils/excelExport';
 import Link from 'next/link';
 import { slugConvert } from '../../../../../utils/Slug';
 import AddProductModalNew from './AddProductModalNew';
@@ -85,6 +87,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [currentProducts, setCurrentProducts] = useState(products);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   // Removed showEmailModal state - now using router navigation
 
   // Enhanced search and filter states
@@ -145,6 +148,24 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
       router.refresh(); // Fallback to full page refresh
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  // Handle Excel Export
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+
+      // Use filtered products for export
+      const productsToExport = showDeleted ? deletedProducts : filteredProducts;
+
+      const fileName = ExcelExportService.exportProductsReport(productsToExport);
+      toast.success(`Xuất Excel thành công: ${fileName}`);
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast.error('Lỗi khi xuất file Excel');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -769,16 +790,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     }
   }, [currentUser, router]);
 
-  // Check for openEmailModal query parameter - redirect to email marketing page
-  useEffect(() => {
-    if (searchParams) {
-      const openEmailModal = searchParams.get('openEmailModal');
-      if (openEmailModal === 'true') {
-        router.push('/admin/email-marketing');
-      }
-    }
-  }, [searchParams, router]);
-
   // Check for view=productId query parameter to auto-open product form
   useEffect(() => {
     if (searchParams && currentProducts.length > 0) {
@@ -821,17 +832,24 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
           </div>
           <div className='flex items-center gap-3'>
             <MuiButton
-              onClick={() => router.push('/admin/email-marketing')}
-              startIcon={<FaRegEnvelope />}
               variant='outlined'
-              className='bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600'
+              startIcon={isExporting ? <CircularProgress size={16} color='inherit' /> : <MdDownload />}
+              onClick={handleExportExcel}
+              disabled={isExporting}
               sx={{
                 textTransform: 'none',
+                borderColor: '#10b981',
+                color: '#10b981',
+                '&:hover': {
+                  borderColor: '#059669',
+                  backgroundColor: '#ecfdf5',
+                  color: '#059669'
+                },
                 fontWeight: 600,
-                color: 'white'
+                borderRadius: '8px'
               }}
             >
-              Email Marketing
+              {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
             </MuiButton>
             <MuiButton
               onClick={toggleShowDeleted}
@@ -900,10 +918,10 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
               sx={{
                 backgroundColor: '#3b82f6',
                 '&:hover': { backgroundColor: '#2563eb' },
-                borderRadius: '12px',
+                borderRadius: '8px',
                 textTransform: 'none',
                 fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
               }}
             >
               {isRefreshing ? 'Đang tải...' : 'Làm mới'}
@@ -1202,8 +1220,6 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         parentCategories={parentCategories}
         subCategories={subCategories}
       />
-
-      {/* Email Marketing is now a separate page at /admin/email-marketing */}
     </div>
   );
 };
