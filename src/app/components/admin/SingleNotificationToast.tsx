@@ -262,7 +262,7 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
                 {/* Comment Content */}
                 {notification.data?.commentContent && (
                   <Typography variant='body2' sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 0.5 }}>
-                    💬 "{truncateText(notification.data.commentContent, 80)}"
+                    💬 {truncateText(notification.data.commentContent, 80)}
                   </Typography>
                 )}
 

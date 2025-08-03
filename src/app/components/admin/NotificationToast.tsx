@@ -352,7 +352,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
                             mb: 0.5
                           }}
                         >
-                          💬 "{truncateText(notification.data.commentContent, 50)}"
+                          💬 {truncateText(notification.data.commentContent, 50)}
                         </Typography>
                       )}
                       {notification.data?.orderAmount && (

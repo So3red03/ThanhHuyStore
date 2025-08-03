@@ -93,10 +93,10 @@ const AdminChatbaseBot: React.FC<AdminChatbaseBotProps> = ({ className = '' }) =
         <div className='mt-6 p-4 bg-white rounded-lg border border-gray-200'>
           <h4 className='font-medium text-gray-900 mb-2'>💡 Gợi ý câu hỏi:</h4>
           <div className='text-sm text-gray-600 space-y-1'>
-            <div>• "Phân tích doanh số tuần này"</div>
-            <div>• "Sản phẩm nào bán chạy nhất?"</div>
-            <div>• "Tình hình inventory hiện tại?"</div>
-            <div>• "Đề xuất chiến lược marketing"</div>
+            <div>• Phân tích doanh số tuần này</div>
+            <div>• Sản phẩm nào bán chạy nhất?</div>
+            <div>• Tình hình inventory hiện tại?</div>
+            <div>• Đề xuất chiến lược marketing</div>
           </div>
         </div>
       </div>

@@ -1037,7 +1037,7 @@ const NotificationTab: React.FC = () => {
                                               variant='body2'
                                               sx={{ color: 'text.secondary', fontStyle: 'italic', mb: 0.5 }}
                                             >
-                                              💬 "{truncateText(notification.data.commentContent, 100)}"
+                                              💬 {truncateText(notification.data.commentContent, 100)}
                                             </Typography>
                                           )}
                                           {notification.data?.orderAmount && (
