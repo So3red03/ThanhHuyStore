@@ -124,7 +124,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
       hasDropdown: true
     },
     {
-      label: 'Báo cáo',
+      label: 'Thống kê',
       icon: <MdAssessment size={20} />,
       content: reportsSubTab === 'main' ? reportsContent : <NotificationTab />,
       hasDropdown: true
@@ -412,8 +412,8 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
                 <MdAssessment size={20} />
               </ListItemIcon>
               <ListItemText
-                primary='Báo cáo chính'
-                secondary='Báo cáo tổng quan hệ thống'
+                primary='Thống kê chính'
+                secondary='Thống kê tổng quan hệ thống'
                 primaryTypographyProps={{ fontWeight: 500 }}
               />
             </MenuItem>

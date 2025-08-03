@@ -50,15 +50,6 @@ interface NotificationToastProps {
   isLoading?: boolean;
 }
 
-/**
- * Facebook-style notification panel
- * Features:
- * - Shows list of notifications like Facebook
- * - Each notification can be clicked
- * - Auto-dismiss after duration
- * - Hover to pause
- * - Professional design with green theme
- */
 const NotificationToast: React.FC<NotificationToastProps> = ({
   notifications,
   onClose,
@@ -78,7 +69,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
     SYSTEM_ALERT: { icon: <MdWarning />, color: '#607D8B', label: 'Hệ thống' },
     AI_ASSISTANT: { icon: <MdSmartToy />, color: '#3b82f6', label: 'AI Assistant' }
   };
-
+  console.log(notifications);
   // Progress bar animation
   useEffect(() => {
     if (notifications.length === 0 || isPaused || disableAutoDismiss) return;
@@ -106,7 +97,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
   // Show UI even when loading or no notifications (for instant UI)
   if (notifications.length === 0 && !isLoading) return null;
 
-  // Get notification style based on type - consistent with NotificationTab
+  // Get notification style based on type - consistent with Notific ationTab
   const getNotificationStyle = (type: string) => {
     const config = notificationConfig[type] || notificationConfig.SYSTEM_ALERT;
     return {
@@ -122,8 +113,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         position: 'fixed',
         top: 70,
         right: 180,
-        zIndex: 9999,
-        animation: 'slideInRight 0.3s ease-out'
+        zIndex: 9999
       }}
     >
       <Paper
@@ -136,7 +126,6 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
           backgroundColor: 'white',
           color: 'text.primary',
           border: '1px solid rgba(0,0,0,0.08)',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {
             boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
           }
@@ -287,11 +276,12 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
                         ml: 1
                       }}
                     >
-                      {/* {formatDistanceToNow(new Date(notification?.createdAt), {
-                        addSuffix: true,
-                        locale: vi
-                      })} */}
-                      {notification.createdAt}
+                      {notification.createdAt
+                        ? formatDistanceToNow(new Date(notification.createdAt), {
+                            addSuffix: true,
+                            locale: vi
+                          })
+                        : 'Vừa xong'}
                     </Typography>
                   </Box>
 

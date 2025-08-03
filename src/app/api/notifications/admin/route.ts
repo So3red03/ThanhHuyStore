@@ -17,11 +17,19 @@ export async function GET(request: Request) {
     const type = searchParams.get('type') || '';
     const isRead = searchParams.get('isRead') || '';
     const timeFilter = searchParams.get('timeFilter') || '';
+    const onlyDeleted = searchParams.get('onlyDeleted') === 'true';
 
     const skip = (page - 1) * limit;
 
     // Build where clause
     const where: any = {};
+
+    // Handle soft delete filtering - exactly like product API
+    if (onlyDeleted) {
+      where.isDeleted = true;
+    } else {
+      where.isDeleted = false;
+    }
 
     // Search in title and message
     if (search) {
@@ -65,8 +73,8 @@ export async function GET(request: Request) {
       };
     }
 
-    // Get notifications with pagination
-    const [notifications, total] = await Promise.all([
+    // Get notifications with pagination and separate stats
+    const [notifications, total, unreadCount] = await Promise.all([
       prisma.notification.findMany({
         where,
         skip,
@@ -100,12 +108,19 @@ export async function GET(request: Request) {
           }
         }
       }),
-      prisma.notification.count({ where })
+      prisma.notification.count({ where }), // Count with current filters
+      prisma.notification.count({
+        where: {
+          ...where,
+          isRead: false
+        }
+      }) // Unread count with current filters
     ]);
 
     return NextResponse.json({
       notifications,
       total,
+      unreadCount,
       page,
       totalPages: Math.ceil(total / limit)
     });

@@ -50,7 +50,9 @@ import {
   MdClose,
   MdVisibilityOff,
   MdEvent,
-  MdSmartToy
+  MdSmartToy,
+  MdRestore,
+  MdVisibility
 } from 'react-icons/md';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -101,6 +103,10 @@ const NotificationTab: React.FC = () => {
   const [timeFilter, setTimeFilter] = useState('7d');
   const [showClearAllDialog, setShowClearAllDialog] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false); // New: Show deleted notifications
+  const [deletedNotifications, setDeletedNotifications] = useState<Notification[]>([]);
+  const [normalStats, setNormalStats] = useState({ total: 0, unread: 0 }); // Normal notifications stats
+  const [deletedStats, setDeletedStats] = useState({ total: 0, unread: 0 }); // Deleted notifications stats
   const itemsPerPage = 10;
 
   // Notification type configurations
@@ -174,8 +180,21 @@ const NotificationTab: React.FC = () => {
       const response = await fetch(`/api/notifications/admin?${params}`);
       const data = await response.json();
 
+      console.log('🔍 Normal notifications API response:', {
+        total: data.total,
+        unreadCount: data.unreadCount,
+        notificationsLength: data.notifications?.length,
+        params: params.toString()
+      });
+
       setNotifications(data.notifications || []);
       setTotalPages(Math.ceil((data.total || 0) / itemsPerPage));
+
+      // Update normal stats from API response
+      setNormalStats({
+        total: data.total || 0,
+        unread: data.unreadCount || 0
+      });
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -183,10 +202,63 @@ const NotificationTab: React.FC = () => {
     }
   };
 
+  // Fetch deleted notifications - simple approach like ManageProductsClient
+  const fetchDeletedNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications/admin?onlyDeleted=true');
+      if (response.ok) {
+        const data = await response.json();
+
+        console.log('🗑️ Deleted notifications API response:', {
+          total: data.total,
+          unreadCount: data.unreadCount,
+          notificationsLength: data.notifications?.length
+        });
+
+        setDeletedNotifications(data.notifications || []);
+
+        // Update deleted stats for deleted notifications
+        setDeletedStats({
+          total: data.total || 0,
+          unread: data.unreadCount || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching deleted notifications:', error);
+    }
+  };
+
+  // Toggle between normal and deleted notifications
+  const handleToggleDeleted = async () => {
+    if (!showDeleted) {
+      await fetchDeletedNotifications();
+    }
+    setShowDeleted(!showDeleted);
+  };
+
+  // Restore deleted notification
+  const handleRestoreNotification = async (notificationId: string) => {
+    try {
+      await fetch(`/api/notifications/${notificationId}/restore`, {
+        method: 'PUT'
+      });
+
+      // Refresh both lists
+      await fetchDeletedNotifications();
+      await fetchNotifications();
+    } catch (error) {
+      console.error('Error restoring notification:', error);
+    }
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await fetchNotifications();
+      if (showDeleted) {
+        await fetchDeletedNotifications();
+      } else {
+        await fetchNotifications();
+      }
     } catch (error) {
       console.error('Error refreshing notifications:', error);
     } finally {
@@ -222,6 +294,10 @@ const NotificationTab: React.FC = () => {
         method: 'DELETE'
       });
       fetchNotifications();
+      // Also refresh deleted list if we're viewing it
+      if (showDeleted) {
+        await fetchDeletedNotifications();
+      }
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
@@ -328,14 +404,26 @@ const NotificationTab: React.FC = () => {
   };
 
   const getNotificationStats = () => {
+    // Use appropriate stats based on current view
+    const currentData = showDeleted ? deletedNotifications : notifications;
+    const currentStats = showDeleted ? deletedStats : normalStats;
+
     const stats = {
-      total: notifications.length,
-      unread: notifications.filter(n => !n.isRead).length,
+      total: currentStats.total, // Real total from API for current view
+      unread: currentStats.unread, // Real unread count from API for current view
       byType: {} as Record<string, number>
     };
 
-    notifications.forEach(notification => {
+    // Calculate byType from current visible data (this is OK for display)
+    currentData.forEach(notification => {
       stats.byType[notification.type] = (stats.byType[notification.type] || 0) + 1;
+    });
+
+    console.log('📊 Stats calculation:', {
+      showDeleted,
+      currentStats,
+      finalStats: stats,
+      currentDataLength: currentData.length
     });
 
     return stats;
@@ -357,16 +445,18 @@ const NotificationTab: React.FC = () => {
                 </div>
                 <div>
                   <Typography variant='h5' sx={{ fontWeight: 700, color: 'white', mb: 0.5 }}>
-                    Quản lý Thông báo
+                    {showDeleted ? 'Thông báo đã xóa' : 'Quản lý Thông báo'}
                   </Typography>
                   <Typography variant='body2' sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                    Theo dõi và quản lý tất cả thông báo hệ thống
+                    {showDeleted
+                      ? 'Xem và khôi phục thông báo đã xóa'
+                      : 'Theo dõi và quản lý tất cả thông báo hệ thống'}
                   </Typography>
                 </div>
               </div>
               <div className='text-right'>
                 <div className='text-2xl font-bold'>{stats.total}</div>
-                <div className='text-xs opacity-90'>Tổng thông báo</div>
+                <div className='text-xs opacity-90'>{showDeleted ? 'Đã xóa' : 'Tổng thông báo'}</div>
               </div>
             </div>
           </div>
@@ -410,9 +500,11 @@ const NotificationTab: React.FC = () => {
                           {stats.total}
                         </Typography>
                         <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                          Tổng thông báo
+                          {showDeleted ? 'Đã xóa' : 'Tổng thông báo'}
                         </Typography>
-                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Tổng hệ thống</div>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>
+                          {showDeleted ? 'Đã xóa' : 'Tổng hệ thống'}
+                        </div>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -441,9 +533,11 @@ const NotificationTab: React.FC = () => {
                           {stats.unread}
                         </Typography>
                         <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                          Chưa đọc
+                          {showDeleted ? 'Chưa đọc (đã xóa)' : 'Chưa đọc'}
                         </Typography>
-                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Cần xử lý</div>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>
+                          {showDeleted ? 'Đã xóa' : 'Cần xử lý'}
+                        </div>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -472,9 +566,11 @@ const NotificationTab: React.FC = () => {
                           {stats.total - stats.unread}
                         </Typography>
                         <Typography variant='body2' sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                          Đã đọc
+                          {showDeleted ? 'Đã đọc (đã xóa)' : 'Đã đọc'}
                         </Typography>
-                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Đã xử lý</div>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>
+                          {showDeleted ? 'Đã xóa' : 'Đã xử lý'}
+                        </div>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -503,9 +599,11 @@ const NotificationTab: React.FC = () => {
                           {Object.keys(stats.byType).length}
                         </Typography>
                         <Typography variant='body2' sx={{ opacity: 0.8, fontSize: '0.75rem' }}>
-                          Loại thông báo
+                          {showDeleted ? 'Loại (đã xóa)' : 'Loại thông báo'}
                         </Typography>
-                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>Phân loại</div>
+                        <div className='mt-1 text-xs bg-white/20 rounded-full px-2 py-0.5'>
+                          {showDeleted ? 'Đã xóa' : 'Phân loại'}
+                        </div>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -662,6 +760,25 @@ const NotificationTab: React.FC = () => {
                   </Button>
 
                   <Button
+                    variant={showDeleted ? 'contained' : 'outlined'}
+                    startIcon={showDeleted ? <MdVisibility /> : <MdVisibilityOff />}
+                    onClick={handleToggleDeleted}
+                    size='small'
+                    fullWidth
+                    sx={{
+                      borderColor: '#f59e0b',
+                      color: showDeleted ? 'white' : '#f59e0b',
+                      backgroundColor: showDeleted ? '#f59e0b' : 'transparent',
+                      '&:hover': {
+                        borderColor: '#d97706',
+                        backgroundColor: showDeleted ? '#d97706' : '#fef3c7'
+                      }
+                    }}
+                  >
+                    {showDeleted ? 'Xem thông báo thường' : 'Xem thông báo đã xóa'}
+                  </Button>
+
+                  <Button
                     variant='outlined'
                     startIcon={<MdRefresh />}
                     onClick={handleDatabaseCleanup}
@@ -722,18 +839,18 @@ const NotificationTab: React.FC = () => {
                 <Box sx={{ p: 4, textAlign: 'center' }}>
                   <Typography>Đang tải...</Typography>
                 </Box>
-              ) : notifications.length === 0 ? (
+              ) : (showDeleted ? deletedNotifications : notifications).length === 0 ? (
                 <Box sx={{ p: 4, textAlign: 'center' }}>
                   <MdNotifications size={48} color={theme.palette.grey[400]} />
                   <Typography variant='h6' sx={{ mt: 2, color: 'text.secondary' }}>
-                    Không có thông báo nào
+                    {showDeleted ? 'Không có thông báo đã xóa nào' : 'Không có thông báo nào'}
                   </Typography>
                 </Box>
               ) : (
                 <>
                   {/* Notifications List */}
                   <List sx={{ p: 0 }}>
-                    {notifications
+                    {(showDeleted ? deletedNotifications : notifications)
                       .filter(notification => {
                         // Search filter
                         const matchesSearch =
@@ -747,8 +864,8 @@ const NotificationTab: React.FC = () => {
                         // Read status filter
                         const matchesRead =
                           filterRead === 'all' ||
-                          (filterRead === 'read' && notification.isRead) ||
-                          (filterRead === 'unread' && !notification.isRead);
+                          (filterRead === 'true' && notification.isRead) ||
+                          (filterRead === 'false' && !notification.isRead);
 
                         // View mode filter - NEW: Separate Events vs AI Recommendations
                         const matchesViewMode = (() => {
@@ -986,26 +1103,42 @@ const NotificationTab: React.FC = () => {
                                         </>
                                       )}
 
-                                      {!notification.isRead && (
-                                        <Tooltip title='Đánh dấu đã đọc'>
+                                      {showDeleted ? (
+                                        // Actions for deleted notifications
+                                        <Tooltip title='Khôi phục thông báo'>
                                           <IconButton
                                             size='small'
-                                            onClick={() => handleMarkAsRead(notification.id)}
-                                            sx={{ color: config.color }}
+                                            onClick={() => handleRestoreNotification(notification.id)}
+                                            sx={{ color: '#10b981' }}
                                           >
-                                            <MdMarkEmailRead size={16} />
+                                            <MdRestore size={16} />
                                           </IconButton>
                                         </Tooltip>
+                                      ) : (
+                                        // Actions for normal notifications
+                                        <>
+                                          {!notification.isRead && (
+                                            <Tooltip title='Đánh dấu đã đọc'>
+                                              <IconButton
+                                                size='small'
+                                                onClick={() => handleMarkAsRead(notification.id)}
+                                                sx={{ color: config.color }}
+                                              >
+                                                <MdMarkEmailRead size={16} />
+                                              </IconButton>
+                                            </Tooltip>
+                                          )}
+                                          <Tooltip title='Xóa thông báo'>
+                                            <IconButton
+                                              size='small'
+                                              onClick={() => handleDeleteNotification(notification.id)}
+                                              sx={{ color: 'error.main' }}
+                                            >
+                                              <MdDelete size={16} />
+                                            </IconButton>
+                                          </Tooltip>
+                                        </>
                                       )}
-                                      <Tooltip title='Xóa thông báo'>
-                                        <IconButton
-                                          size='small'
-                                          onClick={() => handleDeleteNotification(notification.id)}
-                                          sx={{ color: 'error.main' }}
-                                        >
-                                          <MdDelete size={16} />
-                                        </IconButton>
-                                      </Tooltip>
                                     </Box>
                                   </Box>
                                 }

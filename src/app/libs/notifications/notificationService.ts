@@ -67,7 +67,10 @@ export class NotificationService {
 
       const [notifications, total] = await Promise.all([
         prisma.notification.findMany({
-          where: { userId },
+          where: {
+            userId,
+            isDeleted: false // Only get non-deleted notifications
+          },
           include: {
             user: true,
             product: true,
@@ -78,7 +81,10 @@ export class NotificationService {
           take: limit
         }),
         prisma.notification.count({
-          where: { userId }
+          where: {
+            userId,
+            isDeleted: false // Only count non-deleted notifications
+          }
         })
       ]);
 
@@ -167,7 +173,8 @@ export class NotificationService {
       const count = await prisma.notification.count({
         where: {
           userId: userId,
-          isRead: false
+          isRead: false,
+          isDeleted: false // Only count non-deleted notifications
         }
       });
 
@@ -178,13 +185,32 @@ export class NotificationService {
     }
   }
 
-  // Xóa notification
-  static async deleteNotification(notificationId: string, userId: string) {
+  // Xóa notification (soft delete)
+  static async deleteNotification(notificationId: string, userId: string, deletedBy?: string) {
     try {
-      const notification = await prisma.notification.delete({
-        where: {
-          id: notificationId,
-          userId: userId
+      // Check if user is admin/staff to allow deleting any notification
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
+      if (!currentUser) {
+        throw new Error('User not found');
+      }
+
+      // Build where condition
+      const whereCondition: any = { id: notificationId };
+
+      // If not admin/staff, only allow deleting own notifications
+      if (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF') {
+        whereCondition.userId = userId;
+      }
+
+      const notification = await prisma.notification.update({
+        where: whereCondition,
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: deletedBy || userId
         }
       });
 
@@ -195,16 +221,85 @@ export class NotificationService {
     }
   }
 
-  // Xóa tất cả notifications của user
-  static async deleteAllUserNotifications(userId: string) {
+  // Xóa tất cả notifications của user (soft delete)
+  static async deleteAllUserNotifications(userId: string, deletedBy?: string) {
     try {
-      const result = await prisma.notification.deleteMany({
-        where: { userId: userId }
+      const result = await prisma.notification.updateMany({
+        where: {
+          userId: userId,
+          isDeleted: false // Only delete non-deleted notifications
+        },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: deletedBy || userId
+        }
       });
 
       return result;
     } catch (error) {
       console.error('Error deleting all user notifications:', error);
+      throw error;
+    }
+  }
+
+  // Khôi phục notification đã xóa
+  static async restoreNotification(notificationId: string, userId: string) {
+    try {
+      const notification = await prisma.notification.update({
+        where: {
+          id: notificationId,
+          userId: userId
+        },
+        data: {
+          isDeleted: false,
+          deletedAt: null,
+          deletedBy: null
+        }
+      });
+
+      return notification;
+    } catch (error) {
+      console.error('Error restoring notification:', error);
+      throw error;
+    }
+  }
+
+  // Lấy notifications đã xóa (cho admin)
+  static async getDeletedNotifications(userId: string, page: number = 1, limit: number = 20) {
+    try {
+      const skip = (page - 1) * limit;
+
+      const [notifications, total] = await Promise.all([
+        prisma.notification.findMany({
+          where: {
+            userId,
+            isDeleted: true // Only get deleted notifications
+          },
+          include: {
+            user: true,
+            product: true,
+            fromUser: true
+          },
+          orderBy: { createdAt: 'desc' }, // TODO: Change to deletedAt after Prisma regenerate
+          skip,
+          take: limit
+        }),
+        prisma.notification.count({
+          where: {
+            userId,
+            isDeleted: true // Only count deleted notifications
+          }
+        })
+      ]);
+
+      return {
+        notifications,
+        total,
+        hasMore: skip + notifications.length < total
+      };
+    } catch (error) {
+      console.error('Error getting deleted notifications:', error);
       throw error;
     }
   }
