@@ -1038,172 +1038,186 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                     />
                   </div>
 
-                  {/* AI Settings - Combined */}
-                  <div className='bg-gray-50 p-6 rounded-lg'>
-                    <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
-                      <MdAccessTime className='w-5 h-5 text-green-600' />
-                      Cấu hình AI Assistant
-                    </h3>
-                    <div className='space-y-6'>
-                      {/* Real-time Monitoring */}
-                      <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-2'>
-                          🔍 Real-time Monitoring - Kiểm tra mỗi (giây)
-                        </label>
-                        <input
-                          type='number'
-                          min='60'
-                          max='600'
-                          value={settings.aiMonitoringInterval}
-                          onChange={e =>
-                            setSettings(prev => ({
-                              ...prev,
-                              aiMonitoringInterval: parseInt(e.target.value) || 120
-                            }))
-                          }
-                          className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                        />
-                        <p className='text-xs text-gray-500 mt-1'>
-                          <strong>Tác dụng:</strong> Kiểm tra sự kiện business (hết hàng, đơn pending). Khuyến nghị: 120
-                          giây.
-                        </p>
-                      </div>
-
-                      {/* AI Recommendations */}
-                      <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-2'>
-                          🤖 AI Recommendations - Phân tích mỗi (phút)
-                        </label>
-                        <input
-                          type='number'
-                          min='5'
-                          max='120'
-                          value={settings.aiRecommendationInterval || 30}
-                          onChange={e =>
-                            setSettings(prev => ({
-                              ...prev,
-                              aiRecommendationInterval: parseInt(e.target.value) || 30
-                            }))
-                          }
-                          className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                        />
-                        <p className='text-xs text-gray-500 mt-1'>
-                          <strong>Tác dụng:</strong> Phân tích sâu và đưa ra đề xuất thông minh với action buttons.
-                          Khuyến nghị: 30 phút.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Debug Mode */}
-                  <div className='bg-gray-50 p-6 rounded-lg'>
-                    <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
-                      <MdSecurity className='w-5 h-5 text-purple-600' />
-                      Debug Mode
-                    </h3>
-                    <ToggleSwitch
-                      id='aiDebugMode'
-                      checked={settings.aiDebugMode}
-                      onChange={() => setSettings(prev => ({ ...prev, aiDebugMode: !prev.aiDebugMode }))}
-                      title='Debug Mode'
-                      description='Bật để xem logs chi tiết trong console (chỉ dùng khi debug)'
-                    />
-                  </div>
-
-                  {/* AI Assistant Features & Status */}
-                  <div className='bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200'>
-                    <h3 className='text-lg font-medium mb-6 flex items-center gap-2'>
-                      <MdCheckCircle className='w-5 h-5 text-green-600' />
-                      Tính năng & Trạng thái
-                    </h3>
-
-                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'>
-                      <div className='text-center'>
-                        <div className='text-2xl font-bold text-purple-600'>
-                          {settings.aiAssistantEnabled ? '🟢' : '🔴'}
+                  {/* AI Settings - Combined - Only show when AI Assistant is enabled */}
+                  {settings.aiAssistantEnabled && (
+                    <div className='bg-gray-50 p-6 rounded-lg'>
+                      <h3 className='text-lg font-medium mb-4 flex items-center gap-2'>
+                        <MdAccessTime className='w-5 h-5 text-green-600' />
+                        Cấu hình AI Assistant
+                      </h3>
+                      <div className='space-y-6'>
+                        {/* Real-time Monitoring */}
+                        <div>
+                          <label className='block text-sm font-medium text-gray-700 mb-2'>
+                            🔍 Real-time Monitoring - Kiểm tra mỗi (giây)
+                          </label>
+                          <input
+                            type='number'
+                            min='60'
+                            max='600'
+                            value={settings.aiMonitoringInterval}
+                            onChange={e =>
+                              setSettings(prev => ({
+                                ...prev,
+                                aiMonitoringInterval: parseInt(e.target.value) || 120
+                              }))
+                            }
+                            className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                          />
+                          <p className='text-xs text-gray-500 mt-1'>
+                            <strong>Tác dụng:</strong> Kiểm tra sự kiện business (hết hàng, đơn pending). Khuyến nghị:
+                            120 giây.
+                          </p>
                         </div>
-                        <div className='text-sm font-medium text-gray-700'>Trạng thái</div>
-                        <div className='text-xs text-gray-500'>
-                          {settings.aiAssistantEnabled ? 'Đang hoạt động' : 'Tạm dừng'}
-                        </div>
-                      </div>
 
-                      <div className='text-center'>
-                        <div className='text-2xl font-bold text-blue-600'>
-                          {Math.floor(settings.aiMonitoringInterval / 60)}m
-                        </div>
-                        <div className='text-sm font-medium text-gray-700'>Chu kỳ giám sát</div>
-                        <div className='text-xs text-gray-500'>{settings.aiMonitoringInterval} giây</div>
-                      </div>
-
-                      <div className='text-center'>
-                        <div className='text-2xl font-bold text-green-600'>1x</div>
-                        <div className='text-sm font-medium text-gray-700'>Nhắc nhở</div>
-                        <div className='text-xs text-gray-500'>Chỉ 1 lần/sự kiện</div>
-                      </div>
-                    </div>
-
-                    <div className='p-4 bg-white rounded-lg border border-purple-200 mb-4'>
-                      <div className='text-sm text-gray-700'>
-                        <strong>🤖 AI Assistant Features:</strong>
-                        <div className='mt-2 grid grid-cols-1 md:grid-cols-2 gap-2'>
-                          <ul className='space-y-1 text-xs text-gray-600'>
-                            <li>• 📦 Real-time inventory monitoring</li>
-                            <li>• 📈 Sales performance alerts</li>
-                            <li>• 👥 Customer behavior analysis</li>
-                            <li>• 💰 Payment failure detection</li>
-                          </ul>
-                          <ul className='space-y-1 text-xs text-gray-600'>
-                            <li>• 🏷️ Competitor price tracking</li>
-                            <li>• ⭐ Review sentiment monitoring</li>
-                            <li>• 🛒 Cart abandonment alerts</li>
-                            <li>• 🎯 Business intelligence insights</li>
-                          </ul>
+                        {/* AI Recommendations */}
+                        <div>
+                          <label className='block text-sm font-medium text-gray-700 mb-2'>
+                            🤖 AI Recommendations - Phân tích mỗi (phút)
+                          </label>
+                          <input
+                            type='number'
+                            min='5'
+                            max='120'
+                            value={settings.aiRecommendationInterval || 30}
+                            onChange={e =>
+                              setSettings(prev => ({
+                                ...prev,
+                                aiRecommendationInterval: parseInt(e.target.value) || 30
+                              }))
+                            }
+                            className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                          />
+                          <p className='text-xs text-gray-500 mt-1'>
+                            <strong>Tác dụng:</strong> Phân tích sâu và đưa ra đề xuất thông minh với action buttons.
+                            Khuyến nghị: 30 phút.
+                          </p>
                         </div>
                       </div>
                     </div>
+                  )}
 
-                    {/* Event Types */}
-                    <div className='p-4 bg-white rounded-lg border border-blue-200'>
-                      <div className='text-sm text-gray-700 mb-2'>
-                        <strong>📋 Supported Business Events:</strong>
+                  {/* AI Assistant Features & Status - Only show when AI Assistant is enabled */}
+                  {settings.aiAssistantEnabled && (
+                    <div className='bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200'>
+                      <h3 className='text-lg font-medium mb-6 flex items-center gap-2'>
+                        <MdCheckCircle className='w-5 h-5 text-green-600' />
+                        Tính năng & Trạng thái
+                      </h3>
+
+                      <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'>
+                        <div className='text-center'>
+                          <div className='text-2xl font-bold text-purple-600'>
+                            {settings.aiAssistantEnabled ? '🟢' : '🔴'}
+                          </div>
+                          <div className='text-sm font-medium text-gray-700'>Trạng thái</div>
+                          <div className='text-xs text-gray-500'>
+                            {settings.aiAssistantEnabled ? 'Đang hoạt động' : 'Tạm dừng'}
+                          </div>
+                        </div>
+
+                        <div className='text-center'>
+                          <div className='text-2xl font-bold text-blue-600'>
+                            {Math.floor(settings.aiMonitoringInterval / 60)}m
+                          </div>
+                          <div className='text-sm font-medium text-gray-700'>Chu kỳ giám sát</div>
+                          <div className='text-xs text-gray-500'>{settings.aiMonitoringInterval} giây</div>
+                        </div>
+
+                        <div className='text-center'>
+                          <div className='text-2xl font-bold text-green-600'>1x</div>
+                          <div className='text-sm font-medium text-gray-700'>Nhắc nhở</div>
+                          <div className='text-xs text-gray-500'>Chỉ 1 lần/sự kiện</div>
+                        </div>
                       </div>
-                      <div className='grid grid-cols-2 md:grid-cols-4 gap-2 text-xs'>
-                        <div className='flex items-center gap-1'>
-                          <div className='w-2 h-2 bg-red-500 rounded-full'></div>
-                          <span>INVENTORY_LOW</span>
+
+                      <div className='p-4 bg-white rounded-lg border border-purple-200 mb-4'>
+                        <div className='text-sm text-gray-700'>
+                          <strong>🚨 Giám sát thời gian thực (ReactiveMonitor):</strong>
+                          <div className='mt-2 grid grid-cols-1 md:grid-cols-2 gap-2'>
+                            <ul className='space-y-1 text-xs text-gray-600'>
+                              <li>• � Phát hiện thanh toán thất bại (≥10%)</li>
+                              <li>• � Thông báo đơn hàng mới ngay lập tức</li>
+                            </ul>
+                            <ul className='space-y-1 text-xs text-gray-600'>
+                              <li>• 💬 Thông báo bình luận/đánh giá mới</li>
+                              <li>• � Giám sát lỗi hệ thống (TODO)</li>
+                            </ul>
+                          </div>
                         </div>
-                        <div className='flex items-center gap-1'>
-                          <div className='w-2 h-2 bg-orange-500 rounded-full'></div>
-                          <span>SALES_DROP</span>
+                      </div>
+
+                      <div className='p-4 bg-white rounded-lg border border-green-200 mb-4'>
+                        <div className='text-sm text-gray-700'>
+                          <strong>🤖 Phân tích chiến lược (ProactiveAnalyzer):</strong>
+                          <div className='mt-2 grid grid-cols-1 md:grid-cols-2 gap-2'>
+                            <ul className='space-y-1 text-xs text-gray-600'>
+                              <li>• 📦 Phân tích tồn kho nguy hiểm (≤5 cái)</li>
+                              <li>• ⏰ Phân tích đơn hàng quá hạn (&gt;7 ngày)</li>
+                              <li>• 💡 Tối ưu sản phẩm bán kém</li>
+                            </ul>
+                            <ul className='space-y-1 text-xs text-gray-600'>
+                              <li>• 💎 Giữ chân khách hàng VIP</li>
+                              <li>• � Kế hoạch nhập hàng thông minh</li>
+                              <li>• 💰 Chiến lược giá (TODO)</li>
+                            </ul>
+                          </div>
                         </div>
-                        <div className='flex items-center gap-1'>
-                          <div className='w-2 h-2 bg-green-500 rounded-full'></div>
-                          <span>SALES_SPIKE</span>
+                      </div>
+
+                      {/* Event Types */}
+                      <div className='p-4 bg-white rounded-lg border border-blue-200'>
+                        <div className='text-sm text-gray-700 mb-2'>
+                          <strong>📋 Các loại sự kiện được hỗ trợ:</strong>
                         </div>
-                        <div className='flex items-center gap-1'>
-                          <div className='w-2 h-2 bg-purple-500 rounded-full'></div>
-                          <span>PAYMENT_FAILURE</span>
-                        </div>
-                        <div className='flex items-center gap-1'>
-                          <div className='w-2 h-2 bg-yellow-500 rounded-full'></div>
-                          <span>NEGATIVE_REVIEWS</span>
-                        </div>
-                        <div className='flex items-center gap-1'>
-                          <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-                          <span>HIGH_VALUE_CUSTOMER</span>
-                        </div>
-                        <div className='flex items-center gap-1'>
-                          <div className='w-2 h-2 bg-pink-500 rounded-full'></div>
-                          <span>CART_ABANDONMENT</span>
-                        </div>
-                        <div className='flex items-center gap-1'>
-                          <div className='w-2 h-2 bg-indigo-500 rounded-full'></div>
-                          <span>COMPETITOR_PRICE</span>
+                        <div className='grid grid-cols-2 md:grid-cols-3 gap-2 text-xs'>
+                          {/* ReactiveMonitor Events */}
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-red-500 rounded-full'></div>
+                            <span>PAYMENT_FAILURE_SPIKE</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-green-500 rounded-full'></div>
+                            <span>NEW_ORDER_RECEIVED</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
+                            <span>NEW_PRODUCT_REVIEW</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-purple-500 rounded-full'></div>
+                            <span>NEW_ARTICLE_REVIEW</span>
+                          </div>
+
+                          {/* ProactiveAnalyzer Events */}
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-orange-500 rounded-full'></div>
+                            <span>CRITICAL_INVENTORY_ANALYSIS</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-yellow-500 rounded-full'></div>
+                            <span>URGENT_ORDER_ANALYSIS</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-pink-500 rounded-full'></div>
+                            <span>PRODUCT_OPTIMIZATION</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-indigo-500 rounded-full'></div>
+                            <span>CUSTOMER_RETENTION</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-teal-500 rounded-full'></div>
+                            <span>INVENTORY_PLANNING</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <div className='w-2 h-2 bg-gray-400 rounded-full'></div>
+                            <span>PRICING_STRATEGY (TODO)</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}

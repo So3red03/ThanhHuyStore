@@ -9,13 +9,16 @@ import { NotificationService } from '@/app/libs/notifications/notificationServic
 export class ReactiveMonitor {
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isMonitoring = false;
-  private readonly interval = 30 * 1000; // 30 seconds for emergencies
+  private interval = 30 * 1000; // Default 30 seconds, will be updated from settings
 
   async startEmergencyMonitoring() {
     if (this.isMonitoring) {
       console.log('🚨 ReactiveMonitor: Already monitoring - ignoring duplicate start');
       return;
     }
+
+    // Get interval from settings
+    await this.updateIntervalFromSettings();
 
     console.log('🚨 ReactiveMonitor: Starting emergency monitoring...');
     console.log(`⏰ ReactiveMonitor: Checking every ${this.interval / 1000} seconds`);
@@ -316,6 +319,23 @@ export class ReactiveMonitor {
     // - Error rate increases
     // - Memory/CPU usage spikes
     console.log('🔧 ReactiveMonitor: System error monitoring - TODO');
+  }
+
+  // Helper: Update monitoring interval from settings
+  private async updateIntervalFromSettings() {
+    try {
+      const settings = await prisma.adminSettings.findFirst();
+      if (settings?.aiMonitoringInterval) {
+        // aiMonitoringInterval is in seconds, convert to milliseconds
+        this.interval = settings.aiMonitoringInterval * 1000;
+        console.log(`⚙️ ReactiveMonitor: Updated interval to ${settings.aiMonitoringInterval} seconds from settings`);
+      } else {
+        console.log(`⚙️ ReactiveMonitor: Using default interval ${this.interval / 1000} seconds`);
+      }
+    } catch (error) {
+      console.error('Error getting monitoring interval from settings:', error);
+      console.log(`⚙️ ReactiveMonitor: Using default interval ${this.interval / 1000} seconds`);
+    }
   }
 
   // Helper: Check if we should send emergency alert (anti-spam)

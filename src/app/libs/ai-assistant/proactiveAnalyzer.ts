@@ -9,13 +9,16 @@ import { NotificationService } from '@/app/libs/notifications/notificationServic
 export class ProactiveAnalyzer {
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isAnalyzing = false;
-  private readonly interval = 2 * 60 * 1000; // 2 minutes for testing
+  private interval = 2 * 60 * 1000; // Default 2 minutes, will be updated from settings
 
   async startStrategicAnalysis() {
     if (this.isAnalyzing) {
       console.log('🤖 ProactiveAnalyzer: Already analyzing - ignoring duplicate start');
       return;
     }
+
+    // Get interval from settings
+    await this.updateIntervalFromSettings();
 
     console.log('🤖 ProactiveAnalyzer: Starting strategic analysis...');
     console.log(`⏰ ProactiveAnalyzer: Analyzing every ${this.interval / (60 * 1000)} minutes`);
@@ -698,6 +701,25 @@ export class ProactiveAnalyzer {
       console.log(`📤 ProactiveAnalyzer: Sent strategic recommendation to ${adminUsers.length} admins`);
     } catch (error) {
       console.error('Error sending strategic recommendation:', error);
+    }
+  }
+
+  // Helper: Update analysis interval from settings
+  private async updateIntervalFromSettings() {
+    try {
+      const settings = await prisma.adminSettings.findFirst();
+      if (settings?.aiRecommendationInterval) {
+        // aiRecommendationInterval is in minutes, convert to milliseconds
+        this.interval = settings.aiRecommendationInterval * 60 * 1000;
+        console.log(
+          `⚙️ ProactiveAnalyzer: Updated interval to ${settings.aiRecommendationInterval} minutes from settings`
+        );
+      } else {
+        console.log(`⚙️ ProactiveAnalyzer: Using default interval ${this.interval / (60 * 1000)} minutes`);
+      }
+    } catch (error) {
+      console.error('Error getting recommendation interval from settings:', error);
+      console.log(`⚙️ ProactiveAnalyzer: Using default interval ${this.interval / (60 * 1000)} minutes`);
     }
   }
 }
