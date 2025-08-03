@@ -421,6 +421,8 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
                         notification.data.eventType === 'INVENTORY_CRITICAL' ? 'RESTOCK' : 'VIEW_PRODUCT'
                       }
                       confidence={notification.data.confidence || 50}
+                      notificationId={notification.id}
+                      eventType={notification.data.eventType}
                       onActionTaken={(action, value) => {
                         console.log(`AI Action taken: ${action}`, value);
                         // Track action in analytics if needed

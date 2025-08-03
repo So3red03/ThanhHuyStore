@@ -1,92 +1,117 @@
-1. KHỞI ĐỘNG HỆ THỐNG
-   📁 autoStart.ts - Điểm bắt đầu
-   Vai trò: Auto-start AI Assistant khi server khởi động
-   Xử lý:
-   Kiểm tra adminSettings.aiAssistantEnabled trong DB
-   Nếu enabled → gọi eventMonitor.startMonitoring()
-   Delay 5 giây để đảm bảo DB ready
-   Chỉ cho phép 1 lần start để tránh duplicate
-2. GIÁM SÁT SỰ KIỆN
-   📁 eventMonitor.ts - Trung tâm điều khiển
-   Vai trò: Monitor các business events theo interval
-   Xử lý:
-   Fixed interval: 2 phút/lần check
-   Các loại events được monitor:
-   checkInventoryEvents() - Kiểm tra tồn kho
-   checkSalesEvents() - Kiểm tra doanh số
-   checkSeasonalMarketingOpportunities() - Cơ hội marketing theo mùa
-   checkPendingOrdersAlert() - Đơn hàng pending
-   checkBirthdayCampaignOpportunities() - Chiến dịch sinh nhật
-   🎯 runAIRecommendations() - Chạy AI recommendations
-   🔄 Luồng xử lý event:
-   Thu thập data từ DB (products, orders, customers...)
-   Áp dụng business rules từ eventTriggers.ts
-   Tạo/cập nhật AI Memory qua memoryService.ts
-   Gửi notification nếu cần thiết
-3. BUSINESS RULES ENGINE
-   📁 eventTriggers.ts - Định nghĩa rules
-   Vai trò: Định nghĩa các điều kiện trigger events
-   Các loại triggers:
-   Inventory: INVENTORY_LOW, INVENTORY_CRITICAL
-   Sales: SALES_SPIKE, SALES_DROP
-   Customer: CART_ABANDONMENT_SPIKE, HIGH_VALUE_CUSTOMER
-   Payment: PAYMENT_FAILURE_SPIKE
-   Review: NEGATIVE_REVIEW_SPIKE
-   🎯 Ví dụ trigger:
-4. AI RECOMMENDATION ENGINE
-   📁 aiRecommendationService.ts - AI Brain
-   Vai trò: Phân tích data và tạo intelligent recommendations
-   Các loại phân tích:
-   🔍 Product Performance Analysis:
-   Phân tích 30 ngày gần nhất
-   Tính conversion rate, view count, sales count
-   Đề xuất khuyến mãi cho sản phẩm hiệu suất thấp
-   ⏰ Pending Orders Analysis:
-   Tìm đơn hàng pending > 3 ngày
-   Tính urgency dựa trên số ngày pending
-   Đề xuất action: PROCESS_ORDER
-   💎 Customer Retention Analysis:
-   Tìm VIP customers không mua hàng > 30 ngày
-   Đề xuất retention campaigns
-   📦 Inventory Critical Analysis:
-   Sản phẩm có stock < 10
-   Đề xuất restock ngay lập tức
-   🚀 Main Function: runAIRecommendations()
-   Analyze tất cả data sources
-   Generate recommendations với confidence score
-   Sort theo urgency và confidence
-   Send top 8 recommendations cho admin
-   Anti-spam: Không gửi duplicate trong 24h
-5. MEMORY MANAGEMENT
-   📁 memoryService.ts - AI Memory
-   Vai trò: Lưu trữ và quản lý AI memories
-   Xử lý:
-   Tạo unique alertId cho mỗi event
-   Track reminderCount để tránh spam
-   Lưu contextData cho analysis
-   Quản lý lifecycle: ACTIVE → RESOLVED/DISMISSED
-6. LUỒNG HOÀN CHỈNH
-   graph TD
-   A[autoStart.ts] --> B[eventMonitor.ts]
-   B --> C[checkBusinessEvents - 2 phút/lần]
-   C --> D[runAIRecommendations]
-   D --> E[aiRecommendationService.ts]
-   E --> F[Analyze Products/Orders/Customers]
-   F --> G[Generate AI Recommendations]
-   G --> H[Sort by Urgency + Confidence]
-   H --> I[Send Top 8 to Admin]
-   I --> J[Create Notifications]
+# 🤖 AI Assistant System
 
-   C --> K[checkInventoryEvents]
-   K --> L[eventTriggers.ts - Apply Rules]
-   L --> M[memoryService.ts - Create Memory]
-   M --> N[Send Business Event Notification]
+## 🎯 Overview
 
-7. CẤU HÌNH VÀ SETTINGS
-   ⚙️ Interval Settings:
-   Business Events: 2 phút (fixed)
-   AI Recommendations: Configurable qua adminSettings.aiRecommendationInterval (default: 2 phút)
-   🎛️ Control Settings:
-   aiAssistantEnabled: Bật/tắt toàn bộ system
-   aiRecommendationInterval: Tần suất chạy AI recommendations
-   Anti-spam: 24h cooldown cho duplicate notifications
+Intelligent business monitoring system with emergency alerts and strategic recommendations.
+
+## 🏗️ Architecture
+
+### Core Components
+
+- **autoStart.ts**: Entry point, auto-starts monitoring
+- **reactiveMonitor.ts**: Emergency alerts (30s interval)
+- **proactiveAnalyzer.ts**: Strategic analysis (2min interval)
+- **memoryService.ts**: Anti-spam & escalation logic
+- **types.ts**: Type definitions
+
+### Flow
+
+```
+Server Start → autoStart.ts → [reactiveMonitor + proactiveAnalyzer] → memoryService → NotificationService → UI
+```
+
+## 🚨 ReactiveMonitor - Emergency Response (30s)
+
+| Method                  | Function            | Trigger             | Cooldown | Output                     |
+| ----------------------- | ------------------- | ------------------- | -------- | -------------------------- |
+| `checkFailedPayments()` | Thanh toán thất bại | ≥10% failure rate   | **NONE** | 🚨 "X% đơn hàng thất bại"  |
+| `checkNewOrders()`      | **Đơn hàng mới**    | Created in last 30s | **NONE** | 🛒 "Đơn hàng mới #ABC123"  |
+| `checkNewComments()`    | **Comment mới**     | Created in last 30s | **NONE** | 💬 "Đánh giá sản phẩm mới" |
+| `checkSystemErrors()`   | Lỗi hệ thống        | TODO                | **NONE** | 🔧 Placeholder             |
+
+**🎯 Total: 4 real-time checks (NO anti-spam cooldown)**
+
+## 🤖 ProactiveAnalyzer - Strategic Analysis (2min)
+
+| Method                         | Function             | Trigger                      | Cooldown | Output                           |
+| ------------------------------ | -------------------- | ---------------------------- | -------- | -------------------------------- |
+| `analyzeCriticalInventory()`   | **Sản phẩm sắp hết** | stock ≤ 5                    | **2min** | 📦 "Phân tích tồn kho nguy hiểm" |
+| `analyzeUrgentOrders()`        | **Đơn hàng quá hạn** | >7 days pending              | **2min** | ⏰ "Phân tích đơn hàng quá hạn"  |
+| `analyzeProductOptimization()` | Sản phẩm bán kém     | 2-5 orders/30d               | **2min** | 💡 "Giảm giá 10-15%"             |
+| `analyzeCustomerRetention()`   | VIP không mua lại    | VIP inactive 30+ days        | **2min** | 💎 "Gửi email khuyến mãi"        |
+| `analyzeInventoryPlanning()`   | **Tồn kho thấp**     | stock ≤ 10 OR run out 10-20d | **2min** | ⚠️ "Nhập hàng ngay/sớm"          |
+| `analyzePricingStrategy()`     | Chiến lược giá       | TODO                         | **2min** | 💰 Placeholder                   |
+
+**🎯 Total: 6 strategic analyses (ALL with 2min cooldown + memory check)**
+
+## 🧠 Memory Management
+
+### Current Implementation
+
+**ReactiveMonitor & ProactiveAnalyzer** use **simplified memory logic**:
+
+✅ **What's working:**
+
+- Anti-spam protection via direct `prisma.aIMemory` queries
+- Cooldown-based alert throttling
+- Admin action respect (RESOLVED/DISMISSED status)
+- Enhanced context storage (productId, productName, businessImpact)
+
+❌ **What's NOT used:**
+
+- AIMemoryService class (performance reasons)
+- Escalation rules (WARNING → URGENT → CRITICAL)
+- Admin action tracking
+- Business impact analysis
+
+### Memory Flow
+
+```
+shouldSendEmergencyAlert(key, cooldown) → Check AIMemory DB → Cooldown OK? → Send Alert → markEmergencyAlertSent(key, context)
+```
+
+## 🎯 Key Features
+
+### Anti-spam Protection
+
+- **Emergency alerts**: 30s-24h cooldowns per alert type
+- **Strategic recommendations**: 2min-2h cooldowns per analysis
+- **Admin respect**: Won't resend RESOLVED/DISMISSED alerts
+
+### Context Preservation
+
+- Product details (ID, name, stock levels)
+- Order information (ID, customer, value)
+- Business metrics (failure rates, sales data)
+- Timestamps and alert history
+
+### UI Integration
+
+- **3 UI components** support AI_ASSISTANT notifications
+- Real-time delivery via NotificationService
+- Rich context data for admin actions
+
+## 🚀 Usage
+
+System auto-starts when server boots. No manual intervention needed.
+
+**Test scenarios:**
+
+1. Create order → ReactiveMonitor detects in 30s
+2. Add product/article review → ReactiveMonitor detects in 30s
+3. Set product stock ≤ 10 → ProactiveAnalyzer detects in 2min
+4. Set product stock ≤ 5 → Both monitors detect (emergency + strategic)
+
+ProativeAnalyzer Memory Flow:
+
+1. shouldRunAnalysis() → Check existing memory
+2. runSpecificAnalysis() → Generate recommendations
+3. sendStrategicRecommendation() → Send to UI (with productId in data)
+4. markRecommendationSent() → UPSERT memory (no duplicate)
+5. markAnalysisCompleted() → UPSERT analysis tracking (no duplicate)
+
+ReactiveMonitor Memory Flow:
+
+1. shouldSendEmergencyAlert() → Check existing memory
+2. sendEmergencyAlert() → Send to UI
+3. markEmergencyAlertSent() → UPSERT memory (no duplicate)

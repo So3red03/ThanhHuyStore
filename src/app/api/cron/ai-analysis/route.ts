@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { AIRecommendationService } from '@/app/libs/ai/aiRecommendationService';
+// DEPRECATED: AIRecommendationService replaced by ProactiveAnalyzer
+// import { AIRecommendationService } from '@/app/libs/ai/aiRecommendationService';
 
 /**
  * Cron job API endpoint để chạy AI recommendations định kỳ
@@ -26,15 +27,21 @@ export async function GET(request: Request) {
     console.log('🕐 Starting scheduled AI recommendations...');
     const startTime = Date.now();
 
-    // Chạy AI recommendations
-    const result = await AIRecommendationService.runAIRecommendations();
+    // DEPRECATED: AI recommendations now handled by ProactiveAnalyzer automatically
+    // const result = await AIRecommendationService.runAIRecommendations();
+    const result = {
+      analyzed: 0,
+      recommendations: 0,
+      notifications: 0,
+      message: 'DEPRECATED: Now handled by ProactiveAnalyzer automatically'
+    };
 
     const duration = Date.now() - startTime;
     console.log(`✅ Scheduled AI recommendations completed in ${duration}ms:`, result);
 
     return NextResponse.json({
       success: true,
-      message: `Scheduled AI recommendations completed successfully. Sent ${result.notifications} notifications, skipped ${result.skipped} duplicates.`,
+      message: `DEPRECATED: AI recommendations now handled by ProactiveAnalyzer automatically. ${result.message}`,
       data: {
         ...result,
         duration: `${duration}ms`,
@@ -71,14 +78,20 @@ export async function POST(request: Request) {
 
     console.log('🧪 Manual AI recommendations test triggered');
 
-    // Chạy AI recommendations
-    const result = await AIRecommendationService.runAIRecommendations();
+    // DEPRECATED: AI recommendations now handled by ProactiveAnalyzer automatically
+    // const result = await AIRecommendationService.runAIRecommendations();
+    const result = {
+      analyzed: 0,
+      recommendations: 0,
+      notifications: 0,
+      message: 'DEPRECATED: Now handled by ProactiveAnalyzer automatically'
+    };
 
     console.log('✅ Manual AI recommendations test completed:', result);
 
     return NextResponse.json({
       success: true,
-      message: `Manual AI recommendations test completed successfully. Sent ${result.notifications} notifications, skipped ${result.skipped} duplicates.`,
+      message: `DEPRECATED: AI recommendations now handled by ProactiveAnalyzer automatically. ${result.message}`,
       data: {
         ...result,
         timestamp: new Date().toISOString(),

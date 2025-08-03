@@ -1063,6 +1063,8 @@ const NotificationTab: React.FC = () => {
                                                   : 'VIEW_PRODUCT'
                                               }
                                               confidence={85} // Default confidence for AI assistant
+                                              notificationId={notification.id}
+                                              eventType={notification.data.eventType}
                                               onActionTaken={(action, value) => {
                                                 console.log(`AI Action taken from NotificationTab: ${action}`, value);
                                                 // Mark notification as read after action

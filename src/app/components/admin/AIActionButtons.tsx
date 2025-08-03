@@ -17,6 +17,8 @@ interface AIActionButtonsProps {
   suggestionType: 'PROMOTION_SUGGESTION' | 'PRIORITY_BOOST' | 'STOCK_ALERT' | 'MARKETING_PUSH';
   suggestedAction: any;
   confidence: number;
+  notificationId?: string; // NEW: For marking as resolved
+  eventType?: string; // NEW: For memory key generation
   onActionTaken?: (action: string, value: any) => void;
 }
 
@@ -26,6 +28,8 @@ export default function AIActionButtons({
   suggestionType,
   suggestedAction,
   confidence,
+  notificationId,
+  eventType,
   onActionTaken
 }: AIActionButtonsProps) {
   const router = useRouter();
@@ -33,37 +37,44 @@ export default function AIActionButtons({
   // Generate action buttons based on suggestion type - SIMPLIFIED
   const getActionButtons = (): ActionButton[] => {
     // Đơn giản hóa: chỉ có 2 actions chính
-    return [
+    const buttons: ActionButton[] = [
       {
-        label: 'Xem chi tiết',
+        label: productId ? 'Xem chi tiết' : 'Quản lý đơn hàng',
         action: 'view_details',
         value: productId,
         variant: 'primary'
       },
       {
-        label: 'Email marketing',
-        action: 'email_marketing',
-        value: productId,
-        variant: 'secondary'
+        label: 'Đã xử lý',
+        action: 'mark_resolved',
+        value: { notificationId, eventType, productId },
+        variant: 'success'
       }
     ];
+
+    return buttons;
   };
 
   // Handle action button clicks - SIMPLIFIED
   const handleAction = async (button: ActionButton) => {
     try {
       switch (button.action) {
-        case 'email_marketing':
-          // Redirect to email marketing
-          router.push(`/admin/email-marketing`);
-          toast.success('Mở email marketing');
+        case 'mark_resolved':
+          // Mark AI recommendation as resolved
+          await markAsResolved(button.value);
+          toast.success('Đã đánh dấu là đã xử lý');
           break;
 
         case 'view_details':
         default:
           // Redirect to product details
-          router.push(`/admin/manage-products?view=${productId}`);
-          toast.success('Xem chi tiết sản phẩm');
+          if (productId) {
+            router.push(`/admin/manage-products?view=${productId}`);
+            toast.success('Xem chi tiết sản phẩm');
+          } else {
+            router.push('/admin/manage-orders');
+            toast.success('Mở trang quản lý đơn hàng');
+          }
           break;
       }
 
@@ -77,6 +88,33 @@ export default function AIActionButtons({
     } catch (error) {
       console.error('Error handling AI action:', error);
       toast.error('Có lỗi xảy ra khi thực hiện hành động');
+    }
+  };
+
+  // Mark AI recommendation as resolved
+  const markAsResolved = async (data: any) => {
+    try {
+      const response = await fetch('/api/ai-assistant/resolve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          notificationId: data.notificationId,
+          eventType: data.eventType,
+          productId: data.productId,
+          resolvedAt: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark as resolved');
+      }
+
+      console.log('AI recommendation marked as resolved:', data);
+    } catch (error) {
+      console.error('Error marking as resolved:', error);
+      throw error;
     }
   };
 

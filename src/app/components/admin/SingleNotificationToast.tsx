@@ -285,6 +285,8 @@ const SingleNotificationToast: React.FC<SingleNotificationToastProps> = ({ notif
                   suggestionType={notification.data.eventType as any}
                   suggestedAction={notification.data.eventType === 'INVENTORY_CRITICAL' ? 'RESTOCK' : 'VIEW_PRODUCT'}
                   confidence={85} // Default confidence for AI assistant
+                  notificationId={notification.id}
+                  eventType={notification.data.eventType}
                   onActionTaken={(action, value) => {
                     console.log(`AI Action taken from toast: ${action}`, value);
                     // Close toast after action

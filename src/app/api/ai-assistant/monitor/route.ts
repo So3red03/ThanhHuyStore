@@ -1,7 +1,8 @@
 // AI Assistant Monitor API - Control real-time business monitoring
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
-import { eventMonitor } from '@/app/libs/ai-assistant/eventMonitor';
+// DEPRECATED: eventMonitor removed - functionality merged into reactiveMonitor and proactiveAnalyzer
+// import { eventMonitor } from '@/app/libs/ai-assistant/eventMonitor';
 import { AIMemoryService } from '@/app/libs/ai-assistant/memoryService';
 import prisma from '@/app/libs/prismadb';
 
@@ -52,11 +53,12 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await eventMonitor.startMonitoring();
+    // DEPRECATED: eventMonitor removed - monitoring is auto-started by autoStart.ts
+    // await eventMonitor.startMonitoring();
 
     return NextResponse.json({
       success: true,
-      message: 'AI Assistant monitoring started',
+      message: 'DEPRECATED: AI Assistant monitoring is auto-started by autoStart.ts',
       timestamp: new Date()
     });
   } catch (error) {
@@ -73,11 +75,12 @@ export async function DELETE() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    eventMonitor.stopMonitoring();
+    // DEPRECATED: eventMonitor removed - monitoring cannot be stopped via API
+    // eventMonitor.stopMonitoring();
 
     return NextResponse.json({
       success: true,
-      message: 'AI Assistant monitoring stopped',
+      message: 'DEPRECATED: AI Assistant monitoring cannot be stopped via API (auto-managed)',
       timestamp: new Date()
     });
   } catch (error) {
