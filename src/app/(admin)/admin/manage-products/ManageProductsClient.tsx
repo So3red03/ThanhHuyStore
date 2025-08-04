@@ -88,6 +88,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
   const [currentProducts, setCurrentProducts] = useState(products);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showVariantsModal, setShowVariantsModal] = useState(false);
   // Removed showEmailModal state - now using router navigation
 
   // Enhanced search and filter states
@@ -529,16 +530,33 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     {
       field: 'productType',
       headerName: 'Loại SP',
-      width: 100,
+      width: 120,
       renderCell: params => {
         const isVariant = params.row.productType === 'VARIANT';
+        const variantCount = params.row.variants?.length || 0;
+
+        if (!isVariant) {
+          return (
+            <div className='flex justify-center items-center h-full'>
+              <Status text='Đơn giản' bg='bg-green-200' color='text-green-700' />
+            </div>
+          );
+        }
+
+        // Variant products - clickable button to show variants (same size as Status component)
         return (
           <div className='flex justify-center items-center h-full'>
-            <Status
-              text={isVariant ? 'Biến thể' : 'Đơn giản'}
-              bg={isVariant ? 'bg-purple-200' : 'bg-green-200'}
-              color={isVariant ? 'text-purple-700' : 'text-green-700'}
-            />
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setSelectedProduct(params.row);
+                setShowVariantsModal(true);
+              }}
+              className='bg-blue-100 hover:bg-blue-200 text-blue-800 flex items-center gap-x-1 py-1.5 px-2 rounded-full text-xs font-medium transition-colors duration-200 cursor-pointer border border-blue-200 hover:border-blue-300'
+              title='Click để xem chi tiết biến thể'
+            >
+              {variantCount} biến thể
+            </button>
           </div>
         );
       }
@@ -659,10 +677,16 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
     {
       field: 'productType',
       headerName: 'Loại',
-      width: 80,
+      width: 100,
       renderCell: params => {
         const isVariant = params.row.productType === 'VARIANT';
-        return <div className='text-center text-xs'>{isVariant ? 'Biến thể' : 'Đơn giản'}</div>;
+        const variantCount = params.row.variants?.length || 0;
+
+        if (!isVariant) {
+          return <div className='text-center text-xs font-medium text-gray-600'>Đơn giản</div>;
+        }
+
+        return <div className='text-center text-xs font-medium text-blue-600'>{variantCount} biến thể</div>;
       }
     },
     {
@@ -1220,6 +1244,126 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         parentCategories={parentCategories}
         subCategories={subCategories}
       />
+
+      {/* Product Variants Modal */}
+      {showVariantsModal && selectedProduct && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden'>
+            {/* Modal Header */}
+            <div className='flex items-center justify-between p-6 border-b border-gray-200'>
+              <div>
+                <h2 className='text-xl font-bold text-gray-900'>Biến thể sản phẩm</h2>
+                <p className='text-sm text-gray-600 mt-1'>{selectedProduct.name}</p>
+              </div>
+              <button
+                onClick={() => setShowVariantsModal(false)}
+                className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
+              >
+                <MdClose size={24} className='text-gray-500' />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className='p-6 overflow-y-auto max-h-[60vh]'>
+              {(selectedProduct as any).variants && (selectedProduct as any).variants.length > 0 ? (
+                <div className='overflow-x-auto'>
+                  <table className='w-full border-collapse'>
+                    <thead>
+                      <tr className='border-b border-gray-200'>
+                        <th className='text-left py-3 px-4 font-semibold text-gray-700'>#</th>
+                        <th className='text-left py-3 px-4 font-semibold text-gray-700'>Ảnh</th>
+                        <th className='text-left py-3 px-4 font-semibold text-gray-700'>SKU</th>
+                        <th className='text-left py-3 px-4 font-semibold text-gray-700'>Thuộc tính</th>
+                        <th className='text-left py-3 px-4 font-semibold text-gray-700'>Tồn kho</th>
+                        <th className='text-left py-3 px-4 font-semibold text-gray-700'>Giá bán</th>
+                        <th className='text-left py-3 px-4 font-semibold text-gray-700'>Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedProduct as any).variants.map((variant: any, index: number) => {
+                        // Parse attributes JSON to display
+                        let attributesDisplay = 'N/A';
+                        try {
+                          if (variant.attributes && typeof variant.attributes === 'object') {
+                            const attrs = Object.entries(variant.attributes)
+                              .map(([key, value]) => `${key}: ${value}`)
+                              .join(', ');
+                            attributesDisplay = attrs || 'N/A';
+                          }
+                        } catch (e) {
+                          attributesDisplay = 'N/A';
+                        }
+
+                        return (
+                          <tr key={variant.id || index} className='border-b border-gray-100 hover:bg-gray-50'>
+                            <td className='py-3 px-4 text-sm text-gray-600'>{index + 1}</td>
+                            <td className='py-3 px-4'>
+                              {variant.thumbnail || (variant.galleryImages && variant.galleryImages[0]) ? (
+                                <Image
+                                  src={variant.thumbnail || variant.galleryImages[0]}
+                                  alt='Variant'
+                                  width={40}
+                                  height={40}
+                                  className='rounded object-cover'
+                                  onError={e => {
+                                    e.currentTarget.src = '/noavatar.png';
+                                  }}
+                                />
+                              ) : (
+                                <div className='w-10 h-10 bg-gray-200 rounded flex items-center justify-center'>
+                                  <span className='text-xs text-gray-500'>Không có</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className='py-3 px-4 text-sm text-gray-700 font-mono'>{variant.sku || 'N/A'}</td>
+                            <td className='py-3 px-4 text-sm text-gray-700'>
+                              <div className='max-w-xs'>
+                                <span className='text-xs bg-gray-100 px-2 py-1 rounded'>{attributesDisplay}</span>
+                              </div>
+                            </td>
+                            <td className='py-3 px-4'>
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  (variant.stock || 0) > 10
+                                    ? 'bg-green-100 text-green-800'
+                                    : (variant.stock || 0) > 0
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {variant.stock || 0}
+                              </span>
+                            </td>
+                            <td className='py-3 px-4 text-sm font-semibold text-gray-900'>
+                              {formatPrice(variant.price || 0)}
+                            </td>
+                            <td className='py-3 px-4'>
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  variant.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {variant.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className='text-center py-8'>
+                  <div className='text-gray-400 mb-2'>
+                    <MdVisibility size={48} />
+                  </div>
+                  <p className='text-gray-600'>Không có biến thể nào</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
