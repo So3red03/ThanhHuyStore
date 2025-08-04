@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '../../../../libs/prismadb';
-import { SimpleShippingCalculator } from '../../../../../../utils/shipping/calculator';
+import { SimpleShippingCalculator } from '../../../../utils/shipping/calculator';
 
 interface ShippingCalculationRequest {
   customerAddress: {

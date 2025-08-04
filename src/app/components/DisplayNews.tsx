@@ -4,7 +4,7 @@ import { Navigation, Autoplay } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import Link from 'next/link';
-import { slugConvert } from '../../../utils/Slug';
+import { slugConvert } from '../utils/Slug';
 import { format } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 

@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import { CartProductType } from '../product/[productId]/ProductDetails';
-import { truncateText } from '../../../../utils/truncateText';
+import { truncateText } from '../../utils/truncateText';
 import SetQuantity from '../../components/products/SetQuantity';
 import { useCart } from '../../hooks/useCart';
 import { MdOutlineDeleteForever } from 'react-icons/md';
-import { slugConvert } from '../../../../utils/Slug';
+import { slugConvert } from '../../utils/Slug';
 
 interface ItemContentProps {
   item: CartProductType;

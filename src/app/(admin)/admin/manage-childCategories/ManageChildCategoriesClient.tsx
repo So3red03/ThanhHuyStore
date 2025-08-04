@@ -19,7 +19,7 @@ import AddProductChildCateModal from './AddProductChildCateModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Category } from '@prisma/client';
-import { generateSlug } from '../../../../../utils/Articles';
+import { generateSlug } from '../../../utils/Articles';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 
 interface ManageChildCategoriesClientProps {

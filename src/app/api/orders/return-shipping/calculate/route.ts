@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '../../../../libs/prismadb';
-import { SimpleReturnCalculator } from '../../../../../../utils/shipping/calculator';
+import { SimpleReturnCalculator } from '../../../../utils/shipping/calculator';
 
 interface ReturnShippingCalculationRequest {
   orderId: string;
@@ -20,10 +20,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!orderId || !reason || !items || items.length === 0) {
-      return NextResponse.json(
-        { error: 'Missing required fields: orderId, reason, and items' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields: orderId, reason, and items' }, { status: 400 });
     }
 
     // Get order details
@@ -49,18 +46,10 @@ export async function POST(request: NextRequest) {
     };
 
     // Calculate return shipping breakdown
-    const breakdown = SimpleReturnCalculator.getReturnShippingBreakdown(
-      returnRequest,
-      order,
-      settings
-    );
+    const breakdown = SimpleReturnCalculator.getReturnShippingBreakdown(returnRequest, order, settings);
 
     // Get detailed calculation
-    const calculation = SimpleReturnCalculator.calculate(
-      returnRequest,
-      order,
-      settings
-    );
+    const calculation = SimpleReturnCalculator.calculate(returnRequest, order, settings);
 
     return NextResponse.json({
       success: true,
@@ -79,9 +68,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Return shipping calculation error:', error);
     return NextResponse.json(
-      { 
-        error: 'Return shipping calculation failed', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+      {
+        error: 'Return shipping calculation failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
@@ -127,11 +116,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Calculate return shipping breakdown
-    const breakdown = SimpleReturnCalculator.getReturnShippingBreakdown(
-      mockReturnRequest,
-      order,
-      settings
-    );
+    const breakdown = SimpleReturnCalculator.getReturnShippingBreakdown(mockReturnRequest, order, settings);
 
     return NextResponse.json({
       success: true,
@@ -146,9 +131,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Return shipping test error:', error);
     return NextResponse.json(
-      { 
-        error: 'Test endpoint error', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+      {
+        error: 'Test endpoint error',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

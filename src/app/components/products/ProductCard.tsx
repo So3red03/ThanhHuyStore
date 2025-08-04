@@ -1,17 +1,17 @@
 'use client';
 
 import Image from 'next/image';
-import { truncateText } from '../../../../utils/truncateText';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { truncateText } from '../../utils/truncateText';
+import { formatPrice } from '../../utils/formatPrice';
 
 import ProductVariantSelector from './ProductVariantSelector';
 import FavoriteButton from './FavoriteButton';
 import { useCallback, useState } from 'react';
 import { CartProductType, selectedImgType } from '@/app/(home)/product/[productId]/ProductDetails';
 import Link from 'next/link';
-import { slugConvert } from '../../../../utils/Slug';
+import { slugConvert } from '../../utils/Slug';
 import { useAnalyticsTracker } from '@/app/hooks/useAnalytics';
-import { getDefaultImage } from '../../../../utils/product';
+import { getDefaultImage } from '../../utils/product';
 
 interface ProductCardProps {
   data: any;

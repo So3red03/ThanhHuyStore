@@ -2,8 +2,8 @@
 import { FaCalendarAlt } from 'react-icons/fa';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { slugConvert } from '../../../../../utils/Slug';
-import { truncateTextArticle } from '../../../../../utils/truncateText';
+import { slugConvert } from '../../../utils/Slug';
+import { truncateTextArticle } from '../../../utils/truncateText';
 import { Article } from '@prisma/client';
 import { useEffect, useState } from 'react';
 interface ArticleListProps {

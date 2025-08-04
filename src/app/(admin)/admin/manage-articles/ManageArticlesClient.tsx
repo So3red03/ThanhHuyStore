@@ -19,7 +19,7 @@ import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { deleteObject, getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/storage';
 import Link from 'next/link';
-import { slugConvert } from '../../../../../utils/Slug';
+import { slugConvert } from '../../../utils/Slug';
 
 type Article = {
   id: string;

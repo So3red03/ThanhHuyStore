@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { ReturnType, OrderStatus } from '@prisma/client';
-import { SimpleReturnCalculator } from '../../../../../utils/shipping/calculator';
+import { SimpleReturnCalculator } from '../../../utils/shipping/calculator';
 
 /**
  * ===== RETURN REQUEST CREATION API =====

@@ -6,7 +6,7 @@ import { MdLogout } from 'react-icons/md';
 import { signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { AccountItems } from '../../../../utils/AccountItems';
+import { AccountItems } from '../../utils/AccountItems';
 import { SafeUser } from '../../../../types';
 import ConfirmDialog from '../ConfirmDialog';
 

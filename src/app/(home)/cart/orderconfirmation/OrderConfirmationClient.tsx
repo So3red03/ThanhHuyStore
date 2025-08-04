@@ -1,7 +1,7 @@
 'use client';
 import { useCart } from '@/app/hooks/useCart';
 import React, { useEffect, useState } from 'react';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import Button from '@/app/components/Button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

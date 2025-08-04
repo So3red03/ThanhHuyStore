@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/storage';
 import firebase from '@/app/libs/firebase';
 import { useRouter } from 'next/navigation';
-import { generateSlug } from '../../../../../utils/Articles';
+import { generateSlug } from '../../../utils/Articles';
 import {
   Dialog,
   DialogTitle,

@@ -1,6 +1,6 @@
 import { CartProductType } from '@prisma/client';
-import { truncateText } from '../../../../utils/truncateText';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { truncateText } from '../../utils/truncateText';
+import { formatPrice } from '../../utils/formatPrice';
 import Image from 'next/image';
 
 interface OrderItemProps {

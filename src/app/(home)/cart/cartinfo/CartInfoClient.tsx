@@ -3,7 +3,7 @@ import Button from '@/app/components/Button';
 import { useCart } from '@/app/hooks/useCart';
 import { useHydration } from '@/app/hooks/useHydration';
 import { useRouter } from 'next/navigation';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import Input from '@/app/components/inputs/Input';
 import { FieldValues, useForm } from 'react-hook-form';
 import { useEffect, useState } from 'react';

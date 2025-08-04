@@ -1,7 +1,7 @@
 'use client';
 
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import ActionBtn from '@/app/components/ActionBtn';
 import { MdDelete, MdEdit, MdClose, MdCheck, MdAdd, MdRefresh, MdFilterList, MdSearch } from 'react-icons/md';

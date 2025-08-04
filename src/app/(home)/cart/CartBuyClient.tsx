@@ -5,7 +5,7 @@ import { useHydration } from '../../hooks/useHydration';
 import { MdArrowBack } from 'react-icons/md';
 import Button from '../../components/Button';
 import ItemContent from './ItemContent';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import { useRouter } from 'next/navigation';
 import { SafeUser } from '../../../../types';
 import toast from 'react-hot-toast';

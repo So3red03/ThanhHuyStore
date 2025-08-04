@@ -1,4 +1,4 @@
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 

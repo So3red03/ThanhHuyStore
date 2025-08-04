@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import { MdArrowForward, MdSwapHoriz } from 'react-icons/md';
 import {
   fetchProductInfo,
@@ -14,7 +14,7 @@ import {
   ProductInfo,
   VariantInfo
 } from '../../utils/productUtils';
-import { truncateText } from '../../../../utils/truncateText';
+import { truncateText } from '../../utils/truncateText';
 
 interface ExchangeProductDisplayProps {
   // Original product being returned

@@ -1,6 +1,6 @@
 'use client';
 
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import { MdInfo, MdWarning, MdCheckCircle, MdLocalShipping } from 'react-icons/md';
 
 interface ReturnShippingDisplayProps {
@@ -16,11 +16,7 @@ interface ReturnShippingDisplayProps {
   reason: string;
 }
 
-const ReturnShippingDisplay: React.FC<ReturnShippingDisplayProps> = ({
-  shippingBreakdown,
-  refundAmount,
-  reason
-}) => {
+const ReturnShippingDisplay: React.FC<ReturnShippingDisplayProps> = ({ shippingBreakdown, refundAmount, reason }) => {
   if (!shippingBreakdown) {
     return (
       <div className='bg-gray-50 border border-gray-200 rounded-lg p-4'>
@@ -34,12 +30,12 @@ const ReturnShippingDisplay: React.FC<ReturnShippingDisplayProps> = ({
 
   const getReasonText = (reason: string): string => {
     const reasonTexts: Record<string, string> = {
-      'DEFECTIVE': 'Hàng lỗi/hư hỏng',
-      'WRONG_ITEM': 'Giao sai hàng',
-      'DAMAGED_SHIPPING': 'Hư hỏng trong vận chuyển',
-      'CHANGE_MIND': 'Đổi ý không muốn mua',
-      'WRONG_SIZE': 'Sai kích thước',
-      'NOT_AS_DESCRIBED': 'Không đúng mô tả'
+      DEFECTIVE: 'Hàng lỗi/hư hỏng',
+      WRONG_ITEM: 'Giao sai hàng',
+      DAMAGED_SHIPPING: 'Hư hỏng trong vận chuyển',
+      CHANGE_MIND: 'Đổi ý không muốn mua',
+      WRONG_SIZE: 'Sai kích thước',
+      NOT_AS_DESCRIBED: 'Không đúng mô tả'
     };
     return reasonTexts[reason] || reason;
   };
@@ -102,20 +98,18 @@ const ReturnShippingDisplay: React.FC<ReturnShippingDisplayProps> = ({
         {/* Shipping Fee Breakdown */}
         <div className='border-t pt-3 space-y-2'>
           <h4 className='text-sm font-medium text-gray-700'>Chi tiết phí:</h4>
-          
+
           <div className='grid grid-cols-2 gap-4 text-sm'>
             <div className='space-y-1'>
               <div className='flex justify-between'>
                 <span className='text-gray-500'>Phí vận chuyển:</span>
                 <span className='font-medium'>{formatPrice(shippingBreakdown.returnShippingFee)}</span>
               </div>
-              
+
               {shippingBreakdown.processingFee > 0 && (
                 <div className='flex justify-between'>
                   <span className='text-gray-500'>Phí xử lý:</span>
-                  <span className='font-medium text-red-600'>
-                    -{formatPrice(shippingBreakdown.processingFee)}
-                  </span>
+                  <span className='font-medium text-red-600'>-{formatPrice(shippingBreakdown.processingFee)}</span>
                 </div>
               )}
             </div>
@@ -124,18 +118,15 @@ const ReturnShippingDisplay: React.FC<ReturnShippingDisplayProps> = ({
               <div className='flex justify-between'>
                 <span className='text-gray-500'>Khách hàng trả:</span>
                 <span className='font-medium text-red-600'>
-                  {shippingBreakdown.customerShippingFee > 0 
+                  {shippingBreakdown.customerShippingFee > 0
                     ? `-${formatPrice(shippingBreakdown.customerShippingFee)}`
-                    : formatPrice(0)
-                  }
+                    : formatPrice(0)}
                 </span>
               </div>
-              
+
               <div className='flex justify-between'>
                 <span className='text-gray-500'>Cửa hàng trả:</span>
-                <span className='font-medium text-blue-600'>
-                  -{formatPrice(shippingBreakdown.shopShippingFee)}
-                </span>
+                <span className='font-medium text-blue-600'>-{formatPrice(shippingBreakdown.shopShippingFee)}</span>
               </div>
             </div>
           </div>
@@ -145,9 +136,7 @@ const ReturnShippingDisplay: React.FC<ReturnShippingDisplayProps> = ({
         <div className='border-t pt-3'>
           <div className='flex justify-between items-center'>
             <span className='text-base font-semibold text-gray-800'>Tổng hoàn lại:</span>
-            <span className='text-lg font-bold text-green-600'>
-              {formatPrice(refundAmount)}
-            </span>
+            <span className='text-lg font-bold text-green-600'>{formatPrice(refundAmount)}</span>
           </div>
         </div>
       </div>

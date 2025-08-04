@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { useCart } from '../../hooks/useCart';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import { FiX, FiTag } from 'react-icons/fi';
 
 const VoucherDisplay: React.FC = () => {

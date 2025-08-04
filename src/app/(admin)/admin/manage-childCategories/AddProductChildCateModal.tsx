@@ -7,7 +7,7 @@ import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/
 import firebase from '@/app/libs/firebase';
 import { Editor } from 'primereact/editor';
 import { useRouter } from 'next/navigation';
-import { generateSlug } from '../../../../../utils/Articles';
+import { generateSlug } from '../../../utils/Articles';
 import { Category } from '@prisma/client';
 import {
   Dialog,

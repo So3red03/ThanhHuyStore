@@ -3,7 +3,7 @@
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { Product } from '@prisma/client';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import {
   MdCached,
   MdClose,
@@ -51,7 +51,7 @@ import * as TbIcons from 'react-icons/tb';
 import * as MdIcons from 'react-icons/md';
 import { ExcelExportService } from '@/app/utils/excelExport';
 import Link from 'next/link';
-import { slugConvert } from '../../../../../utils/Slug';
+import { slugConvert } from '../../../utils/Slug';
 import AddProductModalNew from './AddProductModalNew';
 import { set } from 'nprogress';
 

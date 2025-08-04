@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { formatPrice } from '../../../utils/formatPrice';
+import { formatPrice } from './formatPrice';
 
 interface ExcelReportData {
   orders: any[];

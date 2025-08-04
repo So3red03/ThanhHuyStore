@@ -27,7 +27,7 @@ import * as SlIcons from 'react-icons/sl';
 import * as AiIcons from 'react-icons/ai';
 import * as TbIcons from 'react-icons/tb';
 import * as MdIcons from 'react-icons/md';
-import { generateSlug } from '../../../../../utils/Articles';
+import { generateSlug } from '../../../utils/Articles';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 
 interface ManageCategoriesClientProps {

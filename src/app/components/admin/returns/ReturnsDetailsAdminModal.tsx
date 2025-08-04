@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import { formatDate } from '../../../(home)/account/orders/OrdersClient';
 import AdminModal from '../AdminModal';
 import ReturnRequestProductItem from '../../returns/ReturnRequestProductItem';

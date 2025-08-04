@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/app/actions/getCurrentUser';
 import prisma from '@/app/libs/prismadb';
 import { EventType } from '@prisma/client';
-import { getDefaultImage } from '../../../../../utils/product';
+import { getDefaultImage } from '../../../utils/product';
 
 export async function GET(request: Request) {
   try {

@@ -3,7 +3,7 @@
 import { useElements, useStripe, PaymentElement, AddressElement } from '@stripe/react-stripe-js';
 import { useCart } from '../../hooks/useCart';
 import { useEffect, useState } from 'react';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import toast from 'react-hot-toast';
 import Heading from '../../components/Heading';
 import Button from '../../components/Button';

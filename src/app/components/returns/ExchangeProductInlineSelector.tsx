@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import Image from 'next/image';
 import { MdSearch, MdSwapHoriz } from 'react-icons/md';
 import axios from 'axios';

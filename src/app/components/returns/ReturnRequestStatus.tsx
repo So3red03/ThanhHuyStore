@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Order } from '@prisma/client';
 import { SafeUser } from '../../../../types';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import { formatDate } from '../../(home)/account/orders/OrdersClient';
 import Status from '../Status';
 import { MdVisibility, MdRefresh } from 'react-icons/md';

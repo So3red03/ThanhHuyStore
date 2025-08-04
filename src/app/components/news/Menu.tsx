@@ -1,6 +1,6 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
-import { slugConvert } from '../../../../utils/Slug';
+import { slugConvert } from '../../utils/Slug';
 import Link from 'next/link';
 import { ArticleCategory } from '@prisma/client';
 import * as SlIcons from 'react-icons/sl';

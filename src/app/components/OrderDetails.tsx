@@ -2,7 +2,7 @@
 
 import { CartProductType, DeliveryStatus, Order, OrderStatus } from '@prisma/client';
 import { SafeUser } from '../../../types';
-import { formatPrice } from '../../../utils/formatPrice';
+import { formatPrice } from '../utils/formatPrice';
 import Image from 'next/image';
 import { useState } from 'react';
 import CancelOrderDialog from './CancelOrderDialog';

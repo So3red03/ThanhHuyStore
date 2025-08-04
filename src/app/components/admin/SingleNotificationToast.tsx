@@ -6,7 +6,7 @@ import { MdClose, MdNotifications, MdVisibility, MdSmartToy } from 'react-icons/
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { truncateText } from '../../../../utils/truncateText';
+import { truncateText } from '../../utils/truncateText';
 import AIActionButtons from './AIActionButtons';
 
 interface SingleNotificationToastProps {

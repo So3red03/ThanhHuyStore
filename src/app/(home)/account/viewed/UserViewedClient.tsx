@@ -3,13 +3,13 @@ import Button from '@/app/components/Button';
 import Heading from '@/app/components/Heading';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { truncateText } from '../../../../../utils/truncateText';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { truncateText } from '../../../utils/truncateText';
+import { formatPrice } from '../../../utils/formatPrice';
 import { Product } from '@prisma/client';
 import NotFound from '@/app/components/NotFound';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { slugConvert } from '../../../../../utils/Slug';
+import { slugConvert } from '../../../utils/Slug';
 
 const UserViewedClient = () => {
   const [viewedProducts, setViewedProducts] = useState<Product[]>([]);

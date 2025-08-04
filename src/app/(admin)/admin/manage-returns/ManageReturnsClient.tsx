@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { SafeUser } from '../../../../../types';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import { formatDate } from '../../../(home)/account/orders/OrdersClient';
 import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar } from '@mui/x-data-grid';
 import { MdVisibility, MdCheck, MdClose, MdRefresh, MdSearch, MdClear } from 'react-icons/md';

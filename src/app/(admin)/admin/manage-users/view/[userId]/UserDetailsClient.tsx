@@ -1,7 +1,7 @@
 'use client';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { CartProductType, DeliveryStatus, OrderStatus, Role } from '@prisma/client';
-import { formatPrice } from '../../../../../../../utils/formatPrice';
+import { formatPrice } from '../../../../../utils/formatPrice';
 import Link from 'next/link';
 import Status from '@/app/components/Status';
 import {
@@ -38,7 +38,7 @@ import ActivityTimeline from '@/app/components/admin/ActivityTimeline';
 import { useUserActivities } from '@/app/hooks/useUserActivities';
 import OrderDetails from '@/app/components/OrderDetails';
 import { SafeUser } from '../../../../../../../types';
-import { slugConvert } from '../../../../../../../utils/Slug';
+import { slugConvert } from '../../../../../utils/Slug';
 import AddUserModal from '../../AddUserModal';
 
 const formatDate = (date: any) => {

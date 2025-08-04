@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import { Card, CardContent, Typography, Box, Chip, Avatar } from '@mui/material';
 import { MdTrendingUp, MdVisibility, MdInventory, MdAttachMoney } from 'react-icons/md';
 

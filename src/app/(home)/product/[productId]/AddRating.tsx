@@ -11,7 +11,7 @@ import Button from '@/app/components/Button';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import AdminModal from '@/app/components/admin/AdminModal';
 import Image from 'next/image';
-import { getDefaultImage } from '../../../../../utils/product';
+import { getDefaultImage } from '../../../utils/product';
 
 // Export the utility function for backward compatibility
 export const getProductFirstImage = getDefaultImage;

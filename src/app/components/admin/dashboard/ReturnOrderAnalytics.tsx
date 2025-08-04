@@ -54,7 +54,7 @@ import {
   MdFilterList
 } from 'react-icons/md';
 import axios from 'axios';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import moment from 'moment';
 
 interface ReturnOrderAnalyticsProps {

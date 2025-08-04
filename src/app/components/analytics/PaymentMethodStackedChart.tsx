@@ -2,7 +2,7 @@
 
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 

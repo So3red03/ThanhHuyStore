@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiChevronDown, FiChevronUp, FiSearch } from 'react-icons/fi';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import { useCart } from '../../hooks/useCart';
 import axios from 'axios';
 import toast from 'react-hot-toast';

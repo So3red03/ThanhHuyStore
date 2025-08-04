@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { SafeUser } from '../../../../../types';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import { formatDate } from '../orders/OrdersClient';
 import { MdRefresh, MdShoppingBag } from 'react-icons/md';
 import Link from 'next/link';

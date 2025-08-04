@@ -1,7 +1,7 @@
 'use client';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { slugConvert } from '../../../../utils/Slug';
+import { slugConvert } from '../../utils/Slug';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Autoplay } from 'swiper/modules';
 import 'swiper/css';
@@ -9,7 +9,7 @@ import 'swiper/css/navigation';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
-import { getSummary } from '../../../../utils/Articles';
+import { getSummary } from '../../utils/Articles';
 import { useAnalyticsTracker } from '@/app/hooks/useAnalytics';
 
 interface DisplayArticlesProps {

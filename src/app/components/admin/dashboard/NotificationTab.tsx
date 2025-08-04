@@ -56,7 +56,7 @@ import {
 } from 'react-icons/md';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { truncateText } from '../../../../../utils/truncateText';
+import { truncateText } from '../../../utils/truncateText';
 import AIActionButtons from '../AIActionButtons';
 
 interface Notification {
@@ -647,9 +647,7 @@ const NotificationTab: React.FC = () => {
                     label='Chế độ xem'
                   >
                     <MenuItem value='all'>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        Tất cả
-                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>Tất cả</Box>
                     </MenuItem>
                     <MenuItem value='events'>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

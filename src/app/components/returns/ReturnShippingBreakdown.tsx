@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import { MdInfo, MdWarning, MdCheckCircle } from 'react-icons/md';
 
 interface ReturnShippingBreakdownProps {

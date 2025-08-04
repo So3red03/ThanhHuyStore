@@ -1,8 +1,8 @@
 'use client';
 import { useCart } from '@/app/hooks/useCart';
 import Image from 'next/image';
-import { truncateText } from '../../../../utils/truncateText';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { truncateText } from '../../utils/truncateText';
+import { formatPrice } from '../../utils/formatPrice';
 import { useState } from 'react';
 
 interface RelatedProductsProps {

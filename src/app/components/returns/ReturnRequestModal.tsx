@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Order } from '@prisma/client';
 import { SafeUser } from '../../../../types';
 import AdminModal from '../admin/AdminModal';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import Image from 'next/image';
 import { MdCloudUpload, MdDelete } from 'react-icons/md';
 import toast from 'react-hot-toast';

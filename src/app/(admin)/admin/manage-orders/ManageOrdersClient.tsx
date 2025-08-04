@@ -34,7 +34,7 @@ import {
   getValidOrderStatusTransitions,
   canTransitionDeliveryStatus
 } from '@/app/utils/orderStatusValidation';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import { ExcelExportService } from '@/app/utils/excelExport';
 
 interface ManageOrdersClientProps {

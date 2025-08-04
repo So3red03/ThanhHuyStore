@@ -9,9 +9,9 @@ import { Rating } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { useCart } from '../../../hooks/useCart';
 import { useRouter } from 'next/navigation';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import Image from 'next/image';
-import { truncateText } from '../../../../../utils/truncateText';
+import { truncateText } from '../../../utils/truncateText';
 import RelatedProducts from '../RelatedProducts';
 
 interface ProductDetailsProps {

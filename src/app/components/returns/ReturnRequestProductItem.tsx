@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { formatPrice } from '../../../../utils/formatPrice';
-import { truncateText } from '../../../../utils/truncateText';
+import { formatPrice } from '../../utils/formatPrice';
+import { truncateText } from '../../utils/truncateText';
 import {
   fetchProductInfo,
   fetchVariantInfo,

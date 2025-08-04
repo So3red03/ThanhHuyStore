@@ -4,7 +4,7 @@ import axios from 'axios';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { generateSlug } from '../../../../../utils/Articles';
+import { generateSlug } from '../../../utils/Articles';
 import {
   Dialog,
   DialogTitle,

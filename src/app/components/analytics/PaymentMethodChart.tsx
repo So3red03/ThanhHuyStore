@@ -2,7 +2,7 @@
 
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import Image from 'next/image';
 
 ChartJS.register(ArcElement, Tooltip, Legend);

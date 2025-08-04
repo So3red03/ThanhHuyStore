@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useState } from 'react';
 import { SafeUser } from '../../../../../types';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import { Box, styled, Tab, Tabs } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { MdShoppingBag } from 'react-icons/md';

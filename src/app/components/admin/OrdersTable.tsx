@@ -2,7 +2,7 @@
 
 import Status from '@/app/components/Status';
 import { MdAccessTimeFilled, MdDone } from 'react-icons/md';
-import { truncateText } from '../../../../utils/truncateText';
+import { truncateText } from '../../utils/truncateText';
 import { formatDate } from '@/app/(home)/account/orders/OrdersClient';
 import NullData from '../NullData';
 

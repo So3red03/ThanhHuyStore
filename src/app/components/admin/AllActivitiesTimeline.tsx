@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ActivityItem } from './ActivityTimeline';
 // ActivityTracker class removed - now using AuditLog API directly
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { FaChartBar } from 'react-icons/fa';

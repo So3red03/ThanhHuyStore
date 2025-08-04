@@ -5,13 +5,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import queryString from 'query-string';
 import { useEffect, useState } from 'react';
 import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import Image from 'next/image';
 import ProductCard from '../products/ProductCard';
-import { slugConvert } from '../../../../utils/Slug';
+import { slugConvert } from '../../utils/Slug';
 import Fuse from 'fuse.js';
 import { Product } from '@prisma/client';
-import { getDefaultImage } from '../../../../utils/product';
+import { getDefaultImage } from '../../utils/product';
 
 interface SearchBarProps {
   products: Product[];

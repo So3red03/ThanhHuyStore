@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, Typography, Box, Chip, Avatar, Grid } from '@mui/material';
 import { MdPeople, MdTrendingUp, MdShoppingCart, MdAttachMoney, MdNewReleases, MdHistory } from 'react-icons/md';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import { Pie } from 'react-chartjs-2';
 import 'chart.js/auto';
 import moment from 'moment';

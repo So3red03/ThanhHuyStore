@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import DiscountComboBox from '../DiscountCombobox';
 import VoucherDisplay from '../VoucherDisplay';
-import { formatPrice } from '../../../../../utils/formatPrice';
+import { formatPrice } from '../../../utils/formatPrice';
 import Button from '@/app/components/Button';
 import { useCart } from '@/app/hooks/useCart';
 import { useHydration } from '@/app/hooks/useHydration';

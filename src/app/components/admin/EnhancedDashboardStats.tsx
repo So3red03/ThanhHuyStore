@@ -1,7 +1,7 @@
 'use client';
 
 import { FaFileInvoiceDollar, FaSearchDollar, FaUsers, FaExclamationTriangle, FaShoppingCart } from 'react-icons/fa';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import Link from 'next/link';
 
 interface EnhancedDashboardStatsProps {

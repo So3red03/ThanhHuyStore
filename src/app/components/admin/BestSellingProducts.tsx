@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, Typography, Box, Chip, Avatar } from '@mui/material';
 import { MdTrendingUp, MdShoppingCart, MdInventory, MdAttachMoney } from 'react-icons/md';
-import { formatPrice } from '../../../../utils/formatPrice';
+import { formatPrice } from '../../utils/formatPrice';
 import Image from 'next/image';
 
 interface BestSellingProductsProps {
