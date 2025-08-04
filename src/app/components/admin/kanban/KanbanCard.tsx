@@ -78,7 +78,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ order }) => {
       {/* Shipping Fee */}
       <div className='mb-2'>
         <p className='text-xs text-gray-900'>
-          Phí ship: {order.shippingFee ? formatPrice(order.shippingFee) : 'Chưa tính'}
+          Phí ship: {order.shippingFee ? formatPrice(order.shippingFee) : 'Free ship'}
         </p>
       </div>
 

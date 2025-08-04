@@ -405,7 +405,9 @@ const CartInfoClient: React.FC<CartInfoClientProps> = ({ currentUser }) => {
       <div className='flex flex-col mt-5 gap-4 border-t pt-6'>
         <div className='flex justify-between '>
           <span className='font-bold'>Phí vận chuyển:</span>
-          <span className='font-semibold'>{formatPrice(shippingFee)}</span>
+          <span className='font-semibold'>
+            {shippingFee === 0 ? <span className='text-green-600'>Miễn phí</span> : formatPrice(shippingFee)}
+          </span>
         </div>
         <div className='flex justify-between'>
           <span className='font-bold'>Tổng tiền:</span>

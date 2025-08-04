@@ -1,5 +1,4 @@
 // Auto-start AI Assistant monitoring when server starts
-import { reactiveMonitor } from './reactiveMonitor';
 import { proactiveAnalyzer } from './proactiveAnalyzer';
 import prisma from '@/app/libs/prismadb';
 
@@ -30,13 +29,11 @@ export async function autoStartAIAssistant() {
       console.log(`🤖 Auto-starting AI Assistant monitoring (attempt ${startAttempts})...`);
 
       // Start both reactive (emergency) and proactive (strategic) monitoring
-      await Promise.all([reactiveMonitor.startEmergencyMonitoring(), proactiveAnalyzer.startStrategicAnalysis()]);
+      await proactiveAnalyzer.startStrategicAnalysis();
 
       isStarted = true;
       console.log('✅ AI Assistant monitoring auto-started successfully');
-      console.log('  - 🚨 ReactiveMonitor: Emergency alerts (30s interval)');
       console.log('  - 🤖 ProactiveAnalyzer: Strategic recommendations (2min interval)');
-      console.log('  - 📊 EventMonitor: REMOVED - functionality merged into above monitors');
     } else {
       console.log('🤖 AI Assistant is disabled - skipping auto-start');
     }

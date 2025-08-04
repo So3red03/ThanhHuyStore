@@ -65,7 +65,6 @@ interface Notification {
     | 'ORDER_PLACED' // ✅ Event Notification
     | 'MESSAGE_RECEIVED' // ✅ Event Notification
     | 'COMMENT_RECEIVED' // ✅ Event Notification
-    | 'SYSTEM_ALERT' // ✅ Event Notification
     | 'AI_ASSISTANT'; // 🤖 AI Recommendation (ONLY)
   title: string;
   message: string;
@@ -109,7 +108,7 @@ const NotificationTab: React.FC = () => {
   const [deletedStats, setDeletedStats] = useState({ total: 0, unread: 0 }); // Deleted notifications stats
   const itemsPerPage = 10;
 
-  // Notification type configurations
+  // Notification type configurations - consistent with SingleNotificationToast
   const notificationConfig = {
     ORDER_PLACED: {
       icon: <MdShoppingCart size={20} />,
@@ -117,47 +116,23 @@ const NotificationTab: React.FC = () => {
       bgGradient: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
       label: 'Đơn hàng'
     },
-    MESSAGE_RECEIVED: {
-      icon: <MdMessage size={20} />,
-      color: '#4CAF50',
-      bgGradient: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)',
-      label: 'Tin nhắn'
-    },
-    LOW_STOCK: {
-      icon: <MdWarning size={20} />,
-      color: '#FF9800',
-      bgGradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
-      label: 'Hết hàng'
-    },
     COMMENT_RECEIVED: {
       icon: <MdComment size={20} />,
       color: '#9C27B0',
       bgGradient: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)',
       label: 'Bình luận'
     },
-    SYSTEM_ALERT: {
-      icon: <MdSettings size={20} />,
-      color: '#607D8B',
-      bgGradient: 'linear-gradient(135deg, #607D8B 0%, #455A64 100%)',
-      label: 'Hệ thống'
-    },
-    PROMOTION_SUGGESTION: {
-      icon: <MdLocalOffer size={20} />,
-      color: '#E91E63',
-      bgGradient: 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)',
-      label: 'Khuyến mãi'
-    },
-    VOUCHER_SUGGESTION: {
-      icon: <MdLocalOffer size={20} />,
-      color: '#673AB7',
-      bgGradient: 'linear-gradient(135deg, #673AB7 0%, #512DA8 100%)',
-      label: 'Voucher'
-    },
     AI_ASSISTANT: {
       icon: <MdSmartToy size={20} />,
       color: '#3b82f6',
       bgGradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
       label: 'AI Assistant'
+    },
+    MESSAGE_RECEIVED: {
+      icon: <MdMessage size={20} />,
+      color: '#4CAF50',
+      bgGradient: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)',
+      label: 'Tin nhắn'
     }
   };
 
@@ -656,10 +631,10 @@ const NotificationTab: React.FC = () => {
                 <FormControl fullWidth size='small'>
                   <InputLabel>Thời gian</InputLabel>
                   <Select value={timeFilter} label='Thời gian' onChange={e => setTimeFilter(e.target.value)}>
+                    <MenuItem value='all'>Tất cả</MenuItem>
                     <MenuItem value='1d'>24 giờ</MenuItem>
                     <MenuItem value='7d'>7 ngày</MenuItem>
                     <MenuItem value='30d'>30 ngày</MenuItem>
-                    <MenuItem value='all'>Tất cả</MenuItem>
                   </Select>
                 </FormControl>
 
@@ -673,7 +648,6 @@ const NotificationTab: React.FC = () => {
                   >
                     <MenuItem value='all'>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <MdNotifications />
                         Tất cả
                       </Box>
                     </MenuItem>

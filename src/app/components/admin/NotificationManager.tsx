@@ -74,12 +74,16 @@ const NotificationManager: React.FC<NotificationManagerProps> = ({ userId, userR
 
       // Only show toast for important notifications
       const importantTypes = [
-        'AI_ASSISTANT',
-        'LOW_STOCK',
         'ORDER_PLACED',
         'SYSTEM_ALERT',
+        'COMMENT_RECEIVED',
+        'MESSAGE_RECEIVED',
+        'PAYMENT_FAILURE_SPIKE',
+        'AI_ASSISTANT',
+        'LOW_STOCK',
         'PENDING_ORDER',
-        'PROMOTION_SUGGESTION'
+        'PROMOTION_SUGGESTION',
+        'VOUCHER_SUGGESTION'
       ];
 
       if (importantTypes.includes(data.notification.type)) {

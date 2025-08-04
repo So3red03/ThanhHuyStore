@@ -1046,30 +1046,6 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                         Cấu hình AI Assistant
                       </h3>
                       <div className='space-y-6'>
-                        {/* Real-time Monitoring */}
-                        <div>
-                          <label className='block text-sm font-medium text-gray-700 mb-2'>
-                            🔍 Real-time Monitoring - Kiểm tra mỗi (giây)
-                          </label>
-                          <input
-                            type='number'
-                            min='60'
-                            max='600'
-                            value={settings.aiMonitoringInterval}
-                            onChange={e =>
-                              setSettings(prev => ({
-                                ...prev,
-                                aiMonitoringInterval: parseInt(e.target.value) || 120
-                              }))
-                            }
-                            className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                          />
-                          <p className='text-xs text-gray-500 mt-1'>
-                            <strong>Tác dụng:</strong> Kiểm tra sự kiện business (hết hàng, đơn pending). Khuyến nghị:
-                            120 giây.
-                          </p>
-                        </div>
-
                         {/* AI Recommendations */}
                         <div>
                           <label className='block text-sm font-medium text-gray-700 mb-2'>
@@ -1128,22 +1104,6 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                           <div className='text-2xl font-bold text-green-600'>1x</div>
                           <div className='text-sm font-medium text-gray-700'>Nhắc nhở</div>
                           <div className='text-xs text-gray-500'>Chỉ 1 lần/sự kiện</div>
-                        </div>
-                      </div>
-
-                      <div className='p-4 bg-white rounded-lg border border-purple-200 mb-4'>
-                        <div className='text-sm text-gray-700'>
-                          <strong>🚨 Giám sát thời gian thực (ReactiveMonitor):</strong>
-                          <div className='mt-2 grid grid-cols-1 md:grid-cols-2 gap-2'>
-                            <ul className='space-y-1 text-xs text-gray-600'>
-                              <li>• � Phát hiện thanh toán thất bại (≥10%)</li>
-                              <li>• � Thông báo đơn hàng mới ngay lập tức</li>
-                            </ul>
-                            <ul className='space-y-1 text-xs text-gray-600'>
-                              <li>• 💬 Thông báo bình luận/đánh giá mới</li>
-                              <li>• � Giám sát lỗi hệ thống (TODO)</li>
-                            </ul>
-                          </div>
                         </div>
                       </div>
 
