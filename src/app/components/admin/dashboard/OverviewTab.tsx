@@ -143,6 +143,25 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   const cancelledOrdersCount = cancelledOrders.length;
   const cancelledRevenue = cancelledOrders.reduce((total, order) => total + (order.amount || 0), 0);
 
+  // Calculate filtered revenue from completed orders only
+  const completedOrders = filteredData.orders.filter(order => order.status === 'completed') || [];
+  const filteredTotalRevenue = completedOrders.reduce((total, order) => {
+    if (!order.products || !Array.isArray(order.products)) {
+      return total;
+    }
+
+    const orderTotal = order.products.reduce((orderSum: number, product: any) => {
+      const price = product.price || 0;
+      const quantity = product.quantity || 0;
+      return orderSum + price * quantity;
+    }, 0);
+
+    return total + orderTotal;
+  }, 0);
+
+  // Calculate filtered average order value
+  const filteredAvgOrderValue = completedOrders.length > 0 ? filteredTotalRevenue / completedOrders.length : 0;
+
   // Convert salesWeeklyData to chart format
   const chartWeeklyData =
     salesWeeklyData && Array.isArray(salesWeeklyData)
@@ -277,9 +296,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
       <div className='w-full'>
         <EnhancedDashboardStats
           ordersCount={filteredData.orders?.length || 0}
-          totalRevenue={totalRevenue}
+          totalRevenue={filteredTotalRevenue}
           clientsCount={filteredClient.length}
-          avgOrderValue={avgOrderValue}
+          avgOrderValue={filteredAvgOrderValue}
           cancelledOrdersCount={cancelledOrdersCount}
           cancelledRevenue={cancelledRevenue}
         />

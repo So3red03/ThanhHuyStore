@@ -107,9 +107,7 @@ const AdminCancelOrderDialog: React.FC<AdminCancelOrderDialogProps> = ({
         <div className='mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg'>
           <div className='flex items-center space-x-2'>
             <MdWarning className='text-amber-600 flex-shrink-0' size={20} />
-            <p className='text-sm text-amber-800 font-medium'>
-              Hành động này sẽ hủy đơn hàng và không thể hoàn tác. Khách hàng sẽ được thông báo.
-            </p>
+            <p className='text-sm text-amber-800 font-medium'>Hành động này sẽ hủy đơn hàng và không thể hoàn tác.</p>
           </div>
         </div>
 

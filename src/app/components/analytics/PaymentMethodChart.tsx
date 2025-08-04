@@ -41,7 +41,7 @@ const PaymentMethodChart: React.FC<PaymentMethodChartProps> = ({ data, title }) 
     labels: data.map(item => item.label),
     datasets: [
       {
-        data: data.map(item => item.count),
+        data: data.map(item => item.amount), // ✅ Hiển thị doanh thu thay vì số đơn hàng
         backgroundColor: data.map(item => COLORS[item.method as keyof typeof COLORS] || COLORS.default),
         borderColor: data.map(item => COLORS[item.method as keyof typeof COLORS] || COLORS.default),
         borderWidth: 2,

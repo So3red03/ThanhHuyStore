@@ -589,14 +589,14 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                       </button>
                     </div>
 
-                    <div className='bg-blue-50 p-4 rounded-lg mt-4'>
+                    {/* <div className='bg-blue-50 p-4 rounded-lg mt-4'>
                       <h5 className='font-medium text-blue-900 mb-2'>ℹ️ Hướng dẫn test:</h5>
                       <ul className='text-sm text-blue-800 space-y-1'>
                         <li>• Chọn 1 đơn hàng có status PENDING hoặc PROCESSING để test</li>
                         <li>• API sẽ cập nhật deliveryStatus và gửi thông báo Discord</li>
                         <li>• Kiểm tra Discord channel để xem thông báo</li>
                       </ul>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
 
@@ -654,13 +654,13 @@ const AdminSettingsClient: React.FC<AdminSettingsClientProps> = ({ initialSettin
                       </button>
                     </div>
 
-                    <div className='bg-orange-50 p-4 rounded-lg mt-4'>
+                    {/* <div className='bg-orange-50 p-4 rounded-lg mt-4'>
                       <h5 className='font-medium text-orange-900 mb-2'>ℹ️ Hướng dẫn hoàn thành:</h5>
                       <ul className='text-sm text-orange-800 space-y-1'>
                         <li>• Chọn 1 đơn hàng có status CONFIRMED và deliveryStatus IN_TRANSIT</li>
                         <li>• Hệ thống sẽ cập nhật status thành COMPLETED và deliveryStatus thành DELIVERED</li>
                       </ul>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>

@@ -15,7 +15,7 @@ export async function GET() {
       where: {
         orders: {
           some: {
-            status: { in: ['completed', 'confirmed'] }
+            status: 'completed' // ✅ Chỉ tính khách hàng có đơn hàng đã hoàn thành
           }
         },
         email: { not: '' }
@@ -27,7 +27,7 @@ export async function GET() {
         createAt: true,
         orders: {
           where: {
-            status: { in: ['completed', 'confirmed'] }
+            status: 'completed' // ✅ Chỉ lấy đơn hàng đã hoàn thành
           },
           select: {
             id: true,

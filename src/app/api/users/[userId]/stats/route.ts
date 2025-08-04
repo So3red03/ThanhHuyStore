@@ -39,7 +39,7 @@ export async function GET(request: Request, { params }: { params: { userId: stri
     const ordersStats = await prisma.order.aggregate({
       where: {
         userId: userId,
-        status: { not: 'canceled' } // Exclude cancelled orders
+        status: 'completed' // ✅ Chỉ tính đơn hàng đã hoàn thành (đã thanh toán)
       },
       _count: {
         id: true

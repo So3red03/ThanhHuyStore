@@ -675,7 +675,7 @@ const UserDetailsClient: React.FC<UserDetailsClientProps> = ({ user }) => {
                   }`}
                 >
                   <FaCartShopping size={16} />
-                  Hóa đơn
+                  Đơn hàng
                   <span className='bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full'>
                     {user.orders?.length || 0}
                   </span>
@@ -941,14 +941,71 @@ const ReviewsTab: React.FC<{ reviews: any[] }> = ({ reviews }) => {
     ));
   };
 
+  // Helper function to get product image (handles both simple and variant products)
+  const getProductImage = (product: any): string => {
+    // Handle Simple products - use thumbnail/galleryImages structure
+    if (product.productType === 'SIMPLE') {
+      // Use thumbnail first, then gallery images as fallback
+      if (product.thumbnail) {
+        return product.thumbnail;
+      } else if (product.galleryImages && product.galleryImages.length > 0) {
+        return product.galleryImages[0];
+      }
+    }
+    // Handle Variant products - use thumbnail/galleryImages structure
+    else if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
+      // Try to find a variant with thumbnail or galleryImages
+      const variantWithImage = product.variants.find((variant: any) => {
+        return variant.thumbnail || (variant.galleryImages && variant.galleryImages.length > 0);
+      });
+
+      if (variantWithImage) {
+        // Use thumbnail first if available
+        if (variantWithImage.thumbnail) {
+          return variantWithImage.thumbnail;
+        }
+        // Use gallery images
+        if (variantWithImage.galleryImages && variantWithImage.galleryImages.length > 0) {
+          return variantWithImage.galleryImages[0];
+        }
+      }
+
+      // Fallback: check main product thumbnail/galleryImages for variant products
+      if (product.thumbnail) {
+        return product.thumbnail;
+      } else if (product.galleryImages && product.galleryImages.length > 0) {
+        return product.galleryImages[0];
+      }
+    }
+    // Handle products without productType (legacy or missing field)
+    else {
+      // Try thumbnail first
+      if (product.thumbnail) {
+        return product.thumbnail;
+      } else if (product.galleryImages && product.galleryImages.length > 0) {
+        return product.galleryImages[0];
+      }
+    }
+
+    // Final fallback
+    return '/noavatar.png';
+  };
+
   return (
     <div className='space-y-4'>
       {reviews.map(review => (
         <div key={review.id} className='border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow'>
           <div className='flex items-start gap-4'>
-            {review.product?.thumbnail && (
+            {review.product && (
               <div className='w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0'>
-                <img src={review.product.thumbnail} alt={review.product.name} className='w-full h-full object-cover' />
+                <img
+                  src={getProductImage(review.product)}
+                  alt={review.product.name}
+                  className='w-full h-full object-cover'
+                  onError={e => {
+                    e.currentTarget.src = '/noavatar.png';
+                  }}
+                />
               </div>
             )}
             <div className='flex-1'>
@@ -962,7 +1019,7 @@ const ReviewsTab: React.FC<{ reviews: any[] }> = ({ reviews }) => {
                   className='text-[#212B36] hover:text-blue-500'
                   href={`/product/${slugConvert(review.product.name)}-${review.product.id}`}
                 >
-                  <h4 className='font-medium text-gray-900 mb-2'>{review.product.name}</h4>
+                  <h4 className='font-medium mb-2'>{review.product.name}</h4>
                 </Link>
               )}
               <p className='text-gray-700 text-sm leading-relaxed'>{review.comment}</p>

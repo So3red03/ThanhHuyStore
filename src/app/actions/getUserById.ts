@@ -27,7 +27,18 @@ export async function getUserById(params: IParams) {
               select: {
                 id: true,
                 name: true,
-                thumbnail: true
+                thumbnail: true,
+                galleryImages: true,
+                productType: true,
+                variants: {
+                  select: {
+                    id: true,
+                    thumbnail: true,
+                    galleryImages: true,
+                    attributes: true
+                  },
+                  where: { isActive: true }
+                }
               }
             }
           },

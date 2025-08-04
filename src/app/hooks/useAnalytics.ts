@@ -149,7 +149,6 @@ export const usePaymentMethodAnalytics = (days: number = 7) => {
       setData(response.data);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch payment method analytics');
-      console.error('Payment method analytics error:', err);
     } finally {
       setLoading(false);
     }

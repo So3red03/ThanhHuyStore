@@ -41,7 +41,7 @@ const PaymentMethodStackedChart: React.FC<PaymentMethodStackedChartProps> = ({ d
     labels: ['Phương thức thanh toán'],
     datasets: data.map((item, index) => ({
       label: item.label,
-      data: [item.count],
+      data: [item.amount], // ✅ Hiển thị doanh thu thay vì số đơn hàng
       backgroundColor: COLORS[item.method as keyof typeof COLORS] || COLORS.default,
       borderColor: COLORS[item.method as keyof typeof COLORS] || COLORS.default,
       borderWidth: 1,

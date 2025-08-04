@@ -29,9 +29,7 @@ export async function GET(request: NextRequest) {
         paymentMethod: {
           not: null // Only include orders with payment method
         },
-        status: {
-          in: ['pending', 'confirmed', 'completed'] // Include more statuses
-        }
+        status: 'completed' // ✅ Chỉ tính đơn hàng đã hoàn thành (đã thanh toán)
       },
       _count: {
         id: true
