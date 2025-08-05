@@ -13,19 +13,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '7');
 
-    // Calculate date range
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
+    // Create date filter - if days is 0, get all data
+    const dateFilter =
+      days > 0
+        ? {
+            createdAt: {
+              gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+              lte: new Date()
+            }
+          }
+        : {};
 
     // Get payment method statistics - include all orders with paymentMethod
     const paymentStats = await prisma.order.groupBy({
       by: ['paymentMethod'],
       where: {
-        createdAt: {
-          gte: startDate,
-          lte: endDate
-        },
+        ...dateFilter,
         paymentMethod: {
           not: null // Only include orders with payment method
         },
@@ -63,6 +66,10 @@ export async function GET(request: NextRequest) {
       ...item,
       percentage: totalOrders > 0 ? ((item.count / totalOrders) * 100).toFixed(1) : '0'
     }));
+
+    // Calculate period dates for response
+    const startDate = days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : new Date(0);
+    const endDate = new Date();
 
     // If no data, return empty but valid structure
     if (dataWithPercentage.length === 0) {

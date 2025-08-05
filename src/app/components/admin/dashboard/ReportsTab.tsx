@@ -38,7 +38,7 @@ interface ReportsTabProps {
 
 const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, products = [] }) => {
   // State for time filter
-  const [timeFilter, setTimeFilter] = useState('7d');
+  const [timeFilter, setTimeFilter] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showDateRange, setShowDateRange] = useState(false);
@@ -56,6 +56,8 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, pr
     }
 
     switch (filter) {
+      case 'all':
+        return 0; // 0 means no time filter
       case '1d':
         return 1;
       case '7d':
@@ -231,6 +233,7 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, pr
               <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Thời gian</InputLabel>
                 <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
+                  <MenuItem value='all'>Tất cả</MenuItem>
                   <MenuItem value='1d'>24 giờ</MenuItem>
                   <MenuItem value='7d'>7 ngày</MenuItem>
                   <MenuItem value='30d'>30 ngày</MenuItem>
@@ -366,7 +369,8 @@ const ReportsTab: React.FC<ReportsTabProps> = ({ orders, users, totalRevenue, pr
                   Phương thức thanh toán
                 </Typography>
                 <Typography variant='body2' color='textSecondary'>
-                  Thống kê theo {getDaysFromFilter(timeFilter)} ngày qua
+                  Thống kê{' '}
+                  {timeFilter === 'all' ? 'tất cả thời gian' : `theo ${getDaysFromFilter(timeFilter)} ngày qua`}
                 </Typography>
               </div>
             </div>

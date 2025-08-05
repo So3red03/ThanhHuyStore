@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     // Calculate date range
     let endDate = new Date();
     let startDate = new Date();
+    let useTimeFilter = true;
 
     if (startDateParam && endDateParam) {
       // Custom date range
@@ -28,20 +29,47 @@ export async function GET(request: NextRequest) {
     } else {
       // Use days parameter
       const days = parseInt(daysParam || '30');
-      startDate.setDate(endDate.getDate() - days);
+      if (days <= 0) {
+        // If days is 0 or negative, get all data
+        useTimeFilter = false;
+        startDate = new Date(0); // Beginning of time
+      } else {
+        startDate.setDate(endDate.getDate() - days);
+      }
     }
+
+    // Create conditional filters
+    const userVoucherFilter = useTimeFilter
+      ? {
+          usedAt: {
+            gte: startDate,
+            lte: endDate,
+            not: null
+          }
+        }
+      : {
+          usedAt: {
+            not: null
+          }
+        };
+
+    const orderFilter = useTimeFilter
+      ? {
+          createdAt: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: 'completed' as const // Chỉ tính orders completed
+        }
+      : {
+          status: 'completed' as const // Chỉ tính orders completed
+        };
 
     // Get voucher usage statistics
     const voucherStats = await prisma.voucher.findMany({
       include: {
         userVouchers: {
-          where: {
-            usedAt: {
-              gte: startDate,
-              lte: endDate,
-              not: null
-            }
-          },
+          where: userVoucherFilter,
           include: {
             user: {
               select: {
@@ -53,13 +81,7 @@ export async function GET(request: NextRequest) {
           }
         },
         orders: {
-          where: {
-            createdAt: {
-              gte: startDate,
-              lte: endDate
-            },
-            status: 'completed' // Chỉ tính orders completed
-          },
+          where: orderFilter,
           select: {
             id: true,
             amount: true,
@@ -76,19 +98,19 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate detailed statistics for each voucher
-    const voucherAnalytics = voucherStats.map(voucher => {
+    const voucherAnalytics = voucherStats.map((voucher: any) => {
       const usageInPeriod = voucher.userVouchers.length;
       const ordersInPeriod = voucher.orders.length;
 
       // Calculate total revenue generated
-      const totalRevenue = voucher.orders.reduce((sum, order) => sum + order.amount, 0);
-      const totalDiscount = voucher.orders.reduce((sum, order) => sum + (order.discountAmount || 0), 0);
+      const totalRevenue = voucher.orders.reduce((sum: number, order: any) => sum + order.amount, 0);
+      const totalDiscount = voucher.orders.reduce((sum: number, order: any) => sum + (order.discountAmount || 0), 0);
 
       // Get products that used this voucher
-      const productsUsed = voucher.orders.reduce((acc: any[], order) => {
+      const productsUsed = voucher.orders.reduce((acc: any[], order: any) => {
         const orderProducts = order.products as any[];
-        orderProducts.forEach(product => {
-          const existingProduct = acc.find(p => p.id === product.id);
+        orderProducts.forEach((product: any) => {
+          const existingProduct = acc.find((p: any) => p.id === product.id);
           if (existingProduct) {
             existingProduct.quantity += product.quantity;
             existingProduct.orderCount += 1;
@@ -106,7 +128,7 @@ export async function GET(request: NextRequest) {
       }, []);
 
       // Sort products by quantity used
-      productsUsed.sort((a, b) => b.quantity - a.quantity);
+      productsUsed.sort((a: any, b: any) => b.quantity - a.quantity);
 
       return {
         id: voucher.id,
@@ -122,7 +144,7 @@ export async function GET(request: NextRequest) {
         averageOrderValue: ordersInPeriod > 0 ? totalRevenue / ordersInPeriod : 0,
         conversionRate: voucher.quantity > 0 ? (voucher.usedCount / voucher.quantity) * 100 : 0,
         topProducts: productsUsed.slice(0, 5),
-        recentUsers: voucher.userVouchers.slice(0, 5).map(uv => ({
+        recentUsers: voucher.userVouchers.slice(0, 5).map((uv: any) => ({
           name: uv.user.name,
           email: uv.user.email,
           usedAt: uv.usedAt
@@ -148,7 +170,7 @@ export async function GET(request: NextRequest) {
 
     // Get most popular products across all vouchers
     const allProducts = voucherAnalytics.reduce((acc: any[], voucher) => {
-      voucher.topProducts.forEach(product => {
+      voucher.topProducts.forEach((product: any) => {
         const existingProduct = acc.find(p => p.id === product.id);
         if (existingProduct) {
           existingProduct.quantity += product.quantity;

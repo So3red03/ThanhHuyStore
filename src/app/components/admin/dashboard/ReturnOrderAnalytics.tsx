@@ -55,7 +55,6 @@ import {
 } from 'react-icons/md';
 import axios from 'axios';
 import { formatPrice } from '../../../utils/formatPrice';
-import moment from 'moment';
 
 interface ReturnOrderAnalyticsProps {
   // Remove timeFilter prop - will manage internally
@@ -89,7 +88,8 @@ interface ReturnAnalyticsData {
     returnRate: number;
     totalRefunded: number;
     mainReasons: string[];
-    qualityScore: number;
+    totalSold: number;
+    totalRevenue: number;
   }[];
   timeAnalysis: {
     period: string;
@@ -112,7 +112,7 @@ const ReturnOrderAnalytics: React.FC<ReturnOrderAnalyticsProps> = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
-  const [timeFilter, setTimeFilter] = useState('7d');
+  const [timeFilter, setTimeFilter] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDateRange, setShowDateRange] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -128,6 +128,8 @@ const ReturnOrderAnalytics: React.FC<ReturnOrderAnalyticsProps> = () => {
     }
 
     switch (filter) {
+      case 'all':
+        return 0; // 0 means no time filter
       case '1d':
         return 1;
       case '7d':
@@ -303,6 +305,7 @@ const ReturnOrderAnalytics: React.FC<ReturnOrderAnalyticsProps> = () => {
               <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Thời gian</InputLabel>
                 <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
+                  <MenuItem value='all'>Tất cả</MenuItem>
                   <MenuItem value='1d'>24 giờ</MenuItem>
                   <MenuItem value='7d'>7 ngày</MenuItem>
                   <MenuItem value='30d'>30 ngày</MenuItem>
@@ -383,7 +386,8 @@ const ReturnOrderAnalytics: React.FC<ReturnOrderAnalyticsProps> = () => {
                     Phân tích đổi/trả hàng - Góc nhìn kinh doanh
                   </Typography>
                   <Typography variant='body2' sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                    Insights chuyên sâu để tối ưu hóa chất lượng sản phẩm trong {days} ngày qua
+                    Insights chuyên sâu để tối ưu hóa chất lượng sản phẩm{' '}
+                    {timeFilter === 'all' ? 'tất cả thời gian' : `trong ${days} ngày qua`}
                   </Typography>
                 </div>
               </div>
@@ -672,6 +676,14 @@ const ReturnOrderAnalytics: React.FC<ReturnOrderAnalyticsProps> = () => {
                       <Typography variant='h6' sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <MdShoppingCart />
                         Sản phẩm cần chú ý
+                        {data.productAnalysis && data.productAnalysis.length > 0 && (
+                          <Chip
+                            label={`${data.productAnalysis.length} sản phẩm`}
+                            size='small'
+                            color='warning'
+                            sx={{ ml: 1 }}
+                          />
+                        )}
                       </Typography>
                     </AccordionSummary>
                     <AccordionDetails>
@@ -683,85 +695,107 @@ const ReturnOrderAnalytics: React.FC<ReturnOrderAnalyticsProps> = () => {
                                 <strong>Sản phẩm</strong>
                               </TableCell>
                               <TableCell align='center'>
+                                <strong>Đã bán</strong>
+                              </TableCell>
+                              <TableCell align='center'>
                                 <strong>Trả hàng</strong>
                               </TableCell>
                               <TableCell align='center'>
                                 <strong>Đổi hàng</strong>
                               </TableCell>
                               <TableCell align='center'>
-                                <strong>Tỷ lệ trả</strong>
+                                <strong>Tỷ lệ trả (%)</strong>
                               </TableCell>
                               <TableCell align='right'>
                                 <strong>Tổng hoàn tiền</strong>
                               </TableCell>
-                              <TableCell align='center'>
-                                <strong>Điểm chất lượng</strong>
-                              </TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {data.productAnalysis.slice(0, 10).map((product, index) => (
-                              <TableRow key={index} hover>
-                                <TableCell>
-                                  <Box>
-                                    <Typography variant='body2' fontWeight='bold'>
-                                      {product.productName}
+                            {data.productAnalysis && data.productAnalysis.length > 0 ? (
+                              data.productAnalysis.map((product, index) => (
+                                <TableRow key={index} hover>
+                                  <TableCell>
+                                    <Box>
+                                      <Typography variant='body2' fontWeight='bold'>
+                                        {product.productName}
+                                      </Typography>
+                                      <Typography variant='caption' color='text.secondary'>
+                                        ID: {product.productId.substring(0, 8)}...
+                                      </Typography>
+                                      {product.mainReasons && product.mainReasons.length > 0 && (
+                                        <Box sx={{ mt: 0.5 }}>
+                                          {product.mainReasons.slice(0, 2).map((reason, idx) => (
+                                            <Chip
+                                              key={idx}
+                                              label={getReasonText(reason)}
+                                              size='small'
+                                              variant='outlined'
+                                              sx={{ mr: 0.5, fontSize: '0.6rem', height: '16px' }}
+                                            />
+                                          ))}
+                                        </Box>
+                                      )}
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell align='center'>
+                                    <Typography variant='body2' fontWeight='bold' color='primary.main'>
+                                      {product.totalSold || 0}
+                                    </Typography>
+                                    {product.totalRevenue && (
+                                      <Typography variant='caption' color='text.secondary' display='block'>
+                                        {formatPrice(product.totalRevenue)}
+                                      </Typography>
+                                    )}
+                                  </TableCell>
+                                  <TableCell align='center'>
+                                    <Chip label={product.returnCount} size='small' color='error' />
+                                  </TableCell>
+                                  <TableCell align='center'>
+                                    <Chip label={product.exchangeCount} size='small' color='warning' />
+                                  </TableCell>
+                                  <TableCell align='center'>
+                                    <Typography
+                                      variant='body2'
+                                      color={
+                                        product.returnRate > 10
+                                          ? 'error.main'
+                                          : product.returnRate > 5
+                                          ? 'warning.main'
+                                          : 'success.main'
+                                      }
+                                      fontWeight='bold'
+                                    >
+                                      {product.returnRate > 0 ? product.returnRate.toFixed(2) : '0.00'}%
+                                    </Typography>
+                                    {product.totalSold > 0 && (
+                                      <Typography variant='caption' color='text.secondary' display='block'>
+                                        {product.returnCount}/{product.totalSold}
+                                      </Typography>
+                                    )}
+                                  </TableCell>
+                                  <TableCell align='right'>
+                                    <Typography variant='body2' fontWeight='bold' color='error.main'>
+                                      {formatPrice(product.totalRefunded)}
+                                    </Typography>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={6} align='center' sx={{ py: 4 }}>
+                                  <Box sx={{ textAlign: 'center' }}>
+                                    <MdShoppingCart size={48} className='text-gray-400 mb-2' />
+                                    <Typography variant='body2' color='text.secondary'>
+                                      Chưa có dữ liệu sản phẩm cần chú ý
                                     </Typography>
                                     <Typography variant='caption' color='text.secondary'>
-                                      ID: {product.productId.substring(0, 8)}...
+                                      Dữ liệu sẽ hiển thị khi có yêu cầu đổi/trả hàng
                                     </Typography>
-                                  </Box>
-                                </TableCell>
-                                <TableCell align='center'>
-                                  <Chip label={product.returnCount} size='small' color='error' />
-                                </TableCell>
-                                <TableCell align='center'>
-                                  <Chip label={product.exchangeCount} size='small' color='warning' />
-                                </TableCell>
-                                <TableCell align='center'>
-                                  <Typography
-                                    variant='body2'
-                                    color={
-                                      product.returnRate > 10
-                                        ? 'error.main'
-                                        : product.returnRate > 5
-                                        ? 'warning.main'
-                                        : 'success.main'
-                                    }
-                                    fontWeight='bold'
-                                  >
-                                    {product.returnRate.toFixed(1)}%
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align='right'>
-                                  <Typography variant='body2' fontWeight='bold' color='error.main'>
-                                    {formatPrice(product.totalRefunded)}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell align='center'>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <LinearProgress
-                                      variant='determinate'
-                                      value={product.qualityScore}
-                                      sx={{
-                                        width: 50,
-                                        height: 6,
-                                        borderRadius: 3,
-                                        '& .MuiLinearProgress-bar': {
-                                          backgroundColor:
-                                            product.qualityScore > 80
-                                              ? '#4caf50'
-                                              : product.qualityScore > 60
-                                              ? '#ff9800'
-                                              : '#f44336'
-                                        }
-                                      }}
-                                    />
-                                    <Typography variant='caption'>{product.qualityScore}/100</Typography>
                                   </Box>
                                 </TableCell>
                               </TableRow>
-                            ))}
+                            )}
                           </TableBody>
                         </Table>
                       </TableContainer>

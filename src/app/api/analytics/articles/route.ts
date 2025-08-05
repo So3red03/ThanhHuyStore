@@ -8,18 +8,22 @@ export async function GET(request: Request) {
     const currentUser = await getCurrentUser();
 
     if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'STAFF')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '7');
     const limit = parseInt(searchParams.get('limit') || '10');
-    
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+
+    // Create date filter - if days is 0, get all data
+    const dateFilter =
+      days > 0
+        ? {
+            timestamp: {
+              gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+            }
+          }
+        : {};
 
     // Get top viewed articles
     const topViewedArticles = await prisma.analyticsEvent.groupBy({
@@ -28,9 +32,7 @@ export async function GET(request: Request) {
         eventType: EventType.ARTICLE_VIEW,
         entityType: 'article',
         entityId: { not: null },
-        timestamp: {
-          gte: startDate
-        }
+        ...dateFilter
       },
       _count: {
         id: true
@@ -75,9 +77,7 @@ export async function GET(request: Request) {
       where: {
         eventType: EventType.ARTICLE_VIEW,
         entityType: 'article',
-        timestamp: {
-          gte: startDate
-        }
+        ...dateFilter
       },
       _count: {
         id: true
@@ -89,9 +89,7 @@ export async function GET(request: Request) {
       by: ['timestamp'],
       where: {
         eventType: EventType.ARTICLE_VIEW,
-        timestamp: {
-          gte: startDate
-        }
+        ...dateFilter
       },
       _count: {
         id: true
@@ -105,18 +103,18 @@ export async function GET(request: Request) {
       trendsMap.set(date, (trendsMap.get(date) || 0) + trend._count.id);
     });
 
-    const articleTrends = Array.from(trendsMap.entries()).map(([date, count]) => ({
-      date,
-      count
-    })).sort((a, b) => a.date.localeCompare(b.date));
+    const articleTrends = Array.from(trendsMap.entries())
+      .map(([date, count]) => ({
+        date,
+        count
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     // Get total article analytics
     const totalArticleViews = await prisma.analyticsEvent.count({
       where: {
         eventType: EventType.ARTICLE_VIEW,
-        timestamp: {
-          gte: startDate
-        }
+        ...dateFilter
       }
     });
 
@@ -124,9 +122,7 @@ export async function GET(request: Request) {
       by: ['userId', 'sessionId'],
       where: {
         eventType: EventType.ARTICLE_VIEW,
-        timestamp: {
-          gte: startDate
-        }
+        ...dateFilter
       }
     });
 
@@ -137,22 +133,17 @@ export async function GET(request: Request) {
       summary: {
         totalViews: totalArticleViews,
         uniqueReaders: uniqueArticleReaders.length,
-        averageViewsPerReader: uniqueArticleReaders.length > 0 
-          ? (totalArticleViews / uniqueArticleReaders.length).toFixed(1)
-          : 0
+        averageViewsPerReader:
+          uniqueArticleReaders.length > 0 ? (totalArticleViews / uniqueArticleReaders.length).toFixed(1) : 0
       },
       period: {
         days,
-        startDate: startDate.toISOString(),
+        startDate: (days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : new Date(0)).toISOString(),
         endDate: new Date().toISOString()
       }
     });
-
   } catch (error: any) {
     console.error('[ANALYTICS_ARTICLES]', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

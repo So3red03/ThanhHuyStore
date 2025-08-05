@@ -13,31 +13,43 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '7');
 
-    // Calculate date range
+    // Create date filter - if days is 0, get all data
     const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
+    const startDate = days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : new Date(0);
 
-    // Get top 5 vouchers by usage (using voucher instead of promotion)
-    const vouchers = await prisma.voucher.findMany({
-      where: {
-        isActive: true,
-        startDate: {
-          lte: endDate
-        },
-        endDate: {
-          gte: startDate
-        }
-      },
-      include: {
-        userVouchers: {
-          where: {
+    const usedAtFilter =
+      days > 0
+        ? {
             usedAt: {
               gte: startDate,
               lte: endDate,
               not: null
             }
           }
+        : {
+            usedAt: {
+              not: null
+            }
+          };
+
+    // Get top 5 vouchers by usage (using voucher instead of promotion)
+    const vouchers = await prisma.voucher.findMany({
+      where: {
+        isActive: true,
+        ...(days > 0
+          ? {
+              startDate: {
+                lte: endDate
+              },
+              endDate: {
+                gte: startDate
+              }
+            }
+          : {})
+      },
+      include: {
+        userVouchers: {
+          where: usedAtFilter
         }
       },
       take: 5,
@@ -49,7 +61,7 @@ export async function GET(request: NextRequest) {
     // Calculate voucher usage statistics
     const voucherUsage = vouchers.map(voucher => {
       const usageCount = voucher.userVouchers.length;
-      
+
       // Calculate total discount from orders that used this voucher
       const totalDiscount = voucher.userVouchers.reduce((sum, userVoucher) => {
         // For now, estimate discount based on voucher type and value

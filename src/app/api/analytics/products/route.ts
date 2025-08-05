@@ -16,8 +16,15 @@ export async function GET(request: Request) {
     const days = parseInt(searchParams.get('days') || '7');
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    // Create date filter - if days is 0, get all data
+    const dateFilter =
+      days > 0
+        ? {
+            timestamp: {
+              gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+            }
+          }
+        : {};
 
     // Get top viewed products
     const topViewedProducts = await prisma.analyticsEvent.groupBy({
@@ -26,9 +33,7 @@ export async function GET(request: Request) {
         eventType: EventType.PRODUCT_VIEW,
         entityType: 'product',
         entityId: { not: null },
-        timestamp: {
-          gte: startDate
-        }
+        ...dateFilter
       },
       _count: {
         id: true
@@ -86,14 +91,14 @@ export async function GET(request: Request) {
       where: {
         eventType: EventType.PRODUCT_VIEW,
         entityType: 'product',
-        timestamp: {
-          gte: startDate
-        }
+        ...dateFilter
       },
       _count: {
         id: true
       }
     });
+
+    const startDate = days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : new Date(0);
 
     return NextResponse.json({
       topViewedProducts: topProducts,

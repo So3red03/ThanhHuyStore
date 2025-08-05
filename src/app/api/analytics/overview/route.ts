@@ -14,16 +14,19 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '7');
 
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    // Create date filter - if days is 0, get all data
+    const dateFilter =
+      days > 0
+        ? {
+            timestamp: {
+              gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+            }
+          }
+        : {};
 
     // Get total events count
     const totalEvents = await prisma.analyticsEvent.count({
-      where: {
-        timestamp: {
-          gte: startDate
-        }
-      }
+      where: dateFilter
     });
 
     // Page views removed from analytics
@@ -32,9 +35,7 @@ export async function GET(request: Request) {
     const productViews = await prisma.analyticsEvent.count({
       where: {
         eventType: EventType.PRODUCT_VIEW,
-        timestamp: {
-          gte: startDate
-        }
+        ...dateFilter
       }
     });
 
@@ -42,9 +43,7 @@ export async function GET(request: Request) {
     const articleViews = await prisma.analyticsEvent.count({
       where: {
         eventType: EventType.ARTICLE_VIEW,
-        timestamp: {
-          gte: startDate
-        }
+        ...dateFilter
       }
     });
 
@@ -53,11 +52,7 @@ export async function GET(request: Request) {
     // Get daily trends
     const dailyTrends = await prisma.analyticsEvent.groupBy({
       by: ['timestamp'],
-      where: {
-        timestamp: {
-          gte: startDate
-        }
-      },
+      where: dateFilter,
       _count: {
         id: true
       }
@@ -76,6 +71,8 @@ export async function GET(request: Request) {
         count
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
+
+    const startDate = days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : new Date(0);
 
     return NextResponse.json({
       overview: {

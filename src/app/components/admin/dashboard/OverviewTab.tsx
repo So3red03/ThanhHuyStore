@@ -47,7 +47,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   salesWeeklyData
 }) => {
   // State for time filter
-  const [timeFilter, setTimeFilter] = useState('7d');
+  const [timeFilter, setTimeFilter] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDateRange, setShowDateRange] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -86,6 +86,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 
     // Calculate filter date based on selection
     switch (timeFilter) {
+      case 'all':
+        // Return all data without filtering
+        return { orders: orders || [], users: users || [] };
       case '1d':
         filterDate.setDate(now.getDate() - 1);
         break;
@@ -213,6 +216,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
               <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Thời gian</InputLabel>
                 <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
+                  <MenuItem value='all'>Tất cả</MenuItem>
                   <MenuItem value='1d'>24 giờ</MenuItem>
                   <MenuItem value='7d'>7 ngày</MenuItem>
                   <MenuItem value='30d'>30 ngày</MenuItem>

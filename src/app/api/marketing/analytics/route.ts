@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
 
     let startDate: Date;
     let endDate: Date = new Date(); // Default to now
+    let useTimeFilter = true;
 
     if (customStartDate && customEndDate) {
       // Use custom date range
@@ -28,17 +29,26 @@ export async function GET(request: NextRequest) {
       endDate.setHours(23, 59, 59, 999);
     } else {
       // Use timeRange (days back from now)
-      startDate = new Date();
-      startDate.setDate(startDate.getDate() - parseInt(timeRange));
+      const days = parseInt(timeRange);
+      if (days <= 0) {
+        // If days is 0 or negative, get all data
+        useTimeFilter = false;
+        startDate = new Date(0); // Beginning of time
+      } else {
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+      }
     }
 
     // Build filter conditions
-    const whereConditions: any = {
-      sentAt: {
-        gte: startDate,
-        ...(customStartDate && customEndDate ? { lte: endDate } : {})
-      }
-    };
+    const whereConditions: any = useTimeFilter
+      ? {
+          sentAt: {
+            gte: startDate,
+            ...(customStartDate && customEndDate ? { lte: endDate } : {})
+          }
+        }
+      : {};
 
     if (campaignType !== 'all') {
       whereConditions.campaignType = campaignType;

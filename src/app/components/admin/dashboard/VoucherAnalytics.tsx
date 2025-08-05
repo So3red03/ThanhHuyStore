@@ -86,7 +86,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [timeFilter, setTimeFilter] = useState('7d');
+  const [timeFilter, setTimeFilter] = useState('all');
   const [showDateRange, setShowDateRange] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -108,6 +108,8 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = () => {
     }
 
     switch (filter) {
+      case 'all':
+        return 0; // 0 means no time filter
       case '1d':
         return 1;
       case '7d':
@@ -237,6 +239,7 @@ const VoucherAnalytics: React.FC<VoucherAnalyticsProps> = () => {
               <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Thời gian</InputLabel>
                 <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
+                  <MenuItem value='all'>Tất cả</MenuItem>
                   <MenuItem value='1d'>24 giờ</MenuItem>
                   <MenuItem value='7d'>7 ngày</MenuItem>
                   <MenuItem value='30d'>30 ngày</MenuItem>

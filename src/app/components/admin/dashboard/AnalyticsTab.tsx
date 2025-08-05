@@ -33,7 +33,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
   const router = useRouter();
 
   // State for time filter
-  const [timeFilter, setTimeFilter] = useState('7d');
+  const [timeFilter, setTimeFilter] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSendingDiscord, setIsSendingDiscord] = useState(false);
   const [showDateRange, setShowDateRange] = useState(false);
@@ -51,6 +51,8 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
     }
 
     switch (filter) {
+      case 'all':
+        return 0; // 0 means no time filter
       case '1d':
         return 1;
       case '7d':
@@ -157,6 +159,7 @@ const AnalyticsTab: React.FC<AnalyticsTabProps> = () => {
               <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Thời gian</InputLabel>
                 <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
+                  <MenuItem value='all'>Tất cả</MenuItem>
                   <MenuItem value='1d'>24 giờ</MenuItem>
                   <MenuItem value='7d'>7 ngày</MenuItem>
                   <MenuItem value='30d'>30 ngày</MenuItem>

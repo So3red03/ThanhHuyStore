@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     // Calculate date range
     let endDate = new Date();
     let startDate = new Date();
+    let useTimeFilter = true;
 
     if (startDateParam && endDateParam) {
       // Custom date range
@@ -29,9 +30,9 @@ export async function GET(request: NextRequest) {
     } else {
       // Use days parameter (preferred) or fallback to timeFilter
       const days = daysParam ? parseInt(daysParam) : timeFilter ? parseInt(timeFilter) : 30;
-      if (isNaN(days)) {
-        // Fallback to 30 days if invalid
-        startDate.setDate(endDate.getDate() - 30);
+      if (isNaN(days) || days <= 0) {
+        // If days is 0 or invalid, get all data
+        useTimeFilter = false;
       } else {
         startDate.setDate(endDate.getDate() - days);
       }
@@ -39,17 +40,33 @@ export async function GET(request: NextRequest) {
 
     // Fetch return requests data
     const returnRequests = await prisma.returnRequest.findMany({
-      where: {
-        createdAt: {
-          gte: startDate,
-          lte: endDate
-        }
-      },
+      where: useTimeFilter
+        ? {
+            createdAt: {
+              gte: startDate,
+              lte: endDate
+            }
+          }
+        : {}, // No time filter - get all data
       include: {
         order: true,
         user: true
       }
     });
+
+    console.log('Found return requests:', returnRequests.length);
+    if (returnRequests.length > 0) {
+      console.log('Sample return request structure:', {
+        id: returnRequests[0].id,
+        type: returnRequests[0].type,
+        reason: returnRequests[0].reason,
+        hasOrder: !!returnRequests[0].order,
+        orderProducts: returnRequests[0].order?.products ? 'Has products' : 'No products',
+        orderProductsType: typeof returnRequests[0].order?.products,
+        hasItems: !!returnRequests[0].items,
+        itemsType: typeof returnRequests[0].items
+      });
+    }
 
     // Calculate overview metrics
     const totalReturns = returnRequests.filter(r => r.type === 'RETURN').length;
@@ -109,6 +126,146 @@ export async function GET(request: NextRequest) {
       })
       .sort((a, b) => b.count - a.count);
 
+    // Analyze products with return issues
+    const productReturnCounts = returnRequests.reduce((acc, request) => {
+      let products: any[] = [];
+
+      // Try to get products from multiple sources
+      if (request.order?.products) {
+        // Parse products from order if it's a string
+        try {
+          products =
+            typeof request.order.products === 'string' ? JSON.parse(request.order.products) : request.order.products;
+        } catch (e) {
+          console.log('Error parsing order products:', e);
+        }
+      }
+
+      // Also try to get products from items field (newer structure)
+      if (request.items && (!products || products.length === 0)) {
+        try {
+          const items = typeof request.items === 'string' ? JSON.parse(request.items) : request.items;
+          if (Array.isArray(items)) {
+            products = items;
+          }
+        } catch (e) {
+          console.log('Error parsing items:', e);
+        }
+      }
+
+      if (Array.isArray(products) && products.length > 0) {
+        products.forEach((product: any) => {
+          // Use multiple possible product identifiers
+          const productId = product.id || product.productId || product.selectedProductId || 'unknown';
+          const productName = product.name || product.productName || product.selectedProductName || 'Unknown Product';
+          const productKey = `${productId}_${productName}`;
+
+          if (!acc[productKey]) {
+            acc[productKey] = {
+              productId: productId,
+              productName: productName,
+              returnCount: 0,
+              exchangeCount: 0,
+              totalRefunded: 0,
+              reasons: []
+            };
+          }
+
+          if (request.type === 'RETURN') {
+            acc[productKey].returnCount++;
+          } else if (request.type === 'EXCHANGE') {
+            acc[productKey].exchangeCount++;
+          }
+
+          if (request.refundAmount && request.status === 'COMPLETED') {
+            acc[productKey].totalRefunded += request.refundAmount;
+          }
+
+          if (request.reason && !acc[productKey].reasons.includes(request.reason)) {
+            acc[productKey].reasons.push(request.reason);
+          }
+        });
+      }
+      return acc;
+    }, {} as Record<string, any>);
+
+    console.log('Product return counts:', Object.keys(productReturnCounts).length, 'products found');
+    console.log('Sample products:', Object.values(productReturnCounts).slice(0, 3));
+
+    // Get sales data for accurate return rate calculation
+    const productIds = Object.values(productReturnCounts).map((p: any) => p.productId);
+    console.log('Getting sales data for products:', productIds);
+
+    // Query all orders to get product sales data
+    const allOrders = await prisma.order.findMany({
+      where: {
+        status: { in: ['completed', 'confirmed'] } // Only count successful orders
+      },
+      select: {
+        products: true,
+        status: true,
+        createdAt: true
+      }
+    });
+
+    // Calculate total sold quantities for each product
+    const productSalesData = {} as Record<string, { totalSold: number; totalRevenue: number }>;
+
+    allOrders.forEach(order => {
+      if (order.products) {
+        let products;
+        try {
+          products = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
+        } catch (e) {
+          products = [];
+        }
+
+        if (Array.isArray(products)) {
+          products.forEach((product: any) => {
+            const productId = product.id || product.productId || product.selectedProductId;
+            if (productId) {
+              if (!productSalesData[productId]) {
+                productSalesData[productId] = { totalSold: 0, totalRevenue: 0 };
+              }
+              const quantity = product.quantity || 1;
+              const price = product.price || 0;
+              productSalesData[productId].totalSold += quantity;
+              productSalesData[productId].totalRevenue += price * quantity;
+            }
+          });
+        }
+      }
+    });
+
+    console.log('Sales data calculated for', Object.keys(productSalesData).length, 'products');
+
+    const productAnalysis = Object.values(productReturnCounts)
+      .map((product: any) => {
+        const salesData = productSalesData[product.productId] || { totalSold: 0, totalRevenue: 0 };
+
+        // Calculate accurate return rate
+        const returnRate = salesData.totalSold > 0 ? (product.returnCount / salesData.totalSold) * 100 : 0;
+
+        return {
+          productId: product.productId,
+          productName: product.productName,
+          returnCount: product.returnCount,
+          exchangeCount: product.exchangeCount,
+          returnRate: Math.round(returnRate * 100) / 100, // Round to 2 decimal places
+          totalRefunded: product.totalRefunded,
+          mainReasons: product.reasons,
+          totalSold: salesData.totalSold,
+          totalRevenue: salesData.totalRevenue
+        };
+      })
+      .filter(product => product.returnCount > 0 || product.exchangeCount > 0)
+      .sort((a, b) => {
+        // Sort by return rate and total issues
+        const aTotalIssues = a.returnCount + a.exchangeCount;
+        const bTotalIssues = b.returnCount + b.exchangeCount;
+        return bTotalIssues - aTotalIssues || b.returnRate - a.returnRate;
+      });
+
     // Generate business insights
     const businessInsights = [];
 
@@ -158,7 +315,7 @@ export async function GET(request: NextRequest) {
         customerSatisfactionRate: 85 // Mock data - would calculate from surveys
       },
       reasonAnalysis,
-      productAnalysis: [], // Would implement with product data analysis
+      productAnalysis,
       timeAnalysis: [], // Would implement with historical data
       businessInsights
     };

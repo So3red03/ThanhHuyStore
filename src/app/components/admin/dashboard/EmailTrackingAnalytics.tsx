@@ -117,7 +117,7 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
   const [data, setData] = useState<EmailAnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [timeFilter, setTimeFilter] = useState('7d');
+  const [timeFilter, setTimeFilter] = useState('all');
   const [showDateRange, setShowDateRange] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -132,6 +132,8 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
     }
 
     switch (filter) {
+      case 'all':
+        return 0; // 0 means no time filter
       case '1d':
         return 1;
       case '7d':
@@ -245,6 +247,7 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
               <FormControl size='small' sx={{ minWidth: 140 }}>
                 <InputLabel>Thời gian</InputLabel>
                 <Select value={timeFilter} label='Thời gian' onChange={e => handleTimeFilterChange(e.target.value)}>
+                  <MenuItem value='all'>Tất cả</MenuItem>
                   <MenuItem value='1d'>24 giờ</MenuItem>
                   <MenuItem value='7d'>7 ngày</MenuItem>
                   <MenuItem value='30d'>30 ngày</MenuItem>
