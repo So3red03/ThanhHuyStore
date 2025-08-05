@@ -33,23 +33,8 @@ import {
   TextField,
   Container
 } from '@mui/material';
-import {
-  MdEmail,
-  MdTrendingUp,
-  MdPeople,
-  MdPercent,
-  MdClose,
-  MdPreview,
-  MdLocalOffer,
-  MdCampaign,
-  MdInfo,
-  MdArrowBack,
-  MdHome,
-  MdDone
-} from 'react-icons/md';
+import { MdEmail, MdTrendingUp, MdPeople, MdPreview, MdLocalOffer, MdCampaign, MdInfo, MdDone } from 'react-icons/md';
 import CustomerDetailModal from '@/app/components/admin/CustomerDetailModal';
-import { useRouter } from 'next/navigation';
-import { Breadcrumbs, Link, Tooltip } from '@mui/material';
 
 // Campaign types
 type CampaignType = 'NEW_PRODUCT' | 'VOUCHER_PROMOTION' | 'RETENTION' | 'CROSS_SELL';
@@ -69,8 +54,6 @@ interface CustomerSegment {
 }
 
 const EmailMarketingClient: React.FC = () => {
-  const router = useRouter();
-
   // Products state
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -326,7 +309,10 @@ const EmailMarketingClient: React.FC = () => {
     }
   };
 
-  // Removed handleTabChange - using direct onClick handlers now
+  // Simple tab change without validation
+  const handleTabChange = (targetTab: number) => {
+    setTabValue(targetTab);
+  };
 
   const handleSendEmails = async () => {
     console.log('🚀 [DEBUG] Starting email campaign...');
@@ -341,27 +327,43 @@ const EmailMarketingClient: React.FC = () => {
       selectedUsersCount: selectedUsers.length
     });
 
-    // Validation based on campaign type
+    // Simple validation - just check requirements
+    if (!campaignType) {
+      toast.error('Vui lòng chọn loại chiến dịch');
+      return;
+    }
+
+    if (!campaignTitle.trim()) {
+      toast.error('Vui lòng nhập tiêu đề chiến dịch');
+      return;
+    }
+
+    if (!campaignDescription.trim()) {
+      toast.error('Vui lòng nhập mô tả chiến dịch');
+      return;
+    }
+
     if (campaignType === 'NEW_PRODUCT' && !selectedProductId) {
-      console.log('❌ [DEBUG] Validation failed: No product selected for NEW_PRODUCT campaign');
       toast.error('Vui lòng chọn sản phẩm');
       return;
     }
 
     if (campaignType === 'VOUCHER_PROMOTION' && selectedVoucherIds.length === 0) {
-      console.log('❌ [DEBUG] Validation failed: No voucher selected for VOUCHER_PROMOTION campaign');
-      toast.error('Vui lòng chọn ít nhất một voucher');
+      toast.error('Vui lòng chọn voucher');
+      return;
+    }
+
+    if (campaignType === 'CROSS_SELL' && !selectedProductId) {
+      toast.error('Vui lòng chọn sản phẩm');
       return;
     }
 
     if (manualMode && selectedUsers.length === 0) {
-      console.log('❌ [DEBUG] Validation failed: Manual mode but no users selected');
       toast.error('Vui lòng chọn ít nhất một khách hàng');
       return;
     }
 
     if (!manualMode && (!selectedSegments || selectedSegments.length === 0)) {
-      console.log('❌ [DEBUG] Validation failed: Auto mode but no segments selected');
       toast.error('Vui lòng chọn ít nhất một phân khúc khách hàng');
       return;
     }
@@ -461,7 +463,7 @@ const EmailMarketingClient: React.FC = () => {
             ].map(tab => (
               <Button
                 key={tab.value}
-                onClick={() => setTabValue(tab.value)}
+                onClick={() => handleTabChange(tab.value)}
                 startIcon={tab.icon}
                 variant={tabValue === tab.value ? 'contained' : 'text'}
                 sx={{
@@ -906,21 +908,6 @@ const EmailMarketingClient: React.FC = () => {
                             )}
                           </Select>
                         </FormControl>
-
-                        {/* Debug info */}
-                        {process.env.NODE_ENV === 'development' && (
-                          <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-                            <Typography variant='caption' sx={{ display: 'block', mb: 1 }}>
-                              Debug: Tổng sản phẩm: {products?.length || 0}
-                            </Typography>
-                            <Typography variant='caption' sx={{ display: 'block', mb: 1 }}>
-                              Debug: Sản phẩm gần đây: {recentProducts?.length || 0}
-                            </Typography>
-                            <Typography variant='caption' sx={{ display: 'block' }}>
-                              Debug: Loading: {isLoadingProducts ? 'Yes' : 'No'}
-                            </Typography>
-                          </Box>
-                        )}
                       </Box>
                     )}
 
@@ -934,25 +921,15 @@ const EmailMarketingClient: React.FC = () => {
                         <FormControl fullWidth>
                           <InputLabel>Chọn voucher có sẵn</InputLabel>
                           <Select
-                            multiple
-                            value={selectedVoucherIds}
+                            value={selectedVoucherIds[0] || ''}
                             label='Chọn voucher có sẵn'
-                            onChange={e =>
-                              setSelectedVoucherIds(
-                                typeof e.target.value === 'string' ? [e.target.value] : e.target.value
-                              )
-                            }
+                            onChange={e => setSelectedVoucherIds(e.target.value ? [e.target.value as string] : [])}
                             disabled={isLoading}
                             sx={{ borderRadius: '8px' }}
-                            renderValue={selected => (
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {selected.map(value => {
-                                  const voucher = availableVouchers.find(v => v.id === value);
-                                  return <Chip key={value} label={voucher?.code || value} size='small' />;
-                                })}
-                              </Box>
-                            )}
                           >
+                            <MenuItem value=''>
+                              <em>-- Chọn voucher ({availableVouchers?.length || 0} vouchers) --</em>
+                            </MenuItem>
                             {availableVouchers?.length > 0 ? (
                               availableVouchers.map(voucher => (
                                 <MenuItem key={voucher.id} value={voucher.id}>
@@ -985,15 +962,6 @@ const EmailMarketingClient: React.FC = () => {
                             )}
                           </Select>
                         </FormControl>
-
-                        {/* Debug info */}
-                        {process.env.NODE_ENV === 'development' && (
-                          <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-                            <Typography variant='caption' sx={{ display: 'block' }}>
-                              Debug: Vouchers: {availableVouchers?.length || 0}
-                            </Typography>
-                          </Box>
-                        )}
                       </Box>
                     )}
 
@@ -1030,7 +998,7 @@ const EmailMarketingClient: React.FC = () => {
                     </Box>
 
                     {/* Notice about customer segments */}
-                    <Alert severity='info' sx={{ borderRadius: '8px', mb: 3 }}>
+                    {/* <Alert severity='info' sx={{ borderRadius: '8px', mb: 3 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                         <Typography variant='body2'>
                           <strong>Mẹo:</strong> Để xem phân khúc khách hàng chi tiết (VIP, Mới,...), hãy vào
@@ -1038,7 +1006,7 @@ const EmailMarketingClient: React.FC = () => {
                         <Button
                           size='small'
                           variant='outlined'
-                          onClick={() => setTabValue(1)}
+                          onClick={() => handleTabChange(1)}
                           sx={{
                             textTransform: 'none',
                             fontSize: '0.75rem',
@@ -1049,7 +1017,7 @@ const EmailMarketingClient: React.FC = () => {
                           Tab Danh sách khách hàng
                         </Button>
                       </Box>
-                    </Alert>
+                    </Alert> */}
 
                     {/* Customer Segmentation - Only show in auto mode */}
                     {!manualMode && (
@@ -1114,7 +1082,7 @@ const EmailMarketingClient: React.FC = () => {
                       />
 
                       {manualMode && (
-                        <Button variant='outlined' onClick={() => setTabValue(1)} sx={{ borderRadius: '8px' }}>
+                        <Button variant='outlined' onClick={() => handleTabChange(1)} sx={{ borderRadius: '8px' }}>
                           Chọn khách hàng từ danh sách
                         </Button>
                       )}
