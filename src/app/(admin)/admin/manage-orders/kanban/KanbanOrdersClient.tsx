@@ -413,37 +413,6 @@ const KanbanOrdersClient: React.FC<KanbanOrdersClientProps> = ({
                   </Select>
                 </FormControl>
               </div>
-
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-3'>Vận chuyển</label>
-                <FormControl fullWidth size='medium'>
-                  <Select
-                    value={shippingMethod}
-                    onChange={e => setShippingMethod(e.target.value)}
-                    displayEmpty
-                    sx={{
-                      borderRadius: '8px',
-                      backgroundColor: '#f9fafb',
-                      '& .MuiOutlinedInput-root': {
-                        '& fieldset': {
-                          borderColor: '#e5e7eb'
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#d1d5db'
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#3b82f6',
-                          backgroundColor: '#ffffff'
-                        }
-                      }
-                    }}
-                  >
-                    <MenuItem value=''>Tất cả</MenuItem>
-                    <MenuItem value='tiết kiệm'>🐌 Giao hàng tiết kiệm</MenuItem>
-                    <MenuItem value='nhanh'>⚡ Giao hàng nhanh</MenuItem>
-                  </Select>
-                </FormControl>
-              </div>
             </div>
 
             {/* Search Values Display */}

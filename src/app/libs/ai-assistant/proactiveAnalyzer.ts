@@ -193,12 +193,12 @@ export class ProactiveAnalyzer {
   // 💡 ANALYSIS 1: Urgent Orders (moved from ReactiveMonitor)
   private async analyzeUrgentOrders(): Promise<{ recommendations: number; notifications: number }> {
     try {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const oneDayAgo = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
 
       const urgentOrders = await prisma.order.findMany({
         where: {
           status: 'pending',
-          createdAt: { lte: sevenDaysAgo }
+          createdAt: { lte: oneDayAgo }
         },
         include: {
           user: {
@@ -224,7 +224,7 @@ export class ProactiveAnalyzer {
             } đã pending ${daysPending} ngày. Cần có kế hoạch xử lý để tránh khách hàng hủy đơn. Giá trị đơn: ${(
               order.amount / 1000000
             ).toFixed(1)}M VND.`,
-            priority: daysPending >= 14 ? 'CRITICAL' : 'HIGH',
+            priority: daysPending >= 1 ? 'CRITICAL' : 'HIGH',
             contextData: {
               orderId: order.id,
               customerName: order.user?.name,
