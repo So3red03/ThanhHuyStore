@@ -18,25 +18,35 @@ const UserViewedClient = () => {
 
   // Helper function to get product image (handles both simple and variant products)
   const getProductImage = (product: any) => {
-    // For simple products, use thumbnail or first gallery image
-    if (product.productType === 'SIMPLE') {
-      if (product.thumbnail) return product.thumbnail;
-      if (product.galleryImages && product.galleryImages.length > 0) return product.galleryImages[0];
-    }
-
-    // For variant products, try to get image from first active variant
+    // For variant products, try to get image from first active variant first
     if (product.productType === 'VARIANT' && product.variants && product.variants.length > 0) {
       const firstVariant = product.variants[0];
+
+      // Check variant thumbnail first
       if (firstVariant.thumbnail) return firstVariant.thumbnail;
-      if (firstVariant.galleryImages && firstVariant.galleryImages.length > 0) return firstVariant.galleryImages[0];
+
+      // Check variant gallery images
+      if (firstVariant.galleryImages && firstVariant.galleryImages.length > 0) {
+        return firstVariant.galleryImages[0];
+      }
+
+      // Backward compatibility: check old images field
+      if (firstVariant.images && firstVariant.images.length > 0) {
+        return firstVariant.images[0];
+      }
     }
 
-    // Fallback to product-level images
+    // For simple products or fallback for variant products
+    // Check product-level thumbnail
     if (product.thumbnail) return product.thumbnail;
-    if (product.galleryImages && product.galleryImages.length > 0) return product.galleryImages[0];
+
+    // Check product-level gallery images
+    if (product.galleryImages && product.galleryImages.length > 0) {
+      return product.galleryImages[0];
+    }
 
     // Final fallback
-    return '/noavatar.png';
+    return '/images/placeholder.jpg';
   };
 
   useEffect(() => {
@@ -133,7 +143,7 @@ const UserViewedClient = () => {
                       className='w-full h-full object-cover'
                       loading='lazy'
                       onError={e => {
-                        e.currentTarget.src = '/noavatar.png';
+                        e.currentTarget.src = '/images/placeholder.jpg';
                       }}
                     />
                   </div>

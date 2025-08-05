@@ -340,9 +340,8 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
                     </p>
                   </div>
 
-                  {selected && selectedItem && (
+                  {/* {selected && selectedItem && (
                     <div className='flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mt-3'>
-                      {/* Quantity Selector */}
                       <div className='flex items-center gap-2'>
                         <label className='text-sm font-medium whitespace-nowrap'>Số lượng:</label>
                         <input
@@ -357,7 +356,6 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
                         />
                       </div>
 
-                      {/* Reason Selector */}
                       <div className='flex items-center gap-2 flex-1'>
                         <label className='text-sm font-medium whitespace-nowrap'>Lý do:</label>
                         <select
@@ -376,7 +374,7 @@ const ReturnRequestModal: React.FC<ReturnRequestModalProps> = ({
                         </select>
                       </div>
                     </div>
-                  )}
+                  )} */}
                 </div>
               );
             })}

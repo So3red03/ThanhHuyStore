@@ -14,8 +14,10 @@ export interface VariantInfo {
   id: string;
   name: string;
   price: number;
-  images?: string[];
-  attributes?: any[];
+  thumbnail?: string; // New thumbnail field
+  galleryImages?: string[]; // New gallery images field
+  images?: string[]; // Backward compatibility
+  attributes?: any[] | Record<string, string>; // Support both array and object formats
   product: ProductInfo;
 }
 
@@ -56,9 +58,6 @@ export const fetchVariantInfo = async (variantId: string): Promise<VariantInfo |
  * Get display name for product/variant
  */
 export const getDisplayName = (product: ProductInfo, variant?: VariantInfo): string => {
-  if (variant) {
-    return `${product.name} - ${variant.name}`;
-  }
   return product.name;
 };
 
@@ -76,18 +75,31 @@ export const getDisplayPrice = (product: ProductInfo, variant?: VariantInfo): nu
  * Get display image for product/variant
  */
 export const getDisplayImage = (product: ProductInfo, variant?: VariantInfo): string => {
-  if (variant && variant.images && variant.images.length > 0) {
-    return variant.images[0];
+  // Priority 1: Variant images (new structure)
+  if (variant) {
+    // Check variant thumbnail first
+    if (variant.thumbnail) {
+      return variant.thumbnail;
+    }
+    // Check variant gallery images
+    if (variant.galleryImages && variant.galleryImages.length > 0) {
+      return variant.galleryImages[0];
+    }
+    // Backward compatibility: check old images field
+    if (variant.images && variant.images.length > 0) {
+      return variant.images[0];
+    }
   }
-  
+
+  // Priority 2: Product-level images
   if (product.thumbnail) {
     return product.thumbnail;
   }
-  
+
   if (product.galleryImages && product.galleryImages.length > 0) {
     return product.galleryImages[0];
   }
-  
+
   return '/images/placeholder.jpg'; // Fallback image
 };
 
@@ -98,8 +110,17 @@ export const formatVariantAttributes = (variant?: VariantInfo): string => {
   if (!variant || !variant.attributes) {
     return '';
   }
-  
-  return variant.attributes
-    .map((attr: any) => `${attr.name}: ${attr.value}`)
-    .join(', ');
+
+  // Handle both array format (old) and object format (new)
+  if (Array.isArray(variant.attributes)) {
+    // Old format: [{name: "color", value: "silver"}, ...]
+    return variant.attributes.map((attr: any) => `${attr.name}: ${attr.value}`).join(', ');
+  } else if (typeof variant.attributes === 'object') {
+    // New format: {"color": "silver", "storage": "512gb"}
+    return Object.entries(variant.attributes)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(', ');
+  }
+
+  return '';
 };
