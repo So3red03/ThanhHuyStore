@@ -280,6 +280,67 @@ async function getCustomersBySegments(
       return users;
     }
 
+    // If 'category_interested' is selected, filter by product category
+    if (segments.includes('category_interested') && productId && campaignType === 'NEW_PRODUCT') {
+      // Get the product's category with parent category info
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+          category: {
+            include: {
+              parent: true
+            }
+          }
+        }
+      });
+
+      if (!product) {
+        if (debugMode) {
+          console.log('🐛 [DEBUG] Product not found for category filtering');
+        }
+        return [];
+      }
+
+      // Get parent category ID (purchasedCategories stores parent categories)
+      const parentCategoryId = product.category?.parentId || product.categoryId;
+
+      if (debugMode) {
+        console.log('🐛 [DEBUG] Filtering users by parent category:', {
+          productId,
+          subcategoryId: product.categoryId,
+          subcategoryName: product.category?.name,
+          parentCategoryId,
+          parentCategoryName: product.category?.parent?.name || product.category?.name
+        });
+      }
+
+      // Find users who have purchased products in the same parent category
+      const users = await prisma.user.findMany({
+        where: {
+          role: 'USER',
+          email: { not: '' },
+          purchasedCategories: {
+            has: parentCategoryId // Check if user has purchased from this parent category
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      });
+
+      if (debugMode) {
+        console.log('🐛 [DEBUG] Found category-interested users:', {
+          parentCategoryId,
+          parentCategoryName: product.category?.parent?.name || product.category?.name,
+          userCount: users.length
+        });
+      }
+
+      return users;
+    }
+
     // Get users with order statistics for segmentation
     const usersWithStats = await prisma.user.findMany({
       where: {

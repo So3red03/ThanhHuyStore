@@ -29,14 +29,14 @@ export const sendNewProductEmailAutomatically = async (productId: string): Promi
 
     console.log('✅ [Auto Email] Auto email marketing is enabled for new products');
 
-    // 2. Gửi email tự động (sử dụng API endpoint mới)
+    // 2. Gửi email tự động (sử dụng API endpoint mới với category filtering)
     console.log('📧 [Auto Email] Sending email request to API...');
     const emailResponse = await axios.post('/api/marketing/emails', {
       campaignType: 'NEW_PRODUCT',
       campaignTitle: 'Sản phẩm mới vừa ra mắt!',
       campaignDescription: 'Khám phá sản phẩm mới nhất từ ThanhHuy Store',
       productId: productId,
-      selectedSegments: ['all'], // Gửi cho tất cả khách hàng
+      selectedSegments: ['category_interested'], // Gửi cho khách hàng đã mua cùng danh mục
       manualMode: false, // Không phải manual mode
       selectedUserIds: [],
       debugMode: true

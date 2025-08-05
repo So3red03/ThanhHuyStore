@@ -55,6 +55,7 @@ import {
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import moment from 'moment';
+import { truncateText } from '@/app/utils/truncateText';
 
 interface EmailAnalyticsProps {
   // Remove timeFilter prop - will manage internally
@@ -621,7 +622,7 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
                                     </div>
                                     <div>
                                       <Typography variant='body2' sx={{ fontWeight: 500, lineHeight: 1.2 }}>
-                                        {product.productName}
+                                        {truncateText(product.productName)}
                                       </Typography>
                                       <Typography variant='caption' color='textSecondary'>
                                         {product.categoryName}
@@ -630,7 +631,7 @@ const EmailTrackingAnalytics: React.FC<EmailAnalyticsProps> = () => {
                                   </div>
                                   <div className='text-right'>
                                     <Typography variant='body2' sx={{ fontWeight: 600, color: '#667eea' }}>
-                                      {product.ctr}%
+                                      {Math.round(product.ctr)}%
                                     </Typography>
                                     <Typography variant='caption' color='textSecondary'>
                                       {product.totalClicks} clicks
