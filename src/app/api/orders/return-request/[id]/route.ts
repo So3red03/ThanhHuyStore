@@ -389,8 +389,16 @@ async function handlePartialExchange(tx: any, returnRequest: any, originalOrder:
       throw new Error(`Exchange product not found: ${returnRequest.exchangeToProductId}`);
     }
 
-    // Calculate price difference
-    const originalItemPrice = exchangeItems.reduce((total: number, item: any) => total + item.price, 0);
+    // Calculate price difference by finding original product price from order
+    const originalOrderProducts = originalOrder.products as any[];
+    const originalItemPrice = exchangeItems.reduce((total: number, item: any) => {
+      // Find the original product in the order to get its price
+      const originalProduct = originalOrderProducts.find(
+        (p: any) => p.id === item.productId && (p.variantId || null) === (item.variantId || null)
+      );
+      const itemPrice = originalProduct?.price || 0;
+      return total + itemPrice * item.quantity;
+    }, 0);
     const newItemPrice = exchangeProduct.price;
     const priceDifference = newItemPrice - originalItemPrice;
 
@@ -427,8 +435,7 @@ async function handlePartialExchange(tx: any, returnRequest: any, originalOrder:
             selectedImg: exchangeProduct.thumbnail || '',
             price: exchangeProduct.price,
             quantity: 1,
-            inStock: exchangeProduct.inStock,
-            productType: exchangeProduct.productType
+            inStock: exchangeProduct.inStock
           }
         ],
         // Store exchange metadata with reference to original order
@@ -459,18 +466,11 @@ async function handlePartialExchange(tx: any, returnRequest: any, originalOrder:
     });
 
     // Reduce stock for new exchange item
-    if (exchangeProduct.productType === 'simple') {
-      await tx.product.update({
-        where: { id: returnRequest.exchangeToProductId },
-        data: { inStock: { decrement: 1 } }
-      });
-    } else {
-      // Handle variant stock reduction if needed
-      await tx.product.update({
-        where: { id: returnRequest.exchangeToProductId },
-        data: { inStock: { decrement: 1 } }
-      });
-    }
+    // For partial exchange, we assume simple product (quantity: 1)
+    await tx.product.update({
+      where: { id: returnRequest.exchangeToProductId },
+      data: { inStock: { decrement: 1 } }
+    });
 
     console.log(`✅ [PARTIAL-EXCHANGE] Stock reduced for exchange item`);
   }
