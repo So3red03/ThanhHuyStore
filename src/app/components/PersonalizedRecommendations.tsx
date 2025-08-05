@@ -174,7 +174,21 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
       const purchaseHistoryResponse = await fetch('/api/user/purchase-history');
       const purchaseHistory = purchaseHistoryResponse.ok ? await purchaseHistoryResponse.json() : [];
 
-      // 4. Kiểm tra nếu là người dùng mới (không có lịch sử xem và mua hàng)
+      // 4. Tạo Set các sản phẩm đã mua để loại trừ khỏi gợi ý
+      const purchasedProductIds = new Set<string>();
+      if (purchaseHistory && purchaseHistory.length > 0) {
+        purchaseHistory.forEach((order: any) => {
+          if (order.products && order.products.length > 0) {
+            order.products.forEach((product: any) => {
+              purchasedProductIds.add(product.id);
+            });
+          }
+        });
+      }
+
+      console.log('🛒 [RECOMMENDATIONS] Purchased products to exclude:', Array.from(purchasedProductIds));
+
+      // 5. Kiểm tra nếu là người dùng mới (không có lịch sử xem và mua hàng)
       const isNewUser = viewHistory.length === 0 && (!purchaseHistory || purchaseHistory.length === 0);
 
       // Nếu là người dùng mới, sử dụng global trending products (tái sử dụng logic có sẵn)
@@ -182,11 +196,11 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         return await getGlobalTrendingProducts();
       }
 
-      // 5. Tạo scoring system cho người dùng có dữ liệu
+      // 6. Tạo scoring system cho người dùng có dữ liệu
       const productScores = new Map<string, number>();
       const categoryWeights = new Map<string, number>(); // NEW: Category weights instead of Set
 
-      // 6. Score từ lịch sử xem cá nhân (weight: 3) + Category weights
+      // 7. Score từ lịch sử xem cá nhân (weight: 3) + Category weights
       if (viewHistory.length > 0) {
         viewHistory.forEach(item => {
           // Track category weights (view = +1 weight)
@@ -199,7 +213,8 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         });
       }
 
-      // 7. Score từ lịch sử mua hàng (weight: 5) + Category weights (purchase = +2 weight)
+      // 8. Score từ lịch sử mua hàng (weight: 5) + Category weights (purchase = +2 weight)
+      // Chú ý: Không thêm điểm cho sản phẩm đã mua, chỉ track category weights
       if (purchaseHistory && purchaseHistory.length > 0) {
         purchaseHistory.forEach((order: any) => {
           if (order.products && order.products.length > 0) {
@@ -208,19 +223,24 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
               const currentCategoryWeight = categoryWeights.get(product.category) || 0;
               categoryWeights.set(product.category, currentCategoryWeight + 2);
 
-              // Track product scores
-              const currentScore = productScores.get(product.id) || 0;
-              productScores.set(product.id, currentScore + 5);
+              // KHÔNG thêm điểm cho sản phẩm đã mua vì chúng ta sẽ loại trừ chúng
+              // const currentScore = productScores.get(product.id) || 0;
+              // productScores.set(product.id, currentScore + 5);
             });
           }
         });
       }
 
-      // 8. Collaborative filtering removed - now using category-weighted distribution instead
+      // 9. Collaborative filtering removed - now using category-weighted distribution instead
 
-      // 9. Lọc và score sản phẩm
+      // 10. Lọc và score sản phẩm (loại trừ sản phẩm đã mua)
       const scoredProducts = allProducts
-        .filter(product => (product.inStock ?? 0) > 0) // Chỉ sản phẩm còn hàng
+        .filter(
+          product =>
+            (product.inStock ?? 0) > 0 && // Chỉ sản phẩm còn hàng
+            !product.isDeleted && // Không bị xóa
+            !purchasedProductIds.has(product.id) // KHÔNG phải sản phẩm đã mua
+        )
         .map(product => {
           let score = 0;
 
@@ -245,14 +265,16 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         })
         .sort((a, b) => b.recommendationScore - a.recommendationScore);
 
-      // 10. NEW: Proportional distribution based on category weights
+      console.log('🎯 [RECOMMENDATIONS] Filtered products (excluding purchased):', scoredProducts.length);
+
+      // 11. NEW: Proportional distribution based on category weights
       const finalRecommendations = getProportionalRecommendations(scoredProducts, categoryWeights, 6);
 
       return finalRecommendations.length > 0 ? finalRecommendations : getRecentProducts();
     } catch (error) {
       return getRecentProducts();
     }
-  }, [allProducts, getRecentProducts]);
+  }, [allProducts, getRecentProducts, getProportionalRecommendations]);
 
   useEffect(() => {
     const getRecommendations = async () => {
