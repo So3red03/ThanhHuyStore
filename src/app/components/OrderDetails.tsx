@@ -236,10 +236,6 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
             <p>{formatPrice(order.shippingFee || 0)}</p>
           </div>
           <div className='flex justify-between'>
-            <p>Thuế</p>
-            <p>{formatPrice(0)}</p>
-          </div>
-          <div className='flex justify-between'>
             <p>Giảm giá</p>
             <p>-{formatPrice(order.discountAmount || 0)}</p>
           </div>

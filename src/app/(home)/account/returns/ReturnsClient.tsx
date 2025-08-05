@@ -361,10 +361,7 @@ const ReturnsClient: React.FC<ReturnsClientProps> = ({ currentUser }) => {
 
                 {/* Actions */}
                 <div className='p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center'>
-                  <div className='text-sm text-gray-600'>
-                    Tổng tiền:{' '}
-                    <span className='font-semibold text-gray-900'>{formatPrice(returnRequest.refundAmount || 0)}</span>
-                  </div>
+                  <div className='text-sm text-gray-600'></div>
                   <button
                     onClick={() => handleViewDetails(returnRequest)}
                     className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
